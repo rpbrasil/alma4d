@@ -37,7 +37,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 
         <footer className="border-t bg-white">
           <div className="max-w-5xl mx-auto px-6 py-6 text-sm text-gray-600">
-            © {new Date().getFullYear()} alma4D — Todos os direitos reservados.
+            © {new Date().getFullYear()} alma4D — Todos os direitos reservados a Voss Comunicação.
           </div>
         </footer>
       </body>
