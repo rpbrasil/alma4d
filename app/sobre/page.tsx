@@ -1,0 +1,12 @@
+export default function Sobre() {
+  return (
+    <section>
+      <h2 className="text-3xl font-bold text-blue-700 mb-4">Sobre o alma4D</h2>
+      <p className="text-gray-700 leading-relaxed">
+        O alma4D é um aplicativo criado para aproximar pessoas, fortalecer
+        vínculos e promover bem-estar emocional através de tecnologia simples e
+        humana.
+      </p>
+    </section>
+  );
+}
