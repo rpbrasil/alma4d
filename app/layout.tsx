@@ -1,4 +1,6 @@
 import "./globals.css";
+import type { ReactNode } from "react";
+import Link from "next/link";
 
 export const metadata = {
   title: "alma4D",
@@ -6,26 +8,27 @@ export const metadata = {
     "Aplicativo alma4D – Conectando pessoas com cuidado e propósito.",
 };
 
-export default function RootLayout({ children }) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="pt-BR">
       <body className="bg-gray-50 text-gray-900 flex flex-col min-h-screen">
         <header className="border-b bg-white">
           <div className="max-w-5xl mx-auto px-6 py-4 flex justify-between items-center">
             <h1 className="text-xl font-bold text-blue-700">alma4D</h1>
+
             <nav className="flex gap-6 text-sm">
-              <a href="/" className="hover:text-blue-600">
+              <Link href="/" className="hover:text-blue-600">
                 Início
-              </a>
-              <a href="/sobre" className="hover:text-blue-600">
+              </Link>
+              <Link href="/sobre" className="hover:text-blue-600">
                 Sobre
-              </a>
-              <a href="/download" className="hover:text-blue-600">
+              </Link>
+              <Link href="/download" className="hover:text-blue-600">
                 Download
-              </a>
-              <a href="/contato" className="hover:text-blue-600">
+              </Link>
+              <Link href="/contato" className="hover:text-blue-600">
                 Contato
-              </a>
+              </Link>
             </nav>
           </div>
         </header>
