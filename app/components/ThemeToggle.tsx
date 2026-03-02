@@ -34,7 +34,7 @@ export function ThemeToggle() {
       aria-label="Alternar tema"
     >
       <span className="text-base leading-none">{dark ? "☾" : "☀︎"}</span>
-      <span>{dark ? "Dark" : "Light"}</span>
+      <span>{dark ? "N" : "D"}</span>
     </button>
   );
 }
