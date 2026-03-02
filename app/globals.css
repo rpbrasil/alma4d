@@ -1,84 +1,55 @@
 @import "tailwindcss";
 
-/* =========================
-   Design Tokens – Alma4D
-   ========================= */
+/* ========== Base tokens (CSS padrão) ========== */
 :root {
-  /* Neutros */
   --background: #ffffff;
   --foreground: #171717;
 
   /* Paleta oficial */
-  --color-primary: #030870;
-  /* Azul principal */
-  --color-secondary: #019499;
-  /* Verde-azulado */
-  --color-accent: #df633f;
-  /* Laranja */
-  --color-highlight: #6126e2;
-  /* Roxo */
+  --brand: #030870;
+  --brand-secondary: #019499;
+  --brand-accent: #df633f;
+  --brand-highlight: #6126e2;
 
-  /* Derivações úteis */
-  --color-primary-soft: #e6e7f5;
-  --color-secondary-soft: #e3f6f6;
-  --color-accent-soft: #fde9e2;
+  /* Neutros para bordas/superfícies */
+  --surface: #ffffff;
+  --surface-muted: #f7f7fb;
+  --border: #e7e7f2;
 }
 
-/* Integração com Tailwind (tokens semânticos) */
-@theme inline {
+/* ========== Tailwind theme variables (v4) ========== */
+/* @theme define tokens que geram utilitários (bg-*, text-*, border-*) [1](https://tailwindcss.com/docs/theme) */
+@theme {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
 
-  --color-brand: var(--color-primary);
-  --color-brand-secondary: var(--color-secondary);
-  --color-brand-accent: var(--color-accent);
-  --color-brand-highlight: var(--color-highlight);
+  --color-brand: var(--brand);
+  --color-brand-secondary: var(--brand-secondary);
+  --color-brand-accent: var(--brand-accent);
+  --color-brand-highlight: var(--brand-highlight);
+
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-border: var(--border);
 
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-/* =========================
-   Dark Mode
-   ========================= */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0b0b14;
-    --foreground: #ededed;
+/* ========== Dark mode (por classe) ========== */
+/* Você poderá ativar adicionando class="dark" no <html> (vamos criar um toggle). */
+.dark {
+  --background: #0b0b14;
+  --foreground: #ededed;
 
-    --color-primary-soft: #1a1d4d;
-    --color-secondary-soft: #0f3f40;
-    --color-accent-soft: #4a2318;
-  }
+  --surface: #0f1022;
+  --surface-muted: #12132a;
+  --border: #23254a;
 }
 
-/* =========================
-   Base styles
-   ========================= */
+/* ========== Base ========== */
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
-}
-
-/* =========================
-   Elementos globais
-   ========================= */
-a {
-  color: var(--color-secondary);
-  text-decoration: none;
-}
-
-a:hover {
-  color: var(--color-primary);
-}
-
-header {
-  background-color: var(--background);
-  border-bottom: 1px solid var(--color-primary-soft);
-}
-
-footer {
-  background-color: var(--background);
-  border-top: 1px solid var(--color-primary-soft);
 }

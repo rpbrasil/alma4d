@@ -1,3 +1,4 @@
+import { Button } from "../components/Button";
 export default function Sobre() {
   return (
     <section>
@@ -7,6 +8,11 @@ export default function Sobre() {
         vínculos e promover bem-estar emocional através de tecnologia simples e
         humana.
       </p>
+
+      <Button variant="primary">Primário</Button>
+      <Button variant="secondary">Secundário</Button>
+      <Button variant="accent">CTA</Button>
+      <Button variant="outline">Outline</Button>
     </section>
   );
 }
