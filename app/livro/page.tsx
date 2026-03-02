@@ -1,6 +1,25 @@
 import Link from "next/link";
 import Image from "next/image";
+import type { Metadata } from "next";
 
+export const metadata: Metadata = {
+  title: "O Livro alma4D — Base conceitual do método",
+  description:
+    "O livro alma4D apresenta os fundamentos conceituais que estruturam todo o método e sustentam o aplicativo.",
+  keywords: [
+    "alma4D",
+    "método alma4D",
+    "livro alma4D",
+    "conhecimento e tecnologia",
+    "método conceitual",
+  ],
+  openGraph: {
+    title: "O Livro alma4D",
+    description:
+      "A base conceitual de todo o método alma4D, integrando pensamento e prática.",
+    type: "website",
+  },
+};
 export default function LivroPage() {
   // Troque pelo ASIN real quando tiver:
   const amazonUrl = "https://www.amazon.com.br/dp/ASIN";
@@ -49,7 +68,7 @@ export default function LivroPage() {
               className="inline-block"
             >
               <Image
-                src="/badges/avaiable_at_amazon_br_vertical.png"
+                src="/badges/available_at_amazon_br_vertical.png"
                 alt="Available at Amazon"
                 width={200}
                 height={60}
@@ -64,7 +83,15 @@ export default function LivroPage() {
         </div>
 
         <div className="aspect-3/4 bg-surface-muted rounded-xl flex items-center justify-center text-foreground/50">
-          Capa do livro / vídeo do autor
+          <div className="aspect-3/4 rounded-xl overflow-hidden border border-border bg-black">
+            <video
+              src="../assets/videos/carousel_video1.mp4"
+              controls
+              preload="metadata"
+              className="w-full h-full object-cover"
+              aria-label="Apresentação do autor do livro alma4D"
+            />
+          </div>
         </div>
       </section>
 

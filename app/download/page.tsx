@@ -2,9 +2,10 @@ import Link from "next/link";
 import Image from "next/image";
 
 export default function DownloadPage() {
+   const amazonUrl = "https://www.amazon.com.br/dp/ASIN";
   return (
     <section className="max-w-3xl mx-auto flex flex-col gap-8 py-16">
-      <h1 className="text-4xl font-bold text-brand">Baixar o aplicativo</h1>
+      <h1 className="text-4xl font-bold text-brand">Baixar o aplicativo e o livro</h1>
 
       <p className="text-foreground/70">
         Escolha sua plataforma preferida para acessar o aplicativo alma4D.
@@ -41,6 +42,31 @@ export default function DownloadPage() {
             height={60}
           />
         </a>
+      </div>
+
+      <p className="text-foreground/70">
+        Escolha sua plataforma preferida para acessar o livro alma4D na Amazon.
+      </p>
+      <div className="pt-2">
+        <a
+          href={amazonUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Comprar o livro na Amazon"
+          className="inline-block"
+        >
+          <Image
+            src="/badges/available_at_amazon_br_vertical.png"
+            alt="Available at Amazon"
+            width={200}
+            height={60}
+            priority
+          />
+        </a>
+
+        <p className="text-xs text-foreground/50 mt-2">
+          Link direciona para a página do livro na Amazon.
+        </p>
       </div>
 
       <p className="text-sm text-foreground/50">
