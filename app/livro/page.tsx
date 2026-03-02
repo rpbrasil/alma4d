@@ -1,6 +1,10 @@
 import Link from "next/link";
+import Image from "next/image";
 
 export default function LivroPage() {
+  // Troque pelo ASIN real quando tiver:
+  const amazonUrl = "https://www.amazon.com.br/dp/ASIN";
+
   return (
     <div className="flex flex-col gap-24">
       {/* HERO */}
@@ -34,10 +38,32 @@ export default function LivroPage() {
               Livro + App
             </Link>
           </div>
+
+          {/* Badge oficial Amazon (Available at Amazon) */}
+          <div className="pt-2">
+            <a
+              href={amazonUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Comprar o livro na Amazon"
+              className="inline-block"
+            >
+              <Image
+                src="/badges/avaiable_at_amazon_br_vertical.png"
+                alt="Available at Amazon"
+                width={200}
+                height={60}
+                priority
+              />
+            </a>
+
+            <p className="text-xs text-foreground/50 mt-2">
+              Link direciona para a página do livro na Amazon.
+            </p>
+          </div>
         </div>
 
-        <div className="aspect-3/4 bg-surface-muted rounded-xl flex items-center justify-center 
-        text-foreground/50">
+        <div className="aspect-3/4 bg-surface-muted rounded-xl flex items-center justify-center text-foreground/50">
           Capa do livro / vídeo do autor
         </div>
       </section>

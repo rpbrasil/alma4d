@@ -53,7 +53,7 @@ export default function DownloadPage() {
           href="/oferta"
           className="inline-flex items-center justify-center rounded-md bg-brand px-6 py-3 text-white font-semibold hover:bg-brand/90 transition-colors"
         >
-          Conhecer a experiência completa (Livro + App)
+          Conhecer a experiência completa
         </Link>
       </div>
     </section>
