@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 
 export default function AppPage() {
   return (
@@ -39,7 +40,20 @@ export default function AppPage() {
 
         {/* Mockup / vídeo */}
         <div className="aspect-video rounded-xl bg-surface-muted flex items-center justify-center text-foreground/50">
-          Vídeo demonstrativo ou mockup do aplicativo
+          <Link
+            href="/"
+            className="flex items-center gap-2 hover:opacity-90 transition-opacity"
+          >
+            <Image
+              src="/images/pdfReader.jpeg"
+              alt="alma4D"
+              width={400}
+              height={400}
+              sizes="(max-width: 640px) 120px, (max-width: 768px) 140px, (max-width: 1024px) 170px, 220px"
+              className="object-contain"
+              priority
+            />
+          </Link>
         </div>
       </section>
 
