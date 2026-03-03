@@ -1,6 +1,5 @@
 "use client";
 
-
 import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
@@ -22,7 +21,7 @@ export function Header() {
             alt="alma4D"
             width={120}
             height={32}
-            className="h-8 w-auto sm:h-10"
+            className="h-7 w-auto sm:h-8"
             priority
           />
         </Link>
