@@ -45,7 +45,7 @@ export default function AppPage() {
             className="flex items-center gap-2 hover:opacity-90 transition-opacity"
           >
             <Image
-              src="/images/pdfReader.jpeg"
+              src="/images/kindlePhoto2.jpg"
               alt="alma4D"
               width={400}
               height={400}
