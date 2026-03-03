@@ -19,9 +19,9 @@ export function Header() {
           <Image
             src="/images/alma4D_nobground.png"
             alt="alma4D"
-            width={120}
-            height={32}
-            className="h-7 w-auto sm:h-8"
+            width={240}
+            height={64}
+            className="h-8 w-auto sm:h-9 md:h-10 lg:h-12"
             priority
           />
         </Link>
