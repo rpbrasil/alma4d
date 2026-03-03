@@ -39,7 +39,20 @@ export default function HomePage() {
 
         {/* Mídia */}
         <div className="aspect-video rounded-xl bg-surface-muted flex items-center justify-center text-foreground/50">
-          Vídeo introdutório ou mockup do aplicativo
+          <Link
+            href="/"
+            className="flex items-center gap-2 hover:opacity-90 transition-opacity"
+          >
+            <Image
+              src="/images/olhoClinicoPad2.jpeg"
+              alt="alma4D"
+              width={400}
+              height={400}
+              sizes="(max-width: 640px) 120px, (max-width: 768px) 140px, (max-width: 1024px) 170px, 220px"
+              className="object-contain"
+              priority
+            />
+          </Link>
         </div>
       </section>
 
@@ -152,7 +165,7 @@ export default function HomePage() {
               className="flex items-center gap-2 hover:opacity-90 transition-opacity"
             >
               <Image
-                src="/images/olhoClinicoVertical2.jpg"
+                src="/images/olhoClinicoVerticalPad.jpeg"
                 alt="alma4D"
                 width={400}
                 height={400}
