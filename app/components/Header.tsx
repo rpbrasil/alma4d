@@ -10,7 +10,7 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-surface/90 backdrop-blur">
-      <div className="max-w-5xl mx-auto px-6 py-2 flex items-center justify-between">
+      <div className="max-w-5xl mx-auto px-6 py-1 flex items-center justify-between">
         {/* Logo */}
         <Link
           href="/"
@@ -19,8 +19,8 @@ export function Header() {
           <Image
             src="/images/alma4D_nobg_512.png"
             alt="alma4D"
-            width={120}
-            height={120}
+            width={100}
+            height={100}
             className="h-7 w-auto sm:h-8 md:h-9 lg:h-10"
             priority
           />
