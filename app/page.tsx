@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 
 export default function HomePage() {
   return (
@@ -146,7 +147,20 @@ export default function HomePage() {
         <div className="grid md:grid-cols-2 gap-8 items-center">
           {/* Visual */}
           <div className="aspect-video rounded-xl bg-surface-muted flex items-center justify-center text-foreground/50">
-            Imagem do livro + mockup do app
+            <Link
+              href="/"
+              className="flex items-center gap-2 hover:opacity-90 transition-opacity"
+            >
+              <Image
+                src="/images/olhoClinicoVertical2.jpg"
+                alt="alma4D"
+                width={400}
+                height={400}
+                sizes="(max-width: 640px) 120px, (max-width: 768px) 140px, (max-width: 1024px) 170px, 220px"
+                className="object-contain"
+                priority
+              />
+            </Link>
           </div>
 
           {/* Texto */}
