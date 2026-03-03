@@ -21,7 +21,8 @@ export function Header() {
             alt="alma4D"
             width={100}
             height={100}
-            className="h-7 w-auto sm:h-8 md:h-9 lg:h-10"
+            sizes="(max-width: 640px) 120px, (max-width: 768px) 140px, (max-width: 1024px) 170px, 220px"
+            className="object-contain"
             priority
           />
         </Link>
