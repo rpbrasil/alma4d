@@ -152,9 +152,26 @@ export default function HomePage() {
           {/* Texto */}
           <div className="flex flex-col gap-4">
             <ul className="space-y-3 text-foreground/70">
-              <li>✅ Fundamentos conceituais claros</li>
-              <li>✅ Aplicação prática orientada</li>
-              <li>✅ Um único método, sem fragmentação</li>
+              <li className="flex items-start gap-3">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand text-white text-sm">
+                  ✓
+                </span>
+                <span>Fundamentos conceituais claros</span>
+              </li>
+
+              <li className="flex items-start gap-3">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand text-white text-sm">
+                  ✓
+                </span>
+                <span>Aplicação prática orientada</span>
+              </li>
+
+              <li className="flex items-start gap-3">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand text-white text-sm">
+                  ✓
+                </span>
+                <span>Um único método, sem fragmentação</span>
+              </li>
             </ul>
 
             <Link

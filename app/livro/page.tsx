@@ -85,11 +85,10 @@ export default function LivroPage() {
         <div className="aspect-3/4 bg-surface-muted rounded-xl flex items-center justify-center text-foreground/50">
           <div className="aspect-3/4 rounded-xl overflow-hidden border border-border bg-black">
             <video
-              src="/assets/videos/carousel_video1.mp4"
+              src="/videos/carousel_video1.mp4"
               controls
               preload="metadata"
               className="w-full h-full object-cover"
-              aria-label="Apresentação da autora do livro alma4D"
             />
           </div>
         </div>

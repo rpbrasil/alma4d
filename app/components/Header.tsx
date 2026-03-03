@@ -1,6 +1,8 @@
 "use client";
 
+
 import Link from "next/link";
+import Image from "next/image";
 import { useState } from "react";
 import { ThemeToggle } from "./ThemeToggle";
 
@@ -13,9 +15,16 @@ export function Header() {
         {/* Logo */}
         <Link
           href="/"
-          className="text-xl font-bold text-brand hover:opacity-90 transition-opacity"
+          className="flex items-center gap-2 hover:opacity-90 transition-opacity"
         >
-          alma4D
+          <Image
+            src="/images/alma4D_nobground.png"
+            alt="alma4D"
+            width={120}
+            height={32}
+            className="h-7 w-auto sm:h-8"
+            priority
+          />
         </Link>
 
         {/* Desktop navigation */}
