@@ -22,7 +22,7 @@ export function Header() {
             alt="alma4D"
             width={120}
             height={32}
-            className="h-7 w-auto sm:h-8"
+            className="h-8 w-auto sm:h-10"
             priority
           />
         </Link>
@@ -45,9 +45,9 @@ export function Header() {
             Aplicativo
           </Link>
 
-          <Link href="/oferta" className="text-sm font-medium hover:text-brand">
+          {/* <Link href="/oferta" className="text-sm font-medium hover:text-brand">
             Oferta
-          </Link>
+          </Link> */}
 
           <Link
             href="/download"
