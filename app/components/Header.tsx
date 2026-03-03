@@ -10,18 +10,18 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-surface/90 backdrop-blur">
-      <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
+      <div className="max-w-5xl mx-auto px-6 py-2 flex items-center justify-between">
         {/* Logo */}
         <Link
           href="/"
           className="flex items-center gap-2 hover:opacity-90 transition-opacity"
         >
           <Image
-            src="/images/alma4D_nobground.png"
+            src="/images/alma4D_nobg_512.png"
             alt="alma4D"
-            width={240}
-            height={64}
-            className="h-8 w-auto sm:h-9 md:h-10 lg:h-12"
+            width={120}
+            height={120}
+            className="h-7 w-auto sm:h-8 md:h-9 lg:h-10"
             priority
           />
         </Link>
@@ -50,7 +50,7 @@ export function Header() {
 
           <Link
             href="/download"
-            className="inline-flex items-center justify-center rounded-md bg-brand px-4 py-2 text-white text-sm font-semibold hover:bg-brand/90 transition-colors"
+            className="inline-flex items-center justify-center rounded-md bg-brand px-4 py-1.5 text-white text-sm font-semibold hover:bg-brand/90 transition-colors"
           >
             Download
           </Link>
