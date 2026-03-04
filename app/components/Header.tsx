@@ -4,6 +4,33 @@ import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
 import { ThemeToggle } from "./ThemeToggle";
+import { usePathname } from "next/navigation";
+
+function NavLink({
+  href,
+  children,
+  onClick,
+}: {
+  href: string;
+  children: React.ReactNode;
+  onClick?: () => void;
+}) {
+  const pathname = usePathname();
+  const active = pathname === href;
+
+  return (
+    <Link
+      href={href}
+      onClick={onClick}
+      className={[
+        "text-sm font-medium transition-colors",
+        active ? "text-brand" : "hover:text-brand",
+      ].join(" ")}
+    >
+      {children}
+    </Link>
+  );
+}
 
 export function Header() {
   const [open, setOpen] = useState(false);
@@ -15,6 +42,7 @@ export function Header() {
         <Link
           href="/"
           className="flex items-center gap-2 hover:opacity-90 transition-opacity"
+          onClick={() => setOpen(false)}
         >
           <Image
             src="/images/alma4D_bicolor_nobground_256.png"
@@ -28,26 +56,22 @@ export function Header() {
         </Link>
 
         {/* Desktop navigation */}
-        <nav className="hidden md:flex items-center gap-6">
-          <Link href="/" className="text-sm font-medium hover:text-brand">
-            Início
-          </Link>
+        <nav
+          className="hidden md:flex items-center gap-6"
+          aria-label="Navegação principal"
+        >
+          <NavLink href="/">Início</NavLink>
+          <NavLink href="/metodo">Método</NavLink>
+          <NavLink href="/livro">Livro</NavLink>
+          <NavLink href="/app">Aplicativo</NavLink>
 
-          <Link href="/metodo" className="text-sm font-medium hover:text-brand">
-            Método
-          </Link>
+          {/* ✅ NOVO ITEM */}
+          <NavLink href="/autora">Autora</NavLink>
 
-          <Link href="/livro" className="text-sm font-medium hover:text-brand">
-            Livro
-          </Link>
-
-          <Link href="/app" className="text-sm font-medium hover:text-brand">
-            Aplicativo
-          </Link>
-
-          {/* <Link href="/oferta" className="text-sm font-medium hover:text-brand">
-            Oferta
-          </Link> */}
+          {/* Se quiser reativar depois */}
+          {/*
+          <NavLink href="/oferta">Oferta</NavLink>
+          */}
 
           <Link
             href="/download"
@@ -64,8 +88,10 @@ export function Header() {
           <ThemeToggle />
 
           <button
-            onClick={() => setOpen(!open)}
+            onClick={() => setOpen((v) => !v)}
             aria-label="Abrir menu"
+            aria-expanded={open}
+            aria-controls="mobile-nav"
             className="inline-flex items-center justify-center rounded-md border border-border p-2 hover:bg-surface-muted transition-colors"
           >
             {open ? "✕" : "☰"}
@@ -75,23 +101,39 @@ export function Header() {
 
       {/* Mobile menu */}
       {open && (
-        <div className="md:hidden border-t border-border bg-surface">
-          <nav className="flex flex-col px-6 py-4 gap-4">
-            <Link href="/" onClick={() => setOpen(false)}>
+        <div
+          className="md:hidden border-t border-border bg-surface"
+          id="mobile-nav"
+        >
+          <nav
+            className="flex flex-col px-6 py-4 gap-4"
+            aria-label="Navegação mobile"
+          >
+            <NavLink href="/" onClick={() => setOpen(false)}>
               Início
-            </Link>
-            <Link href="/metodo" onClick={() => setOpen(false)}>
+            </NavLink>
+            <NavLink href="/metodo" onClick={() => setOpen(false)}>
               Método
-            </Link>
-            <Link href="/livro" onClick={() => setOpen(false)}>
+            </NavLink>
+            <NavLink href="/livro" onClick={() => setOpen(false)}>
               Livro
-            </Link>
-            <Link href="/app" onClick={() => setOpen(false)}>
+            </NavLink>
+            <NavLink href="/app" onClick={() => setOpen(false)}>
               Aplicativo
-            </Link>
-            <Link href="/oferta" onClick={() => setOpen(false)}>
+            </NavLink>
+
+            {/* ✅ NOVO ITEM */}
+            <NavLink href="/autora" onClick={() => setOpen(false)}>
+              Autora
+            </NavLink>
+
+            {/* Se quiser reativar depois */}
+            {/*
+            <NavLink href="/oferta" onClick={() => setOpen(false)}>
               Oferta
-            </Link>
+            </NavLink>
+            */}
+
             <Link
               href="/download"
               onClick={() => setOpen(false)}
