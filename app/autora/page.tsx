@@ -24,15 +24,19 @@ export default function AutoraPage() {
         </div>
 
         {/* Imagem */}
-        <div className="flex justify-center">
+        <div className="relative flex justify-center">
+          {/* Imagem */}
           <Image
             src="/images/fran_nobg.jpg"
             alt="Fran Abbud"
             width={360}
             height={360}
-            className="rounded-2xl object-cover"
+            className="rounded-2xl object-cover relative z-10"
             priority
           />
+
+          {/* Linha full-width alinhada ao bottom da imagem */}
+          <div className="absolute bottom-0 left-1/2 h-1 w-screen -translate-x-1/2 bg-brand" />
         </div>
       </section>
 

@@ -107,7 +107,20 @@ export default function AppPage() {
           </div>
 
           <div className="aspect-video bg-surface-muted rounded-xl flex items-center justify-center text-foreground/50">
-            Vídeo explicativo ou walkthrough
+            <Link
+              href="/"
+              className="flex items-center gap-2 hover:opacity-90 transition-opacity"
+            >
+              <Image
+                src="/images/olhoClinicoPad2.jpeg"
+                alt="alma4D"
+                width={300}
+                height={300}
+                sizes="(max-width: 640px) 120px, (max-width: 768px) 140px, (max-width: 1024px) 170px, 220px"
+                className="object-contain"
+                priority
+              />
+            </Link>
           </div>
         </div>
       </section>
@@ -118,8 +131,8 @@ export default function AppPage() {
           <h2 className="text-3xl font-bold">O aplicativo dentro do método</h2>
 
           <p className="text-foreground/70 leading-relaxed">
-            O aplicativo não substitui o livro e não simplifica o método. Ele o
-            operacionaliza.
+            O aplicativo não substitui o livro e não simplifica o método. Ele
+            torna o conhecimento teórico em prática.
           </p>
 
           <p className="text-foreground/70">

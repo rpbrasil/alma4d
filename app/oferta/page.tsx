@@ -104,8 +104,7 @@ export default function AppPage() {
           <h2 className="text-3xl font-bold">O aplicativo dentro do método</h2>
 
           <p className="text-foreground/70 leading-relaxed">
-            O aplicativo não substitui o livro e não simplifica o método. Ele o
-            operacionaliza.
+            O aplicativo não substitui o livro e não simplifica o método. Ele possibilita a conversão do conhecimento teórico em prática.
           </p>
 
           <p className="text-foreground/70">

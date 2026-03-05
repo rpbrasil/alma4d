@@ -44,7 +44,7 @@ export default function HomePage() {
             className="flex items-center gap-2 hover:opacity-90 transition-opacity"
           >
             <Image
-              src="/images/olhoClinicoPad2.jpeg"
+              src="/images/sinergia_a4D2.png"
               alt="alma4D"
               width={400}
               height={400}
