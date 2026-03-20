@@ -317,17 +317,28 @@ export default function MetodoPage() {
         <div className="max-w-3xl flex flex-col gap-3">
           <h2 className="text-3xl font-bold">Para quem o método foi criado</h2>
           <p className="text-foreground/70 leading-relaxed">
-            O alma4D faz mais sentido para quem busca método, fundamento e
-            prática — com evolução consistente em vez de picos de motivação.
+            O método foi criado para todos os interessados em atuar ativamente em
+            seu próprio benefício ou de terceiros na obtenção de conteúdos e
+            práticas de vida saudável.
           </p>
         </div>
 
         <div className="rounded-2xl bg-surface-muted p-8">
           <ul className="list-disc list-inside space-y-3 text-foreground/70">
-            <li>Quem quer um método (não só inspiração).</li>
-            <li>Quem valoriza fundamento e prática no mesmo sistema.</li>
-            <li>Quem busca continuidade e evolução no cotidiano.</li>
-            <li>Quem prefere clareza a soluções fragmentadas.</li>
+            <li>
+              Pessoas que valorizam aplicativos com embasamento sólido ou que queiram levar sua longevidade a sério.
+            </li>
+            <li>
+              Profissionais podem adotar a metodologia para organizar
+              didaticamente seu trabalho e esclarecer ao cliente as etapas e os
+              objetivos do que se propõe a fazer.{" "}
+            </li>
+            <li>
+              Empresas podem engajar colaboradores em programas de bem-estar e saúde mental. Como bônus, alma4D
+              resolve a operacionalização do mapeamento de risco psicossocial,
+              inclusive com emissão de relatórios, conforme previsto na
+              legislação.
+            </li>
           </ul>
         </div>
       </section>
