@@ -99,7 +99,7 @@ export default function LivroPage() {
       <section className="grid md:grid-cols-3 gap-8">
         <div className="bg-surface-muted p-6 rounded-xl flex flex-col gap-4">
           {/* Imagem no topo do card */}
-          <div className="relative w-full aspect-[4/3] rounded-lg overflow-hidden">
+          <div className="relative w-full aspect-4/3 rounded-lg overflow-hidden">
             <Image
               src="/images/alma4d_quatro_quad.png"
               alt="Fundamentos do método alma4D"
@@ -117,7 +117,7 @@ export default function LivroPage() {
 
         <div className="bg-surface-muted p-6 rounded-xl flex flex-col gap-4">
           {/* Imagem no topo do card */}
-          <div className="relative w-full aspect-[4/3] rounded-lg overflow-hidden">
+          <div className="relative w-full aspect-4/3 rounded-lg overflow-hidden">
             <Image
               src="/images/alma4d_doze_itens.png"
               alt="Modelagem conceitual alma4D"
@@ -133,9 +133,9 @@ export default function LivroPage() {
 
         <div className="bg-surface-muted p-6 rounded-xl flex flex-col gap-4">
           {/* Imagem no topo do card */}
-          <div className="relative w-full aspect-[4/3] rounded-lg overflow-hidden">
+          <div className="relative w-full aspect-4/3 rounded-lg overflow-hidden">
             <Image
-              src="/images/alma4D_nobground.png" // ← troque pelo caminho real
+              src="/images/alma4D_bicolor_nobground_400.png"
               alt="Visão integrada teoria e prática alma4D"
               fill
               className="object-cover"
@@ -155,7 +155,11 @@ export default function LivroPage() {
         <h2 className="text-3xl font-bold mb-4">Livro e Aplicativo</h2>
 
         <p className="text-foreground/70 mb-6">
-          O livro fundamenta. O aplicativo operacionaliza.
+          O livro fundamenta. O aplicativo operacionaliza.O Aplicativo alma4D -
+          surge como uma ferramenta de integração prática desse modelo. Seu
+          objetivo não é substituir o cuidado profissional, nem impor protocolos
+          rígidos, mas organizar, estimular e acompanhar hábitos de saúde
+          integral de forma acessível, ética e consciente.
         </p>
 
         <Link href="/app" className="text-brand font-medium hover:underline">
