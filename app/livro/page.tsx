@@ -95,20 +95,54 @@ export default function LivroPage() {
       </section>
 
       {/* CONTEÚDO */}
+      {/* CONTEÚDO */}
       <section className="grid md:grid-cols-3 gap-8">
-        <div className="bg-surface-muted p-6 rounded-xl">
+        <div className="bg-surface-muted p-6 rounded-xl flex flex-col gap-4">
+          {/* Imagem no topo do card */}
+          <div className="relative w-full aspect-[4/3] rounded-lg overflow-hidden">
+            <Image
+              src="/images/alma4d_quatro_quad.png"
+              alt="Fundamentos do método alma4D"
+              fill
+              className="object-cover"
+              sizes="(max-width: 768px) 100vw, 33vw"
+            />
+          </div>
+
           <h3 className="text-xl font-semibold">Fundamentos</h3>
           <p className="text-foreground/70">
             Princípios estruturantes do método.
           </p>
         </div>
 
-        <div className="bg-surface-muted p-6 rounded-xl">
+        <div className="bg-surface-muted p-6 rounded-xl flex flex-col gap-4">
+          {/* Imagem no topo do card */}
+          <div className="relative w-full aspect-[4/3] rounded-lg overflow-hidden">
+            <Image
+              src="/images/alma4d_doze_itens.png"
+              alt="Modelagem conceitual alma4D"
+              fill
+              className="object-cover"
+              sizes="(max-width: 768px) 100vw, 33vw"
+            />
+          </div>
+
           <h3 className="text-xl font-semibold">Modelagem</h3>
           <p className="text-foreground/70">Organização lógica e conceitual.</p>
         </div>
 
-        <div className="bg-surface-muted p-6 rounded-xl">
+        <div className="bg-surface-muted p-6 rounded-xl flex flex-col gap-4">
+          {/* Imagem no topo do card */}
+          <div className="relative w-full aspect-[4/3] rounded-lg overflow-hidden">
+            <Image
+              src="/images/alma4D_nobground.png" // ← troque pelo caminho real
+              alt="Visão integrada teoria e prática alma4D"
+              fill
+              className="object-cover"
+              sizes="(max-width: 768px) 100vw, 33vw"
+            />
+          </div>
+
           <h3 className="text-xl font-semibold">Visão integrada</h3>
           <p className="text-foreground/70">
             Teoria e prática sem fragmentação.
