@@ -101,10 +101,11 @@ export default function LivroPage() {
           {/* Imagem no topo do card */}
           <div className="relative w-full aspect-4/3 rounded-lg overflow-hidden">
             <Image
-              src="/images/alma4d_quatro_quad.png"
+              src="/images/alma4d_quatro_quad_512.png"
               alt="Fundamentos do método alma4D"
               fill
               className="object-cover"
+              priority
               sizes="(max-width: 768px) 100vw, 33vw"
             />
           </div>
@@ -119,10 +120,11 @@ export default function LivroPage() {
           {/* Imagem no topo do card */}
           <div className="relative w-full aspect-4/3 rounded-lg overflow-hidden">
             <Image
-              src="/images/alma4d_doze_itens.png"
+              src="/images/alma4d_doze_itens_512.png"
               alt="Modelagem conceitual alma4D"
               fill
               className="object-cover"
+              priority
               sizes="(max-width: 768px) 100vw, 33vw"
             />
           </div>
@@ -139,6 +141,7 @@ export default function LivroPage() {
               alt="Visão integrada teoria e prática alma4D"
               fill
               className="object-cover"
+              priority
               sizes="(max-width: 768px) 100vw, 33vw"
             />
           </div>

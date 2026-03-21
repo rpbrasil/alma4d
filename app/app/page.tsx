@@ -60,32 +60,41 @@ export default function AppPage() {
       {/* ================= O QUE O APP FAZ ================= */}
       <section className="flex flex-col gap-12">
         <div className="max-w-3xl flex flex-col gap-4">
-          <h2 className="text-3xl font-bold">O que o aplicativo faz</h2>
+          <h2 className="text-3xl font-bold">Versões do Aplicativo</h2>
           <p className="text-foreground/70">
-            O aplicativo traduz os conceitos do livro em uma experiência
-            prática, acessível e contínua.
+            No melhor conceito de ecossistema, o aplicativo contempla todos os
+            componentes e tem versões para todos: indivíduos, profissionais e
+            empresas.
           </p>
         </div>
 
         <div className="grid md:grid-cols-3 gap-8">
           <div className="rounded-xl bg-surface-muted p-6">
-            <h3 className="text-xl font-semibold mb-2">Aplicação prática</h3>
+            <h3 className="text-xl font-semibold mb-2">Individual</h3>
             <p className="text-foreground/70">
-              Permite colocar em prática os conceitos apresentados no livro.
+              Para a pessoa física, o aplicativo atua como um companheiro de
+              viagem: faz a navegação estratégica, registra o percurso, traz
+              análises, insights úteis e sugestões inteligentes, modeladas para
+              seu perfil.
             </p>
           </div>
 
           <div className="rounded-xl bg-surface-muted p-6">
-            <h3 className="text-xl font-semibold mb-2">Continuidade</h3>
+            <h3 className="text-xl font-semibold mb-2">Profissional</h3>
             <p className="text-foreground/70">
-              Mantém o método vivo no cotidiano, além da leitura pontual.
+              Médicos, Psicólogos, Terapêutas podem acompanhar a jornada de seus
+              clientes, acessar sua evolução ou permitir que estes marquem
+              consultas diretamente em suas agendas.
             </p>
           </div>
 
           <div className="rounded-xl bg-surface-muted p-6">
-            <h3 className="text-xl font-semibold mb-2">Integração</h3>
+            <h3 className="text-xl font-semibold mb-2">Empresarial</h3>
             <p className="text-foreground/70">
-              Conecta diferentes aspectos do método em um único sistema.
+              A empresa utiliza o aplicativo para seus Programas de bem-estar e
+              qualidade de vida e simultaneamente resolve a operacionalização do
+              mapeamento de risco psicossocial, inclusive com emissão de
+              relatórios, conforme previsto na legislação.
             </p>
           </div>
         </div>
@@ -103,7 +112,20 @@ export default function AppPage() {
 
         <div className="grid md:grid-cols-2 gap-8">
           <div className="aspect-video bg-surface-muted rounded-xl flex items-center justify-center text-foreground/50">
-            Tela / fluxo do aplicativo
+            <Link
+              href="/"
+              className="flex items-center gap-2 hover:opacity-90 transition-opacity"
+            >
+              <Image
+                src="/images/alma4d_fluxo_site_semtxt.png"
+                alt="alma4D"
+                width={600}
+                height={600}
+                sizes="(max-width: 640px) 120px, (max-width: 768px) 140px, (max-width: 1024px) 170px, 220px"
+                className="object-contain"
+                priority
+              />
+            </Link>
           </div>
 
           <div className="aspect-video bg-surface-muted rounded-xl flex items-center justify-center text-foreground/50">
@@ -136,8 +158,10 @@ export default function AppPage() {
           </p>
 
           <p className="text-foreground/70">
-            Para compreender o sentido completo do aplicativo, é fundamental
-            conhecer o método e sua base conceitual.
+            O aplicativo não realiza diagnósticos, não prescreve tratamentos e
+            não substitui avaliação clínica. Ele atua como um instrumento de
+            apoio, integrando informação, reflexão e estímulo a práticas
+            saudáveis baseadas nos quatro quadrantes.
           </p>
 
           <Link
@@ -149,7 +173,20 @@ export default function AppPage() {
         </div>
 
         <div className="aspect-video bg-surface-muted rounded-xl flex items-center justify-center text-foreground/50">
-          Diagrama livro → método → aplicativo
+          <Link
+            href="/"
+            className="flex items-center gap-2 hover:opacity-90 transition-opacity"
+          >
+            <Image
+              src="/images/alma4d_resumo_512.png"
+              alt="alma4D"
+              width={300}
+              height={300}
+              sizes="(max-width: 640px) 120px, (max-width: 768px) 140px, (max-width: 1024px) 170px, 220px"
+              className="object-contain"
+              priority
+            />
+          </Link>
         </div>
       </section>
 
