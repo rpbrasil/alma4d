@@ -13,13 +13,11 @@ export default function AutoraPage() {
           </h1>
 
           <p className="text-xl text-foreground/80 leading-relaxed">
-            Autora do livro <strong>Alma 4D</strong> e pesquisadora do cuidado
-            integral do ser humano.
+            Autora do livro <strong>Arquitetura Viva</strong> e pesquisadora do cuidado integral do ser humano.
           </p>
 
           <p className="text-foreground/70 leading-relaxed">
-            Sua trajetória une ciência, sensibilidade e experiência prática,
-            construindo caminhos possíveis de bem-estar no cotidiano.
+            Sua trajetória une ciência, sensibilidade e experiência prática, construindo caminhos possíveis de bem-estar no cotidiano.
           </p>
         </div>
 
@@ -123,9 +121,7 @@ export default function AutoraPage() {
         <div className="grid md:grid-cols-2 gap-8">
           <div className="rounded-xl bg-surface-muted p-6">
             <p className="text-foreground/70 leading-relaxed">
-              O <strong>Alma 4D</strong> nasce do princípio de que o bem-estar é
-              uma construção consciente. Um caminho onde corpo, emoções, mente e
-              propósito se integram ao cotidiano.
+              O livro<strong>Arquitetura Viva</strong> nasce do princípio de que o bem-estar é uma construção consciente. Um caminho onde corpo, emoções, mente e propósito se integram ao cotidiano.
             </p>
           </div>
 
