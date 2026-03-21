@@ -135,8 +135,7 @@ export default function AppPage() {
           <div className="aspect-video bg-surface-muted rounded-xl flex items-center justify-center text-foreground/50">
             <Link
               href="/"
-              className="flex items-center justify-center hover:opacity-90 transition-opacity"
-              suppressHydrationWarning={true}
+              className="flex items-center justify-center hover:opacity-90 transition-opacity"              
             >
               <Image
                 src="/images/alma4d_fluxo_site_semtxt.png"
@@ -145,8 +144,7 @@ export default function AppPage() {
                 height={791}
                 sizes="(max-width: 768px) 100vw, 1407px"
                 className="object-contain"
-                priority
-                suppressHydrationWarning={true}
+                priority                
               />
             </Link>
           </div>
@@ -181,7 +179,7 @@ export default function AppPage() {
             <Image
               src="/images/alma4d_resumo.png"
               alt="Infográfico Ciclo de Inteligência alma4D"
-              width={1100}
+              width={600}
               height={600}
               sizes="(max-width: 768px) 100vw, 1100px"
               className="object-contain w-full h-auto max-h-[75vh]"
