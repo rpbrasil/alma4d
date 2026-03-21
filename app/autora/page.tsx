@@ -114,7 +114,7 @@ export default function AutoraPage() {
       {/* ================= O LIVRO ================= */}
       <section className="flex flex-col gap-12">
         <div className="max-w-3xl flex flex-col gap-4">
-          <h2 className="text-3xl font-bold">O livro Alma 4D</h2>
+          <h2 className="text-3xl font-bold">O livro Arquitetura Viva</h2>
           <p className="text-foreground/70">
             Uma síntese viva de sua trajetória e visão de cuidado integral.
           </p>
@@ -145,7 +145,7 @@ export default function AutoraPage() {
         </h2>
 
         <p className="text-foreground/70 max-w-2xl">
-          O aplicativo alma4D, o livro e o método formam um único percurso de
+          O aplicativo alma4D, o livro Arquitetura Viva e o método formam um único percurso de
           cuidado e consciência.
         </p>
 

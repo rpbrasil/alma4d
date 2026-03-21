@@ -148,44 +148,54 @@ export default function AppPage() {
       </section>
 
       {/* ================= CONEXÃO COM O MÉTODO ================= */}
-      <section className="grid md:grid-cols-2 gap-12 items-center">
-        <div className="flex flex-col gap-4">
-          <h2 className="text-3xl font-bold">O aplicativo dentro do método</h2>
-
-          <p className="text-foreground/70 leading-relaxed">
-            O aplicativo não substitui o livro e não simplifica o método. Ele
-            torna o conhecimento teórico em prática.
-          </p>
-
-          <p className="text-foreground/70">
-            O aplicativo não realiza diagnósticos, não prescreve tratamentos e
-            não substitui avaliação clínica. Ele atua como um instrumento de
-            apoio, integrando informação, reflexão e estímulo a práticas
-            saudáveis baseadas nos quatro quadrantes.
-          </p>
-
+      <section className="flex flex-col items-center gap-12 py-16 px-4 md:px-8 max-w-7xl mx-auto">
+        {/* 1. A Figura (Infográfico) em Primeiro Lugar - Coluna Única */}
+        <div className="w-full bg-surface-muted rounded-2xl p-4 md:p-12 shadow-sm flex items-center justify-center border border-border/50">
           <Link
-            href="/metodo"
-            className="text-brand font-medium hover:underline w-fit"
+            href="/"
+            className="w-full flex items-center justify-center hover:opacity-95 transition-opacity"
           >
-            Ver o Método →
+            <Image
+              src="/images/alma4d_resumo.png"
+              alt="Infográfico Ciclo de Inteligência alma4D"
+              width={1100}
+              height={600}
+              sizes="(max-width: 768px) 100vw, 1100px"
+              className="object-contain w-full h-auto max-h-[75vh]"
+              priority
+            />
           </Link>
         </div>
 
-        <div className="aspect-video bg-surface-muted rounded-xl flex items-center justify-center text-foreground/50">
+        {/* 2. Conteúdo de Texto Centralizado Abaixo */}
+        <div className="flex flex-col gap-8 text-center items-center max-w-4xl">
+          <div className="flex flex-col gap-4">
+            <h2 className="text-3xl md:text-5xl font-bold text-brand tracking-tight">
+              O aplicativo dentro do método
+            </h2>
+            <p className="text-xl md:text-2xl text-foreground/80 font-medium">
+              O aplicativo não substitui o livro e não simplifica o método.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-8 text-left text-foreground/70 leading-relaxed">
+            <p>
+              Ele torna o conhecimento teórico em prática cotidiana. Não realiza
+              diagnósticos, não prescreve tratamentos e não substitui a
+              avaliação clínica essencial.
+            </p>
+            <p>
+              Atua como um instrumento de apoio de alta precisão, integrando
+              informação, reflexão e estímulo a práticas saudáveis baseadas
+              rigorosamente nos quatro quadrantes.
+            </p>
+          </div>
+
           <Link
-            href="/"
-            className="flex items-center gap-2 hover:opacity-90 transition-opacity"
+            href="/metodo"
+            className="bg-brand text-white px-6 py-3 rounded-md font-medium hover:bg-brand/90 transition-colors"
           >
-            <Image
-              src="/images/alma4d_resumo_512.png"
-              alt="alma4D"
-              width={300}
-              height={300}
-              sizes="(max-width: 640px) 120px, (max-width: 768px) 140px, (max-width: 1024px) 170px, 220px"
-              className="object-contain"
-              priority
-            />
+            Ver o Método Completo
           </Link>
         </div>
       </section>

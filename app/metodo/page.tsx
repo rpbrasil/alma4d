@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   keywords: [
     "alma4D",
     "método alma4D",
-    "livro alma4D",
+    "livro Arquitetura Viva",
     "aplicativo alma4D",
     "método integrado",
     "conhecimento e tecnologia",
