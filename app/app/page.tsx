@@ -85,9 +85,9 @@ export default function AppPage() {
           <div className="rounded-xl bg-surface-muted p-6">
             <h3 className="text-xl font-semibold mb-2">Profissional</h3>
             <p className="text-foreground/70">
-              Médicos, Psicólogos, Terapêutas podem acompanhar a jornada de seus
-              clientes, acessar sua evolução ou permitir que estes marquem
-              consultas diretamente em suas agendas.
+              Médicos, Psicólogos, Terapêutas, Consultores podem acompanhar a
+              jornada de seus clientes, acessar sua evolução ou permitir que
+              estes marquem consultas ou reuniões diretamente em suas agendas.
             </p>
           </div>
 
@@ -142,7 +142,7 @@ export default function AppPage() {
                 alt="alma4D"
                 width={1407}
                 height={791}
-                sizes="(max-width: 640px) 120px, (max-width: 768px) 140px, (max-width: 1024px) 170px, 220px"
+                // sizes="(max-width: 640px) 120px, (max-width: 768px) 140px, (max-width: 1024px) 170px, 220px"
                 className="object-contain"
                 priority
               />
