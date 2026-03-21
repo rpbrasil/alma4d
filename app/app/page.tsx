@@ -136,6 +136,7 @@ export default function AppPage() {
             <Link
               href="/"
               className="flex items-center justify-center hover:opacity-90 transition-opacity"
+              suppressHydrationWarning={true}
             >
               <Image
                 src="/images/alma4d_fluxo_site_semtxt.png"
@@ -145,6 +146,7 @@ export default function AppPage() {
                 sizes="(max-width: 768px) 100vw, 1407px"
                 className="object-contain"
                 priority
+                suppressHydrationWarning={true}
               />
             </Link>
           </div>
