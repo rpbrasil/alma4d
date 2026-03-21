@@ -77,7 +77,7 @@ export default function AppPage() {
             className="w-full flex items-center justify-center hover:opacity-95 transition-opacity"
           >
             <Image
-              src="/images/alma4D_usuarios.png" // Certifique-se de que esta é a imagem do infográfico completo
+              src="/images/alma4d-usuarios.png" // Certifique-se de que esta é a imagem do infográfico completo
               alt="Infográfico Ciclo de Inteligência e Cuidado Organizacional alma4D"
               // SE VOCÊ MANTER A IMAGEM QUADRADA (2038x1950):
               width={1000} // Reduzimos o width base para não exagerar no download
