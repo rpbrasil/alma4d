@@ -135,17 +135,15 @@ export default function AppPage() {
           <div className="aspect-video bg-surface-muted rounded-xl flex items-center justify-center text-foreground/50">
             <Link
               href="/"
-              className="flex items-center justify-center w-full h-full hover:opacity-90 transition-opacity"
+              className="flex items-center justify-center hover:opacity-90 transition-opacity"
             >
               <Image
                 src="/images/alma4d_fluxo_site_semtxt.png"
                 alt="alma4D"
                 width={1407}
                 height={791}
-                // O ERRO PODE ESTAR AQUI: Seus sizes dizem 220px, mas o width fixo diz 1407px.
-                // Isso confunde o motor de renderização.
                 sizes="(max-width: 768px) 100vw, 1407px"
-                className="object-contain w-full h-auto"
+                className="object-contain"
                 priority
               />
             </Link>
