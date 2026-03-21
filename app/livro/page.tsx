@@ -51,7 +51,7 @@ export default function LivroPage() {
             </Link>
 
             <Link
-              href="/oferta"
+              href="/download"
               className="text-brand font-medium hover:underline"
             >
               Livro + App

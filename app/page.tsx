@@ -44,7 +44,7 @@ export default function HomePage() {
             className="flex items-center gap-2 hover:opacity-90 transition-opacity"
           >
             <Image
-              src="/images/alma4D_resumo.png"
+              src="/images/alma4D_metodo_1200600.png"
               alt="alma4D"
               width={400}
               height={400}
@@ -202,10 +202,10 @@ export default function HomePage() {
             </ul>
 
             <Link
-              href="/oferta"
+              href="/download"
               className="inline-flex items-center justify-center rounded-md bg-brand-accent px-6 py-3 text-white font-semibold hover:bg-brand-accent/90 transition-colors mt-4"
             >
-              Ver Oferta Livro + App
+              Eu quero Livro + App
             </Link>
           </div>
         </div>

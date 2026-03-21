@@ -111,7 +111,7 @@ export default function AppPage() {
           <div className="rounded-xl bg-surface-muted p-6">
             <h3 className="text-xl font-semibold mb-2">Empresarial</h3>
             <p className="text-foreground/70">
-              A empresa utiliza o aplicativo para seus Programas de bem-estar e qualidade de vida e simultaneamente resolve a operacionalização do mapeamento de risco psicossocial, inclusive com emissão de relatórios, conforme previsto na legislação.
+              A empresa utiliza o aplicativo para seus Programas de bem-estar e qualidade de vida e resolve o mapeamento de risco psicossocial, inclusive com emissão de relatórios, conforme previsto na legislação.
             </p>
           </div>
         </div>
@@ -196,7 +196,7 @@ export default function AppPage() {
             <p className="text-xl md:text-2xl text-foreground/80 font-medium leading-relaxed">
               Mais do que um aplicativo, o{" "}
               <span className="text-brand">alma4D</span> é um
-              <strong>instrumento estratégico de apoio à gestão</strong>, que
+              <strong> instrumento estratégico de apoio à gestão</strong>, que
               transforma informações complexas em{" "}
               <strong>insights claros</strong>, relatórios profissionais para{" "}
               <strong>planos de ação concretos</strong>.

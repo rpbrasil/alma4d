@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 
 export const metadata: Metadata = {
   title: "O Método alma4D — Livro, Aplicativo e Prática Integrada",
@@ -93,7 +94,24 @@ export default function MetodoPage() {
         <h1 className="text-4xl sm:text-5xl font-bold text-brand">
           O Método alma4D
         </h1>
-
+        {/* 1. A Figura (Infográfico) - Otimizado para Visibilidade Máxima */}
+        <div className="w-full bg-surface-muted rounded-3xl p-6 md:p-12 shadow-inner border border-border/50 flex items-center justify-center">
+          <Link
+            href="/"
+            className="w-full flex items-center justify-center hover:opacity-95 transition-opacity"
+          >
+            <Image
+              src="/images/alma4d_resumo_1612.png" // Certifique-se de que esta é a imagem do infográfico completo
+              alt="Infográfico Ciclo de Inteligência e Cuidado Organizacional alma4D"
+              // SE VOCÊ MANTER A IMAGEM QUADRADA (2038x1950):
+              width={1000} // Reduzimos o width base para não exagerar no download
+              height={957} // Mantendo a proporção quadrada aproximada
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 90vw, 1000px"
+              className="object-contain w-full h-auto max-h-[70vh]"
+              priority
+            />
+          </Link>
+        </div>
         <p className="text-xl text-foreground/80 leading-relaxed">
           O alma4D é um sistema integrado que conecta{" "}
           <strong>compreensão</strong> e <strong>aplicação prática</strong>.
@@ -317,8 +335,8 @@ export default function MetodoPage() {
         <div className="max-w-3xl flex flex-col gap-3">
           <h2 className="text-3xl font-bold">Para quem o método foi criado</h2>
           <p className="text-foreground/70 leading-relaxed">
-            O método foi criado para todos os interessados em atuar ativamente em
-            seu próprio benefício ou de terceiros na obtenção de conteúdos e
+            O método foi criado para todos os interessados em atuar ativamente
+            em seu próprio benefício ou de terceiros na obtenção de conteúdos e
             práticas de vida saudável.
           </p>
         </div>
@@ -326,7 +344,8 @@ export default function MetodoPage() {
         <div className="rounded-2xl bg-surface-muted p-8">
           <ul className="list-disc list-inside space-y-3 text-foreground/70">
             <li>
-              Pessoas que valorizam aplicativos com embasamento sólido ou que queiram levar sua longevidade a sério.
+              Pessoas que valorizam aplicativos com embasamento sólido ou que
+              queiram levar sua longevidade a sério.
             </li>
             <li>
               Profissionais podem adotar a metodologia para organizar
@@ -334,10 +353,10 @@ export default function MetodoPage() {
               objetivos do que se propõe a fazer.{" "}
             </li>
             <li>
-              Empresas podem engajar colaboradores em programas de bem-estar e saúde mental. Como bônus, alma4D
-              resolve a operacionalização do mapeamento de risco psicossocial,
-              inclusive com emissão de relatórios, conforme previsto na
-              legislação.
+              Empresas podem engajar colaboradores em programas de bem-estar e
+              saúde mental. Como bônus, alma4D resolve a operacionalização do
+              mapeamento de risco psicossocial, inclusive com emissão de
+              relatórios, conforme previsto na legislação.
             </li>
           </ul>
         </div>
