@@ -69,9 +69,9 @@ export function Header() {
           <NavLink href="/autora">Autora</NavLink>
 
           {/* Se quiser reativar depois */}
-          {/*
+          
           <NavLink href="/oferta">Oferta</NavLink>
-          */}
+         
 
           <Link
             href="/download"
@@ -128,11 +128,11 @@ export function Header() {
             </NavLink>
 
             {/* Se quiser reativar depois */}
-            {/*
+            
             <NavLink href="/oferta" onClick={() => setOpen(false)}>
               Oferta
             </NavLink>
-            */}
+           
 
             <Link
               href="/download"
