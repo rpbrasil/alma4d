@@ -1,179 +1,246 @@
-import Link from "next/link";
+"use client";
+
+import type { CSSProperties, ElementType } from "react";
+import ActivationForm from "@/app/components/forms/ActivationForm";
 import Image from "next/image";
 
-export default function AppPage() {
+import QrCode2Icon from "@mui/icons-material/QrCode2";
+import WhatsAppIcon from "@mui/icons-material/WhatsApp";
+import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
+import CreditCardIcon from "@mui/icons-material/CreditCard";
+import PhoneIphoneIcon from "@mui/icons-material/PhoneIphone";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+
+type StepStatus = "done" | "active" | "next";
+type Step = { id: number; name: string; desc: string; status: StepStatus };
+
+const BRAND = {
+  navy: "#030870",
+  teal: "#019499",
+  page: "#F0F2F5",
+  // RGB em formato "r g b" para usar com alpha em Tailwind arbitrary values
+  navyRgb: "3 8 112",
+  tealRgb: "1 148 153",
+};
+
+const stepIcons: Record<number, ElementType> = {
+  1: QrCode2Icon,
+  2: WhatsAppIcon,
+  3: PersonOutlineIcon,
+  4: CreditCardIcon,
+  5: PhoneIphoneIcon,
+};
+
+function cx(...classes: Array<string | false | undefined | null>) {
+  return classes.filter(Boolean).join(" ");
+}
+
+function StepIcon({
+  id,
+  className,
+  size = 28,
+}: {
+  id: number;
+  className?: string;
+  size?: number;
+}) {
+  const Icon = stepIcons[id] ?? PersonOutlineIcon;
   return (
-    <div className="flex flex-col gap-24 py-12">
-      {/* ================= HERO: VALIDAÇÃO DO LIVRO / APP ================= */}
-      <section className="grid lg:grid-cols-2 gap-12 items-center px-4 md:px-8 max-w-7xl mx-auto">
-        <div className="flex flex-col gap-6 max-w-3xl">
-          {/* Tag de Segurança para quem vem do QR Code */}
-          <div className="bg-[#019499]/10 text-[#019499] px-4 py-1 rounded-full text-sm font-bold w-fit border border-[#019499]/20">
-            ✓ Ambiente Oficial alma4D
-          </div>
+    <Icon
+      style={{ fontSize: size }}
+      className={cx("text-current!", className)}
+      aria-hidden="true"
+    />
+  );
+}
 
-          <h1 className="text-4xl sm:text-6xl font-bold text-[#030870] tracking-tight">
-            Seja bem-vindo ao <br />
-            Método em Ação
-          </h1>
+function StepBadge({ step }: { step: Step }) {
+  const isDone = step.status === "done";
+  const isActive = step.status === "active";
+  const isNext = step.status === "next";
 
-          <p className="text-xl text-foreground/80 leading-relaxed font-medium">
-            Você leu o livro e agora tem a chave para a prática. O aplicativo
-            alma4D é a extensão digital do seu conhecimento.
-          </p>
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <div
+        aria-current={isActive ? "step" : undefined}
+        className={cx(
+          "relative grid place-items-center rounded-2xl w-14 h-14 sm:w-16 sm:h-16",
+          "transition-all duration-300 select-none",
+          "shadow-[0_10px_30px_rgba(3,8,112,0.10)]",
+          isDone && "bg-var(--alma-navy) text-white",
+          isActive &&
+            "bg-var(--alma-teal) text-white scale-[1.08] ring-4 ring-color:rgb(var(--alma-teal-rgb)_/_0.18)",
+          isNext && "bg-white text-slate-300 border border-slate-200",
+        )}
+      >
+        <StepIcon id={step.id} />
 
-          <div className="flex flex-wrap gap-4 pt-4">
-            {/* Botão Principal em Destaque para o usuário do livro */}
-            <Link
-              href="/ativar-licenca"
-              className="bg-[#030870] text-white px-8 py-4 rounded-full font-bold hover:bg-[#030870]/90 transition-all shadow-lg hover:scale-105"
-            >
-              Ativar minha Licença (Livro)
-            </Link>
+        {/* Badge DONE mais premium */}
+        {isDone && (
+          <span className="absolute -bottom-2 -right-2 grid place-items-center">
+            <span className="grid place-items-center w-7 h-7 rounded-full bg-white shadow-md">
+              <CheckCircleIcon
+                style={{ fontSize: 18 }}
+                className="text-var(--alma-teal)"
+                aria-hidden="true"
+              />
+            </span>
+          </span>
+        )}
+      </div>
 
-            <Link
-              href="/download"
-              className="border-2 border-[#030870]/20 text-[#030870] px-8 py-4 rounded-full font-bold hover:bg-surface-muted transition-all"
-            >
-              Baixar o App
-            </Link>
-          </div>
-
-          <p className="text-sm text-foreground/50 italic">
-            * Se você escaneou o QRCode do livro, verifique se está em{" "}
-            <strong>alma4d.com.br</strong>
-          </p>
-        </div>
-
-        {/* Mockup do App com Hydration Fix */}
-        <div
-          className="aspect-video rounded-3xl bg-surface-muted flex items-center justify-center border border-border/50 shadow-inner relative overflow-hidden"
-          suppressHydrationWarning={true}
+      <div className="text-center leading-tight">
+        <p
+          className={cx(
+            "text-sm font-semibold",
+            isNext ? "text-slate-400" : "text-var(--alma-navy)",
+          )}
         >
-          {/* Espaço para o vídeo ou mockup real */}
-          <div className="text-foreground/30 font-semibold text-center p-8">
-            [VÍDEO DEMONSTRATIVO: DO LIVRO PARA O CLIQUE]
-          </div>
-          {/* Overlay sutil de marca d'água */}
-          <div className="absolute bottom-4 right-4 opacity-10">
-            <Image src="/logo_alma.png" alt="logo" width={80} height={20} />
-          </div>
-        </div>
-      </section>
+          {step.name}
+        </p>
+        <p className="text-[10px] uppercase tracking-[0.22em] text-slate-400 font-semibold">
+          {step.desc}
+        </p>
+      </div>
+    </div>
+  );
+}
 
-      {/* ================= SEÇÃO DE VISIBILIDADE (O INFOGRÁFICO) ================= */}
-      <section className="flex flex-col items-center gap-16 px-4 md:px-8 max-w-7xl mx-auto py-16">
-        {/* Infográfico ampliado em coluna única */}
-        <div
-          className="w-full flex justify-center bg-white rounded-3xl p-4 md:p-10 shadow-xl border border-border/40"
-          suppressHydrationWarning={true}
-        >
-          <Link
-            href="/"
-            className="w-full max-w-5xl hover:opacity-95 transition-opacity"
-          >
-            <Image
-              src="/images/alma4d_resumo.png"
-              alt="Ciclo de Inteligência alma4D"
-              width={1407}
-              height={791}
-              className="w-full h-auto object-contain"
-              priority
-            />
-          </Link>
-        </div>
+export default function AtivarPage() {
+  const fluxo: Step[] = [
+    { id: 1, name: "Leitura", desc: "QR Code", status: "done" },
+    { id: 2, name: "Validar", desc: "WhatsApp", status: "done" },
+    { id: 3, name: "Perfil", desc: "Dados Trial", status: "active" },
+    { id: 4, name: "Pagar", desc: "Checkout", status: "next" },
+    { id: 5, name: "Usar", desc: "App alma4D", status: "next" },
+  ];
 
-        <div className="flex flex-col gap-12 text-center items-center max-w-5xl">
-          <div className="flex flex-col gap-6 max-w-3xl">
-            <h2
-              className="text-3xl md:text-5xl font-bold text-[#030870] tracking-tight"
-              style={{ marginTop: "33px" }}
-            >
-              Visão clara da realidade organizacional
-            </h2>
-            <p className="text-xl md:text-2xl text-foreground/80 font-medium">
-              O aplicativo traduz os dados psicossociais em{" "}
-              <strong>estratégia visual</strong>, eliminando achismos na gestão
-              de pessoas.
+  const activeIndex = Math.max(
+    0,
+    fluxo.findIndex((s) => s.status === "active"),
+  );
+
+  const progressPct =
+    fluxo.length > 1 ? (activeIndex / (fluxo.length - 1)) * 100 : 0;
+
+  // CSS variables locais (evita mexer em globals e evita classes Tailwind dinâmicas)
+  const brandVars = {
+    "--alma-navy": BRAND.navy,
+    "--alma-teal": BRAND.teal,
+    "--alma-navy-rgb": BRAND.navyRgb,
+    "--alma-teal-rgb": BRAND.tealRgb,
+  } as CSSProperties;
+
+  return (
+    <main
+      className="min-h-screen bg-[#F0F2F5]"
+      style={brandVars}
+      aria-label="Ativação alma4D"
+    >
+      {/* Header */}
+      <div className="bg-linear-to-b from-white/70 to-transparent">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-10 pb-6">
+          <div className="flex items-center justify-between gap-6">
+            <div className="flex items-center gap-4">
+              <Image
+                src="/images/alma4D_bicolor_nobground_400.png"
+                alt="alma4D"
+                width={150}
+                height={48}
+                className="brightness-95"
+                priority
+              />
+            </div>
+
+            <div className="hidden sm:flex items-center gap-2 text-xs font-semibold text-slate-500">
+              <span className="inline-flex h-2 w-2 rounded-full bg-var(--alma-teal)" />
+              Sincronização segura
+            </div>
+          </div>
+
+          <div className="mt-8 max-w-2xl">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-var(--alma-navy) tracking-tight">
+              Ative seu acesso com segurança
+            </h1>
+            <p className="mt-2 text-sm sm:text-base text-slate-600">
+              Você já validou o QR Code e o WhatsApp. Agora complete seu perfil
+              para liberar o trial e seguir para o checkout.
             </p>
           </div>
+        </div>
+      </div>
 
-          <div className="grid md:grid-cols-2 gap-8 text-left w-full">
-            <div className="bg-surface-muted p-8 rounded-2xl border border-border/50">
-              <h3 className="text-2xl font-bold text-[#030870] mb-4 flex items-center gap-2">
-                <span className="w-1.5 h-6 bg-[#030870] rounded-full inline-block"></span>
-                Inteligência Prática
-              </h3>
-              <ul className="space-y-4 text-foreground/70">
-                <li className="flex gap-2">
-                  <strong>✓</strong> Indicadores de riscos em tempo real.
-                </li>
-                <li className="flex gap-2">
-                  <strong>✓</strong> Dashboards por setor e departamento.
-                </li>
-                <li className="flex gap-2">
-                  <strong>✓</strong> Foco total em saúde e produtividade.
-                </li>
-              </ul>
-            </div>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 pb-12">
+        {/* STEPPER */}
+        <section className="mt-6">
+          <div className="bg-white/70 backdrop-blur rounded-3xl border border-white shadow-[0_20px_60px_rgba(3,8,112,0.06)]">
+            <div className="px-4 sm:px-8 py-6">
+              <div className="relative overflow-x-auto">
+                <div className="min-w-880px">
+                  {/* Linha de progresso */}
+                  <div className="relative mx-10 mt-2 mb-8">
+                    <div className="h-6px rounded-full bg-slate-100" />
+                    <div
+                      className="absolute top-0 left-0 h-6px rounded-full bg-var(--alma-teal) transition-all duration-500"
+                      style={{ width: `${progressPct}%` }}
+                      aria-hidden="true"
+                    />
+                  </div>
 
-            <div className="bg-surface-muted p-8 rounded-2xl border border-border/50">
-              <h3
-                className="text-2xl font-bold mb-4 flex items-center gap-2"
-                style={{ color: "#019499" }}
-              >
-                <span
-                  className="w-1.5 h-6 rounded-full inline-block"
-                  style={{ backgroundColor: "#019499" }}
-                ></span>
-                Conformidade Técnica
-              </h3>
-              <ul className="space-y-4 text-foreground/70">
-                <li className="flex gap-2">
-                  <strong>✓</strong> Relatórios prontos para o GRO/PGR.
-                </li>
-                <li className="flex gap-2">
-                  <strong>✓</strong> Inventário de Riscos automatizado.
-                </li>
-                <li className="flex gap-2">
-                  <strong>✓</strong> Documentação para auditorias e compliance.
-                </li>
-              </ul>
+                  {/* Steps */}
+                  <div className="grid grid-cols-5 items-start gap-2 px-2">
+                    {fluxo.map((step) => (
+                      <div key={step.id} className="flex justify-center">
+                        <StepBadge step={step} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Contexto */}
+              <div className="mt-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="text-sm text-slate-600">
+                  <span className="font-semibold text-var(--alma-navy)">
+                    Passo atual:
+                  </span>{" "}
+                  <span className="font-semibold text-var(--alma-teal)">
+                    {fluxo[activeIndex]?.name}
+                  </span>{" "}
+                  <span className="text-slate-500">
+                    — {fluxo[activeIndex]?.desc}
+                  </span>
+                </div>
+
+                <div className="text-xs font-semibold text-slate-500">
+                  Seus dados ficam criptografados e sincronizados com segurança.
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* ================= CTA FINAL: COMBO OU INDIVIDUAL ================= */}
-      <section className="max-w-7xl mx-auto px-4 w-full mb-24">
-        <div className="bg-[#030870] text-white p-12 rounded-2rem text-center flex flex-col items-center gap-8 shadow-2xl relative overflow-hidden">
-          {/* Elemento decorativo de fundo */}
-          <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-32 -mt-32"></div>
+        {/* FORM */}
+        <section className="mt-10 w-full max-w-2xl mx-auto">
+          <div className="relative">
+            {/* Glow sutil (sem classe dinâmica) */}
+            <div
+              className="absolute -inset-1 rounded-[2.5rem] bg-linear-to-r from-color:rgb(var(--alma-teal-rgb)_/_0.20) via-white/30 to-color:rgb(var(--alma-navy-rgb)_/_0.20) blur-xl"
+              aria-hidden="true"
+            />
 
-          <h2 className="text-3xl md:text-4xl font-bold">
-            A experiência completa do alma4D
-          </h2>
-          <p className="text-xl text-blue-100 max-w-2xl">
-            O aplicativo alcança seu potencial máximo quando utilizado em
-            conjunto com o livro que fundamenta o método.
-          </p>
-
-          <div className="flex flex-wrap justify-center gap-6 z-10">
-            <Link
-              href="/oferta-combo"
-              className="bg-[#019499] text-white px-10 py-4 rounded-full font-bold text-lg hover:scale-105 transition-all shadow-lg"
-            >
-              Quero o Combo: Livro + App
-            </Link>
-            <Link
-              href="/ativar-licenca"
-              className="bg-white text-[#030870] px-10 py-4 rounded-full font-bold text-lg hover:bg-blue-50 transition-all"
-            >
-              Já tenho o Livro (Ativar)
-            </Link>
+            <div className="relative bg-white rounded-[2.5rem] border border-white/60 shadow-[0_30px_90px_rgba(3,8,112,0.10)] p-2 sm:p-3">
+              <div className="rounded-[2.2rem] bg-white p-6 sm:p-8">
+                <ActivationForm />
+              </div>
+            </div>
           </div>
-        </div>
-      </section>
-    </div>
+        </section>
+
+        <footer className="mt-10 text-center text-slate-400 text-xs font-semibold pb-6">
+          alma4D • Sincronização segura v2.0 • 2026
+        </footer>
+      </div>
+    </main>
   );
 }

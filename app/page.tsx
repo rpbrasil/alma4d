@@ -45,11 +45,13 @@ export default function HomePage() {
           >
             <Image
               src="/images/alma4D_metodo_1200600.png"
-              alt="alma4D"
-              width={400}
-              height={400}
-              sizes="(max-width: 640px) 120px, (max-width: 768px) 140px, (max-width: 1024px) 170px, 220px"
-              className="object-contain"
+              alt="Infográfico do método alma4D"
+              width={1200}
+              height={600}
+              sizes="(max-width: 768px) 100vw,
+         (max-width: 1200px) 90vw,
+         1000px"
+              className="w-full h-auto object-contain"
               priority
             />
           </Link>

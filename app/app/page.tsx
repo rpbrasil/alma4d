@@ -111,7 +111,10 @@ export default function AppPage() {
           <div className="rounded-xl bg-surface-muted p-6">
             <h3 className="text-xl font-semibold mb-2">Empresarial</h3>
             <p className="text-foreground/70">
-              A empresa utiliza o aplicativo para seus Programas de bem-estar e qualidade de vida e resolve o mapeamento de risco psicossocial, inclusive com emissão de relatórios, conforme previsto na legislação.
+              A empresa utiliza o aplicativo para seus Programas de bem-estar e
+              qualidade de vida e resolve o mapeamento de risco psicossocial,
+              inclusive com emissão de relatórios, conforme previsto na
+              legislação.
             </p>
           </div>
         </div>
@@ -123,26 +126,27 @@ export default function AppPage() {
           <h2 className="text-3xl font-bold">
             Uma experiência segura desde o primeiro acesso
           </h2>
-          <p className="text-foreground/70">
+          <div className="text-foreground/70">
             Ao entrar no aplicativo, cada usuário acessa apenas o que faz
             sentido para o seu papel. Isso garante confidencialidade, clareza e
             uso responsável das informações.{" "}
-            <ul className="list-disc list-inside flex flex-col gap-2 text-foreground/80">
-              <li>
-                <strong>Administradores:</strong> têm visão ampla e estratégica.
-              </li>
-              <li>
-                <strong>Clientes:</strong> visualizam exclusivamente seus
-                próprios dados.
-              </li>
-              <li>
-                <strong>Usuários com permissão:</strong> recebem acesso
-                protegido.
-              </li>
-            </ul>{" "}
+          </div>
+          <ul className="list-disc list-inside flex flex-col gap-2 text-foreground/80">
+            <li>
+              <strong>Administradores:</strong> têm visão ampla e estratégica.
+            </li>
+            <li>
+              <strong>Clientes:</strong> visualizam exclusivamente seus próprios
+              dados.
+            </li>
+            <li>
+              <strong>Usuários com permissão:</strong> recebem acesso protegido.
+            </li>
+          </ul>{" "}
+          <div className="text-foreground/70">
             Tudo é feito de forma automática, sem complicações e sem risco de
             exposição indevida.
-          </p>
+          </div>
         </div>
 
         <div className="grid md:grid-cols-2 gap-8">
@@ -153,11 +157,11 @@ export default function AppPage() {
             >
               <Image
                 src="/images/alma4d_fluxo_site_semtxt.png"
-                alt="alma4D"
+                alt="Fluxo do método alma4D"
                 width={1407}
                 height={791}
-                sizes="(max-width: 768px) 100vw, 1407px"
-                className="object-contain"
+                sizes="(max-width: 768px) 100vw, (max-width: 1280px) 90vw, 1100px"
+                className="w-full h-auto object-contain"
                 priority
               />
             </Link>
@@ -188,9 +192,7 @@ export default function AppPage() {
         <div className="flex flex-col gap-12 text-center items-center max-w-5xl mx-auto py-8">
           {/* Cabeçalho da Seção */}
           <div className="flex flex-col gap-6 max-w-3xl">
-            <h2
-              className="text-3xl md:text-5xl font-bold text-brand tracking-tight leading-tight"              
-            >
+            <h2 className="text-3xl md:text-5xl font-bold text-brand tracking-tight leading-tight">
               Visão clara da realidade organizacional
             </h2>
             <p className="text-xl md:text-2xl text-foreground/80 font-medium leading-relaxed">
