@@ -143,7 +143,7 @@ export default function AtivarPage() {
           <div className="flex items-center justify-between gap-6">
             <div className="flex items-center gap-4">
               <Image
-                src="/images/alma4D_bicolor_nobground_400.png"
+                src="/images/alma4d-bicolor-nobground-400.png"
                 alt="alma4D"
                 width={150}
                 height={48}

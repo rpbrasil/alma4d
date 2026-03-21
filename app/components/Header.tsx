@@ -45,7 +45,7 @@ export function Header() {
           onClick={() => setOpen(false)}
         >
           <Image
-            src="/images/alma4D_bicolor_nobground_256.png"
+            src="/images/alma4d-bicolor-nobground-256.png"
             alt="alma4D"
             width={100}
             height={100}

@@ -156,7 +156,7 @@ export default function AppPage() {
               className="flex items-center justify-center hover:opacity-90 transition-opacity"
             >
               <Image
-                src="/images/alma4d_fluxo_site_semtxt.png"
+                src="/images/alma4d-fluxo-site-semtxt.png"
                 alt="Fluxo do método alma4D"
                 width={1407}
                 height={791}

@@ -44,7 +44,7 @@ export default function HomePage() {
             className="flex items-center gap-2 hover:opacity-90 transition-opacity"
           >
             <Image
-              src="/images/alma4D_metodo_1200600.png"
+              src="/images/alma4d-metodo-1200600.png"
               alt="Infográfico do método alma4D"
               width={1200}
               height={600}
