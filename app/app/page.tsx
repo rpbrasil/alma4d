@@ -13,12 +13,15 @@ export default function AppPage() {
           </h1>
 
           <p className="text-xl text-foreground/80 leading-relaxed">
-            O aplicativo é a manifestação prática do método alma4D.
+            Inteligência aplicada ao cuidado com pessoas e à gestão de riscos
+            psicossociais
           </p>
 
           <p className="text-foreground/70 leading-relaxed">
-            Ele não existe isoladamente. Seu funcionamento, lógica e
-            funcionalidades nascem diretamente do conteúdo do livro.
+            O alma4D é uma plataforma digital criada para ajudar organizações a
+            cuidar melhor das pessoas, entender o ambiente de trabalho e tomar
+            decisões responsáveis, com base em dados confiáveis, éticos e
+            alinhados às exigências legais.
           </p>
 
           <div className="flex flex-wrap gap-4 pt-4">
@@ -103,10 +106,28 @@ export default function AppPage() {
       {/* ================= GALERIA / VÍDEO ================= */}
       <section className="flex flex-col gap-12">
         <div className="max-w-3xl flex flex-col gap-4">
-          <h2 className="text-3xl font-bold">Visual e experiência</h2>
+          <h2 className="text-3xl font-bold">
+            Uma experiência segura desde o primeiro acesso
+          </h2>
           <p className="text-foreground/70">
-            O aplicativo foi desenhado para ser claro, funcional e coerente com
-            o método que o sustenta.
+            Ao entrar no aplicativo, cada usuário acessa apenas o que faz
+            sentido para o seu papel. Isso garante confidencialidade, clareza e
+            uso responsável das informações.{" "}
+            <ul className="list-disc list-inside flex flex-col gap-2 text-foreground/80">
+              <li>
+                <strong>Administradores:</strong> têm visão ampla e estratégica.
+              </li>
+              <li>
+                <strong>Clientes:</strong> visualizam exclusivamente seus
+                próprios dados.
+              </li>
+              <li>
+                <strong>Usuários com permissão:</strong> recebem acesso
+                protegido.
+              </li>
+            </ul>{" "}
+            Tudo é feito de forma automática, sem complicações e sem risco de
+            exposição indevida.
           </p>
         </div>
 
@@ -119,8 +140,8 @@ export default function AppPage() {
               <Image
                 src="/images/alma4d_fluxo_site_semtxt.png"
                 alt="alma4D"
-                width={600}
-                height={600}
+                width={1407}
+                height={791}
                 sizes="(max-width: 640px) 120px, (max-width: 768px) 140px, (max-width: 1024px) 170px, 220px"
                 className="object-contain"
                 priority
@@ -168,28 +189,117 @@ export default function AppPage() {
         </div>
 
         {/* 2. Conteúdo de Texto Centralizado Abaixo */}
-        <div className="flex flex-col gap-8 text-center items-center max-w-4xl">
-          <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-12 text-center items-center max-w-5xl mx-auto py-8">
+          {/* Cabeçalho da Seção */}
+          <div className="flex flex-col gap-6 max-w-3xl">
             <h2 className="text-3xl md:text-5xl font-bold text-brand tracking-tight">
-              O aplicativo dentro do método
+              Visão clara da realidade organizacional
             </h2>
-            <p className="text-xl md:text-2xl text-foreground/80 font-medium">
-              O aplicativo não substitui o livro e não simplifica o método.
+            <p className="text-xl md:text-2xl text-foreground/80 font-medium leading-relaxed">
+              Mais do que um aplicativo, o{" "}
+              <span className="text-brand">alma4D</span> é um{" "}
+              <strong>instrumento estratégico de apoio à gestão</strong>, que
+              transforma informações complexas em{" "}
+              <strong>insights claros</strong>, relatórios profissionais para{" "}
+              <strong>planos de ação concretos</strong>.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-8 text-left text-foreground/70 leading-relaxed">
-            <p>
-              Ele torna o conhecimento teórico em prática cotidiana. Não realiza
-              diagnósticos, não prescreve tratamentos e não substitui a
-              avaliação clínica essencial.
-            </p>
-            <p>
-              Atua como um instrumento de apoio de alta precisão, integrando
-              informação, reflexão e estímulo a práticas saudáveis baseadas
-              rigorosamente nos quatro quadrantes.
-            </p>
+          {/* Grid de Diferenciais */}
+          <div className="grid md:grid-cols-2 gap-10 text-left">
+            {/* Coluna 1: Diagnóstico e Visualização */}
+            <div className="bg-surface-muted p-8 rounded-2xl border border-border/50 flex flex-col gap-4">
+              <h3 className="text-2xl font-bold text-brand flex items-center gap-2">
+                <span className="w-2 h-8 bg-brand rounded-full inline-block"></span>
+                Diagnóstico e Inteligência
+              </h3>
+              <p className="text-foreground/70 mb-4">
+                O coração do alma4D organiza e interpreta{" "}
+                <strong>dados psicossociais</strong> de forma prática e visual:
+              </p>
+              <ul className="space-y-3 text-foreground/80">
+                <li className="flex gap-2">
+                  <span className="text-brand">✓</span>
+                  <span>
+                    Indicadores claros de{" "}
+                    <strong>riscos baixos, médios e altos</strong>.
+                  </span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="text-brand">✓</span>
+                  <span>
+                    Visão estruturada por{" "}
+                    <strong>área, departamento e setor</strong>.
+                  </span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="text-brand">✓</span>
+                  <span>
+                    Destaque automático para <strong>pontos críticos</strong>.
+                  </span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="text-brand">✓</span>
+                  <span>
+                    Dados sempre <strong>agregados e anônimos</strong> (LGPD).
+                  </span>
+                </li>
+              </ul>
+            </div>
+
+            {/* Coluna 2: Relatórios e Conformidade */}
+            <div className="bg-surface-muted p-8 rounded-2xl border border-border/50 flex flex-col gap-4">
+              <h3 className="text-2xl font-bold text-brand flex items-center gap-2">
+                <span
+                  className="w-2 h-8 bg-brand-secondary rounded-full inline-block"
+                  style={{ backgroundColor: "#019499" }}
+                ></span>
+                Gestão e Conformidade
+              </h3>
+              <p className="text-foreground/70 mb-4">
+                Gere <strong>documentação técnica</strong> completa em PDF com
+                poucos cliques, pronta para uso institucional:
+              </p>
+              <ul className="space-y-3 text-foreground/80">
+                <li className="flex gap-2">
+                  <span className="text-brand" style={{ color: "#019499" }}>
+                    ✓
+                  </span>
+                  <span>
+                    Alinhado às exigências do <strong>GRO / PGR (NR‑1)</strong>.
+                  </span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="text-brand" style={{ color: "#019499" }}>
+                    ✓
+                  </span>
+                  <span>
+                    <strong>Inventário de Riscos</strong> e Plano de Ação
+                    estruturado.
+                  </span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="text-brand" style={{ color: "#019499" }}>
+                    ✓
+                  </span>
+                  <span>
+                    Compartilhamento fácil com{" "}
+                    <strong>SESMT, RH e Auditorias</strong>.
+                  </span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="text-brand" style={{ color: "#019499" }}>
+                    ✓
+                  </span>
+                  <span>
+                    Apoio jurídico e de <strong>compliance</strong> corporativo.
+                  </span>
+                </li>
+              </ul>
+            </div>
           </div>
+
+          {/* Botão de Ação Final */}
 
           <Link
             href="/metodo"
