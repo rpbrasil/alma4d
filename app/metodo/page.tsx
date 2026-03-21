@@ -138,7 +138,7 @@ export default function MetodoPage() {
           </Link>
 
           <Link
-            href="/oferta"
+            href="/download"
             className="inline-flex items-center justify-center rounded-md bg-brand-accent px-4 py-2 text-sm font-semibold text-white hover:bg-brand-accent/90 transition-colors"
           >
             Livro + App
@@ -449,7 +449,7 @@ export default function MetodoPage() {
 
         <div className="flex flex-wrap gap-4">
           <Link
-            href="/oferta"
+            href="/download"
             className="inline-flex items-center justify-center rounded-md bg-brand-accent px-6 py-3 text-white font-semibold hover:bg-brand-accent/90 transition-colors"
           >
             Ver Oferta Livro + App

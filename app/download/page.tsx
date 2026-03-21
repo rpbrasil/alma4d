@@ -76,7 +76,7 @@ export default function DownloadPage() {
 
       <div className="pt-6">
         <Link
-          href="/oferta"
+          href="/download"
           className="inline-flex items-center justify-center rounded-md bg-brand px-6 py-3 text-white font-semibold hover:bg-brand/90 transition-colors"
         >
           Conhecer a experiência completa

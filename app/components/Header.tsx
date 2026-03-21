@@ -70,7 +70,7 @@ export function Header() {
 
           {/* Se quiser reativar depois */}
           
-          <NavLink href="/oferta">Oferta</NavLink>
+          <NavLink href="/oferta/ativar">Oferta</NavLink>
          
 
           <Link
@@ -129,7 +129,7 @@ export function Header() {
 
             {/* Se quiser reativar depois */}
             
-            <NavLink href="/oferta" onClick={() => setOpen(false)}>
+            <NavLink href="//ativar" onClick={() => setOpen(false)}>
               Oferta
             </NavLink>
            
