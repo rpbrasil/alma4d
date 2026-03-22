@@ -95,7 +95,7 @@ export default function MetodoPage() {
           O Método alma4D
         </h1>
         {/* 1. A Figura (Infográfico) - Otimizado para Visibilidade Máxima */}
-        <div className="w-screen mx-[calc(50%-50vw)] bg-surface-muted py-6 md:py-12">
+        <div className="w-screen max-w-none mx-[calc(50%-50vw)] sm:w-full sm:mx-0">
           <div className="max-w-none px-4 md:px-12">
             <Image
               src="/images/alma4d-resumo-1612.png"

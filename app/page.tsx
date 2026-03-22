@@ -38,8 +38,8 @@ export default function HomePage() {
         </div>
 
         {/* Mídia */}
-        <div className="w-screen mx-[calc(50%-50vw)]">
-          <div className="relative w-full aspect-[2/1] bg-surface-muted">
+        <div className="w-screen max-w-none mx-[calc(50%-50vw)] sm:w-full sm:mx-0">
+          <div className="relative w-full aspect-2/1 bg-surface-muted">
             <Image
               src="/images/alma4d-sinergia-1200.png"
               alt="Infográfico do método alma4D"

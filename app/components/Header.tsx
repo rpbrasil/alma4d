@@ -24,7 +24,7 @@ function NavLink({
       onClick={onClick}
       className={[
         "text-sm font-medium transition-colors",
-        active ? "text-brand" : "hover:text-brand",
+        active ? "text-brand-secondary" : "hover:text-brand-secondary",
       ].join(" ")}
     >
       {children}
@@ -34,7 +34,8 @@ function NavLink({
 
 export function Header() {
   const [open, setOpen] = useState(false);
-
+  const pathname = usePathname();
+  const isDownloadPage = pathname === "/download";
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-surface/90 backdrop-blur">
       <div className="max-w-5xl mx-auto px-6 py-1 flex items-center justify-between">
@@ -69,13 +70,18 @@ export function Header() {
           <NavLink href="/autora">Autora</NavLink>
 
           {/* Se quiser reativar depois */}
-          
+
           <NavLink href="/oferta/ativar">Oferta</NavLink>
-         
 
           <Link
             href="/download"
-            className="inline-flex items-center justify-center rounded-md bg-brand px-4 py-1.5 text-white text-sm font-semibold hover:bg-brand/90 transition-colors"
+            aria-current={isDownloadPage ? "page" : undefined}
+            className={[
+              "inline-flex items-center justify-center rounded-md px-4 py-1.5 text-sm font-semibold transition-colors",
+              isDownloadPage
+                ? "bg-brand/20 text-brand cursor-default"
+                : "bg-brand text-white hover:bg-brand/90",
+            ].join(" ")}
           >
             Download
           </Link>
@@ -128,11 +134,10 @@ export function Header() {
             </NavLink>
 
             {/* Se quiser reativar depois */}
-            
+
             <NavLink href="//ativar" onClick={() => setOpen(false)}>
               Oferta
             </NavLink>
-           
 
             <Link
               href="/download"

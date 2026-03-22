@@ -67,12 +67,7 @@ export default function AppPage() {
         </div>
 
         {/* ===== FULL BLEED NO MOBILE ===== */}
-        <div
-          className="bg-surface-muted border border-border/50 shadow-inner
-                rounded-none sm:rounded-3xl
-                p-4 sm:p-12
-                w-screen mx-[calc(50%-50vw)]"
-        >
+        <div className="w-screen max-w-none mx-[calc(50%-50vw)] sm:w-full sm:mx-0">
           <Image
             src="/images/alma4d-usuarios.png"
             alt="Infográfico Ciclo alma4D"
@@ -155,7 +150,7 @@ export default function AppPage() {
 
         <div className="flex flex-wrap gap-4">
           <Link
-            href="/oferta"
+            href="/download"
             className="bg-brand text-white px-6 py-3 rounded-md font-medium hover:bg-brand/90 transition-colors"
           >
             Livro + App
