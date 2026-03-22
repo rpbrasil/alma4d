@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 
@@ -15,11 +15,7 @@ import {
   faMobileScreen,
   faChevronLeft,
   faChevronRight,
-  faLock,
-  faChartLine,
   faLightbulb,
-  faUserDoctor,
-  faMedal,
 } from "@fortawesome/free-solid-svg-icons";
 
 /**
@@ -100,14 +96,14 @@ function StepperCompact({ current }: { current: StepId }) {
   const steps: Step[] = [
     {
       id: 1,
-      name: "Leitura",
+      name: "Usar",
       desc: "QR/CTA",
       status: current > 1 ? "done" : "active",
     },
     {
       id: 2,
-      name: "Vantagens",
-      desc: "App",
+      name: "Confirmar",
+      desc: "Razões",
       status: current === 2 ? "active" : current > 2 ? "done" : "next",
     },
     {
@@ -118,8 +114,8 @@ function StepperCompact({ current }: { current: StepId }) {
     },
     {
       id: 4,
-      name: "Perfil",
-      desc: "Dados",
+      name: "Completar",
+      desc: "Perfil",
       status: current === 4 ? "active" : current > 4 ? "done" : "next",
     },
     {
@@ -146,7 +142,7 @@ function StepperCompact({ current }: { current: StepId }) {
     steps.length > 1 ? (activeIndex / (steps.length - 1)) * 100 : 0;
 
   return (
-    <section className="mt-4">
+    <section className="mt-1">
       <div className="bg-white/70 backdrop-blur rounded-2xl border border-white shadow-[0_12px_40px_rgba(3,8,112,0.06)] px-4 py-4">
         <div className="relative">
           {/* Linha base */}
@@ -225,80 +221,56 @@ function StepperCompact({ current }: { current: StepId }) {
 
 /** ===================== UI: Carousel de vantagens ===================== */
 
-function VantagensCarouselFullBleed() {
-  const cards = useMemo(
-    () => [
-      {
-        title: "Acompanhamento contínuo",
-        text: "O app acompanha sua jornada de forma inteligente, respeitando seu ritmo e seu momento.",
-        icon: faChartLine,
-      },
-      {
-        title: "Privacidade e segurança",
-        text: "Dados criptografados e acesso protegido. Você controla o que compartilha e quando.",
-        icon: faLock,
-      },
-      {
-        title: "Insights personalizados",
-        text: "Transforme registros em clareza: padrões, alertas e recomendações úteis para o dia a dia.",
-        icon: faLightbulb,
-      },
-      {
-        title: "Integração com profissionais",
-        text: "Quando autorizado, facilite acompanhamento com profissionais e mantenha a jornada organizada.",
-        icon: faUserDoctor,
-      },
-      {
-        title: "Evolução gamificada",
-        text: "Níveis, XP e consistência semanal para manter engajamento sem pressão — com progresso real.",
-        icon: faMedal,
-      },
-    ],
-    [],
-  );
+function VantagensGrid() {
+  const cards = [
+    {
+      title: "Acompanhamento contínuo",
+      text: "O app acompanha sua jornada de forma inteligente, respeitando seu ritmo e seu momento.",
+      iconClass: "fa-solid fa-chart-line",
+    },
+    {
+      title: "Privacidade e segurança",
+      text: "Dados criptografados e acesso protegido. Você controla o que compartilha e quando.",
+      iconClass: "fa-solid fa-lock",
+    },
+    {
+      title: "Insights personalizados",
+      text: "Transforme registros em clareza: padrões, alertas e recomendações úteis para o dia a dia.",
+      iconClass: "fa-solid fa-lightbulb",
+    },
+    {
+      title: "Integração com profissionais",
+      text: "Quando autorizado, facilite acompanhamento com profissionais e mantenha a jornada organizada.",
+      iconClass: "fa-solid fa-user-doctor",
+    },
+    {
+      title: "Evolução gamificada",
+      text: "Níveis, XP e consistência semanal para manter engajamento sem pressão — com progresso real.",
+      iconClass: "fa-solid fa-medal",
+    },
+  ];
 
   return (
     <section className="mt-5">
-      {/* FULL-BLEED real no mobile (sai do max-w do card) */}
-      <div className="relative left-1/2 right-1/2 -translate-x-1/2 w-screen max-w-none sm:left-auto sm:right-auto sm:translate-x-0 sm:w-auto">
-        {/* trilho */}
-        <div
-          className={cx(
-            "flex gap-4 overflow-x-auto",
-            "snap-x snap-mandatory scroll-smooth",
-            "px-4 sm:px-0", // padding mobile para alinhar com layout
-            "overscroll-x-contain touch-pan-x",
-            "[scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden",
-          )}
-          aria-label="Vantagens do aplicativo (deslize para navegar)"
-        >
-          {cards.map((c, idx) => (
-            <article
-              key={idx}
-              className={cx(
-                "snap-center shrink-0",
-                // ✅ Mobile: quase tela toda (1 card por swipe)
-                "w-[88vw]",
-                // ✅ Desktop: largura fixa confortável
-                "sm:w-340px",
-                "bg-white rounded-2xl border border-border shadow-sm p-5",
-              )}
-            >
-              <FontAwesomeIcon
-                icon={c.icon}
-                className="text-brand-secondary text-xl"
-              />
-              <h3 className="mt-3 font-bold text-brand">{c.title}</h3>
-              <p className="mt-1 text-sm text-slate-600 leading-relaxed">
-                {c.text}
-              </p>
-            </article>
-          ))}
-        </div>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {cards.map((c, idx) => (
+          <article
+            key={idx}
+            className="bg-white rounded-2xl border border-border shadow-sm p-5"
+          >
+            {/* ✅ Font Awesome WebFont (igual à timeline) */}
+            <i
+              className={`text-brand-secondary text-xl ${c.iconClass}`}
+              aria-hidden="true"
+            />
 
-        <p className="mt-2 px-4 sm:px-0 text-xs text-slate-500">
-          Deslize para o lado para ver as vantagens.
-        </p>
+            <h3 className="mt-3 font-bold text-brand">{c.title}</h3>
+
+            <p className="mt-1 text-sm text-slate-600 leading-relaxed">
+              {c.text}
+            </p>
+          </article>
+        ))}
       </div>
     </section>
   );
@@ -586,7 +558,7 @@ export default function AtivacaoWizard() {
     >
       {/* Header compacto */}
       <div className="bg-linear-to-b from-white/70 to-transparent">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-8 pb-4">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-5 pb-2">
           <div className="flex items-center justify-between gap-6">
             <div className="hidden sm:flex items-center gap-2 text-xs font-semibold text-slate-500">
               <span className="inline-flex h-2 w-2 rounded-full bg-brand-secondary" />
@@ -610,7 +582,7 @@ export default function AtivacaoWizard() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 pb-12">
         <StepperCompact current={step} />
 
-        <section className="mt-6 w-full max-w-3xl mx-auto">
+        <section className="mt-3 sm:mt-4 w-full max-w-3xl mx-auto">
           <div className="relative">
             <div
               className="absolute -inset-1 rounded-2rem bg-linear-to-r from-brand/15 via-white/30 to-brand-secondary/15 blur-xl"
@@ -619,7 +591,6 @@ export default function AtivacaoWizard() {
             <div className="relative bg-white rounded-2rem border border-white/60 shadow-[0_25px_70px_rgba(3,8,112,0.10)] p-4 sm:p-6">
               {step === 2 && (
                 <div className="grid gap-6">
-                  {/* Texto dentro do card (não full-bleed) */}
                   <div>
                     <h2 className="text-xl sm:text-2xl font-extrabold text-brand">
                       Por que usar o aplicativo?
@@ -630,10 +601,9 @@ export default function AtivacaoWizard() {
                     </p>
                   </div>
 
-                  {/* ✅ Carousel corrigido (full-bleed mobile, desktop alinhado) */}
-                  <VantagensCarouselFullBleed />
+                  {/* ✅ Nova abordagem estável */}
+                  <VantagensGrid />
 
-                  {/* Rodapé do step com origem + CTA */}
                   <div className="flex items-center justify-between pt-1">
                     <span className="text-xs text-slate-500">
                       Origem: <span className="font-semibold">{origem}</span>
@@ -647,8 +617,7 @@ export default function AtivacaoWizard() {
                     </span>
 
                     <PrimaryButton onClick={() => setStep(3)}>
-                      Continuar{" "}
-                      <FontAwesomeIcon icon={faChevronRight} className="ml-2" />
+                      Continuar
                     </PrimaryButton>
                   </div>
                 </div>
