@@ -153,7 +153,7 @@ export default function AppPage() {
           <div className="aspect-video bg-surface-muted rounded-xl flex items-center justify-center text-foreground/50">
             <Link
               href="/"
-              className="flex items-center justify-center hover:opacity-90 transition-opacity"
+              className="flex w-full items-center justify-center hover:opacity-90 transition-opacity"
             >
               <Image
                 src="/images/alma4d-fluxo-site-semtxt.png"
