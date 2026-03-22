@@ -5,24 +5,21 @@ import { useEffect, useState } from "react";
 const STORAGE_KEY = "theme"; // "light" | "dark"
 
 function getInitialTheme(): boolean {
-  // Durante SSR não existe window/localStorage
   if (typeof window === "undefined") return false;
 
   const saved = localStorage.getItem(STORAGE_KEY);
   if (saved === "dark") return true;
   if (saved === "light") return false;
 
-  // fallback: preferência do sistema
-  return window.matchMedia("(prefers-color-scheme: dark)").matches;
+  // ✅ fallback: se não tem nada salvo, começa em LIGHT
+  return false;
 }
 
 export function ThemeToggle() {
   const [dark, setDark] = useState<boolean>(getInitialTheme);
 
-  // Effect apenas sincroniza "sistema externo" (DOM)
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);
-    // se quiser, mantenha o storage sempre coerente
     localStorage.setItem(STORAGE_KEY, dark ? "dark" : "light");
   }, [dark]);
 

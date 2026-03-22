@@ -83,17 +83,20 @@ export default function AppPage() {
           {[
             [
               "Individual",
-              "Para a pessoa física, o aplicativo atua como um companheiro de viagem...",
+              "Para a pessoa física, o aplicativo atua como um companheiro de jornada. Ele ajuda a organizar a navegação pessoal, registrar o percurso, identificar padrões e oferecer análises, insights e sugestões inteligentes, sempre respeitando o ritmo, o perfil e as escolhas de cada indivíduo.",
             ],
-            ["Profissional", "Médicos, Psicólogos, Terapêutas, Consultores..."],
+            [
+              "Profissional",
+              "Médicos, psicólogos, terapeutas e consultores podem acompanhar a jornada de seus clientes de forma estruturada, visualizar evoluções ao longo do tempo e, quando autorizado, integrar atendimentos, orientações e agendamentos diretamente à prática profissional.",
+            ],
             [
               "Empresarial",
-              "A empresa utiliza o aplicativo para seus Programas...",
+              "Nas organizações, o aplicativo apoia programas de bem‑estar e qualidade de vida no trabalho, permitindo o mapeamento de riscos psicossociais, a geração de indicadores agregados e a emissão de relatórios alinhados às exigências legais e às boas práticas de gestão.",
             ],
           ].map(([title, text]) => (
             <div key={title} className="rounded-xl bg-surface-muted p-6">
               <h3 className="text-xl font-semibold mb-2">{title}</h3>
-              <p className="text-foreground/70">{text}</p>
+              <p className="text-foreground/70 leading-relaxed">{text}</p>
             </div>
           ))}
         </div>
@@ -167,4 +170,3 @@ export default function AppPage() {
     </div>
   );
 }
-

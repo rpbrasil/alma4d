@@ -1,0 +1,751 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import Image from "next/image";
+import { useRouter, useSearchParams } from "next/navigation";
+import { createClient } from "@supabase/supabase-js";
+
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faQrcode,
+  faShieldHalved,
+  faCircleCheck,
+  faUserCheck,
+  faCreditCard,
+  faMobileScreen,
+  faChevronLeft,
+  faChevronRight,
+  faLock,
+  faChartLine,
+  faLightbulb,
+  faUserDoctor,
+  faMedal,
+} from "@fortawesome/free-solid-svg-icons";
+
+/**
+ * Supabase Phone OTP:
+ * - Envia OTP: supabase.auth.signInWithOtp({ phone })
+ * - Verifica OTP: supabase.auth.verifyOtp({ phone, token, type: 'sms' })
+ * Docs: [1](https://supabase.com/docs/guides/auth/phone-login)[2](https://supabase.com/docs/reference/javascript/auth-verifyotp)
+ */
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+);
+
+type StepId = 1 | 2 | 3 | 4 | 5;
+
+type StepStatus = "done" | "active" | "next";
+type Step = { id: StepId; name: string; desc: string; status: StepStatus };
+
+function cx(...classes: Array<string | false | null | undefined>) {
+  return classes.filter(Boolean).join(" ");
+}
+
+function normalizePhoneBR(input: string) {
+  // Mantém números e '+'; força E.164 básico se usuário digitar só números
+  const raw = input.trim();
+  if (!raw) return "";
+
+  if (raw.startsWith("+")) {
+    return raw.replace(/\s+/g, "");
+  }
+
+  // Se digitou só números, assume BR: +55
+  const digits = raw.replace(/\D/g, "");
+  if (!digits) return "";
+  return digits.startsWith("55") ? `+${digits}` : `+55${digits}`;
+}
+
+/** Componentes visuais pequenos */
+function StepperCompact({
+  current,
+}: {
+  current: StepId;
+}) {
+  const steps: Step[] = [
+    { id: 1, name: "Leitura", desc: "QR/CTA", status: current > 1 ? "done" : "active" },
+    { id: 2, name: "Vantagens", desc: "App", status: current === 2 ? "active" : current > 2 ? "done" : "next" },
+    { id: 3, name: "Validar", desc: "Telefone", status: current === 3 ? "active" : current > 3 ? "done" : "next" },
+    { id: 4, name: "Perfil", desc: "Dados", status: current === 4 ? "active" : current > 4 ? "done" : "next" },
+    { id: 5, name: "Pagar", desc: "Checkout", status: current === 5 ? "active" : "next" },
+  ];
+
+  const icons: Record<StepId, any> = {
+    1: faQrcode,
+    2: faLightbulb,
+    3: faShieldHalved,
+    4: faUserCheck,
+    5: faCreditCard,
+  };
+
+  const activeIndex = Math.max(0, steps.findIndex(s => s.status === "active"));
+  const progressPct =
+    steps.length > 1 ? (activeIndex / (steps.length - 1)) * 100 : 0;
+
+  return (
+    <section className="mt-4">
+      <div className="bg-white/70 backdrop-blur rounded-2xl border border-white shadow-[0_12px_40px_rgba(3,8,112,0.06)] px-4 py-4">
+        <div className="relative">
+          {/* Linha (baixa) */}
+          <div className="absolute top-5 left-4 right-4 h-[3px] rounded-full bg-slate-200" />
+          <div
+            className="absolute top-5 left-4 h-[3px] rounded-full bg-brand transition-all duration-500"
+            style={{ width: `calc(${progressPct}% * (100% - 2rem) / 100)` }}
+            aria-hidden="true"
+          />
+
+          <div className="grid grid-cols-5 gap-2 relative">
+            {steps.map((s) => {
+              const isDone = s.status === "done";
+              const isActive = s.status === "active";
+
+              return (
+                <div key={s.id} className="flex flex-col items-center gap-1">
+                  <div
+                    className={cx(
+                      "w-10 h-10 rounded-xl grid place-items-center text-sm transition-all",
+                      isDone && "bg-brand text-white",
+                      isActive && "bg-brand-secondary text-white scale-[1.06] ring-4 ring-brand/10",
+                      s.status === "next" && "bg-slate-100 text-slate-400",
+                    )}
+                    aria-current={isActive ? "step" : undefined}
+                  >
+                    <FontAwesomeIcon icon={icons[s.id]} />
+                    {isDone && (
+                      <span className="absolute translate-x-3 translate-y-3 bg-white rounded-full p-[2px] shadow">
+                        <FontAwesomeIcon icon={faCircleCheck} className="text-brand-secondary" />
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="text-center leading-tight">
+                    <p className={cx("text-[10px] font-semibold", isActive ? "text-brand" : "text-slate-500")}>
+                      {s.name}
+                    </p>
+                    <p className="text-[9px] uppercase tracking-[0.18em] text-slate-400 font-semibold">
+                      {s.desc}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Linha curta de contexto */}
+        <div className="mt-3 flex items-center justify-between gap-3">
+          <div className="text-xs text-slate-600">
+            <span className="font-semibold text-brand">Etapa:</span>{" "}
+            <span className="font-semibold text-brand-secondary">
+              {steps[activeIndex]?.name}
+            </span>{" "}
+            <span className="text-slate-500">— {steps[activeIndex]?.desc}</span>
+          </div>
+          <div className="hidden sm:flex items-center gap-2 text-[11px] font-semibold text-slate-500">
+            <span className="inline-flex h-2 w-2 rounded-full bg-brand-secondary" />
+            Sincronização segura
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function CarouselVantagens() {
+  const cards = useMemo(
+    () => [
+      {
+        title: "Acompanhamento contínuo",
+        text: "O app acompanha sua jornada de forma inteligente, respeitando seu ritmo e seu momento.",
+        icon: faChartLine,
+      },
+      {
+        title: "Privacidade e segurança",
+        text: "Dados criptografados e acesso protegido. Você controla o que compartilha e quando.",
+        icon: faLock,
+      },
+      {
+        title: "Insights personalizados",
+        text: "Transforme registros em clareza: padrões, alertas e recomendações úteis para o dia a dia.",
+        icon: faLightbulb,
+      },
+      {
+        title: "Integração com profissionais",
+        text: "Quando autorizado, facilite acompanhamento com profissionais e mantenha a jornada organizada.",
+        icon: faUserDoctor,
+      },
+      {
+        title: "Evolução gamificada",
+        text: "Níveis, XP e consistência semanal para manter engajamento sem pressão — com progresso real.",
+        icon: faMedal,
+      },
+    ],
+    [],
+  );
+
+  return (
+    <div>
+      <h2 className="text-xl sm:text-2xl font-extrabold text-brand">
+        Por que usar o aplicativo?
+      </h2>
+      <p className="mt-2 text-sm text-slate-600">
+        Uma experiência prática, segura e contínua — conectando método e tecnologia.
+      </p>
+
+      <div className="mt-5 overflow-x-auto">
+        <div className="flex gap-4 snap-x snap-mandatory pb-3">
+          {cards.map((c, idx) => (
+            <div
+              key={idx}
+              className="snap-center min-w-[260px] sm:min-w-[300px] bg-white rounded-2xl border border-border shadow-sm p-5"
+            >
+              <FontAwesomeIcon icon={c.icon} className="text-brand-secondary text-xl" />
+              <h3 className="mt-3 font-bold text-brand">{c.title}</h3>
+              <p className="mt-1 text-sm text-slate-600 leading-relaxed">{c.text}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <p className="mt-2 text-xs text-slate-500">
+        Dica: deslize para o lado para ver todas as vantagens.
+      </p>
+    </div>
+  );
+}
+
+function Field({
+  label,
+  children,
+  hint,
+}: {
+  label: string;
+  children: React.ReactNode;
+  hint?: string;
+}) {
+  return (
+    <label className="grid gap-1">
+      <span className="text-sm font-semibold text-slate-700">{label}</span>
+      {children}
+      {hint ? <span className="text-xs text-slate-500">{hint}</span> : null}
+    </label>
+  );
+}
+
+function PrimaryButton({
+  children,
+  onClick,
+  disabled,
+  type = "button",
+}: {
+  children: React.ReactNode;
+  onClick?: () => void;
+  disabled?: boolean;
+  type?: "button" | "submit";
+}) {
+  return (
+    <button
+      type={type}
+      onClick={onClick}
+      disabled={disabled}
+      className={cx(
+        "inline-flex items-center justify-center rounded-md bg-brand px-4 py-2 text-white font-semibold transition-colors",
+        "hover:bg-brand/90 disabled:opacity-50 disabled:cursor-not-allowed",
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+function SecondaryButton({
+  children,
+  onClick,
+  disabled,
+}: {
+  children: React.ReactNode;
+  onClick?: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={cx(
+        "inline-flex items-center justify-center rounded-md border border-border bg-surface px-4 py-2 font-semibold text-slate-700 transition-colors",
+        "hover:bg-surface-muted disabled:opacity-50 disabled:cursor-not-allowed",
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+export default function AtivacaoWizard() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Origem do QR/CTA (opcional)
+  const origem = searchParams.get("origem") ?? "site";
+  const campanha = searchParams.get("campanha") ?? "";
+
+  // Começa na etapa 2 (vantagens) pois 1 (QR/CTA) já ocorreu.
+  const [step, setStep] = useState<StepId>(2);
+
+  // Phone OTP
+  const [phone, setPhone] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [otp, setOtp] = useState("");
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpError, setOtpError] = useState<string | null>(null);
+
+  // Usuário autenticado
+  const [userId, setUserId] = useState<string | null>(null);
+
+  // Perfil (schema usuarios — versão enxuta para ativação)
+  const [nomeCompleto, setNomeCompleto] = useState("");
+  const [email, setEmail] = useState("");
+  const [dataNascimento, setDataNascimento] = useState("");
+  const [sexo, setSexo] = useState<"" | "M" | "F">("");
+  const [documento, setDocumento] = useState("");
+  const [aceitouTermos, setAceitouTermos] = useState(false);
+
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
+
+  // Pagamento
+  const [payLoading, setPayLoading] = useState(false);
+  const [payError, setPayError] = useState<string | null>(null);
+
+  async function sendOtp() {
+    setOtpError(null);
+    setOtpLoading(true);
+    try {
+      const normalized = normalizePhoneBR(phone);
+      if (!normalized) throw new Error("Informe um telefone válido.");
+      setPhone(normalized);
+
+      // Envia OTP por SMS (Phone Login)
+      // signInWithOtp({ phone }) [1](https://supabase.com/docs/guides/auth/phone-login)
+      const { error } = await supabase.auth.signInWithOtp({ phone: normalized });
+      if (error) throw error;
+
+      setOtpSent(true);
+    } catch (e: any) {
+      setOtpError(e?.message ?? "Não foi possível enviar o código.");
+    } finally {
+      setOtpLoading(false);
+    }
+  }
+
+  async function verifyOtp() {
+    setOtpError(null);
+    setOtpLoading(true);
+    try {
+      const normalized = normalizePhoneBR(phone);
+      if (!normalized) throw new Error("Telefone inválido.");
+      if (!otp || otp.length < 4) throw new Error("Informe o código recebido.");
+
+      // verifyOtp({ phone, token, type: 'sms' }) [1](https://supabase.com/docs/guides/auth/phone-login)[2](https://supabase.com/docs/reference/javascript/auth-verifyotp)
+      const { data, error } = await supabase.auth.verifyOtp({
+        phone: normalized,
+        token: otp,
+        type: "sms",
+      });
+      if (error) throw error;
+
+      setUserId(data.user?.id ?? null);
+
+      // Vai para etapa 4
+      setStep(4);
+    } catch (e: any) {
+      setOtpError(e?.message ?? "Código inválido ou expirado.");
+    } finally {
+      setOtpLoading(false);
+    }
+  }
+
+  async function saveProfileAndContinue() {
+    setProfileError(null);
+    setProfileLoading(true);
+    try {
+      if (!userId) throw new Error("Faça a validação do telefone primeiro.");
+      if (!nomeCompleto.trim()) throw new Error("Informe seu nome completo.");
+      if (!aceitouTermos) throw new Error("Você precisa aceitar os termos para continuar.");
+
+      const payload: any = {
+        id: userId,
+        telefone: normalizePhoneBR(phone),
+        nome_completo: nomeCompleto.trim(),
+        email: email.trim() || null,
+        data_nascimento: dataNascimento || null,
+        sexo: sexo || null,
+        documento: documento.trim() || null,
+        aceitou_termos: true,
+        premium_origem: "pagarme",
+        // Você pode guardar origem/campanha em metadata/coluna futura, se desejar
+      };
+
+      const { error } = await supabase.from("usuarios").upsert(payload, {
+        onConflict: "id",
+      });
+
+      if (error) throw error;
+
+      setStep(5);
+    } catch (e: any) {
+      setProfileError(e?.message ?? "Não foi possível salvar seus dados.");
+    } finally {
+      setProfileLoading(false);
+    }
+  }
+
+  async function goToPayment() {
+    setPayError(null);
+    setPayLoading(true);
+    try {
+      if (!userId) throw new Error("Sessão inválida. Refaça a validação.");
+
+      // IMPORTANTE: Pagamento deve ser criado no backend (API route).
+      // Aqui fazemos fetch para obter a URL do checkout e redirecionar.
+      // Pagar.me docs gerais: [3](https://docs.pagar.me/)
+      const res = await fetch("/api/pagarme/checkout-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId,
+          telefone: normalizePhoneBR(phone),
+          email: email.trim() || null,
+          nome_completo: nomeCompleto.trim(),
+          origem,
+          campanha,
+          // tipo_plano: "premium" | "trial" etc.
+          tipo_plano: "premium",
+        }),
+      });
+
+      if (!res.ok) {
+        const t = await res.text();
+        throw new Error(t || "Falha ao criar checkout.");
+      }
+
+      const { url } = await res.json();
+      if (!url) throw new Error("Checkout não retornou URL.");
+
+      window.location.href = url;
+    } catch (e: any) {
+      setPayError(e?.message ?? "Não foi possível iniciar o pagamento.");
+    } finally {
+      setPayLoading(false);
+    }
+  }
+
+  function back() {
+    setPayError(null);
+    setProfileError(null);
+    setOtpError(null);
+    setStep((s) => (s > 2 ? ((s - 1) as StepId) : s));
+  }
+
+  function next() {
+    setPayError(null);
+    setProfileError(null);
+    setOtpError(null);
+    setStep((s) => (s < 5 ? ((s + 1) as StepId) : s));
+  }
+
+  return (
+    <main className="min-h-screen bg-[#F0F2F5]" aria-label="Ativação alma4D">
+      {/* Header compacto */}
+      <div className="bg-linear-to-b from-white/70 to-transparent">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-8 pb-4">
+          <div className="flex items-center justify-between gap-6">
+            <div className="flex items-center gap-3">
+              <Image
+                src="/images/alma4d-bicolor-nobground-400.png"
+                alt="alma4D"
+                width={140}
+                height={44}
+                className="brightness-95"
+                priority
+              />
+            </div>
+
+            <div className="hidden sm:flex items-center gap-2 text-xs font-semibold text-slate-500">
+              <span className="inline-flex h-2 w-2 rounded-full bg-brand-secondary" />
+              Ativação guiada
+            </div>
+          </div>
+
+          <div className="mt-5 max-w-2xl">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-brand tracking-tight">
+              Ative seu acesso com segurança
+            </h1>
+            <p className="mt-2 text-sm sm:text-base text-slate-600">
+              Você chegou por um QR Code ou CTA. Agora entenda o valor do app, valide seu telefone
+              e finalize seu cadastro para seguir ao checkout.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 pb-12">
+        {/* STEPPER compacto */}
+        <StepperCompact current={step} />
+
+        {/* CONTEÚDO (card principal) */}
+        <section className="mt-6 w-full max-w-3xl mx-auto">
+          <div className="relative">
+            {/* Glow sutil */}
+            <div
+              className="absolute -inset-1 rounded-[2rem] bg-linear-to-r from-brand/15 via-white/30 to-brand-secondary/15 blur-xl"
+              aria-hidden="true"
+            />
+
+            <div className="relative bg-white rounded-[2rem] border border-white/60 shadow-[0_25px_70px_rgba(3,8,112,0.10)] p-4 sm:p-6">
+              {/* Step content */}
+              {step === 2 && (
+                <div className="grid gap-6">
+                  <CarouselVantagens />
+
+                  <div className="flex items-center justify-between pt-2">
+                    <span className="text-xs text-slate-500">
+                      Origem: <span className="font-semibold">{origem}</span>
+                      {campanha ? (
+                        <>
+                          {" "}
+                          • Campanha: <span className="font-semibold">{campanha}</span>
+                        </>
+                      ) : null}
+                    </span>
+
+                    <PrimaryButton onClick={() => setStep(3)}>
+                      Continuar <FontAwesomeIcon icon={faChevronRight} className="ml-2" />
+                    </PrimaryButton>
+                  </div>
+                </div>
+              )}
+
+              {step === 3 && (
+                <div className="grid gap-5">
+                  <div>
+                    <h2 className="text-xl sm:text-2xl font-extrabold text-brand">
+                      Valide seu telefone
+                    </h2>
+                    <p className="mt-1 text-sm text-slate-600">
+                      Enviaremos um código por SMS para confirmar seu número. [1](https://supabase.com/docs/guides/auth/phone-login)
+                    </p>
+                  </div>
+
+                  <div className="grid gap-4">
+                    <Field label="Telefone (WhatsApp/SMS)">
+                      <input
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        placeholder="+55 11 99999-9999"
+                        className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-brand/10"
+                      />
+                    </Field>
+
+                    {otpSent && (
+                      <Field label="Código recebido (OTP)">
+                        <input
+                          value={otp}
+                          onChange={(e) => setOtp(e.target.value)}
+                          placeholder="Digite o código"
+                          className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm tracking-widest outline-none focus:ring-4 focus:ring-brand/10"
+                        />
+                      </Field>
+                    )}
+
+                    {otpError && (
+                      <div className="rounded-md bg-red-50 border border-red-200 p-3 text-sm text-red-700">
+                        {otpError}
+                      </div>
+                    )}
+
+                    <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+                      <SecondaryButton onClick={back}>
+                        <FontAwesomeIcon icon={faChevronLeft} className="mr-2" />
+                        Voltar
+                      </SecondaryButton>
+
+                      {!otpSent ? (
+                        <PrimaryButton onClick={sendOtp} disabled={otpLoading}>
+                          {otpLoading ? "Enviando..." : "Enviar código"}
+                        </PrimaryButton>
+                      ) : (
+                        <PrimaryButton onClick={verifyOtp} disabled={otpLoading}>
+                          {otpLoading ? "Validando..." : "Validar código"}
+                        </PrimaryButton>
+                      )}
+                    </div>
+
+                    <p className="text-xs text-slate-500">
+                      Dica: use formato internacional (E.164). Ex.: +5511999999999.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {step === 4 && (
+                <div className="grid gap-5">
+                  <div>
+                    <h2 className="text-xl sm:text-2xl font-extrabold text-brand">
+                      Complete seu perfil
+                    </h2>
+                    <p className="mt-1 text-sm text-slate-600">
+                      Só pedimos o essencial agora. O restante você completa dentro do app.
+                    </p>
+                  </div>
+
+                  <div className="grid gap-4">
+                    <Field label="Nome completo">
+                      <input
+                        value={nomeCompleto}
+                        onChange={(e) => setNomeCompleto(e.target.value)}
+                        placeholder="Seu nome e sobrenome"
+                        className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-brand/10"
+                      />
+                    </Field>
+
+                    <Field label="E-mail (opcional)">
+                      <input
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="voce@exemplo.com"
+                        className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-brand/10"
+                      />
+                    </Field>
+
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      <Field label="Data de nascimento (opcional)">
+                        <input
+                          type="date"
+                          value={dataNascimento}
+                          onChange={(e) => setDataNascimento(e.target.value)}
+                          className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-brand/10"
+                        />
+                      </Field>
+
+                      <Field label="Sexo (opcional)">
+                        <select
+                          value={sexo}
+                          onChange={(e) => setSexo(e.target.value as any)}
+                          className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-brand/10"
+                        >
+                          <option value="">—</option>
+                          <option value="F">Feminino</option>
+                          <option value="M">Masculino</option>
+                        </select>
+                      </Field>
+                    </div>
+
+                    <Field
+                      label="Documento (opcional)"
+                      hint="CPF/CNPJ se você precisar de nota fiscal depois."
+                    >
+                      <input
+                        value={documento}
+                        onChange={(e) => setDocumento(e.target.value)}
+                        placeholder="Somente números"
+                        className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-brand/10"
+                      />
+                    </Field>
+
+                    <label className="flex items-start gap-3">
+                      <input
+                        type="checkbox"
+                        checked={aceitouTermos}
+                        onChange={(e) => setAceitouTermos(e.target.checked)}
+                        className="mt-1"
+                      />
+                      <span className="text-sm text-slate-700">
+                        Li e aceito os termos de uso (obrigatório)
+                      </span>
+                    </label>
+
+                    {profileError && (
+                      <div className="rounded-md bg-red-50 border border-red-200 p-3 text-sm text-red-700">
+                        {profileError}
+                      </div>
+                    )}
+
+                    <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+                      <SecondaryButton onClick={back}>
+                        <FontAwesomeIcon icon={faChevronLeft} className="mr-2" />
+                        Voltar
+                      </SecondaryButton>
+
+                      <PrimaryButton onClick={saveProfileAndContinue} disabled={profileLoading}>
+                        {profileLoading ? "Salvando..." : "Continuar para pagamento"}
+                        <FontAwesomeIcon icon={faChevronRight} className="ml-2" />
+                      </PrimaryButton>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {step === 5 && (
+                <div className="grid gap-5">
+                  <div>
+                    <h2 className="text-xl sm:text-2xl font-extrabold text-brand">
+                      Finalizar ativação
+                    </h2>
+                    <p className="mt-1 text-sm text-slate-600">
+                      Você está a um passo do checkout. O pagamento é processado via Pagar.me. [3](https://docs.pagar.me/)
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl border border-border bg-surface-muted p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="mt-1 text-brand-secondary">
+                        <FontAwesomeIcon icon={faMobileScreen} />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-slate-800">
+                          Plano Premium (exemplo)
+                        </p>
+                        <p className="text-sm text-slate-600">
+                          Acesso completo + recursos avançados. Você poderá ajustar seu plano depois.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {payError && (
+                    <div className="rounded-md bg-red-50 border border-red-200 p-3 text-sm text-red-700">
+                      {payError}
+                    </div>
+                  )}
+
+                  <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+                    <SecondaryButton onClick={back}>
+                      <FontAwesomeIcon icon={faChevronLeft} className="mr-2" />
+                      Voltar
+                    </SecondaryButton>
+
+                    <PrimaryButton onClick={goToPayment} disabled={payLoading}>
+                      {payLoading ? "Abrindo checkout..." : "Ir para o pagamento"}
+                      <FontAwesomeIcon icon={faCreditCard} className="ml-2" />
+                    </PrimaryButton>
+                  </div>
+
+                  <p className="text-xs text-slate-500">
+                    Observação: como boa prática, confirme o pagamento no backend (webhook) antes de liberar premium.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <footer className="mt-8 text-center text-slate-400 text-xs font-semibold pb-6">
+            alma4D • Sincronização segura • 2026
+          </footer>
+        </section>
+      </div>
+    </main>
+  );
+}
