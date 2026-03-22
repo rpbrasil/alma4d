@@ -38,23 +38,17 @@ export default function HomePage() {
         </div>
 
         {/* Mídia */}
-        <div className="aspect-video rounded-xl bg-surface-muted flex items-center justify-center text-foreground/50">
-          <Link
-            href="/"
-            className="flex items-center gap-2 hover:opacity-90 transition-opacity"
-          >
+        <div className="w-screen mx-[calc(50%-50vw)]">
+          <div className="relative w-full aspect-[2/1] bg-surface-muted">
             <Image
-              src="/images/alma4d-metodo-1200600.png"
+              src="/images/alma4d-sinergia-1200.png"
               alt="Infográfico do método alma4D"
-              width={1200}
-              height={600}
-              sizes="(max-width: 768px) 100vw,
-         (max-width: 1200px) 90vw,
-         1000px"
-              className="w-full h-auto object-contain"
+              fill
+              sizes="100vw"
+              className="object-contain"
               priority
             />
-          </Link>
+          </div>
         </div>
       </section>
 

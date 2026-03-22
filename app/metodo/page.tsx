@@ -95,22 +95,18 @@ export default function MetodoPage() {
           O Método alma4D
         </h1>
         {/* 1. A Figura (Infográfico) - Otimizado para Visibilidade Máxima */}
-        <div className="w-full bg-surface-muted rounded-3xl p-6 md:p-12 shadow-inner border border-border/50 flex items-center justify-center">
-          <Link
-            href="/"
-            className="w-full flex items-center justify-center hover:opacity-95 transition-opacity"
-          >
+        <div className="w-screen mx-[calc(50%-50vw)] bg-surface-muted py-6 md:py-12">
+          <div className="max-w-none px-4 md:px-12">
             <Image
-              src="/images/alma4d-resumo-1612.png" // Certifique-se de que esta é a imagem do infográfico completo
+              src="/images/alma4d-resumo-1612.png"
               alt="Infográfico Ciclo de Inteligência e Cuidado Organizacional alma4D"
-              // SE VOCÊ MANTER A IMAGEM QUADRADA (2038x1950):
-              width={1000} // Reduzimos o width base para não exagerar no download
-              height={957} // Mantendo a proporção quadrada aproximada
-              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 90vw, 1000px"
-              className="object-contain w-full h-auto max-h-[70vh]"
+              width={1612}
+              height={1000}
+              sizes="100vw"
+              className="w-full h-auto object-contain"
               priority
             />
-          </Link>
+          </div>
         </div>
         <p className="text-xl text-foreground/80 leading-relaxed">
           O alma4D é um sistema integrado que conecta{" "}

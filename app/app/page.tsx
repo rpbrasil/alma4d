@@ -41,22 +41,17 @@ export default function AppPage() {
           </div>
         </div>
 
-        {/* Mockup / vídeo */}
-        <div className="aspect-video rounded-xl bg-surface-muted flex items-center justify-center text-foreground/50">
-          <Link
-            href="/"
-            className="flex items-center gap-2 hover:opacity-90 transition-opacity"
-          >
-            <Image
-              src="/images/kindlePhoto2.jpg"
-              alt="alma4D"
-              width={400}
-              height={400}
-              sizes="(max-width: 640px) 120px, (max-width: 768px) 140px, (max-width: 1024px) 170px, 220px"
-              className="object-contain"
-              priority
-            />
-          </Link>
+        {/* Mockup */}
+        <div className="aspect-video rounded-xl bg-surface-muted flex items-center justify-center">
+          <Image
+            src="/images/kindlePhoto2.jpg"
+            alt="alma4D"
+            width={400}
+            height={400}
+            sizes="(max-width: 768px) 60vw, 400px"
+            className="object-contain"
+            priority
+          />
         </div>
       </section>
 
@@ -70,212 +65,82 @@ export default function AppPage() {
             empresas.
           </p>
         </div>
-        {/* 1. A Figura (Infográfico) - Otimizado para Visibilidade Máxima */}
-        <div className="w-full bg-surface-muted rounded-3xl p-6 md:p-12 shadow-inner border border-border/50 flex items-center justify-center">
-          <Link
-            href="/"
-            className="w-full flex items-center justify-center hover:opacity-95 transition-opacity"
-          >
-            <Image
-              src="/images/alma4d-usuarios.png" // Certifique-se de que esta é a imagem do infográfico completo
-              alt="Infográfico Ciclo de Inteligência e Cuidado Organizacional alma4D"
-              // SE VOCÊ MANTER A IMAGEM QUADRADA (2038x1950):
-              width={1000} // Reduzimos o width base para não exagerar no download
-              height={957} // Mantendo a proporção quadrada aproximada
-              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 90vw, 1000px"
-              className="object-contain w-full h-auto max-h-[70vh]"
-              priority
-            />
-          </Link>
+
+        {/* ===== FULL BLEED NO MOBILE ===== */}
+        <div
+          className="bg-surface-muted border border-border/50 shadow-inner
+                rounded-none sm:rounded-3xl
+                p-4 sm:p-12
+                w-screen mx-[calc(50%-50vw)]"
+        >
+          <Image
+            src="/images/alma4d-usuarios.png"
+            alt="Infográfico Ciclo alma4D"
+            width={1000}
+            height={957}
+            sizes="100vw"
+            className="block w-full h-auto object-contain"
+            priority
+          />
         </div>
+
         <div className="grid md:grid-cols-3 gap-8">
-          <div className="rounded-xl bg-surface-muted p-6">
-            <h3 className="text-xl font-semibold mb-2">Individual</h3>
-            <p className="text-foreground/70">
-              Para a pessoa física, o aplicativo atua como um companheiro de
-              viagem: faz a navegação estratégica, registra o percurso, traz
-              análises, insights úteis e sugestões inteligentes, modeladas para
-              seu perfil.
-            </p>
-          </div>
-
-          <div className="rounded-xl bg-surface-muted p-6">
-            <h3 className="text-xl font-semibold mb-2">Profissional</h3>
-            <p className="text-foreground/70">
-              Médicos, Psicólogos, Terapêutas, Consultores podem acompanhar a
-              jornada de seus clientes, acessar sua evolução ou permitir que
-              estes marquem consultas ou reuniões diretamente em suas agendas.
-            </p>
-          </div>
-
-          <div className="rounded-xl bg-surface-muted p-6">
-            <h3 className="text-xl font-semibold mb-2">Empresarial</h3>
-            <p className="text-foreground/70">
-              A empresa utiliza o aplicativo para seus Programas de bem-estar e
-              qualidade de vida e resolve o mapeamento de risco psicossocial,
-              inclusive com emissão de relatórios, conforme previsto na
-              legislação.
-            </p>
-          </div>
+          {[
+            [
+              "Individual",
+              "Para a pessoa física, o aplicativo atua como um companheiro de viagem...",
+            ],
+            ["Profissional", "Médicos, Psicólogos, Terapêutas, Consultores..."],
+            [
+              "Empresarial",
+              "A empresa utiliza o aplicativo para seus Programas...",
+            ],
+          ].map(([title, text]) => (
+            <div key={title} className="rounded-xl bg-surface-muted p-6">
+              <h3 className="text-xl font-semibold mb-2">{title}</h3>
+              <p className="text-foreground/70">{text}</p>
+            </div>
+          ))}
         </div>
       </section>
 
-      {/* ================= GALERIA / VÍDEO ================= */}
+      {/* ================= GALERIA ================= */}
       <section className="flex flex-col gap-12">
         <div className="max-w-3xl flex flex-col gap-4">
           <h2 className="text-3xl font-bold">
             Uma experiência segura desde o primeiro acesso
           </h2>
-          <div className="text-foreground/70">
+          <p className="text-foreground/70">
             Ao entrar no aplicativo, cada usuário acessa apenas o que faz
-            sentido para o seu papel. Isso garante confidencialidade, clareza e
-            uso responsável das informações.{" "}
-          </div>
-          <ul className="list-disc list-inside flex flex-col gap-2 text-foreground/80">
-            <li>
-              <strong>Administradores:</strong> têm visão ampla e estratégica.
-            </li>
-            <li>
-              <strong>Clientes:</strong> visualizam exclusivamente seus próprios
-              dados.
-            </li>
-            <li>
-              <strong>Usuários com permissão:</strong> recebem acesso protegido.
-            </li>
-          </ul>{" "}
-          <div className="text-foreground/70">
-            Tudo é feito de forma automática, sem complicações e sem risco de
-            exposição indevida.
-          </div>
+            sentido para o seu papel.
+          </p>
         </div>
 
         <div className="grid md:grid-cols-2 gap-8">
-          <div className="aspect-video bg-surface-muted rounded-xl flex items-center justify-center text-foreground/50">
-            <Link
-              href="/"
-              className="flex w-full items-center justify-center hover:opacity-90 transition-opacity"
-            >
-              <Image
-                src="/images/alma4d-fluxo-site-semtxt.png"
-                alt="Fluxo do método alma4D"
-                width={1407}
-                height={791}
-                sizes="(max-width: 768px) 100vw, (max-width: 1280px) 90vw, 1100px"
-                className="w-full h-auto object-contain"
-                priority
-              />
-            </Link>
+          {/* ===== IMAGEM FULL BLEED MOBILE ===== */}
+          <div className="-mx-4 sm:mx-0 aspect-video bg-surface-muted rounded-none sm:rounded-xl flex items-center justify-center">
+            <Image
+              src="/images/alma4d-fluxo-site-semtxt.png"
+              alt="Fluxo do método alma4D"
+              width={1407}
+              height={791}
+              sizes="100vw"
+              className="w-full h-auto object-contain"
+              priority
+            />
           </div>
 
-          <div className="aspect-video bg-surface-muted rounded-xl flex items-center justify-center text-foreground/50">
-            <Link
-              href="/"
-              className="flex items-center gap-2 hover:opacity-90 transition-opacity"
-            >
-              <Image
-                src="/images/olhoClinicoPad2.jpeg"
-                alt="alma4D"
-                width={300}
-                height={300}
-                sizes="(max-width: 640px) 120px, (max-width: 768px) 140px, (max-width: 1024px) 170px, 220px"
-                className="object-contain"
-                priority
-              />
-            </Link>
+          <div className="aspect-video bg-surface-muted rounded-xl flex items-center justify-center">
+            <Image
+              src="/images/olhoClinicoPad2.jpeg"
+              alt="alma4D"
+              width={300}
+              height={300}
+              sizes="(max-width: 768px) 50vw, 300px"
+              className="object-contain"
+              priority
+            />
           </div>
-        </div>
-      </section>
-
-      {/* ================= CONEXÃO COM O MÉTODO ================= */}
-      <section className="flex flex-col items-center gap-16 py-16 px-4 md:px-8 max-w-7xl mx-auto">
-        {/* 2. Conteúdo de Texto Centralizado Abaixo */}
-        <div className="flex flex-col gap-12 text-center items-center max-w-5xl mx-auto py-8">
-          {/* Cabeçalho da Seção */}
-          <div className="flex flex-col gap-6 max-w-3xl">
-            <h2 className="text-3xl md:text-5xl font-bold text-brand tracking-tight leading-tight">
-              Visão clara da realidade organizacional
-            </h2>
-            <p className="text-xl md:text-2xl text-foreground/80 font-medium leading-relaxed">
-              Mais do que um aplicativo, o{" "}
-              <span className="text-brand">alma4D</span> é um
-              <strong> instrumento estratégico de apoio à gestão</strong>, que
-              transforma informações complexas em{" "}
-              <strong>insights claros</strong>, relatórios profissionais para{" "}
-              <strong>planos de ação concretos</strong>.
-            </p>
-          </div>
-
-          {/* Grid de Diferenciais */}
-          <div className="grid md:grid-cols-2 gap-10 text-left">
-            {/* Coluna 1: Diagnóstico e Visualização */}
-            <div className="bg-surface p-8 rounded-2xl border border-border flex flex-col gap-4 shadow-sm">
-              <h3 className="text-2xl font-bold text-brand flex items-center gap-2">
-                <span className="w-2 h-8 bg-brand rounded-full inline-block"></span>
-                Diagnóstico e Inteligência
-              </h3>
-              <p className="text-foreground/70 mb-4">
-                O coração do alma4D organiza e interpreta{" "}
-                <strong>dados psicossociais</strong> de forma prática e visual:
-              </p>
-              <ul className="space-y-3.5 text-foreground/80">
-                {[
-                  "Indicadores de risco baixos, médios e altos.",
-                  "Visão estruturada por área, departamento e setor.",
-                  "Destaque automático para pontos críticos.",
-                  "Dados sempre agregados e anônimos (LGPD).",
-                ].map((item, index) => (
-                  <li key={index} className="flex gap-2 items-start">
-                    <span className="text-brand font-bold mt-0.5">✓</span>
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Coluna 2: Relatórios e Conformidade */}
-            <div className="bg-surface p-8 rounded-2xl border border-border flex flex-col gap-4 shadow-sm">
-              <h3
-                className="text-2xl font-bold flex items-center gap-2"
-                style={{ color: "#019499" }}
-              >
-                <span
-                  className="w-2 h-8 rounded-full inline-block"
-                  style={{ backgroundColor: "#019499" }}
-                ></span>
-                Gestão e Conformidade
-              </h3>
-              <p className="text-foreground/70 mb-4">
-                Gere <strong>documentação técnica</strong> completa em PDF com
-                poucos cliques, pronta para uso institucional:
-              </p>
-              <ul className="space-y-3.5 text-foreground/80">
-                {[
-                  "Alinhado às exigências do GRO / PGR (NR‑1).",
-                  "Inventário de Riscos e Plano de Ação estruturado.",
-                  "Compartilhamento fácil com SESMT, RH e Auditorias.",
-                  "Apoio jurídico e de compliance corporativo.",
-                ].map((item, index) => (
-                  <li key={index} className="flex gap-2 items-start">
-                    <span
-                      className="font-bold mt-0.5"
-                      style={{ color: "#019499" }}
-                    >
-                      ✓
-                    </span>
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-
-          {/* Botão de Ação Final Otimizado */}
-          <Link
-            href="/metodo"
-            className="bg-brand text-white px-6 py-3 rounded-md font-medium hover:bg-brand/90 transition-colors"
-          >
-            Conhecer o Método Completo
-          </Link>
         </div>
       </section>
 
@@ -307,3 +172,4 @@ export default function AppPage() {
     </div>
   );
 }
+

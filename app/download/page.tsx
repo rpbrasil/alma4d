@@ -63,23 +63,20 @@ export default function DownloadPage() {
             priority
           />
         </a>
-
         <p className="text-xs text-foreground/50 mt-2">
           Link direciona para a página do livro na Amazon.
         </p>
       </div>
-
       <p className="text-sm text-foreground/50">
         O aplicativo foi desenvolvido como extensão prática do método
         apresentado no livro.
       </p>
-
       <div className="pt-6">
         <Link
-          href="/download"
+          href="/autora"
           className="inline-flex items-center justify-center rounded-md bg-brand px-6 py-3 text-white font-semibold hover:bg-brand/90 transition-colors"
         >
-          Conhecer a experiência completa
+          Sobre a autora
         </Link>
       </div>
     </section>

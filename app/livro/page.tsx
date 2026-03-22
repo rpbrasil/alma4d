@@ -20,6 +20,7 @@ export const metadata: Metadata = {
     type: "website",
   },
 };
+
 export default function LivroPage() {
   // Troque pelo ASIN real quando tiver:
   const amazonUrl = "https://www.amazon.com.br/dp/ASIN";
@@ -72,6 +73,11 @@ export default function LivroPage() {
                 alt="Available at Amazon"
                 width={200}
                 height={60}
+                // Aqui é onde “travava” no mobile: width fixo.
+                // Mantemos a proporção, mas deixamos responsivo até um limite agradável.
+                sizes="(max-width: 640px) 80vw, 200px"
+                style={{ width: "min(80vw, 220px)", height: "auto" }}
+                className="block"
                 priority
               />
             </a>
@@ -82,6 +88,7 @@ export default function LivroPage() {
           </div>
         </div>
 
+        {/* NÃO MEXER NO VÍDEO (como você pediu) */}
         <div className="aspect-3/4 bg-surface-muted rounded-xl flex items-center justify-center text-foreground/50">
           <div className="aspect-3/4 rounded-xl overflow-hidden border border-border bg-black">
             <video
@@ -95,7 +102,6 @@ export default function LivroPage() {
       </section>
 
       {/* CONTEÚDO */}
-      {/* CONTEÚDO */}
       <section className="grid md:grid-cols-3 gap-8">
         <div className="bg-surface-muted p-6 rounded-xl flex flex-col gap-4">
           {/* Imagem no topo do card */}
@@ -105,15 +111,35 @@ export default function LivroPage() {
               alt="Fundamentos do método alma4D"
               fill
               className="object-cover"
-              priority
               sizes="(max-width: 768px) 100vw, 33vw"
+              priority
             />
           </div>
+          <div className="mt-6 text-center max-w-md mx-auto">
+            <h3 className="text-xl font-semibold">Fundamentos</h3>
+            <p className="text-foreground/70">
+              Princípios estruturantes do método.
+            </p>
+          </div>
+        </div>
 
-          <h3 className="text-xl font-semibold">Fundamentos</h3>
-          <p className="text-foreground/70">
-            Princípios estruturantes do método.
-          </p>
+        <div className="w-screen mx-[calc(50%-50vw)] sm:w-full sm:mx-0">
+          <div className="relative w-full aspect-2/1 rounded-lg overflow-hidden">
+            <Image
+              src="/images/alma4d-metodo-1200600.png"
+              alt="Visão integrada teoria e prática alma4D"
+              fill
+              className="object-contain"
+              sizes="(max-width: 768px) 100vw, 33vw"
+              priority
+            />
+          </div>
+          <div className="mt-6 text-center max-w-md mx-auto">
+            <h3 className="text-xl font-semibold">Visão integrada</h3>
+            <p className="text-foreground/70">
+              Teoria e prática sem fragmentação.
+            </p>
+          </div>
         </div>
 
         <div className="bg-surface-muted p-6 rounded-xl flex flex-col gap-4">
@@ -124,32 +150,16 @@ export default function LivroPage() {
               alt="Modelagem conceitual alma4D"
               fill
               className="object-cover"
-              priority
               sizes="(max-width: 768px) 100vw, 33vw"
+              priority
             />
           </div>
-
-          <h3 className="text-xl font-semibold">Modelagem</h3>
-          <p className="text-foreground/70">Organização lógica e conceitual.</p>
-        </div>
-
-        <div className="bg-surface-muted p-6 rounded-xl flex flex-col gap-4">
-          {/* Imagem no topo do card */}
-          <div className="relative w-full aspect-4/3 rounded-lg overflow-hidden">
-            <Image
-              src="/images/alma4d-bicolor-nobground-400.png"
-              alt="Visão integrada teoria e prática alma4D"
-              fill
-              className="object-cover"
-              priority
-              sizes="(max-width: 768px) 100vw, 33vw"
-            />
+          <div className="mt-6 text-center max-w-md mx-auto">
+            <h3 className="text-xl font-semibold">Modelagem</h3>
+            <p className="text-foreground/70">
+              Organização lógica e conceitual.
+            </p>
           </div>
-
-          <h3 className="text-xl font-semibold">Visão integrada</h3>
-          <p className="text-foreground/70">
-            Teoria e prática sem fragmentação.
-          </p>
         </div>
       </section>
 
