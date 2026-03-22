@@ -40,6 +40,7 @@ type CheckoutBody = {
   nome_completo?: string | null;
   telefone?: string | null;
   email?: string | null;
+  documento?: string | null;
   origem?: string | null;
   campanha?: string | null;
   tipo_plano?: string | null;
@@ -90,6 +91,37 @@ function normalizePhoneBR(input: string) {
   return digits.startsWith("55") ? `+${digits}` : `+55${digits}`;
 }
 
+function onlyDigits(v: string) {
+  return v.replace(/\D/g, "");
+}
+
+function isValidCPF(input: string) {
+  const cpf = onlyDigits(input);
+
+  if (cpf.length !== 11) return false;
+  if (/^(\d)\1+$/.test(cpf)) return false; // evita 00000000000 etc.
+
+  const calcCheck = (base: string, factor: number) => {
+    let sum = 0;
+    for (let i = 0; i < base.length; i++) sum += Number(base[i]) * (factor - i);
+    const mod = (sum * 10) % 11;
+    return mod === 10 ? 0 : mod;
+  };
+
+  const d1 = calcCheck(cpf.slice(0, 9), 10);
+  const d2 = calcCheck(cpf.slice(0, 10), 11);
+
+  return d1 === Number(cpf[9]) && d2 === Number(cpf[10]);
+}
+
+function formatCPF(input: string) {
+  const d = onlyDigits(input).slice(0, 11);
+  // máscara simples opcional
+  return d
+    .replace(/^(\d{3})(\d)/, "$1.$2")
+    .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
+    .replace(/^(\d{3})\.(\d{3})\.(\d{3})(\d)/, "$1.$2.$3-$4");
+}
 /** ===================== UI: Stepper compacto ===================== */
 
 function StepperCompact({ current }: { current: StepId }) {
@@ -103,13 +135,13 @@ function StepperCompact({ current }: { current: StepId }) {
     {
       id: 2,
       name: "Confirmar",
-      desc: "Razões",
+      desc: "Interesse",
       status: current === 2 ? "active" : current > 2 ? "done" : "next",
     },
     {
       id: 3,
       name: "Validar",
-      desc: "Telefone",
+      desc: "Fone",
       status: current === 3 ? "active" : current > 3 ? "done" : "next",
     },
     {
@@ -224,28 +256,79 @@ function StepperCompact({ current }: { current: StepId }) {
 function VantagensGrid() {
   const cards = [
     {
-      title: "Acompanhamento contínuo",
-      text: "O app acompanha sua jornada de forma inteligente, respeitando seu ritmo e seu momento.",
+      title: (
+        <>
+          Seu <strong>companheiro</strong> de <strong>viagem</strong>
+        </>
+      ),
+      text: (
+        <>
+          O app acompanha sua <strong>jornada</strong> de forma{" "}
+          <strong>inteligente</strong>, registrando cada{" "}
+          <strong>vitória</strong>, degrau por degrau.
+        </>
+      ),
       iconClass: "fa-solid fa-chart-line",
     },
     {
-      title: "Privacidade e segurança",
-      text: "Dados criptografados e acesso protegido. Você controla o que compartilha e quando.",
+      title: (
+        <>
+          <strong>Privacidade</strong> e <strong>segurança</strong>
+        </>
+      ),
+      text: (
+        <>
+          Dados <strong>criptografados</strong> e acesso{" "}
+          <strong>protegido</strong>. Você controla o que{" "}
+          <strong>compartilha</strong> e <strong>quando</strong>.
+        </>
+      ),
       iconClass: "fa-solid fa-lock",
     },
     {
-      title: "Insights personalizados",
-      text: "Transforme registros em clareza: padrões, alertas e recomendações úteis para o dia a dia.",
+      title: (
+        <>
+          <strong>Insights</strong> personalizados
+        </>
+      ),
+      text: (
+        <>
+          Transforme seus <strong>registros</strong> em{" "}
+          <strong>resultados</strong>: <strong>medidas</strong>,{" "}
+          <strong>gráficos</strong> e <strong>análises</strong> por{" "}
+          <strong>inteligência artificial</strong>.
+        </>
+      ),
       iconClass: "fa-solid fa-lightbulb",
     },
     {
-      title: "Integração com profissionais",
-      text: "Quando autorizado, facilite acompanhamento com profissionais e mantenha a jornada organizada.",
+      title: (
+        <>
+          <strong>Integração</strong> com <strong>profissionais</strong>
+        </>
+      ),
+      text: (
+        <>
+          Compartilhe seus <strong>resultados</strong> ou agende{" "}
+          <strong>reuniões</strong> e <strong>consultas</strong> com
+          profissionais e comprove sua <strong>evolução</strong>.
+        </>
+      ),
       iconClass: "fa-solid fa-user-doctor",
     },
     {
-      title: "Evolução gamificada",
-      text: "Níveis, XP e consistência semanal para manter engajamento sem pressão — com progresso real.",
+      title: (
+        <>
+          <strong>Preço</strong> justo
+        </>
+      ),
+      text: (
+        <>
+          Por um ano de <strong>alma4D</strong> você paga apenas{" "}
+          <strong>R$ 150,00</strong> no <strong>pix</strong> ou{" "}
+          <strong>parcelado</strong> no <strong>cartão de crédito</strong>.
+        </>
+      ),
       iconClass: "fa-solid fa-medal",
     },
   ];
@@ -258,7 +341,6 @@ function VantagensGrid() {
             key={idx}
             className="bg-white rounded-2xl border border-border shadow-sm p-5"
           >
-            {/* ✅ Font Awesome WebFont (igual à timeline) */}
             <i
               className={`text-brand-secondary text-xl ${c.iconClass}`}
               aria-hidden="true"
@@ -454,6 +536,12 @@ export default function AtivacaoWizard() {
       if (!nomeCompleto.trim()) throw new Error("Informe seu nome completo.");
       if (!aceitouTermos)
         throw new Error("Você precisa aceitar os termos para continuar.");
+      
+      const cpfDigits = onlyDigits(documento);
+
+      if (!cpfDigits) throw new Error("Informe seu CPF para continuar.");
+      if (!isValidCPF(cpfDigits))
+        throw new Error("CPF inválido. Verifique e tente novamente.");
 
       const payload: UsuarioUpsertPayload = {
         id: userId,
@@ -462,7 +550,7 @@ export default function AtivacaoWizard() {
         email: email.trim() || null,
         data_nascimento: dataNascimento || null,
         sexo: sexo === "" ? null : sexo,
-        documento: documento.trim() || null,
+        documento: cpfDigits || null,
         aceitou_termos: true,
         premium_origem: "pagarme",
         tipo_plano: "trial",
@@ -504,6 +592,7 @@ export default function AtivacaoWizard() {
         telefone: normalizePhoneBR(phone) || null,
         email: email.trim() || null,
         nome_completo: nomeCompleto.trim() || null,
+        documento: onlyDigits(documento) || null,
         origem,
         campanha: campanha || null,
         tipo_plano: "premium",
@@ -593,11 +682,10 @@ export default function AtivacaoWizard() {
                 <div className="grid gap-6">
                   <div>
                     <h2 className="text-xl sm:text-2xl font-extrabold text-brand">
-                      Por que usar o aplicativo?
+                      Por que comprar este aplicativo?
                     </h2>
                     <p className="mt-2 text-sm text-slate-600">
-                      Uma experiência prática, segura e contínua — conectando
-                      método e tecnologia.
+                      Uma experiência única de consciência e evolução pessoal.
                     </p>
                   </div>
 
@@ -750,13 +838,16 @@ export default function AtivacaoWizard() {
                     </div>
 
                     <Field
-                      label="Documento (opcional)"
-                      hint="CPF/CNPJ se você precisar de nota fiscal depois."
+                      label="CPF (obrigatório para pagamento)"
+                      hint="Somente CPF. Usamos para identificação no checkout."
                     >
                       <input
                         value={documento}
-                        onChange={(e) => setDocumento(e.target.value)}
-                        placeholder="Somente números"
+                        onChange={(e) =>
+                          setDocumento(formatCPF(e.target.value))
+                        }
+                        placeholder="000.000.000-00"
+                        inputMode="numeric"
                         className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-brand/10"
                       />
                     </Field>
@@ -846,7 +937,10 @@ export default function AtivacaoWizard() {
                       Voltar
                     </SecondaryButton>
 
-                    <PrimaryButton onClick={goToPayment} disabled={payLoading}>
+                    <PrimaryButton
+                      onClick={goToPayment}
+                      disabled={payLoading || !isValidCPF(documento)}
+                    >
                       {payLoading
                         ? "Abrindo checkout..."
                         : "Ir para o pagamento"}
