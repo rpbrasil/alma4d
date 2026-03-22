@@ -1,11 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Image from "next/image";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import {
   faQrcode,
   faShieldHalved,
@@ -23,27 +23,64 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 
 /**
- * Supabase Phone OTP:
- * - Envia OTP: supabase.auth.signInWithOtp({ phone })
- * - Verifica OTP: supabase.auth.verifyOtp({ phone, token, type: 'sms' })
- * Docs: [1](https://supabase.com/docs/guides/auth/phone-login)[2](https://supabase.com/docs/reference/javascript/auth-verifyotp)
+ * Supabase client (Phone OTP no client usa anon key pública).
+ * Certifique-se que essas env vars existem:
+ * - NEXT_PUBLIC_SUPABASE_URL
+ * - NEXT_PUBLIC_SUPABASE_ANON_KEY
  */
 const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
 );
 
 type StepId = 1 | 2 | 3 | 4 | 5;
-
 type StepStatus = "done" | "active" | "next";
 type Step = { id: StepId; name: string; desc: string; status: StepStatus };
+
+type Sexo = "" | "M" | "F";
+
+type CheckoutBody = {
+  userId: string;
+  nome_completo?: string | null;
+  telefone?: string | null;
+  email?: string | null;
+  origem?: string | null;
+  campanha?: string | null;
+  tipo_plano?: string | null;
+};
+
+type CheckoutResponse =
+  | { ok: true; url: string }
+  | { ok: false; error: string };
+
+type UsuarioUpsertPayload = {
+  id: string;
+  telefone: string | null;
+  nome_completo: string | null;
+  email: string | null;
+  data_nascimento: string | null; // YYYY-MM-DD
+  sexo: "M" | "F" | null;
+  documento: string | null;
+  aceitou_termos: boolean;
+  premium_origem: "pagarme";
+  tipo_plano?: string | null;
+};
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
 
+function getErrorMessage(e: unknown, fallback = "Ocorreu um erro."): string {
+  if (e instanceof Error) return e.message;
+  if (typeof e === "string") return e;
+  return fallback;
+}
+
+function isNonEmptyString(v: unknown): v is string {
+  return typeof v === "string" && v.trim().length > 0;
+}
+
 function normalizePhoneBR(input: string) {
-  // Mantém números e '+'; força E.164 básico se usuário digitar só números
   const raw = input.trim();
   if (!raw) return "";
 
@@ -57,21 +94,43 @@ function normalizePhoneBR(input: string) {
   return digits.startsWith("55") ? `+${digits}` : `+55${digits}`;
 }
 
-/** Componentes visuais pequenos */
-function StepperCompact({
-  current,
-}: {
-  current: StepId;
-}) {
+/** ===================== UI: Stepper compacto ===================== */
+
+function StepperCompact({ current }: { current: StepId }) {
   const steps: Step[] = [
-    { id: 1, name: "Leitura", desc: "QR/CTA", status: current > 1 ? "done" : "active" },
-    { id: 2, name: "Vantagens", desc: "App", status: current === 2 ? "active" : current > 2 ? "done" : "next" },
-    { id: 3, name: "Validar", desc: "Telefone", status: current === 3 ? "active" : current > 3 ? "done" : "next" },
-    { id: 4, name: "Perfil", desc: "Dados", status: current === 4 ? "active" : current > 4 ? "done" : "next" },
-    { id: 5, name: "Pagar", desc: "Checkout", status: current === 5 ? "active" : "next" },
+    {
+      id: 1,
+      name: "Leitura",
+      desc: "QR/CTA",
+      status: current > 1 ? "done" : "active",
+    },
+    {
+      id: 2,
+      name: "Vantagens",
+      desc: "App",
+      status: current === 2 ? "active" : current > 2 ? "done" : "next",
+    },
+    {
+      id: 3,
+      name: "Validar",
+      desc: "Telefone",
+      status: current === 3 ? "active" : current > 3 ? "done" : "next",
+    },
+    {
+      id: 4,
+      name: "Perfil",
+      desc: "Dados",
+      status: current === 4 ? "active" : current > 4 ? "done" : "next",
+    },
+    {
+      id: 5,
+      name: "Pagar",
+      desc: "Checkout",
+      status: current === 5 ? "active" : "next",
+    },
   ];
 
-  const icons: Record<StepId, any> = {
+  const icons: Record<StepId, IconDefinition> = {
     1: faQrcode,
     2: faLightbulb,
     3: faShieldHalved,
@@ -79,7 +138,10 @@ function StepperCompact({
     5: faCreditCard,
   };
 
-  const activeIndex = Math.max(0, steps.findIndex(s => s.status === "active"));
+  const activeIndex = Math.max(
+    0,
+    steps.findIndex((s) => s.status === "active"),
+  );
   const progressPct =
     steps.length > 1 ? (activeIndex / (steps.length - 1)) * 100 : 0;
 
@@ -87,10 +149,11 @@ function StepperCompact({
     <section className="mt-4">
       <div className="bg-white/70 backdrop-blur rounded-2xl border border-white shadow-[0_12px_40px_rgba(3,8,112,0.06)] px-4 py-4">
         <div className="relative">
-          {/* Linha (baixa) */}
-          <div className="absolute top-5 left-4 right-4 h-[3px] rounded-full bg-slate-200" />
+          {/* Linha base */}
+          <div className="absolute top-5 left-4 right-4 h-3px rounded-full bg-slate-200" />
+          {/* Linha progresso */}
           <div
-            className="absolute top-5 left-4 h-[3px] rounded-full bg-brand transition-all duration-500"
+            className="absolute top-5 left-4 h-3px rounded-full bg-brand transition-all duration-500"
             style={{ width: `calc(${progressPct}% * (100% - 2rem) / 100)` }}
             aria-hidden="true"
           />
@@ -104,23 +167,32 @@ function StepperCompact({
                 <div key={s.id} className="flex flex-col items-center gap-1">
                   <div
                     className={cx(
-                      "w-10 h-10 rounded-xl grid place-items-center text-sm transition-all",
+                      "relative w-10 h-10 rounded-xl grid place-items-center text-sm transition-all",
                       isDone && "bg-brand text-white",
-                      isActive && "bg-brand-secondary text-white scale-[1.06] ring-4 ring-brand/10",
+                      isActive &&
+                        "bg-brand-secondary text-white scale-[1.06] ring-4 ring-brand/10",
                       s.status === "next" && "bg-slate-100 text-slate-400",
                     )}
                     aria-current={isActive ? "step" : undefined}
                   >
                     <FontAwesomeIcon icon={icons[s.id]} />
                     {isDone && (
-                      <span className="absolute translate-x-3 translate-y-3 bg-white rounded-full p-[2px] shadow">
-                        <FontAwesomeIcon icon={faCircleCheck} className="text-brand-secondary" />
+                      <span className="absolute -bottom-1 -right-1 bg-white rounded-full p-2px shadow">
+                        <FontAwesomeIcon
+                          icon={faCircleCheck}
+                          className="text-brand-secondary"
+                        />
                       </span>
                     )}
                   </div>
 
                   <div className="text-center leading-tight">
-                    <p className={cx("text-[10px] font-semibold", isActive ? "text-brand" : "text-slate-500")}>
+                    <p
+                      className={cx(
+                        "text-[10px] font-semibold",
+                        isActive ? "text-brand" : "text-slate-500",
+                      )}
+                    >
                       {s.name}
                     </p>
                     <p className="text-[9px] uppercase tracking-[0.18em] text-slate-400 font-semibold">
@@ -133,7 +205,6 @@ function StepperCompact({
           </div>
         </div>
 
-        {/* Linha curta de contexto */}
         <div className="mt-3 flex items-center justify-between gap-3">
           <div className="text-xs text-slate-600">
             <span className="font-semibold text-brand">Etapa:</span>{" "}
@@ -152,7 +223,9 @@ function StepperCompact({
   );
 }
 
-function CarouselVantagens() {
+/** ===================== UI: Carousel de vantagens ===================== */
+
+function VantagensCarouselFullBleed() {
   const cards = useMemo(
     () => [
       {
@@ -185,35 +258,53 @@ function CarouselVantagens() {
   );
 
   return (
-    <div>
-      <h2 className="text-xl sm:text-2xl font-extrabold text-brand">
-        Por que usar o aplicativo?
-      </h2>
-      <p className="mt-2 text-sm text-slate-600">
-        Uma experiência prática, segura e contínua — conectando método e tecnologia.
-      </p>
-
-      <div className="mt-5 overflow-x-auto">
-        <div className="flex gap-4 snap-x snap-mandatory pb-3">
+    <section className="mt-5">
+      {/* FULL-BLEED real no mobile (sai do max-w do card) */}
+      <div className="relative left-1/2 right-1/2 -translate-x-1/2 w-screen max-w-none sm:left-auto sm:right-auto sm:translate-x-0 sm:w-auto">
+        {/* trilho */}
+        <div
+          className={cx(
+            "flex gap-4 overflow-x-auto",
+            "snap-x snap-mandatory scroll-smooth",
+            "px-4 sm:px-0", // padding mobile para alinhar com layout
+            "overscroll-x-contain touch-pan-x",
+            "[scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden",
+          )}
+          aria-label="Vantagens do aplicativo (deslize para navegar)"
+        >
           {cards.map((c, idx) => (
-            <div
+            <article
               key={idx}
-              className="snap-center min-w-[260px] sm:min-w-[300px] bg-white rounded-2xl border border-border shadow-sm p-5"
+              className={cx(
+                "snap-center shrink-0",
+                // ✅ Mobile: quase tela toda (1 card por swipe)
+                "w-[88vw]",
+                // ✅ Desktop: largura fixa confortável
+                "sm:w-340px",
+                "bg-white rounded-2xl border border-border shadow-sm p-5",
+              )}
             >
-              <FontAwesomeIcon icon={c.icon} className="text-brand-secondary text-xl" />
+              <FontAwesomeIcon
+                icon={c.icon}
+                className="text-brand-secondary text-xl"
+              />
               <h3 className="mt-3 font-bold text-brand">{c.title}</h3>
-              <p className="mt-1 text-sm text-slate-600 leading-relaxed">{c.text}</p>
-            </div>
+              <p className="mt-1 text-sm text-slate-600 leading-relaxed">
+                {c.text}
+              </p>
+            </article>
           ))}
         </div>
-      </div>
 
-      <p className="mt-2 text-xs text-slate-500">
-        Dica: deslize para o lado para ver todas as vantagens.
-      </p>
-    </div>
+        <p className="mt-2 px-4 sm:px-0 text-xs text-slate-500">
+          Deslize para o lado para ver as vantagens.
+        </p>
+      </div>
+    </section>
   );
 }
+
+/** ===================== UI: Inputs e botões ===================== */
 
 function Field({
   label,
@@ -283,8 +374,9 @@ function SecondaryButton({
   );
 }
 
+/** ===================== Wizard principal ===================== */
+
 export default function AtivacaoWizard() {
-  const router = useRouter();
   const searchParams = useSearchParams();
 
   // Origem do QR/CTA (opcional)
@@ -304,11 +396,11 @@ export default function AtivacaoWizard() {
   // Usuário autenticado
   const [userId, setUserId] = useState<string | null>(null);
 
-  // Perfil (schema usuarios — versão enxuta para ativação)
+  // Perfil (schema usuarios — enxuto para ativação)
   const [nomeCompleto, setNomeCompleto] = useState("");
   const [email, setEmail] = useState("");
   const [dataNascimento, setDataNascimento] = useState("");
-  const [sexo, setSexo] = useState<"" | "M" | "F">("");
+  const [sexo, setSexo] = useState<Sexo>("");
   const [documento, setDocumento] = useState("");
   const [aceitouTermos, setAceitouTermos] = useState(false);
 
@@ -322,19 +414,30 @@ export default function AtivacaoWizard() {
   async function sendOtp() {
     setOtpError(null);
     setOtpLoading(true);
+
     try {
       const normalized = normalizePhoneBR(phone);
-      if (!normalized) throw new Error("Informe um telefone válido.");
+      if (!isNonEmptyString(normalized))
+        throw new Error("Informe um telefone válido.");
       setPhone(normalized);
 
-      // Envia OTP por SMS (Phone Login)
-      // signInWithOtp({ phone }) [1](https://supabase.com/docs/guides/auth/phone-login)
-      const { error } = await supabase.auth.signInWithOtp({ phone: normalized });
-      if (error) throw error;
+      if (
+        !process.env.NEXT_PUBLIC_SUPABASE_URL ||
+        !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      ) {
+        throw new Error(
+          "Supabase não configurado (env vars públicas ausentes).",
+        );
+      }
+
+      const { error } = await supabase.auth.signInWithOtp({
+        phone: normalized,
+      });
+      if (error) throw new Error(error.message);
 
       setOtpSent(true);
-    } catch (e: any) {
-      setOtpError(e?.message ?? "Não foi possível enviar o código.");
+    } catch (e: unknown) {
+      setOtpError(getErrorMessage(e, "Não foi possível enviar o código."));
     } finally {
       setOtpLoading(false);
     }
@@ -343,25 +446,28 @@ export default function AtivacaoWizard() {
   async function verifyOtp() {
     setOtpError(null);
     setOtpLoading(true);
+
     try {
       const normalized = normalizePhoneBR(phone);
-      if (!normalized) throw new Error("Telefone inválido.");
-      if (!otp || otp.length < 4) throw new Error("Informe o código recebido.");
+      if (!isNonEmptyString(normalized)) throw new Error("Telefone inválido.");
+      if (!isNonEmptyString(otp) || otp.trim().length < 4)
+        throw new Error("Informe o código recebido.");
 
-      // verifyOtp({ phone, token, type: 'sms' }) [1](https://supabase.com/docs/guides/auth/phone-login)[2](https://supabase.com/docs/reference/javascript/auth-verifyotp)
       const { data, error } = await supabase.auth.verifyOtp({
         phone: normalized,
-        token: otp,
+        token: otp.trim(),
         type: "sms",
       });
-      if (error) throw error;
+      if (error) throw new Error(error.message);
 
-      setUserId(data.user?.id ?? null);
+      const newUserId = data.user?.id ?? null;
+      if (!newUserId)
+        throw new Error("Não foi possível obter o usuário autenticado.");
 
-      // Vai para etapa 4
+      setUserId(newUserId);
       setStep(4);
-    } catch (e: any) {
-      setOtpError(e?.message ?? "Código inválido ou expirado.");
+    } catch (e: unknown) {
+      setOtpError(getErrorMessage(e, "Código inválido ou expirado."));
     } finally {
       setOtpLoading(false);
     }
@@ -370,73 +476,91 @@ export default function AtivacaoWizard() {
   async function saveProfileAndContinue() {
     setProfileError(null);
     setProfileLoading(true);
+
     try {
       if (!userId) throw new Error("Faça a validação do telefone primeiro.");
       if (!nomeCompleto.trim()) throw new Error("Informe seu nome completo.");
-      if (!aceitouTermos) throw new Error("Você precisa aceitar os termos para continuar.");
+      if (!aceitouTermos)
+        throw new Error("Você precisa aceitar os termos para continuar.");
 
-      const payload: any = {
+      const payload: UsuarioUpsertPayload = {
         id: userId,
-        telefone: normalizePhoneBR(phone),
-        nome_completo: nomeCompleto.trim(),
+        telefone: normalizePhoneBR(phone) || null,
+        nome_completo: nomeCompleto.trim() || null,
         email: email.trim() || null,
         data_nascimento: dataNascimento || null,
-        sexo: sexo || null,
+        sexo: sexo === "" ? null : sexo,
         documento: documento.trim() || null,
         aceitou_termos: true,
         premium_origem: "pagarme",
-        // Você pode guardar origem/campanha em metadata/coluna futura, se desejar
+        tipo_plano: "trial",
       };
 
       const { error } = await supabase.from("usuarios").upsert(payload, {
         onConflict: "id",
       });
 
-      if (error) throw error;
+      if (error) throw new Error(error.message);
 
       setStep(5);
-    } catch (e: any) {
-      setProfileError(e?.message ?? "Não foi possível salvar seus dados.");
+    } catch (e: unknown) {
+      setProfileError(
+        getErrorMessage(e, "Não foi possível salvar seus dados."),
+      );
     } finally {
       setProfileLoading(false);
     }
   }
 
+  function isCheckoutResponse(data: unknown): data is CheckoutResponse {
+    if (!data || typeof data !== "object") return false;
+    const obj = data as Record<string, unknown>;
+    if (obj.ok === true && typeof obj.url === "string") return true;
+    if (obj.ok === false && typeof obj.error === "string") return true;
+    return false;
+  }
+
   async function goToPayment() {
     setPayError(null);
     setPayLoading(true);
+
     try {
       if (!userId) throw new Error("Sessão inválida. Refaça a validação.");
 
-      // IMPORTANTE: Pagamento deve ser criado no backend (API route).
-      // Aqui fazemos fetch para obter a URL do checkout e redirecionar.
-      // Pagar.me docs gerais: [3](https://docs.pagar.me/)
+      const body: CheckoutBody = {
+        userId,
+        telefone: normalizePhoneBR(phone) || null,
+        email: email.trim() || null,
+        nome_completo: nomeCompleto.trim() || null,
+        origem,
+        campanha: campanha || null,
+        tipo_plano: "premium",
+      };
+
       const res = await fetch("/api/pagarme/checkout-link", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId,
-          telefone: normalizePhoneBR(phone),
-          email: email.trim() || null,
-          nome_completo: nomeCompleto.trim(),
-          origem,
-          campanha,
-          // tipo_plano: "premium" | "trial" etc.
-          tipo_plano: "premium",
-        }),
+        body: JSON.stringify(body),
       });
 
-      if (!res.ok) {
-        const t = await res.text();
-        throw new Error(t || "Falha ao criar checkout.");
+      const json: unknown = await res.json().catch(() => null);
+
+      if (!isCheckoutResponse(json)) {
+        throw new Error("Resposta inválida do servidor de checkout.");
       }
 
-      const { url } = await res.json();
-      if (!url) throw new Error("Checkout não retornou URL.");
+      if (json.ok === false) {
+        throw new Error(json.error);
+      }
 
-      window.location.href = url;
-    } catch (e: any) {
-      setPayError(e?.message ?? "Não foi possível iniciar o pagamento.");
+      if (!res.ok) {
+        // Mesmo ok=false já teria lançado acima, mas mantém robustez
+        throw new Error("Falha ao criar checkout.");
+      }
+
+      window.location.href = json.url;
+    } catch (e: unknown) {
+      setPayError(getErrorMessage(e, "Não foi possível iniciar o pagamento."));
     } finally {
       setPayLoading(false);
     }
@@ -446,33 +570,24 @@ export default function AtivacaoWizard() {
     setPayError(null);
     setProfileError(null);
     setOtpError(null);
-    setStep((s) => (s > 2 ? ((s - 1) as StepId) : s));
-  }
 
-  function next() {
-    setPayError(null);
-    setProfileError(null);
-    setOtpError(null);
-    setStep((s) => (s < 5 ? ((s + 1) as StepId) : s));
+    setStep((s) => {
+      const nextStep = (s - 1) as number;
+      if (nextStep <= 2) return 2;
+      if (nextStep >= 5) return 5;
+      return nextStep as StepId;
+    });
   }
 
   return (
-    <main className="min-h-screen bg-[#F0F2F5]" aria-label="Ativação alma4D">
+    <main
+      className="min-h-screen bg-[#F0F2F5] overflow-x-hidden"
+      aria-label="Ativação alma4D"
+    >
       {/* Header compacto */}
       <div className="bg-linear-to-b from-white/70 to-transparent">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-8 pb-4">
           <div className="flex items-center justify-between gap-6">
-            <div className="flex items-center gap-3">
-              <Image
-                src="/images/alma4d-bicolor-nobground-400.png"
-                alt="alma4D"
-                width={140}
-                height={44}
-                className="brightness-95"
-                priority
-              />
-            </div>
-
             <div className="hidden sm:flex items-center gap-2 text-xs font-semibold text-slate-500">
               <span className="inline-flex h-2 w-2 rounded-full bg-brand-secondary" />
               Ativação guiada
@@ -484,45 +599,56 @@ export default function AtivacaoWizard() {
               Ative seu acesso com segurança
             </h1>
             <p className="mt-2 text-sm sm:text-base text-slate-600">
-              Você chegou por um QR Code ou CTA. Agora entenda o valor do app, valide seu telefone
-              e finalize seu cadastro para seguir ao checkout.
+              Você chegou por um QR Code ou CTA. Agora entenda o valor do app,
+              valide seu telefone e finalize seu cadastro para seguir ao
+              checkout.
             </p>
           </div>
         </div>
       </div>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 pb-12">
-        {/* STEPPER compacto */}
         <StepperCompact current={step} />
 
-        {/* CONTEÚDO (card principal) */}
         <section className="mt-6 w-full max-w-3xl mx-auto">
           <div className="relative">
-            {/* Glow sutil */}
             <div
-              className="absolute -inset-1 rounded-[2rem] bg-linear-to-r from-brand/15 via-white/30 to-brand-secondary/15 blur-xl"
+              className="absolute -inset-1 rounded-2rem bg-linear-to-r from-brand/15 via-white/30 to-brand-secondary/15 blur-xl"
               aria-hidden="true"
             />
-
-            <div className="relative bg-white rounded-[2rem] border border-white/60 shadow-[0_25px_70px_rgba(3,8,112,0.10)] p-4 sm:p-6">
-              {/* Step content */}
+            <div className="relative bg-white rounded-2rem border border-white/60 shadow-[0_25px_70px_rgba(3,8,112,0.10)] p-4 sm:p-6">
               {step === 2 && (
                 <div className="grid gap-6">
-                  <CarouselVantagens />
+                  {/* Texto dentro do card (não full-bleed) */}
+                  <div>
+                    <h2 className="text-xl sm:text-2xl font-extrabold text-brand">
+                      Por que usar o aplicativo?
+                    </h2>
+                    <p className="mt-2 text-sm text-slate-600">
+                      Uma experiência prática, segura e contínua — conectando
+                      método e tecnologia.
+                    </p>
+                  </div>
 
-                  <div className="flex items-center justify-between pt-2">
+                  {/* ✅ Carousel corrigido (full-bleed mobile, desktop alinhado) */}
+                  <VantagensCarouselFullBleed />
+
+                  {/* Rodapé do step com origem + CTA */}
+                  <div className="flex items-center justify-between pt-1">
                     <span className="text-xs text-slate-500">
                       Origem: <span className="font-semibold">{origem}</span>
                       {campanha ? (
                         <>
                           {" "}
-                          • Campanha: <span className="font-semibold">{campanha}</span>
+                          • Campanha:{" "}
+                          <span className="font-semibold">{campanha}</span>
                         </>
                       ) : null}
                     </span>
 
                     <PrimaryButton onClick={() => setStep(3)}>
-                      Continuar <FontAwesomeIcon icon={faChevronRight} className="ml-2" />
+                      Continuar{" "}
+                      <FontAwesomeIcon icon={faChevronRight} className="ml-2" />
                     </PrimaryButton>
                   </div>
                 </div>
@@ -535,7 +661,7 @@ export default function AtivacaoWizard() {
                       Valide seu telefone
                     </h2>
                     <p className="mt-1 text-sm text-slate-600">
-                      Enviaremos um código por SMS para confirmar seu número. [1](https://supabase.com/docs/guides/auth/phone-login)
+                      Enviaremos um código por SMS para confirmar seu número.
                     </p>
                   </div>
 
@@ -568,7 +694,10 @@ export default function AtivacaoWizard() {
 
                     <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
                       <SecondaryButton onClick={back}>
-                        <FontAwesomeIcon icon={faChevronLeft} className="mr-2" />
+                        <FontAwesomeIcon
+                          icon={faChevronLeft}
+                          className="mr-2"
+                        />
                         Voltar
                       </SecondaryButton>
 
@@ -577,14 +706,18 @@ export default function AtivacaoWizard() {
                           {otpLoading ? "Enviando..." : "Enviar código"}
                         </PrimaryButton>
                       ) : (
-                        <PrimaryButton onClick={verifyOtp} disabled={otpLoading}>
+                        <PrimaryButton
+                          onClick={verifyOtp}
+                          disabled={otpLoading}
+                        >
                           {otpLoading ? "Validando..." : "Validar código"}
                         </PrimaryButton>
                       )}
                     </div>
 
                     <p className="text-xs text-slate-500">
-                      Dica: use formato internacional (E.164). Ex.: +5511999999999.
+                      Dica: use formato internacional (E.164). Ex.:
+                      +5511999999999.
                     </p>
                   </div>
                 </div>
@@ -597,7 +730,8 @@ export default function AtivacaoWizard() {
                       Complete seu perfil
                     </h2>
                     <p className="mt-1 text-sm text-slate-600">
-                      Só pedimos o essencial agora. O restante você completa dentro do app.
+                      Só pedimos o essencial agora. O restante você completa
+                      dentro do app.
                     </p>
                   </div>
 
@@ -633,7 +767,10 @@ export default function AtivacaoWizard() {
                       <Field label="Sexo (opcional)">
                         <select
                           value={sexo}
-                          onChange={(e) => setSexo(e.target.value as any)}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            if (v === "" || v === "M" || v === "F") setSexo(v);
+                          }}
                           className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-brand/10"
                         >
                           <option value="">—</option>
@@ -675,13 +812,24 @@ export default function AtivacaoWizard() {
 
                     <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
                       <SecondaryButton onClick={back}>
-                        <FontAwesomeIcon icon={faChevronLeft} className="mr-2" />
+                        <FontAwesomeIcon
+                          icon={faChevronLeft}
+                          className="mr-2"
+                        />
                         Voltar
                       </SecondaryButton>
 
-                      <PrimaryButton onClick={saveProfileAndContinue} disabled={profileLoading}>
-                        {profileLoading ? "Salvando..." : "Continuar para pagamento"}
-                        <FontAwesomeIcon icon={faChevronRight} className="ml-2" />
+                      <PrimaryButton
+                        onClick={saveProfileAndContinue}
+                        disabled={profileLoading}
+                      >
+                        {profileLoading
+                          ? "Salvando..."
+                          : "Continuar para pagamento"}
+                        <FontAwesomeIcon
+                          icon={faChevronRight}
+                          className="ml-2"
+                        />
                       </PrimaryButton>
                     </div>
                   </div>
@@ -695,7 +843,8 @@ export default function AtivacaoWizard() {
                       Finalizar ativação
                     </h2>
                     <p className="mt-1 text-sm text-slate-600">
-                      Você está a um passo do checkout. O pagamento é processado via Pagar.me. [3](https://docs.pagar.me/)
+                      Você está a um passo do checkout. O pagamento é processado
+                      via Pagar.me.
                     </p>
                   </div>
 
@@ -709,7 +858,8 @@ export default function AtivacaoWizard() {
                           Plano Premium (exemplo)
                         </p>
                         <p className="text-sm text-slate-600">
-                          Acesso completo + recursos avançados. Você poderá ajustar seu plano depois.
+                          Acesso completo + recursos avançados. Você poderá
+                          ajustar seu plano depois.
                         </p>
                       </div>
                     </div>
@@ -728,13 +878,16 @@ export default function AtivacaoWizard() {
                     </SecondaryButton>
 
                     <PrimaryButton onClick={goToPayment} disabled={payLoading}>
-                      {payLoading ? "Abrindo checkout..." : "Ir para o pagamento"}
+                      {payLoading
+                        ? "Abrindo checkout..."
+                        : "Ir para o pagamento"}
                       <FontAwesomeIcon icon={faCreditCard} className="ml-2" />
                     </PrimaryButton>
                   </div>
 
                   <p className="text-xs text-slate-500">
-                    Observação: como boa prática, confirme o pagamento no backend (webhook) antes de liberar premium.
+                    Observação: confirme o pagamento no backend (webhook) antes
+                    de liberar premium.
                   </p>
                 </div>
               )}
