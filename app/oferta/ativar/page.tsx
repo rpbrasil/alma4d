@@ -1,7 +1,7 @@
-"use client";
+export const dynamic = "force-dynamic";
 
 import type { CSSProperties, ElementType } from "react";
-import ActivationForm from "@/app/components/forms/ActivationForm";
+import ActivationForm from "../../components/forms/ActivationForm";
 import Image from "next/image";
 
 import QrCode2Icon from "@mui/icons-material/QrCode2";
