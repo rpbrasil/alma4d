@@ -25,8 +25,15 @@ import {
  * - NEXT_PUBLIC_SUPABASE_ANON_KEY
  */
 const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: false,
+    },
+  },
 );
 
 type StepId = 1 | 2 | 3 | 4 | 5;
@@ -251,113 +258,6 @@ function StepperCompact({ current }: { current: StepId }) {
   );
 }
 
-/** ===================== UI: Carousel de vantagens ===================== */
-
-function VantagensGrid() {
-  const cards = [
-    {
-      title: (
-        <>
-          Seu <strong>companheiro</strong> de <strong>viagem</strong>
-        </>
-      ),
-      text: (
-        <>
-          O app acompanha sua <strong>jornada</strong> de forma{" "}
-          <strong>inteligente</strong>, registrando cada{" "}
-          <strong>vitória</strong>, degrau por degrau.
-        </>
-      ),
-      iconClass: "fa-solid fa-chart-line",
-    },
-    {
-      title: (
-        <>
-          <strong>Privacidade</strong> e <strong>segurança</strong>
-        </>
-      ),
-      text: (
-        <>
-          Dados <strong>criptografados</strong> e acesso{" "}
-          <strong>protegido</strong>. Você controla o que{" "}
-          <strong>compartilha</strong> e <strong>quando</strong>.
-        </>
-      ),
-      iconClass: "fa-solid fa-lock",
-    },
-    {
-      title: (
-        <>
-          <strong>Insights</strong> personalizados
-        </>
-      ),
-      text: (
-        <>
-          Transforme seus <strong>registros</strong> em{" "}
-          <strong>resultados</strong>: <strong>medidas</strong>,{" "}
-          <strong>gráficos</strong> e <strong>análises</strong> por{" "}
-          <strong>inteligência artificial</strong>.
-        </>
-      ),
-      iconClass: "fa-solid fa-lightbulb",
-    },
-    {
-      title: (
-        <>
-          <strong>Integração</strong> com <strong>profissionais</strong>
-        </>
-      ),
-      text: (
-        <>
-          Compartilhe seus <strong>resultados</strong> ou agende{" "}
-          <strong>reuniões</strong> e <strong>consultas</strong> com
-          profissionais e comprove sua <strong>evolução</strong>.
-        </>
-      ),
-      iconClass: "fa-solid fa-user-doctor",
-    },
-    {
-      title: (
-        <>
-          <strong>Preço</strong> justo
-        </>
-      ),
-      text: (
-        <>
-          Por um ano de <strong>alma4D</strong> você paga apenas{" "}
-          <strong>R$ 150,00</strong> no <strong>pix</strong> ou{" "}
-          <strong>parcelado</strong> no <strong>cartão de crédito</strong>.
-        </>
-      ),
-      iconClass: "fa-solid fa-medal",
-    },
-  ];
-
-  return (
-    <section className="mt-5">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {cards.map((c, idx) => (
-          <article
-            key={idx}
-            className="bg-white rounded-2xl border border-border shadow-sm p-5"
-          >
-            <i
-              className={`text-brand-secondary text-xl ${c.iconClass}`}
-              aria-hidden="true"
-            />
-
-            <h3 className="mt-3 font-bold text-brand">{c.title}</h3>
-
-            <p className="mt-1 text-sm text-slate-600 leading-relaxed">
-              {c.text}
-            </p>
-          </article>
-        ))}
-      </div>
-    </section>
-  );
-}
-
 /** ===================== UI: Inputs e botões ===================== */
 
 function Field({
@@ -536,7 +436,7 @@ export default function AtivacaoWizard() {
       if (!nomeCompleto.trim()) throw new Error("Informe seu nome completo.");
       if (!aceitouTermos)
         throw new Error("Você precisa aceitar os termos para continuar.");
-      
+
       const cpfDigits = onlyDigits(documento);
 
       if (!cpfDigits) throw new Error("Informe seu CPF para continuar.");
@@ -680,19 +580,85 @@ export default function AtivacaoWizard() {
             <div className="relative bg-white rounded-2rem border border-white/60 shadow-[0_25px_70px_rgba(3,8,112,0.10)] p-4 sm:p-6">
               {step === 2 && (
                 <div className="grid gap-6">
+                  {/* Título empolgante */}
                   <div>
                     <h2 className="text-xl sm:text-2xl font-extrabold text-brand">
-                      Por que comprar este aplicativo?
+                      Você tem pelo menos{" "}
+                      <span className="text-brand-secondary">5 razões</span>{" "}
+                      para comprar este aplicativo
                     </h2>
                     <p className="mt-2 text-sm text-slate-600">
-                      Uma experiência única de consciência e evolução pessoal.
+                      Um app criado para acompanhar sua evolução com clareza,
+                      segurança e inteligência.
                     </p>
                   </div>
 
-                  {/* ✅ Nova abordagem estável */}
-                  <VantagensGrid />
+                  {/* Lista numerada de benefícios */}
+                  <ol className="grid gap-4">
+                    <li className="flex gap-3">
+                      <span className="grid place-items-center h-9 w-9 min-w-2.25rem aspect-square rounded-full bg-brand-secondary text-white font-extrabold text-sm shadow-md">
+                        1
+                      </span>
+                      <p className="text-sm text-slate-700">
+                        <strong>Seu companheiro de jornada.</strong> Registre
+                        conquistas, acompanhe avanços e evolua passo a passo,
+                        com inteligência.
+                      </p>
+                    </li>
 
-                  <div className="flex items-center justify-between pt-1">
+                    <li className="flex gap-3">
+                      <span className="grid place-items-center h-9 w-9 min-w-2.25rem aspect-square rounded-full bg-brand-secondary text-white font-extrabold text-sm shadow-md">
+                        2
+                      </span>
+                      <p className="text-sm text-slate-700">
+                        <strong>Privacidade e segurança.</strong> Seus dados são
+                        criptografados e você decide o que compartilhar — e
+                        quando.
+                      </p>
+                    </li>
+
+                    <li className="flex gap-3">
+                      <span className="grid place-items-center h-9 w-9 min-w-2.25rem aspect-square rounded-full bg-brand-secondary text-white font-extrabold text-sm shadow-md">
+                        3
+                      </span>
+                      <p className="text-sm text-slate-700">
+                        <strong>Insights inteligentes.</strong> Gráficos,
+                        análises e métricas geradas para transformar registros
+                        em decisões.
+                      </p>
+                    </li>
+
+                    <li className="flex gap-3">
+                      <span className="grid place-items-center h-9 w-9 min-w-2.25rem aspect-square rounded-full bg-brand-secondary text-white font-extrabold text-sm shadow-md">
+                        4
+                      </span>
+                      <p className="text-sm text-slate-700">
+                        <strong>Integração com profissionais.</strong>{" "}
+                        Compartilhe resultados, comprove evolução e colabore com
+                        quem te acompanha.
+                      </p>
+                    </li>
+
+                    <li className="flex gap-3">
+                      <span className="grid place-items-center h-9 w-9 min-w-2.25rem aspect-square rounded-full bg-brand-secondary text-white font-extrabold text-sm shadow-md">
+                        5
+                      </span>
+
+                      <p className="text-sm text-slate-800">
+                        <strong className="text-brand-secondary">
+                          Preço justo.
+                        </strong>{" "}
+                        Um ano completo por{" "}
+                        <span className="inline-flex items-center gap-1 rounded-md bg-brand px-2 py-0.5 text-white font-extrabold">
+                          R$ 150
+                        </span>{" "}
+                        no Pix ou parcelado no cartão.
+                      </p>
+                    </li>
+                  </ol>
+
+                  {/* Rodapé + CTA */}
+                  <div className="flex items-center justify-between pt-2">
                     <span className="text-xs text-slate-500">
                       Origem: <span className="font-semibold">{origem}</span>
                       {campanha ? (
@@ -705,7 +671,7 @@ export default function AtivacaoWizard() {
                     </span>
 
                     <PrimaryButton onClick={() => setStep(3)}>
-                      Continuar
+                      Quero continuar
                     </PrimaryButton>
                   </div>
                 </div>
