@@ -652,7 +652,7 @@ export default function AtivacaoWizard() {
                         <span className="inline-flex items-center gap-1 rounded-md bg-brand px-2 py-0.5 text-white font-extrabold">
                           R$ 150
                         </span>{" "}
-                        no Pix ou parcelado no cartão.
+                        no Pix ou em até 5x parceladas no cartão.
                       </p>
                     </li>
                   </ol>
@@ -884,8 +884,7 @@ export default function AtivacaoWizard() {
                           Plano Premium (exemplo)
                         </p>
                         <p className="text-sm text-slate-600">
-                          Acesso completo + recursos avançados. Você poderá
-                          ajustar seu plano depois.
+                          Acesso completo + recursos avançados. Confirmado o pagamento você já terá acesso premium.
                         </p>
                       </div>
                     </div>
