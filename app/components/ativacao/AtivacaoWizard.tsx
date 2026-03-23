@@ -68,7 +68,16 @@ type UsuarioUpsertPayload = {
   aceitou_termos: boolean;
   premium_origem: "pagarme";
   tipo_plano?: string | null;
+  role?: "admin" | "cliente" | "gestor" | "usuario" | null;
+  data_inicio_plano?: string | null;
+  data_expiracao_plano?: string | null;
 };
+
+type UsuarioRole = "admin" | "cliente" | "gestor" | "usuario";
+
+function isUsuarioRole(v: unknown): v is UsuarioRole {
+  return v === "admin" || v === "cliente" || v === "gestor" || v === "usuario";
+}
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -128,6 +137,16 @@ function formatCPF(input: string) {
     .replace(/^(\d{3})(\d)/, "$1.$2")
     .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
     .replace(/^(\d{3})\.(\d{3})\.(\d{3})(\d)/, "$1.$2.$3-$4");
+}
+
+function addDaysISO(days: number) {
+  const now = new Date();
+  const d = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+  return d.toISOString();
+}
+
+function nowISO() {
+  return new Date().toISOString();
 }
 /** ===================== UI: Stepper compacto ===================== */
 
@@ -337,6 +356,9 @@ export default function AtivacaoWizard() {
   const origem = searchParams.get("origem") ?? "site";
   const campanha = searchParams.get("campanha") ?? "";
 
+  //modal termos de uso
+  const [showTerms, setShowTerms] = useState(false);
+
   // Começa na etapa 2 (vantagens) pois 1 (QR/CTA) já ocorreu.
   const [step, setStep] = useState<StepId>(2);
 
@@ -438,11 +460,57 @@ export default function AtivacaoWizard() {
         throw new Error("Você precisa aceitar os termos para continuar.");
 
       const cpfDigits = onlyDigits(documento);
-
       if (!cpfDigits) throw new Error("Informe seu CPF para continuar.");
       if (!isValidCPF(cpfDigits))
         throw new Error("CPF inválido. Verifique e tente novamente.");
 
+      // ✅ 1) Buscar usuário atual (para não resetar trial/premium)
+      const { data: existingUser, error: fetchErr } = await supabase
+        .from("usuarios")
+        .select(
+          "id, role, tipo_plano, data_inicio_plano, data_expiracao_plano, ativo",
+        )
+        .eq("id", userId)
+        .maybeSingle();
+
+      if (fetchErr) {
+        throw new Error(fetchErr.message);
+      }
+
+      // ✅ 2) Regra: garantir trial de 7 dias SOMENTE se necessário
+      // - Se não existe usuário: cria trial com expiração de 7 dias
+      // - Se existe e é trial mas expiracao é null: preenche expiração (sem resetar)
+      // - Se existe e não é trial: não mexe em datas do plano
+      const isNew = !existingUser;
+      const existingPlan = existingUser?.tipo_plano ?? null;
+      const existingExp = existingUser?.data_expiracao_plano ?? null;
+      const existingStart = existingUser?.data_inicio_plano ?? null;
+      const existingRoleRaw = existingUser?.role ?? null;
+
+      let roleToSave: UsuarioRole = "usuario";
+      if (isUsuarioRole(existingRoleRaw)) roleToSave = existingRoleRaw;
+
+      let planToSave: string | null = existingPlan;
+      let startToSave: string | null = existingStart
+        ? new Date(existingStart).toISOString()
+        : null;
+      let expToSave: string | null = existingExp
+        ? new Date(existingExp).toISOString()
+        : null;
+
+      if (isNew) {
+        planToSave = "trial";
+        startToSave = nowISO();
+        expToSave = addDaysISO(7);
+      } else if ((planToSave ?? "trial") === "trial") {
+        // usuário existe e é trial (ou veio null)
+        if (!startToSave) startToSave = nowISO();
+        if (!expToSave) expToSave = addDaysISO(7);
+        if (!planToSave) planToSave = "trial";
+      }
+      // se for premium/qualquer outro, não altera start/exp
+
+      // ✅ 3) Upsert final
       const payload: UsuarioUpsertPayload = {
         id: userId,
         telefone: normalizePhoneBR(phone) || null,
@@ -453,7 +521,12 @@ export default function AtivacaoWizard() {
         documento: cpfDigits || null,
         aceitou_termos: true,
         premium_origem: "pagarme",
-        tipo_plano: "trial",
+
+        // ✅ garante mínimos
+        role: roleToSave,
+        tipo_plano: planToSave,
+        data_inicio_plano: startToSave,
+        data_expiracao_plano: expToSave,
       };
 
       const { error } = await supabase.from("usuarios").upsert(payload, {
@@ -825,8 +898,17 @@ export default function AtivacaoWizard() {
                         onChange={(e) => setAceitouTermos(e.target.checked)}
                         className="mt-1"
                       />
+
                       <span className="text-sm text-slate-700">
-                        Li e aceito os termos de uso (obrigatório)
+                        Li e aceito os{" "}
+                        <button
+                          type="button"
+                          onClick={() => setShowTerms(true)}
+                          className="font-semibold text-brand underline"
+                        >
+                          Termos de Uso
+                        </button>
+                        .
                       </span>
                     </label>
 
@@ -884,7 +966,8 @@ export default function AtivacaoWizard() {
                           Plano Premium (exemplo)
                         </p>
                         <p className="text-sm text-slate-600">
-                          Acesso completo + recursos avançados. Confirmado o pagamento você já terá acesso premium.
+                          Acesso completo + recursos avançados. Confirmado o
+                          pagamento você já terá acesso premium.
                         </p>
                       </div>
                     </div>
@@ -917,6 +1000,30 @@ export default function AtivacaoWizard() {
                     Observação: confirme o pagamento no backend (webhook) antes
                     de liberar premium.
                   </p>
+                </div>
+              )}
+
+              {showTerms && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+                  <div className="bg-white w-full max-w-3xl h-[85vh] rounded-xl shadow-xl overflow-hidden">
+                    {/* Header */}
+                    <div className="flex items-center justify-between px-4 py-3 border-b">
+                      <h2 className="font-bold text-brand">Termos de Uso</h2>
+                      <button
+                        onClick={() => setShowTerms(false)}
+                        className="text-slate-500 hover:text-slate-700 text-sm font-semibold"
+                      >
+                        Fechar
+                      </button>
+                    </div>
+
+                    {/* Conteúdo */}
+                    <iframe
+                      src="/termos"
+                      title="Termos de Uso"
+                      className="w-full h-full border-0"
+                    />
+                  </div>
                 </div>
               )}
             </div>

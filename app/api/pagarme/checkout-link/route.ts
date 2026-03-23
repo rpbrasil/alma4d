@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 
 type PagarmePhone = {
   country_code: string;
@@ -276,6 +277,42 @@ export async function POST(req: Request) {
 
     const auth = Buffer.from(`${apiKey}:`).toString("base64");
 
+    const orderCode = `USR_${userId}`;
+
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    );
+
+    const { error: insertErr } = await supabase.from("payment_links").insert({
+      user_id: userId,
+      order_id: orderCode,
+      status: "pending",
+      amount: payload.cart_settings.items[0].amount,
+      payment_method:
+        payload.payment_settings.accepted_payment_methods.join(","),
+      product_name: payload.cart_settings.items[0].name,
+    });
+
+    if (insertErr) {
+      // erro interno sério → logar
+      await supabase.from("logs").insert({
+        source: "checkout-link",
+        level: "error",
+        user_id: userId,
+        message: {
+          stage: "create_payment_links_row",
+          error: insertErr.message,
+        },
+        metadata: { order_id: orderCode },
+      });
+
+      return NextResponse.json(
+        { ok: false, error: "Erro interno ao iniciar pagamento." },
+        { status: 500 },
+      );
+    }
+
     const resp = await fetch(endpoint, {
       method: "POST",
       headers: {
@@ -309,7 +346,29 @@ export async function POST(req: Request) {
         error: errObj.message ?? errObj.error,
         details: data,
       });
+      await supabase
+        .from("payment_links")
+        .update({
+          status: "error",
+          last_event: "pagarme_create_failed",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("order_id", orderCode);
 
+      // log relevante (1 linha, sem ruído)
+      await supabase.from("logs").insert({
+        source: "checkout-link",
+        level: "error",
+        user_id: userId,
+        message: {
+          stage: "pagarme_create_link",
+          error: errObj.message ?? errObj.error ?? "unknown",
+        },
+        metadata: {
+          order_id: orderCode,
+          pagarme_status: resp.status,
+        },
+      });
       return NextResponse.json(
         {
           ok: false,
@@ -332,7 +391,16 @@ export async function POST(req: Request) {
     log("info", requestId, "checkout link created", {
       url: okObj.url,
     });
-
+    await supabase
+      .from("payment_links")
+      .update({
+        payment_link_id: okObj.id,
+        payment_link_url: okObj.url,
+        status: "created",
+        last_event: "checkout_link_created",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("order_id", orderCode);
     return NextResponse.json({ ok: true, url: okObj.url });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Erro inesperado.";
