@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "../../../lib/supabase/clients";
+import { supabase } from "../../../lib/supabase/clients";
 import { ativarLivroAction } from "@/app/actions/ativar-livro";
 
 export default function ActivationForm() {
-  const supabase = createClient();
+  // const supabase = createClient();
 
   const [step, setStep] = useState(1); // 1: Telefone, 2: Código, 3: Perfil
   const [loading, setLoading] = useState(false);
@@ -22,6 +22,8 @@ export default function ActivationForm() {
     setLoading(true);
     setError(null);
     // Adicionamos o '+' internamente para o Supabase, mas removemos do input visual
+    if (!supabase)
+      throw new Error("Supabase client não inicializado (env vars ausentes).");
     const { error } = await supabase.auth.signInWithOtp({
       phone: `+${phone.replace(/\D/g, "")}`,
     });
@@ -41,6 +43,8 @@ export default function ActivationForm() {
 
     // Novamente, usamos o telefone formatado internamente
     const formattedPhone = `+${phone.replace(/\D/g, "")}`;
+    if (!supabase)
+      throw new Error("Supabase client não inicializado (env vars ausentes).");
     const { error } = await supabase.auth.verifyOtp({
       phone: formattedPhone,
       token,

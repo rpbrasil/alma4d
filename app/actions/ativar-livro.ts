@@ -1,10 +1,10 @@
 "use server";
 
-import { createClient } from "../../lib/supabase/server";
+import { createSupabaseServerClient } from "../../lib/supabase/server";
 import { revalidatePath } from "next/cache";
 
 export async function ativarLivroAction(formData: FormData) {
-  const supabase = await createClient();
+  const supabase = await createSupabaseServerClient();
 
   // 1. O Phone OTP já logou o usuário no Step 2, então pegamos o ID dele aqui:
   const {
