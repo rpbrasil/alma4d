@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
 
-type PaymentMethod = "credit_card" | "pix" | "boleto";
-
 type PagarmePhone = {
   country_code: string;
   area_code: string;
@@ -26,28 +24,20 @@ type PaymentLinkRequest = {
   order_code?: string;
   type: "order" | "subscription";
   payment_settings: {
-    accepted_payment_methods: PaymentMethod[];
-    statement_descriptor?: string;
-    credit_card_settings?: {
-      operation_type: "auth_and_capture" | "auth_only";
-      delay_to_capture?: number;
-      installments?: Array<{ number: number; total: number }>;
-      installments_setup?: {
-        max_installments?: number;
-        amount?: number;
-        interest_type?: "simple";
-        interest_rate?: number;
-        customer_fee?: boolean;
-        free_installments?: number;
-        brand?: string;
-      };
+    accepted_payment_methods: ["credit_card", "pix"];
+    statement_descriptor: "ALMA4D";
+    credit_card_settings: {
+      operation_type: "auth_and_capture";
+      installments: [
+        { number: 1; total: 15000 },
+        { number: 2; total: 15000 },
+        { number: 3; total: 15000 },
+        { number: 4; total: 15000 },
+        { number: 5; total: 15000 },
+      ];
     };
-    pix_settings?: {
-      expires_in?: number;
-      expires_at?: string;
-      discount?: number;
-      discount_percentage?: number;
-      additiona_information?: Record<string, string>;
+    pix_settings: {
+      expires_in: 1800;
     };
   };
   customer_settings?: {
@@ -84,6 +74,8 @@ type CheckoutLinkBody = {
   tipo_plano: string | null;
 };
 
+/* ===================== helpers ===================== */
+
 function onlyDigits(v: string) {
   return v.replace(/\D/g, "");
 }
@@ -117,10 +109,36 @@ function parseMobileBR(e164: string | null) {
   } satisfies PagarmePhone;
 }
 
+function mask(value: string | null | undefined, visible = 3) {
+  if (!value) return value;
+  if (value.length <= visible * 2) return "***";
+  return value.slice(0, visible) + "***" + value.slice(value.length - visible);
+}
+
+function log(
+  level: "info" | "warn" | "error",
+  requestId: string,
+  message: string,
+  data?: unknown,
+) {
+  const prefix = `[checkout-link:${requestId}]`;
+  if (data !== undefined) {
+    console[level](`${prefix} ${message}`, data);
+  } else {
+    console[level](`${prefix} ${message}`);
+  }
+}
+
+/* ===================== handler ===================== */
+
 export async function POST(req: Request) {
+  const requestId = crypto.randomUUID();
+  log("info", requestId, "request started");
+
   try {
     const bodyUnknown: unknown = await req.json();
     if (!bodyUnknown || typeof bodyUnknown !== "object") {
+      log("warn", requestId, "invalid body");
       return NextResponse.json(
         { ok: false, error: "Body inválido." },
         { status: 400 },
@@ -129,8 +147,15 @@ export async function POST(req: Request) {
 
     const body = bodyUnknown as Partial<CheckoutLinkBody>;
 
+    log("info", requestId, "body received", {
+      userId: body.userId,
+      origem: body.origem,
+      campanha: body.campanha,
+    });
+
     const apiKey = process.env.PAGARME_API_KEY;
     if (!apiKey) {
+      log("error", requestId, "missing PAGARME_API_KEY");
       return NextResponse.json(
         { ok: false, error: "PAGARME_SECRET_KEY ausente." },
         { status: 500 },
@@ -143,31 +168,57 @@ export async function POST(req: Request) {
     const telefone = body.telefone ? String(body.telefone).trim() : null;
     const cpf = onlyDigits(String(body.documento ?? ""));
 
-    if (!userId)
+    if (!userId) {
+      log("warn", requestId, "missing userId");
       return NextResponse.json(
         { ok: false, error: "userId é obrigatório." },
         { status: 400 },
       );
-    if (!name)
+    }
+
+    if (!name) {
+      log("warn", requestId, "missing nome_completo", { userId });
       return NextResponse.json(
         { ok: false, error: "nome_completo é obrigatório." },
         { status: 400 },
       );
-    if (!cpf)
+    }
+
+    if (!cpf) {
+      log("warn", requestId, "missing CPF", { userId });
       return NextResponse.json(
         { ok: false, error: "CPF é obrigatório." },
         { status: 400 },
       );
-    if (!isValidCPF(cpf))
+    }
+
+    if (!isValidCPF(cpf)) {
+      log("warn", requestId, "invalid CPF", {
+        userId,
+        cpf: mask(cpf),
+      });
       return NextResponse.json(
         { ok: false, error: "CPF inválido." },
         { status: 400 },
       );
+    }
+
+    log("info", requestId, "validation passed", {
+      userId,
+      email: mask(email),
+      telefone: mask(telefone),
+      cpf: mask(cpf),
+    });
 
     const isTestKey = apiKey.startsWith("sk_test");
     const endpoint = isTestKey
       ? "https://sdx-api.pagar.me/core/v5/paymentlinks"
       : "https://api.pagar.me/core/v5/paymentlinks";
+
+    log("info", requestId, "using endpoint", {
+      env: isTestKey ? "test" : "production",
+      endpoint,
+    });
 
     const mobile = parseMobileBR(telefone);
 
@@ -181,7 +232,13 @@ export async function POST(req: Request) {
         statement_descriptor: "ALMA4D",
         credit_card_settings: {
           operation_type: "auth_and_capture",
-          installments_setup: { max_installments: 1 },
+          installments: [
+            { number: 1, total: 15000 },
+            { number: 2, total: 15000 },
+            { number: 3, total: 15000 },
+            { number: 4, total: 15000 },
+            { number: 5, total: 15000 },
+          ],
         },
         pix_settings: {
           expires_in: 1800,
@@ -211,6 +268,12 @@ export async function POST(req: Request) {
       },
     };
 
+    log("info", requestId, "payload prepared", {
+      order_code: payload.order_code,
+      payment_methods: payload.payment_settings.accepted_payment_methods,
+      amount: payload.cart_settings.items[0].amount,
+    });
+
     const auth = Buffer.from(`${apiKey}:`).toString("base64");
 
     const resp = await fetch(endpoint, {
@@ -220,6 +283,11 @@ export async function POST(req: Request) {
         Authorization: `Basic ${auth}`,
       },
       body: JSON.stringify(payload),
+    });
+
+    log("info", requestId, "pagarme response", {
+      status: resp.status,
+      ok: resp.ok,
     });
 
     const raw = await resp.text();
@@ -235,6 +303,13 @@ export async function POST(req: Request) {
         data && typeof data === "object"
           ? (data as PaymentLinkResponseError)
           : {};
+
+      log("error", requestId, "pagarme error", {
+        status: resp.status,
+        error: errObj.message ?? errObj.error,
+        details: data,
+      });
+
       return NextResponse.json(
         {
           ok: false,
@@ -247,15 +322,23 @@ export async function POST(req: Request) {
 
     const okObj = data as Partial<PaymentLinkResponseOk>;
     if (!okObj.url) {
+      log("error", requestId, "missing url in pagarme response", data);
       return NextResponse.json(
         { ok: false, error: "Resposta do Pagar.me sem 'url'.", details: data },
         { status: 500 },
       );
     }
 
+    log("info", requestId, "checkout link created", {
+      url: okObj.url,
+    });
+
     return NextResponse.json({ ok: true, url: okObj.url });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Erro inesperado.";
+    log("error", requestId, "unexpected error", { msg });
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });
+  } finally {
+    log("info", requestId, "request finished");
   }
 }
