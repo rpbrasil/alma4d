@@ -9,16 +9,16 @@ export default function Contato() {
       <form className="max-w-md flex flex-col gap-4">
         <input
           type="text"
-          placeholder="Seu nome"
+          placeholder="Nome"
           className="border px-4 py-2 rounded"
         />
         <input
           type="email"
-          placeholder="Seu e-mail"
+          placeholder="e-mail"
           className="border px-4 py-2 rounded"
         />
         <textarea
-          placeholder="Sua mensagem"
+          placeholder="Mensagem"
           className="border px-4 py-2 rounded h-32"
         />
         <button className="bg-blue-700 text-white px-4 py-2 rounded hover:bg-blue-800">
