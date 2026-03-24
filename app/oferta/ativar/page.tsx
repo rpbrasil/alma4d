@@ -1,4 +1,4 @@
-//export const dynamic = "force-dynamic";
+export const dynamic = "force-dynamic";
 
 import AtivacaoWizardWrapper from "../../components/ativacao/AtivacaoWizardWrapper";
 
