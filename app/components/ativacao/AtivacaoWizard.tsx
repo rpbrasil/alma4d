@@ -36,10 +36,6 @@ type Step = { id: StepId; name: string; desc: string; status: StepStatus };
 
 type Sexo = "" | "M" | "F";
 
-type CheckoutResponse =
-  | { ok: true; url: string }
-  | { ok: false; error: string };
-
 type UsuarioUpsertPayload = {
   id: string;
   telefone: string | null;
