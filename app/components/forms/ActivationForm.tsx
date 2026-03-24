@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { supabase } from "../../../lib/supabase/clients";
+import { supabase } from "../../lib/supabase/clients";
 import { ativarLivroAction } from "@/app/actions/ativar-livro";
 
 export default function ActivationForm() {
