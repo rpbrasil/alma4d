@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { supabase } from "../../lib/supabase/clients";
-import { ativarLivroAction } from "@/app/actions/ativar-livro";
 
 export default function ActivationForm() {
   // const supabase = createClient();
@@ -61,16 +60,66 @@ export default function ActivationForm() {
     setLoading(true);
     setError(null);
 
-    // Enviamos o telefone original formatado para a Action
-    formData.append("telefone", `+${phone.replace(/\D/g, "")}`);
+    try {
+      // pegar access_token do Supabase (client)
 
-    const result = await ativarLivroAction(formData);
+      if (!supabase) {
+        setError("Supabase client não inicializado.");
+        setLoading(false);
+        return;
+      }
+      const { data: sessionData, error: sessErr } =
+        await supabase.auth.getSession();
+      if (sessErr || !sessionData?.session?.access_token) {
+        throw new Error("Sessão expirada. Refaça o login por SMS.");
+      }
+      const accessToken = sessionData.session.access_token;
 
-    if (result.success && result.redirectUrl) {
-      // Redireciona para o checkout do Pagar.me
-      window.location.href = result.redirectUrl;
-    } else {
-      setError(result.message || null);
+      // montar payload JSON a partir do formData
+      const payload = {
+        nome_completo: formData.get("nome_completo"),
+        email: formData.get("email"),
+        documento: formData.get("documento"),
+        sexo: formData.get("sexo"),
+        peso_kg: formData.get("peso_kg"),
+        altura_cm: formData.get("altura_cm"),
+        telefone: `+${phone.replace(/\D/g, "")}`,
+      };
+
+      const res = await fetch(
+        "https://smartbeqv-afbbchhbb0hgardj.brazilsouth-01.azurewebsites.net/api/ativar_livro",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify(payload),
+        },
+      );
+
+      const json = await res.json().catch(() => null);
+
+      if (!res.ok || !json?.success) {
+        throw new Error(json?.message || "Erro ao finalizar cadastro.");
+      }
+
+      if (json.redirectUrl) {
+        window.location.href = json.redirectUrl;
+        return;
+      }
+
+      setError(
+        "Cadastro salvo, mas não foi possível gerar o link de pagamento.",
+      );
+    } catch (e: unknown) {
+      if (e instanceof Error) {
+        setError(e.message);
+      } else {
+        setError("Erro inesperado ao finalizar cadastro.");
+      }
+    }
+    finally {
       setLoading(false);
     }
   }
