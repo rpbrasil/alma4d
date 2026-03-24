@@ -1,7 +1,10 @@
-export const dynamic = "force-dynamic";
+import dynamic from "next/dynamic";
 
-import AtivacaoWizardWrapper from "../../components/ativacao/AtivacaoWizardWrapper";
+const AtivacaoWizardWrapper = dynamic(
+  () => import("@/app/components/ativacao/AtivacaoWizardWrapper"),
+  { ssr: false },
+);
 
-export default function AtivarPage() {
+export default function Page() {
   return <AtivacaoWizardWrapper />;
 }
