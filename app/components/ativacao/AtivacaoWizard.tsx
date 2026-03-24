@@ -36,17 +36,6 @@ type Step = { id: StepId; name: string; desc: string; status: StepStatus };
 
 type Sexo = "" | "M" | "F";
 
-type CheckoutBody = {
-  userId: string;
-  nome_completo?: string | null;
-  telefone?: string | null;
-  email?: string | null;
-  documento?: string | null;
-  origem?: string | null;
-  campanha?: string | null;
-  tipo_plano?: string | null;
-};
-
 type CheckoutResponse =
   | { ok: true; url: string }
   | { ok: false; error: string };
@@ -537,14 +526,6 @@ export default function AtivacaoWizard() {
     } finally {
       setProfileLoading(false);
     }
-  }
-
-  function isCheckoutResponse(data: unknown): data is CheckoutResponse {
-    if (!data || typeof data !== "object") return false;
-    const obj = data as Record<string, unknown>;
-    if (obj.ok === true && typeof obj.url === "string") return true;
-    if (obj.ok === false && typeof obj.error === "string") return true;
-    return false;
   }
 
   async function goToPayment() {

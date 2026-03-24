@@ -1,7 +1,7 @@
 //export const dynamic = "force-dynamic";
 
-import AtivacaoWizard from "../../components/ativacao/AtivacaoWizard";
+import AtivacaoWizardWrapper from "../../components/ativacao/AtivacaoWizardWrapper";
 
 export default function AtivarPage() {
-  return <AtivacaoWizard />;
+  return <AtivacaoWizardWrapper />;
 }
