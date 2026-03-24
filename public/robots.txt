@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://SEU_DOMINIO.com/sitemap.xml

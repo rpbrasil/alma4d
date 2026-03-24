@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+
+  <url>
+    <loc>https://alma4d.com.br/</loc>
+    <priority>1.0</priority>
+  </url>
+
+  <url>
+    <loc>https://alma4d.com.br/metodo</loc>
+    <priority>0.9</priority>
+  </url>
+
+  <url>
+    <loc>https://alma4d.com.br/livro</loc>
+    <priority>0.8</priority>
+  </url>
+
+  <url>
+    <loc>https://alma4d.com.br/app</loc>
+    <priority>0.8</priority>
+  </url>
+
+  <url>
+    <loc>https://alma4d.com.br/download</loc>
+    <priority>0.6</priority>
+  </url>
+
+  <url>
+    <loc>https://SEU_DOMINIO.com/oferta/ativar</loc>
+    <priority>1.0</priority>
+  </url>
+
+  <url>
+    <loc>https://SEU_DOMINIO.com/privacidade</loc>
+    <priority>0.4</priority>
+  </url>
+<url>
+    <loc>https://SEU_DOMINIO.com/termos</loc>
+    <priority>0.4</priority>
+  </url>
+</urlset>
