@@ -1,9 +1,6 @@
-import dynamic from "next/dynamic";
+"use client";
 
-const AtivacaoWizardWrapper = dynamic(
-  () => import("@/app/components/ativacao/AtivacaoWizardWrapper"),
-  { ssr: false },
-);
+import AtivacaoWizardWrapper from "@/app/components/ativacao/AtivacaoWizardWrapper";
 
 export default function Page() {
   return <AtivacaoWizardWrapper />;
