@@ -18,12 +18,6 @@ import {
   faLightbulb,
 } from "@fortawesome/free-solid-svg-icons";
 
-/**
- * Supabase client (Phone OTP no client usa anon key pública).
- * Certifique-se que essas env vars existem:
- * - NEXT_PUBLIC_SUPABASE_URL
- * - NEXT_PUBLIC_SUPABASE_ANON_KEY
- */
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -560,39 +554,51 @@ export default function AtivacaoWizard() {
     try {
       if (!userId) throw new Error("Sessão inválida. Refaça a validação.");
 
-      const body: CheckoutBody = {
-        userId,
+      const body = {
+        user_id: userId,
+
+        // ✅ parâmetros financeiros (batem com a Function)
+        amount: 15000, // R$ 150,00
+        max_installments: 5,
+        free_installments: 5,
+        customer_fee: false,
+
+        // ✅ metadados
+        product_id: "premium_annual",
+        product_name: "BEQV Premium Anual",
+        statement_descriptor: "ALMA4D",
+
+        // ✅ contexto do wizard
         telefone: normalizePhoneBR(phone) || null,
         email: email.trim() || null,
         nome_completo: nomeCompleto.trim() || null,
         documento: onlyDigits(documento) || null,
         origem,
         campanha: campanha || null,
-        tipo_plano: "premium",
       };
 
-      const res = await fetch("/api/pagarme/checkout-link", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-
-      const json: unknown = await res.json().catch(() => null);
-
-      if (!isCheckoutResponse(json)) {
-        throw new Error("Resposta inválida do servidor de checkout.");
-      }
-
-      if (json.ok === false) {
-        throw new Error(json.error);
-      }
+      const res = await fetch(
+        "https://smartbeqv-XXXXX.azurewebsites.net/api/createpaymentlink",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        },
+      );
 
       if (!res.ok) {
-        // Mesmo ok=false já teria lançado acima, mas mantém robustez
-        throw new Error("Falha ao criar checkout.");
+        const txt = await res.text();
+        throw new Error(`Erro ao criar link (${res.status}): ${txt}`);
       }
 
-      window.location.href = json.url;
+      const json = await res.json();
+
+      if (!json?.link_url) {
+        throw new Error("Resposta inválida do servidor de pagamento.");
+      }
+
+      // ✅ redireciona para o checkout Pagar.me
+      window.location.href = json.link_url;
     } catch (e: unknown) {
       setPayError(getErrorMessage(e, "Não foi possível iniciar o pagamento."));
     } finally {
