@@ -44,3 +44,4 @@ jobs:
           action: "close"
           app_location: "/"
           output_location: ".next"
+          skip_api_build: true
