@@ -137,8 +137,8 @@ export function Header() {
 
             {/* Se quiser reativar depois */}
 
-            <NavLink href="/oferta/ativar" onClick={() => setOpen(false)}>
-              Oferta
+            <NavLink href="/contato" onClick={() => setOpen(false)}>
+              Contato
             </NavLink>
 
             <Link
