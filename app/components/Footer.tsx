@@ -32,7 +32,7 @@ export function Footer() {
             </Link>
           </nav>
         </div>
-        <div className="mt-6 border-t border-border pt-4 text-xs text-foreground/50">
+        <div className="mt-6 border-t border-border pt-4 text-xs text-foreground/50 text-center">
           Construído com propósito · Voss Tecnologia · Brasil
         </div>
       </div>
