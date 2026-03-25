@@ -1,5 +1,4 @@
 import "./globals.css";
-import type { ReactNode } from "react";
 import { Header } from "./components/Header";
 import { Footer } from "./components/Footer";
 import { config } from "@fortawesome/fontawesome-svg-core";
@@ -22,7 +21,7 @@ export default function RootLayout({
     <html lang="pt-BR">
       <body>
         <Header />
-        {children}
+        <main className="flex-1 max-w-5xl mx-auto px-6 mt-12">{children}</main>
         <Footer />
       </body>
     </html>

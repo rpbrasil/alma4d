@@ -88,7 +88,53 @@ export default function MetodoPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
       />
+      {/* ================= HERO ================= */}
+      <section className="grid lg:grid-cols-2 gap-12 items-center">
+        {/* Texto */}
+        <div className="flex flex-col gap-6">
+          <h1 className="text-4xl sm:text-5xl font-bold text-brand">alma4D</h1>
 
+          <p className="text-xl text-foreground/80 leading-relaxed">
+            Um método vivo que une <strong>conhecimento</strong> e{" "}
+            <strong>tecnologia</strong>.
+          </p>
+
+          <p className="text-foreground/70 leading-relaxed">
+            O livro estrutura o pensamento. <br />O aplicativo transforma esse
+            conteúdo em prática contínua.
+          </p>
+
+          <div className="flex flex-wrap gap-4 pt-4">
+            <Link
+              href="/metodo"
+              className="inline-flex items-center justify-center rounded-md bg-brand px-6 py-3 text-white font-semibold hover:bg-brand/90 transition-colors"
+            >
+              Conhecer o Método
+            </Link>
+
+            <Link
+              href="/download"
+              className="inline-flex items-center justify-center rounded-md border border-border px-6 py-3 font-semibold hover:bg-surface-muted transition-colors"
+            >
+              Baixar o App
+            </Link>
+          </div>
+        </div>
+
+        {/* Mídia */}
+        <div className="w-screen max-w-none mx-[calc(50%-50vw)] sm:w-full sm:mx-0">
+          <div className="relative w-full aspect-2/1 bg-surface-muted">
+            <Image
+              src="/images/alma4d-sinergia-1200.png"
+              alt="Infográfico do método alma4D"
+              fill
+              sizes="100vw"
+              className="object-contain"
+              priority
+            />
+          </div>
+        </div>
+      </section>
       {/* ================= HERO ================= */}
       <section className="flex flex-col gap-6 max-w-3xl">
         <h1 className="text-4xl sm:text-5xl font-bold text-brand">

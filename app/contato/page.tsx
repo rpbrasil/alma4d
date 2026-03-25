@@ -57,13 +57,17 @@ export default function Contato() {
   }
 
   return (
-    <section className="max-w-xl">
+    <section className="max-w-xl mx-auto text-center">
       <h2 className="text-3xl font-bold text-blue-700 mb-2">Contato</h2>
+
       <p className="text-gray-700 mb-6">
         Envie uma mensagem para nossa equipe.
       </p>
 
-      <form onSubmit={onSubmit} className="max-w-md flex flex-col gap-4">
+      <form
+        onSubmit={onSubmit}
+        className="max-w-md mx-auto flex flex-col gap-4 text-left"
+      >
         <input
           name="nome"
           type="text"
@@ -91,10 +95,10 @@ export default function Contato() {
           type="submit"
           disabled={sending}
           className="
-            text-white px-4 py-2 rounded font-semibold transition
-            disabled:opacity-60 disabled:cursor-not-allowed
-            focus:outline-none focus:ring-2 focus:ring-[#019499]/40
-          "
+          text-white px-4 py-2 rounded font-semibold transition
+          disabled:opacity-60 disabled:cursor-not-allowed
+          focus:outline-none focus:ring-2 focus:ring-[#019499]/40
+        "
           style={{ backgroundColor: "#019499" }}
           onMouseOver={(e) => {
             if (!sending) e.currentTarget.style.backgroundColor = "#017f83";
@@ -110,8 +114,8 @@ export default function Contato() {
           <p
             className={
               status === "ok"
-                ? "text-sm text-emerald-700"
-                : "text-sm text-red-700"
+                ? "text-sm text-emerald-700 text-center"
+                : "text-sm text-red-700 text-center"
             }
             role="status"
           >
