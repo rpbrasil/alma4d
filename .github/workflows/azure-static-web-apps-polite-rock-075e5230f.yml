@@ -13,8 +13,10 @@ jobs:
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
       NEXT_PUBLIC_SITE_URL: "https://alma4d.com.br"
+
     steps:
       - uses: actions/checkout@v4
+
       - name: Build And Deploy
         uses: Azure/static-web-apps-deploy@v1
         with:
@@ -22,5 +24,7 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: "upload"
           app_location: "/"
-          output_location: ".next"
+          api_location: ""
+          app_build_command: "npm ci && npm run build"
+          output_location: "out"
           skip_api_build: true
