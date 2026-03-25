@@ -61,7 +61,7 @@ export default function AppPage() {
           <h2 className="text-3xl font-bold">Versões do Aplicativo</h2>
           <p className="text-foreground/70">
             No melhor conceito de ecossistema, o aplicativo contempla todos os
-            componentes e tem versões para todos: indivíduos, profissionais e
+            componentes e tem versões para: indivíduos, profissionais e
             empresas.
           </p>
         </div>

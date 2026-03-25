@@ -57,7 +57,7 @@ export default function Contato() {
   }
 
   return (
-    <section className="max-w-xl mx-auto text-center">
+    <section className="max-w-xl mx-auto text-center min-h-full flex flex-col justify-center">
       <h2 className="text-3xl font-bold text-blue-700 mb-2">Contato</h2>
 
       <p className="text-gray-700 mb-6">
@@ -97,8 +97,7 @@ export default function Contato() {
           className="
           text-white px-4 py-2 rounded font-semibold transition
           disabled:opacity-60 disabled:cursor-not-allowed
-          focus:outline-none focus:ring-2 focus:ring-[#019499]/40
-        "
+          focus:outline-none focus:ring-2 focus:ring-[#019499]/40"
           style={{ backgroundColor: "#019499" }}
           onMouseOver={(e) => {
             if (!sending) e.currentTarget.style.backgroundColor = "#017f83";
