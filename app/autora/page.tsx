@@ -121,13 +121,13 @@ export default function AutoraPage() {
         <div className="grid md:grid-cols-2 gap-8">
           <div className="rounded-xl bg-surface-muted p-6">
             <p className="text-foreground/70 leading-relaxed">
-              O livro<strong>Arquitetura Viva</strong> nasce do princípio de que o bem-estar é uma construção consciente. Um caminho onde corpo, emoções, mente e propósito se integram ao cotidiano.
+              O livro <strong>Arquitetura Viva</strong> nasce do princípio de que o bem-estar é uma construção consciente. Um caminho onde corpo, emoções, mente e propósito se integram ao cotidiano.
             </p>
           </div>
 
           <div className="rounded-xl bg-surface-muted p-6">
             <p className="text-foreground/70 leading-relaxed">
-              Aqui, o autocuidado deixa de ser teoria e passa a estar nas mãos
+              Aqui o autocuidado deixa de ser teoria e passa a estar nas mãos
               do leitor — como prática simples, viva e possível.
             </p>
           </div>

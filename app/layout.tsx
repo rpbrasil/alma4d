@@ -13,12 +13,16 @@ export const metadata = {
   metadataBase: new URL("https://alma4d.com.br"),
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="pt-BR">
-      <body className="bg-background text-foreground flex flex-col min-h-screen">
+      <body>
         <Header />
-        <main className="flex-1 max-w-5xl mx-auto px-6 py-10">{children}</main>
+        {children}
         <Footer />
       </body>
     </html>

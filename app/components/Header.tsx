@@ -16,7 +16,8 @@ function NavLink({
   onClick?: () => void;
 }) {
   const pathname = usePathname();
-  const active = pathname === href;
+
+  const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
 
   return (
     <Link
@@ -26,6 +27,7 @@ function NavLink({
         "text-sm font-medium transition-colors",
         active ? "text-brand-secondary" : "hover:text-brand-secondary",
       ].join(" ")}
+      aria-current={active ? "page" : undefined}
     >
       {children}
     </Link>
@@ -71,7 +73,7 @@ export function Header() {
 
           {/* Se quiser reativar depois */}
 
-          <NavLink href="/oferta/ativar">Oferta</NavLink>
+          <NavLink href="/contato">Contato</NavLink>
 
           <Link
             href="/download"

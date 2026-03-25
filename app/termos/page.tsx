@@ -7,12 +7,11 @@ export default function TermosPage() {
   return (
     <main className="max-w-3xl mx-auto px-4 py-10">
       {/* Header */}
-      <header className="mb-8 flex items-center justify-between gap-4">
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-brand">
-          Termos de Uso
-        </h1>
-        {/* Se quiser, pode colocar o logo aqui */}
-      </header>
+
+      <h1 className="text-2xl sm:text-3xl font-extrabold text-brand">
+        Termos de Uso
+      </h1>
+      {/* Se quiser, pode colocar o logo aqui */}
 
       {/* Card base */}
       <section className="space-y-6 text-slate-700 text-sm leading-relaxed">

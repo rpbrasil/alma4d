@@ -27,16 +27,19 @@
   </url>
 
   <url>
-    <loc>https://SEU_DOMINIO.com/oferta/ativar</loc>
+    <loc>https://alma4d.com.br/oferta/ativar</loc>
     <priority>1.0</priority>
   </url>
-
+<url>
+    <loc>https://alma4d.com.br/contato</loc>
+    <priority>0.5</priority>
+  </url>
   <url>
-    <loc>https://SEU_DOMINIO.com/privacidade</loc>
+    <loc>https://alma4d.com.br/privacidade</loc>
     <priority>0.4</priority>
   </url>
 <url>
-    <loc>https://SEU_DOMINIO.com/termos</loc>
+    <loc>https://alma4d.com.br/termos</loc>
     <priority>0.4</priority>
   </url>
 </urlset>

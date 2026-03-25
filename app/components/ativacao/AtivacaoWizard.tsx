@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 
@@ -365,6 +365,23 @@ export default function AtivacaoWizard() {
   // Pagamento
   const [payLoading, setPayLoading] = useState(false);
   const [payError, setPayError] = useState<string | null>(null);
+
+  const phoneRef = useRef<HTMLInputElement | null>(null);
+  const otpRef = useRef<HTMLInputElement | null>(null);
+
+  // foca o telefone ao entrar na etapa 3
+  useEffect(() => {
+    if (step === 3) {
+      phoneRef.current?.focus();
+    }
+  }, [step]);
+
+  // foca o OTP assim que enviar o código (quando aparecer o input)
+  useEffect(() => {
+    if (step === 3 && otpSent) {
+      otpRef.current?.focus();
+    }
+  }, [step, otpSent]);
 
   async function sendOtp() {
     setOtpError(null);
@@ -747,9 +764,14 @@ export default function AtivacaoWizard() {
                   <div className="grid gap-4">
                     <Field label="Telefone (WhatsApp/SMS)">
                       <input
+                        ref={phoneRef}
                         value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
-                        placeholder="+55 11 99999-9999"
+                        onChange={(e) => setPhone(onlyDigits(e.target.value))}
+                        placeholder="55 11 99999 9999"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        autoComplete="tel"
+                        enterKeyHint={!otpSent ? "send" : "next"}
                         className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-brand/10"
                       />
                     </Field>
@@ -757,9 +779,16 @@ export default function AtivacaoWizard() {
                     {otpSent && (
                       <Field label="Código recebido (OTP)">
                         <input
+                          ref={otpRef}
                           value={otp}
-                          onChange={(e) => setOtp(e.target.value)}
+                          onChange={(e) =>
+                            setOtp(onlyDigits(e.target.value).slice(0, 6))
+                          }
                           placeholder="Digite o código"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          autoComplete="one-time-code"
+                          enterKeyHint="done"
                           className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm tracking-widest outline-none focus:ring-4 focus:ring-brand/10"
                         />
                       </Field>
