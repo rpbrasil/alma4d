@@ -572,7 +572,7 @@ export default function AtivacaoWizard() {
       };
 
       const res = await fetch(
-        "https://smartbeqv-XXXXX.azurewebsites.net/api/createpaymentlink",
+        "https://smartbeqv-afbbchhbb0hgardj.brazilsouth-01.azurewebsites.net/api/createpaymentlink",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -1009,8 +1009,7 @@ export default function AtivacaoWizard() {
                   </div>
 
                   <p className="text-xs text-slate-500">
-                    Observação: confirme o pagamento no backend (webhook) antes
-                    de liberar premium.
+                    Atenção: assim que confirmarmos seu pagamento você terá os serviços premium liberados.
                   </p>
                 </div>
               )}
