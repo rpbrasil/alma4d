@@ -3,18 +3,18 @@ import Image from "next/image";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "O Livro Arquitetura Viva — Base conceitual do método",
+  title: "O Livro alma4D — Base conceitual do método",
   description:
-    "O livro Arquitetura Viva apresenta os fundamentos conceituais que estruturam todo o método e sustentam o aplicativo.",
+    "O livro alma4D apresenta os fundamentos conceituais que estruturam todo o método e sustentam o aplicativo.",
   keywords: [
     "alma4D",
     "método alma4D",
-    "livro Arquitetura Viva",
+    "livro alma4D",
     "conhecimento e tecnologia",
     "método conceitual",
   ],
   openGraph: {
-    title: "O Livro Arquitetura Viva",
+    title: "O Livro alma4D",
     description:
       "A base conceitual de todo o método, integrando pensamento e prática.",
     type: "website",
@@ -31,7 +31,7 @@ export default function LivroPage() {
       <section className="grid lg:grid-cols-2 gap-12 items-center">
         <div className="flex flex-col gap-6">
           <h1 className="text-4xl sm:text-5xl font-bold text-brand">
-            O Livro Arquitetura Viva
+            O Livro alma4D
           </h1>
 
           <p className="text-xl text-foreground/80">

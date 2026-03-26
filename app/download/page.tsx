@@ -45,7 +45,7 @@ export default function DownloadPage() {
       </div>
 
       <p className="text-foreground/70">
-        Escolha sua plataforma preferida para acessar o livro Arquitetura Viva na Amazon.
+        Escolha sua plataforma preferida para acessar o livro alma4D na Amazon.
       </p>
       <div className="pt-2">
         <a
