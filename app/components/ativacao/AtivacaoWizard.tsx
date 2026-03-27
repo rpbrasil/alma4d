@@ -559,8 +559,8 @@ export default function AtivacaoWizard() {
 
         // ✅ metadados
         product_id: "premium_annual",
-        product_name: "BEQV Premium Anual",
-        statement_descriptor: "ALMA4D",
+        product_name: "alma4D Premium Anual",
+        statement_descriptor: "alma4D",
 
         // ✅ contexto do wizard
         telefone: normalizePhoneBR(phone) || null,
