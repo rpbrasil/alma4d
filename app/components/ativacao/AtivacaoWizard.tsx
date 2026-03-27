@@ -550,23 +550,14 @@ export default function AtivacaoWizard() {
 
       const body = {
         user_id: userId,
-
-        // ✅ parâmetros financeiros (batem com a Function)
-        amount: 15000, // R$ 150,00
-        max_installments: 5,
-        free_installments: 5,
-        customer_fee: false,
-
-        // ✅ metadados
         product_id: "premium_annual",
-        product_name: "alma4D Premium Anual",
-        statement_descriptor: "alma4D",
-
-        // ✅ contexto do wizard
+        // opcionais: apenas contexto e fallback
         telefone: normalizePhoneBR(phone) || null,
         email: email.trim() || null,
         nome_completo: nomeCompleto.trim() || null,
         documento: onlyDigits(documento) || null,
+        sexo: sexo || null,
+        data_nascimento: dataNascimento || null,
         origem,
         campanha: campanha || null,
       };
