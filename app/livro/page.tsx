@@ -31,7 +31,7 @@ export default function LivroPage() {
       <section className="grid lg:grid-cols-2 gap-12 items-center">
         <div className="flex flex-col gap-6">
           <h1 className="text-4xl sm:text-5xl font-bold text-brand">
-            O Livro Arquitetura Viva
+            Arquitetura Viva do Autocuidado
           </h1>
 
           <p className="text-xl text-foreground/80">
@@ -88,17 +88,18 @@ export default function LivroPage() {
           </div>
         </div>
 
-        {/* NÃO MEXER NO VÍDEO (como você pediu) */}
-        <div className="aspect-3/4 bg-surface-muted rounded-xl flex items-center justify-center text-foreground/50">
-          <div className="aspect-3/4 rounded-xl overflow-hidden border border-border bg-black">
-            <video
-              src="/videos/carousel_video1.mp4"
-              controls
-              preload="metadata"
-              className="w-full h-full object-cover"
-            />
-          </div>
-        </div>
+         <div className="w-screen max-w-none mx-[calc(50%-50vw)] sm:w-full sm:mx-0">
+                  <div className="relative w-full aspect-2/2 bg-surface-muted">
+                    <Image
+                      src="/images/fran_book_book.jpeg"
+                      alt="Infográfico do método alma4D"
+                      fill
+                      sizes="100vw"
+                      className="object-contain"
+                      priority
+                    />
+                  </div>
+                </div>
       </section>
 
       {/* CONTEÚDO */}

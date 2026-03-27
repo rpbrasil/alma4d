@@ -123,9 +123,9 @@ export default function MetodoPage() {
 
         {/* Mídia */}
         <div className="w-screen max-w-none mx-[calc(50%-50vw)] sm:w-full sm:mx-0">
-          <div className="relative w-full aspect-2/1 bg-surface-muted">
+          <div className="relative w-full aspect-2/2 bg-surface-muted">
             <Image
-              src="/images/alma4d-sinergia-1200.png"
+              src="/images/fran_book_book.jpeg"
               alt="Infográfico do método alma4D"
               fill
               sizes="100vw"

@@ -25,7 +25,7 @@ export default function AutoraPage() {
         <div className="relative flex justify-center">
           {/* Imagem */}
           <Image
-            src="/images/fran_nobg.jpg"
+            src="/images/fran_book_bw.jpeg"
             alt="Fran Abbud"
             width={360}
             height={360}
@@ -98,7 +98,7 @@ export default function AutoraPage() {
           {/* Imagem */}
           <div className="flex justify-center">
             <Image
-              src="/images/sobremim2.jpeg"
+              src="/images/fran_book3.png"
               alt="Fran Abbud"
               width={360}
               height={360}
