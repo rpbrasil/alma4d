@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import PhoneMockupVideo from "../components/mockups/PhoneMockupVideo";
 
 export default function AppPage() {
   return (
@@ -42,16 +43,55 @@ export default function AppPage() {
         </div>
 
         {/* Mockup */}
-        <div className="aspect-video rounded-xl bg-surface-muted flex items-center justify-center">
-          <Image
-            src="/images/kindlePhoto2.jpg"
-            alt="alma4D"
-            width={400}
-            height={400}
-            sizes="(max-width: 768px) 60vw, 400px"
-            className="object-contain"
-            priority
-          />
+        {/* Seção do Vídeo alma4D */}
+        <div className="w-full max-w-4xl mx-auto px-4 grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+          {/* Texto Explicativo (Lado Esquerdo) */}
+          <div className="space-y-6 order-2 md:order-1">
+            <div className="inline-block px-3 py-1 rounded-full bg-[#019499]/10 text-[#019499] text-xs font-bold tracking-wider uppercase">
+              Tecnologia Integrativa
+            </div>
+            <h2 className="text-3xl md:text-4xl font-extrabold text-[#030870] leading-tight">
+              Sinta o app na{" "}
+              <span className="text-[#019499]">palma da mão</span>.
+            </h2>
+            <p className="text-slate-600 leading-relaxed font-medium">
+              Explore a consciência corporal através de um fluxo intuitivo.
+              Escaneie seu livro, ative seu perfil e inicie sua jornada de
+              autoconhecimento em segundos.
+            </p>
+            <ul className="space-y-3">
+              {[
+                "Ativação por QR Code",
+                "Sincronização em tempo real",
+                "Dashboard de Interocepção",
+              ].map((item) => (
+                <li
+                  key={item}
+                  className="flex items-center gap-3 text-sm font-semibold text-slate-700"
+                >
+                  <svg
+                    className="w-5 h-5 text-[#019499]"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="3"
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* O Mockup (Lado Direito) */}
+          <div className="order-1 md:order-2">
+            <PhoneMockupVideo videoSrc="/videos/alma4d-demo.mp4" />
+          </div>
         </div>
       </section>
 
