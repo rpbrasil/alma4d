@@ -44,9 +44,10 @@ export default function AppPage() {
 
         {/* Mockup */}
         {/* Seção do Vídeo alma4D */}
-        <div className="w-full max-w-4xl mx-auto px-4 grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+        {/* <div className="w-full max-w-4xl mx-auto px-4 grid grid-cols-1 md:grid-cols-2 gap-12 items-center"> */}
+          <div className="w-full max-w-4xl mx-auto px-4 grid  gap-12 items-center">
           {/* Texto Explicativo (Lado Esquerdo) */}
-          <div className="space-y-6 order-2 md:order-1">
+          {/* <div className="space-y-6 order-2 md:order-1">
             <div className="inline-block px-3 py-1 rounded-full bg-[#019499]/10 text-[#019499] text-xs font-bold tracking-wider uppercase">
               Tecnologia Integrativa
             </div>
@@ -86,10 +87,10 @@ export default function AppPage() {
                 </li>
               ))}
             </ul>
-          </div>
+          </div> */}
 
           {/* O Mockup (Lado Direito) */}
-          <div className="order-1 md:order-2">
+          <div className="space-y-6 order-2 md:order-1">
             <PhoneMockupVideo videoSrc="/videos/alma4d-demo.mp4" />
           </div>
         </div>
