@@ -326,6 +326,33 @@ function SecondaryButton({
   );
 }
 
+function formatDateBR(input: string) {
+  const d = input.replace(/\D/g, "").slice(0, 8);
+  if (d.length <= 2) return d;
+  if (d.length <= 4) return `${d.slice(0, 2)}/${d.slice(2)}`;
+  return `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}`;
+}
+
+function parseDateBRtoISO(br: string): string | null {
+  const m = br.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!m) return null;
+  const [, dd, mm, yyyy] = m;
+  const iso = `${yyyy}-${mm}-${dd}`;
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? null : iso;
+}
+
+function calculateAge(isoDate: string): number {
+  const today = new Date();
+  const birth = new Date(isoDate);
+  let age = today.getFullYear() - birth.getFullYear();
+  const m = today.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+    age--;
+  }
+  return age;
+}
+
 /** ===================== Wizard principal ===================== */
 
 export default function AtivacaoWizard() {
@@ -361,6 +388,8 @@ export default function AtivacaoWizard() {
 
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
+
+  const [isEmancipated, setIsEmancipated] = useState(false);
 
   // Pagamento
   const [payLoading, setPayLoading] = useState(false);
@@ -454,7 +483,24 @@ export default function AtivacaoWizard() {
       if (!nomeCompleto.trim()) throw new Error("Informe seu nome completo.");
       if (!aceitouTermos)
         throw new Error("Você precisa aceitar os termos para continuar.");
+      // ✅ Validação de idade (DD/MM/AAAA)
+      const isoBirth = dataNascimento ? parseDateBRtoISO(dataNascimento) : null;
 
+      if (isoBirth) {
+        const age = calculateAge(isoBirth);
+
+        if (age < 16) {
+          throw new Error(
+            "Você precisa ter pelo menos 16 anos para continuar.",
+          );
+        }
+
+        if (age < 18 && !isEmancipated) {
+          throw new Error(
+            "Menores de 18 anos precisam declarar emancipação legal para continuar.",
+          );
+        }
+      }
       const cpfDigits = onlyDigits(documento);
       if (!cpfDigits) throw new Error("Informe seu CPF para continuar.");
       if (!isValidCPF(cpfDigits))
@@ -512,7 +558,7 @@ export default function AtivacaoWizard() {
         telefone: normalizePhoneBR(phone) || null,
         nome_completo: nomeCompleto.trim() || null,
         email: email.trim() || null,
-        data_nascimento: dataNascimento || null,
+        data_nascimento: isoBirth,
         sexo: sexo === "" ? null : sexo,
         documento: cpfDigits || null,
         aceitou_termos: true,
@@ -830,7 +876,7 @@ export default function AtivacaoWizard() {
                     </h2>
                     <p className="mt-1 text-sm text-slate-600">
                       Só pedimos o essencial agora. O restante você completa
-                      dentro do app.
+                      dentro do app de pagamento.
                     </p>
                   </div>
 
@@ -854,15 +900,52 @@ export default function AtivacaoWizard() {
                     </Field>
 
                     <div className="grid sm:grid-cols-2 gap-3">
-                      <Field label="Data de nascimento (opcional)">
+                      <Field label="Data de nascimento (DD/MM/AAAA)">
                         <input
-                          type="date"
                           value={dataNascimento}
-                          onChange={(e) => setDataNascimento(e.target.value)}
+                          onChange={(e) => {
+                            setDataNascimento(formatDateBR(e.target.value));
+                          }}
+                          placeholder="DD/MM/AAAA"
+                          inputMode="numeric"
                           className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-brand/10"
                         />
                       </Field>
+                      {(() => {
+                        const iso = parseDateBRtoISO(dataNascimento);
+                        if (!iso) return null;
 
+                        const age = calculateAge(iso);
+
+                        if (age >= 18) return null;
+
+                        if (age >= 16) {
+                          return (
+                            <label className="flex items-start gap-3 mt-2">
+                              <input
+                                type="checkbox"
+                                checked={isEmancipated}
+                                onChange={(e) =>
+                                  setIsEmancipated(e.target.checked)
+                                }
+                                className="mt-1"
+                              />
+                              <span className="text-sm text-slate-700">
+                                Declaro que sou{" "}
+                                <strong>emancipado(a) legalmente</strong>,
+                                conforme a legislação brasileira.
+                              </span>
+                            </label>
+                          );
+                        }
+
+                        return (
+                          <div className="rounded-md bg-red-50 border border-red-200 p-3 text-sm text-red-700 mt-2">
+                            É necessário ter pelo menos <strong>16 anos</strong>{" "}
+                            para continuar.
+                          </div>
+                        );
+                      })()}
                       <Field label="Sexo (opcional)">
                         <select
                           value={sexo}
@@ -1000,7 +1083,8 @@ export default function AtivacaoWizard() {
                   </div>
 
                   <p className="text-xs text-slate-500">
-                    Atenção: assim que confirmarmos seu pagamento você terá os serviços premium liberados.
+                    Atenção: assim que confirmarmos seu pagamento você terá os
+                    serviços premium liberados.
                   </p>
                 </div>
               )}
