@@ -4,7 +4,7 @@ import PhoneMockupVideo from "../components/mockups/PhoneMockupVideo";
 
 export default function AppPage() {
   return (
-    <div className="flex flex-col gap-24">
+    <div className="flex flex-col gap-24 overflow-x-hidden">
       {/* ================= HERO ================= */}
       <section className="grid lg:grid-cols-2 gap-12 items-center">
         {/* Texto */}
@@ -108,7 +108,7 @@ export default function AppPage() {
         </div>
 
         {/* ===== FULL BLEED NO MOBILE ===== */}
-        <div className="w-screen max-w-none mx-[calc(50%-50vw)] sm:w-full sm:mx-0">
+        <div className="-mx-4 sm:mx-0 overflow-hidden">
           <Image
             src="/images/alma4d-usuarios.png"
             alt="Infográfico Ciclo alma4D"

@@ -8,7 +8,7 @@ const PhoneMockup: React.FC<PhoneMockupProps> = ({ videoSrc }) => {
   return (
     <div className="relative flex items-center justify-center py-10">
       {/* 1. Glow de Fundo (Aura da Marca alma4D) */}
-      <div className="absolute w-[400px] h-[400px] bg-[#019499]/10 blur-[100px] rounded-full -z-10 animate-pulse" />
+      <div className="absolute w-400px] h-400px] bg-#019499]/10 blur-100px] rounded-full -z-10 animate-pulse" />
 
       {/* 2. O Badge "LIVE DEMO" */}
       <div className="absolute -top-2 -right-4 md:-right-8 z-30 bg-white/90 backdrop-blur-md border border-slate-200 px-4 py-2 rounded-2xl shadow-xl flex items-center gap-2 animate-bounce">
@@ -31,8 +31,8 @@ const PhoneMockup: React.FC<PhoneMockupProps> = ({ videoSrc }) => {
           <div className="h-[60px] w-[3px] bg-[#1A1A1B] absolute -right-[15px] top-[130px] rounded-r-lg border-r border-white/5" />
 
           {/* Ilha Dinâmica (Notch) */}
-          <div className="absolute top-2 left-1/2 -translate-x-1/2 w-24 h-6 bg-black rounded-full z-20 flex items-center justify-center border border-white/5">
-            <div className="w-1.5 h-1.5 bg-[#1A1A1B] rounded-full ml-auto mr-3 shadow-inner" />
+          <div className="absolute top-2 left-1/2 -translate-x-1/2 w-16 h-3 bg-black rounded-full z-20 flex items-center justify-center border border-white/5">
+            <div className="w-1 h-1 bg-[#1A1A1B] rounded-full ml-auto mr-2 shadow-inner" />
           </div>
 
           {/* Tela (O Vídeo) */}
