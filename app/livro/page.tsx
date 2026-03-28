@@ -91,8 +91,8 @@ export default function LivroPage() {
          <div className="w-screen max-w-none mx-[calc(50%-50vw)] sm:w-full sm:mx-0">
                   <div className="relative w-full aspect-2/2 bg-surface-muted">
                     <Image
-                      src="/images/fran_book_nobckg.jpeg"
-                      alt="Infográfico do método alma4D"
+                      src="/images/fran_book_book.jpeg"
+                      alt="livro Arquitetura Viva"
                       fill
                       sizes="100vw"
                       className="object-contain"
