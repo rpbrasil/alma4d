@@ -43,7 +43,7 @@ export default function LivroPage() {
 
           <p className="text-foreground/70">
             Este livro é o mapa para quem busca elevar o padrão de bem-estar
-            pela sensibilização da consciência física e mental. Ao longo das práticas voce notará que o desânimo crônico, a fadiga e a falta de perspectiva darão lugar a uma presença vibrante da pessoa que todos querem ter por perto. O conhecimento aqui apresentado é a chave para você assumir um novo estilo de viver, mais saudável e produtivo.
+            pela sensibilização da consciência física e mental. Ao longo das práticas você notará que o desânimo crônico, a fadiga e a falta de perspectiva darão lugar àquela presença vibrante da pessoa que todos querem ter por perto. O conhecimento aqui apresentado é a chave para assumir um novo estilo de viver, mais saudável e produtivo.
           </p>
 
           <div className="flex gap-4 flex-wrap">

@@ -115,7 +115,7 @@ export default function MetodoPage() {
           <p className="text-slate-600 text-sm leading-relaxed">
             A prática no cotidiano. Registro das dimensões,{" "}
             <strong>análises por I.A.</strong> e gamificação para manter a
-            motivação e o propósito.
+            motivação sem esquecer o propósito.
           </p>
         </div>
         <div className="p-8 rounded-3xl bg-[#030870] text-white shadow-xl shadow-blue-900/20">
@@ -194,7 +194,7 @@ export default function MetodoPage() {
               </p>
               <Link
                 href="/download"
-                className="inline-block bg-white text-[#030870] px-8 py-3 rounded-xl font-bold hover:scale-105 transition-transform text-center"
+                className="inline-block bg-[#DF633F] text-[#030870] px-8 py-3 rounded-xl font-bold hover:scale-105 transition-transform text-center"
               >
                 Oferta Livro + App
               </Link>
@@ -240,11 +240,11 @@ export default function MetodoPage() {
             },
             {
               q: "O alma4D substitui acompanhamento médico?",
-              a: "Não. Ele complementa o trabalho de profissionais, fornecendo dados para que o tratamento seja mais eficiente.",
+              a: "Não. Ele complementa o trabalho dos profissionais, compartilhando dados para acompanhamento, facilitando o agendamento de consultas e a troca de mensagens.",
             },
             {
               q: "Como o app resolve a NR-1?",
-              a: "Gera relatórios de riscos psicossociais baseados em monitoramento contínuo, facilitando a gestão de RH.",
+              a: "Gera relatórios oficiais para mapeamento de riscos psicossociais, facilitando a gestão de RH.",
             },
           ].map((faq, i) => (
             <details

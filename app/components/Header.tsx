@@ -47,7 +47,7 @@ export function Header() {
       <div className="w-full px-0 py-0.5 md:max-w-5xl md:mx-auto md:px-6 md:py-1 flex items-center justify-between">
         {/* Logo */}
         <Link
-          href="/"
+          href="/metodo"
           className="flex items-center gap-2 mr-auto md:mr-0 hover:opacity-90 transition-opacity order-1 md:order-0"
           onClick={() => setOpen(false)}
           aria-label="Ir para a página inicial"
