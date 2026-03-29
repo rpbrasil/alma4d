@@ -7,7 +7,7 @@ export function Footer() {
         {/* Linha principal */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           {/* Marca / Copyright */}
-          <div className="text-sm text-foreground/70">
+          <div className="text-sm text-foreground/70 text-center">
             <span className="font-medium text-foreground">alma4D</span>
             <span className="mx-1">·</span>
             <span>

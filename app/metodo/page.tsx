@@ -42,21 +42,22 @@ export default function MetodoPage() {
   };
 
   return (
-    <div className="flex flex-col gap-20 pb-20">
+    // overflow-x-hidden no container principal é a última linha de defesa contra scroll lateral
+    <div className="flex flex-col gap-20 pb-20 overflow-x-hidden">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
       />
 
       {/* ================= HERO SECTION ================= */}
-      <section className="grid lg:grid-cols-2 gap-12 items-center pt-10">
+      <section className="grid lg:grid-cols-2 gap-12 items-center pt-10 px-4 md:px-0">
         <div className="flex flex-col gap-6">
           <div className="inline-block w-fit px-3 py-1 rounded-full bg-brand/10 text-brand text-xs font-bold tracking-widest uppercase">
             O Próximo Nível do Bem-Estar
           </div>
-          <h1 className="text-5xl sm:text-6xl font-extrabold text-[#030870] leading-tight">
+          <h2 className="text-4xl sm:text-6xl font-extrabold text-[#030870] leading-tight">
             alma4D: Um <span className="text-[#019499]">Método Vivo</span>.
-          </h1>
+          </h2>
           <p className="text-xl text-slate-600 leading-relaxed">
             Onde o <strong>fundamento teórico</strong> do livro encontra a{" "}
             <strong>inteligência prática</strong> do aplicativo.
@@ -64,36 +65,40 @@ export default function MetodoPage() {
           <div className="flex flex-wrap gap-4 pt-4">
             <Link
               href="#como-funciona"
-              className="rounded-xl bg-[#030870] px-8 py-4 text-white font-bold hover:bg-[#030870]/90 transition-all shadow-lg shadow-blue-900/20"
+              className="rounded-xl bg-[#030870] px-8 py-4 text-white font-bold hover:bg-[#030870]/90 transition-all shadow-lg shadow-blue-900/20 text-center"
             >
               Conhecer o Método
             </Link>
             <Link
               href="/download"
-              className="rounded-xl border-2 border-slate-200 px-8 py-4 font-bold hover:bg-slate-50 transition-all"
+              className="rounded-xl border-2 border-slate-200 px-8 py-4 font-bold hover:bg-slate-50 transition-all text-center"
             >
               Baixar o App
             </Link>
           </div>
         </div>
 
-        <div className="relative group">
-          <div className="absolute inset-0 bg-[#019499]/5 blur-3xl rounded-full -z-10 animate-pulse" />
-          <div className="relative rounded-3xl overflow-hidden border border-slate-100 shadow-2xl">
+        {/* Removido margens negativas e larguras vw que causavam o scroll */}
+        <div className="relative group w-full">
+          <div className="absolute inset-0 bg-[#019499]/5 blur-3xl rounded-full -z-10 animate-none sm:animate-pulse" />
+          <div className="relative rounded-3xl overflow-hidden border border-slate-100 shadow-2xl bg-white">
             <Image
               src="/images/alma4d-resumo-1612.png"
               alt="Infográfico alma4D"
               width={1612}
               height={1000}
-              className="w-full h-auto"
+              className="w-full h-auto object-contain"
               priority
             />
           </div>
         </div>
       </section>
 
-      {/* ================= OS TRÊS PILARES (CONFLUÊNCIA) ================= */}
-      <section id="como-funciona" className="grid md:grid-cols-3 gap-8">
+      {/* ================= OS TRÊS PILARES ================= */}
+      <section
+        id="como-funciona"
+        className="grid md:grid-cols-3 gap-8 px-4 md:px-0"
+      >
         <div className="p-8 rounded-3xl bg-white border border-slate-100 shadow-sm">
           <div className="text-4xl mb-4">📘</div>
           <h3 className="text-xl font-bold text-[#030870] mb-3">
@@ -121,14 +126,14 @@ export default function MetodoPage() {
           <h3 className="text-xl font-bold mb-3 text-white">3. A Evolução</h3>
           <p className="text-blue-100 text-sm leading-relaxed">
             Onde a teoria e prática se tornam{" "}
-            <strong>estratégia de vida</strong>. Resultados imediatos para
-            indivíduos, profissionais e empresas.
+            <strong>estratégia de vida</strong>. Resultados imediatos para todos
+            os níveis.
           </p>
         </div>
       </section>
 
-      {/* ================= PARA QUEM É (ABORDAGENS) ================= */}
-      <section className="flex flex-col gap-12">
+      {/* ================= PARA QUEM É ================= */}
+      <section className="flex flex-col gap-12 px-4 md:px-0">
         <div className="text-center max-w-2xl mx-auto">
           <h2 className="text-3xl font-bold text-[#030870]">
             Impacto em todas as esferas
@@ -139,7 +144,6 @@ export default function MetodoPage() {
         </div>
 
         <div className="grid lg:grid-cols-3 gap-6">
-          {/* Pessoas Físicas */}
           <div className="p-8 rounded-3xl bg-slate-50 border border-transparent hover:border-[#019499]/30 transition-all">
             <h4 className="font-bold text-[#030870] mb-4 flex items-center gap-2">
               <span className="w-8 h-8 rounded-lg bg-white flex items-center justify-center shadow-sm">
@@ -149,12 +153,10 @@ export default function MetodoPage() {
             </h4>
             <p className="text-sm text-slate-600 leading-relaxed">
               Saia do automático. Domine a <strong>interocepção</strong> e
-              utilize a I.A. do app para ajustar sua rotina, ganhar energia e
-              fortalecer sua saúde física e mental.
+              utilize a I.A. do app para ajustar sua rotina e fortalecer sua
+              saúde.
             </p>
           </div>
-
-          {/* Profissionais */}
           <div className="p-8 rounded-3xl bg-slate-50 border border-transparent hover:border-[#019499]/30 transition-all">
             <h4 className="font-bold text-[#030870] mb-4 flex items-center gap-2">
               <span className="w-8 h-8 rounded-lg bg-white flex items-center justify-center shadow-sm">
@@ -163,13 +165,10 @@ export default function MetodoPage() {
               Para Profissionais
             </h4>
             <p className="text-sm text-slate-600 leading-relaxed">
-              A ferramenta definitiva de <strong>engajamento clínico</strong>.
-              Acompanhe a jornada do cliente em tempo real e acelere resultados
-              com dados precisos e compartilhados.
+              Engajamento clínico total. Acompanhe a jornada do cliente em tempo
+              real com dados precisos e compartilhados.
             </p>
           </div>
-
-          {/* Empresas */}
           <div className="p-8 rounded-3xl bg-slate-50 border border-transparent hover:border-[#019499]/30 transition-all">
             <h4 className="font-bold text-[#030870] mb-4 flex items-center gap-2">
               <span className="w-8 h-8 rounded-lg bg-white flex items-center justify-center shadow-sm">
@@ -178,46 +177,55 @@ export default function MetodoPage() {
               Para Empresas
             </h4>
             <p className="text-sm text-slate-600 leading-relaxed">
-              Conformidade total com a <strong>NR-1</strong>. Automatize o
-              mapeamento de riscos psicossociais e promova uma cultura de
-              produtividade sustentável e saúde mental.
+              Conformidade <strong>NR-1</strong>. Automatize o mapeamento de
+              riscos psicossociais e promova produtividade sustentável.
             </p>
           </div>
         </div>
       </section>
 
-      {/* ================= EXPERIÊNCIA INTEGRADA (LIVRO + APP) ================= */}
-      <section className="bg-gradient-to-br from-[#030870] to-[#019499] rounded-[3rem] p-12 text-white overflow-hidden relative">
-        <div className="relative z-10 grid md:grid-cols-2 gap-12 items-center">
-          <div className="space-y-6">
-            <h2 className="text-3xl md:text-4xl font-bold">
-              A Experiência Completa
-            </h2>
-            <p className="text-blue-50 leading-relaxed">
-              O método alma4D alcança sua máxima eficácia na integração: o livro
-              sustenta o raciocínio e o aplicativo sustenta a ação. Juntos, eles
-              eliminam o ciclo de começa e para, criando uma evolução
-              contínua.
-            </p>
-            <div className="flex flex-wrap gap-4">
+      {/* ================= EXPERIÊNCIA INTEGRADA ================= */}
+      <section className="px-4 md:px-0">
+        <div className="bg-linear-to-br from-[#030870] to-[#019499] rounded-[2.5rem] md:rounded-[3rem] p-8 md:p-12 text-white overflow-hidden relative">
+          <div className="relative z-10 grid md:grid-cols-2 gap-12 items-center">
+            <div className="space-y-6">
+              <h2 className="text-3xl md:text-4xl font-bold">
+                A Experiência Completa
+              </h2>
+              <p className="text-blue-50 leading-relaxed">
+                O método alma4D alcança sua máxima eficácia na integração: o
+                livro sustenta o raciocínio e o aplicativo sustenta a ação.
+              </p>
               <Link
                 href="/download"
-                className="bg-white text-[#030870] px-8 py-3 rounded-xl font-bold hover:scale-105 transition-transform"
+                className="inline-block bg-white text-[#030870] px-8 py-3 rounded-xl font-bold hover:scale-105 transition-transform text-center"
               >
                 Oferta Livro + App
               </Link>
             </div>
-          </div>
-          <div className="flex justify-center">
-            <div className="relative w-64 h-64 md:w-80 md:h-80 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-sm border border-white/20">
-              <span className="text-6xl">🔄</span>
+            <div className="flex justify-center">
+              <div className="relative w-48 h-48 md:w-40 md:h-40 rounded-full border-2 border-slate-100 overflow-hidden bg-slate-50 shadow-inner">
+                {/* A foto entra aqui */}
+                <Image
+                  src="/images/alma4d-bicolor-nobground-256.png" // Substitua pelo caminho da sua imagem
+                  alt="Descrição da imagem"
+                  fill // Faz a imagem preencher todo o espaço do círculo
+                  className="object-cover" // Garante que a foto quadrada cubra o círculo sem distorcer
+                />
+
+                {/* Se quiser manter o ícone por cima da foto, pode usar um overlay ou remover o span */}
+                {/* <span className="relative z-10 text-5xl md:text-6xl text-white/50">🔄</span> */}
+              </div>
             </div>
           </div>
         </div>
       </section>
 
       {/* ================= FAQ SIMPLIFICADO ================= */}
-      <section id="faq" className="max-w-4xl mx-auto w-full space-y-8">
+      <section
+        id="faq"
+        className="max-w-4xl mx-auto w-full space-y-8 px-4 md:px-0"
+      >
         <h2 className="text-3xl font-bold text-[#030870] text-center">
           Dúvidas Frequentes
         </h2>
@@ -229,18 +237,18 @@ export default function MetodoPage() {
             },
             {
               q: "O alma4D substitui acompanhamento médico?",
-              a: "Não. Ele complementa o trabalho de profissionais, fornecendo dados e engajamento para que o tratamento ou mentoria seja mais eficiente.",
+              a: "Não. Ele complementa o trabalho de profissionais, fornecendo dados para que o tratamento seja mais eficiente.",
             },
             {
               q: "Como o app resolve a NR-1?",
-              a: "Através de questionários validados e monitoramento contínuo, o app gera relatórios de riscos psicossociais prontos para a gestão de RH e segurança do trabalho.",
+              a: "Gera relatórios de riscos psicossociais baseados em monitoramento contínuo, facilitando a gestão de RH.",
             },
           ].map((faq, i) => (
             <details
               key={i}
               className="group p-6 rounded-2xl border border-slate-100 bg-white hover:border-[#019499]/20 transition-all cursor-pointer"
             >
-              <summary className="font-bold text-[#030870] list-none flex justify-between items-center">
+              <summary className="font-bold text-[#030870] list-none flex justify-between items-center outline-none">
                 {faq.q}
                 <span className="text-[#019499] group-open:rotate-180 transition-transform">
                   ▼

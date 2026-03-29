@@ -114,7 +114,7 @@ export default function AutoraPage() {
       {/* ================= O LIVRO ================= */}
       <section className="flex flex-col gap-12">
         <div className="max-w-3xl flex flex-col gap-4">
-          <h2 className="text-3xl font-bold">O livro alma4D</h2>
+          <h2 className="text-3xl font-bold">Arquitetura Viva do Autocuidado</h2>
           <p className="text-foreground/70">
             Uma síntese viva de sua trajetória e visão de cuidado integral.
           </p>
@@ -123,7 +123,7 @@ export default function AutoraPage() {
         <div className="grid md:grid-cols-2 gap-8">
           <div className="rounded-xl bg-surface-muted p-6">
             <p className="text-foreground/70 leading-relaxed">
-              O livro <strong>alma4D</strong> nasce do princípio de que o
+              O livro <strong>Arquitetura Viva do Autocuidado</strong> nasce do princípio de que o
               bem-estar é uma construção consciente. Um caminho onde corpo,
               emoções, mente e propósito se integram ao cotidiano.
             </p>

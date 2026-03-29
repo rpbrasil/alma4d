@@ -19,7 +19,7 @@ function NavLink({
 
   const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
 
-return (
+  return (
     <Link
       href={href}
       onClick={onClick}
@@ -53,7 +53,7 @@ export function Header() {
           aria-label="Ir para a página inicial"
         >
           {/* Container define o tamanho da logo */}
-          <div className="relative h-11 w-52 sm:w-60 md:h-14 md:w-72 lg:w-80 -ml-12">
+          <div className="relative h-11 w-52 sm:w-60 md:h-14 md:w-72 lg:w-80 ml-0 sm:ml-0">
             <Image
               src="/images/alma4d-bicolor-nobground-256.png"
               alt="alma4D"
@@ -95,7 +95,6 @@ export function Header() {
 
         {/* Mobile actions */}
         <div className="md:hidden flex items-center gap-3 order-2">
-          
           <ThemeToggle />
 
           {/* ✅ Botão mais compacto no mobile */}
@@ -104,7 +103,7 @@ export function Header() {
             aria-label={open ? "Fechar menu" : "Abrir menu"}
             aria-expanded={open}
             aria-controls="mobile-nav"
-            className="inline-flex items-center justify-center rounded-md border border-border p-1.5 hover:bg-surface-muted transition-colors mr-3.5"
+            className="inline-flex items-center justify-center rounded-md border border-border px-2 py-1.5 hover:bg-surface-muted transition-colors mr-3.5"
           >
             {open ? "✕" : "☰"}
           </button>
