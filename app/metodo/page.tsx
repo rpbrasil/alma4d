@@ -50,7 +50,7 @@ export default function MetodoPage() {
       />
 
       {/* ================= HERO SECTION ================= */}
-      <section className="grid lg:grid-cols-2 gap-12 items-center pt-10 px-4 md:px-0">
+      <section className="grid lg:grid-cols-2 gap-12 items-center pt-10 1 md:px-0">
         <div className="flex flex-col gap-6">
           <div className="inline-block w-fit px-3 py-1 rounded-full bg-brand/10 text-brand text-xs font-bold tracking-widest uppercase">
             O Próximo Nível do Bem-Estar
@@ -97,7 +97,7 @@ export default function MetodoPage() {
       {/* ================= OS TRÊS PILARES ================= */}
       <section
         id="como-funciona"
-        className="grid md:grid-cols-3 gap-8 px-4 md:px-0"
+        className="grid md:grid-cols-3 gap-8 px-1 md:px-0"
       >
         <div className="p-8 rounded-3xl bg-white border border-slate-100 shadow-sm">
           <div className="text-4xl mb-4">📘</div>
@@ -133,7 +133,7 @@ export default function MetodoPage() {
       </section>
 
       {/* ================= PARA QUEM É ================= */}
-      <section className="flex flex-col gap-12 px-4 md:px-0">
+      <section className="flex flex-col gap-12 px-1 md:px-0">
         <div className="text-center max-w-2xl mx-auto">
           <h2 className="text-3xl font-bold text-[#030870]">
             Impacto em todas as esferas
@@ -185,11 +185,11 @@ export default function MetodoPage() {
       </section>
 
       {/* ================= EXPERIÊNCIA INTEGRADA ================= */}
-      <section className="px-4 md:px-0">
+      <section className="px-1 md:px-0">
         <div className="bg-linear-to-br from-[#030870] to-[#019499] rounded-[2.5rem] md:rounded-[3rem] p-8 md:p-12 text-white overflow-hidden relative">
           <div className="relative z-10 grid md:grid-cols-2 gap-12 items-center">
             <div className="space-y-6">
-              <h2 className="text-3xl md:text-4xl font-bold">
+              <h2 className="md:text-4xl font-bold text-[#019499]">
                 A Experiência Completa
               </h2>
               <p className="text-blue-50 leading-relaxed">
@@ -204,17 +204,24 @@ export default function MetodoPage() {
               </Link>
             </div>
             <div className="flex justify-center">
-              <div className="relative w-48 h-48 md:w-40 md:h-40 rounded-full border-2 border-slate-100 overflow-hidden bg-slate-50 shadow-inner">
-                {/* A foto entra aqui */}
-                <Image
-                  src="/images/alma4d-bicolor-nobground-256.png" // Substitua pelo caminho da sua imagem
-                  alt="Descrição da imagem"
-                  fill // Faz a imagem preencher todo o espaço do círculo
-                  className="object-cover" // Garante que a foto quadrada cubra o círculo sem distorcer
-                />
+              {/* 1. Container Principal (O Círculo) - Adicionada a classe 'group' para controlar o hover */}
+              <div className="group relative w-32 h-32 md:w-40 md:h-40 rounded-full border-2 border-slate-100 bg-white shadow-sm hover:shadow-xl transition-all duration-500 ease-out overflow-hidden p-4">
+                {/* 2. Efeito de Brilho de Fundo (Glow Sutil no Hover) */}
+                <div className="absolute inset-0 bg-gradient-to-br from-[#019499]/10 to-[#030870]/10 opacity-0 group-hover:opacity-100 transition-opacity duration-700 -z-10" />
 
-                {/* Se quiser manter o ícone por cima da foto, pode usar um overlay ou remover o span */}
-                {/* <span className="relative z-10 text-5xl md:text-6xl text-white/50">🔄</span> */}
+                {/* 3. Container da Imagem Interna (com movimento suave no hover) */}
+                <div className="relative w-full h-full transition-transform duration-500 ease-out group-hover:scale-105 group-hover:-translate-y-1">
+                  <Image
+                    src="/images/alma4d-bicolor-nobground-256.png"
+                    alt="Logo alma4D"
+                    fill
+                    className="object-contain"
+                    priority
+                  />
+                </div>
+
+                {/* 4. Overlay de Brilho (Efeito de Lente sutil) */}
+                <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-white/0 via-white/30 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               </div>
             </div>
           </div>
@@ -224,7 +231,7 @@ export default function MetodoPage() {
       {/* ================= FAQ SIMPLIFICADO ================= */}
       <section
         id="faq"
-        className="max-w-4xl mx-auto w-full space-y-8 px-4 md:px-0"
+        className="max-w-4xl mx-auto w-full space-y-8 px-1 md:px-0"
       >
         <h2 className="text-3xl font-bold text-[#030870] text-center">
           Dúvidas Frequentes
