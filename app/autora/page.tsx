@@ -13,11 +13,13 @@ export default function AutoraPage() {
           </h1>
 
           <p className="text-xl text-foreground/80 leading-relaxed">
-            Autora do livro <strong>alma4D</strong> e pesquisadora do cuidado integral do ser humano.
+            Autora do livro <strong>Arquitetura Viva do Autocuidado</strong> e
+            pesquisadora do cuidado integral do ser humano.
           </p>
 
           <p className="text-foreground/70 leading-relaxed">
-            Sua trajetória une ciência, sensibilidade e experiência prática, construindo caminhos possíveis de bem-estar no cotidiano.
+            Sua trajetória une ciência, sensibilidade e experiência prática,
+            construindo caminhos possíveis de bem-estar no cotidiano.
           </p>
         </div>
 
@@ -121,14 +123,16 @@ export default function AutoraPage() {
         <div className="grid md:grid-cols-2 gap-8">
           <div className="rounded-xl bg-surface-muted p-6">
             <p className="text-foreground/70 leading-relaxed">
-              O livro <strong>alma4D</strong> nasce do princípio de que o bem-estar é uma construção consciente. Um caminho onde corpo, emoções, mente e propósito se integram ao cotidiano.
+              O livro <strong>alma4D</strong> nasce do princípio de que o
+              bem-estar é uma construção consciente. Um caminho onde corpo,
+              emoções, mente e propósito se integram ao cotidiano.
             </p>
           </div>
 
           <div className="rounded-xl bg-surface-muted p-6">
             <p className="text-foreground/70 leading-relaxed">
-              Aqui o autocuidado deixa de ser teoria e passa a estar nas mãos
-              do leitor — como prática simples, viva e possível.
+              Aqui o autocuidado deixa de ser teoria e passa a estar nas mãos do
+              leitor — como prática simples, viva e possível.
             </p>
           </div>
         </div>
@@ -141,8 +145,8 @@ export default function AutoraPage() {
         </h2>
 
         <p className="text-foreground/70 max-w-2xl">
-          O aplicativo alma4D, o livro alma4D e o método formam um único percurso de
-          cuidado e consciência.
+          O aplicativo alma4D, o livro Arquitetura Viva do Autocuidado e o
+          método formam um único percurso de consciência.
         </p>
 
         <div className="flex flex-wrap gap-4">

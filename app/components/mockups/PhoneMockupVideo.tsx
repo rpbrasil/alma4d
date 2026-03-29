@@ -11,7 +11,7 @@ const PhoneMockup: React.FC<PhoneMockupProps> = ({ videoSrc }) => {
       <div className="absolute w-400px] h-400px] bg-#019499]/10 blur-100px] rounded-full -z-10 animate-pulse" />
 
       {/* 2. O Badge "LIVE DEMO" */}
-      <div className="absolute -top-2 -right-4 md:-right-8 z-30 bg-white/90 backdrop-blur-md border border-slate-200 px-4 py-2 rounded-2xl shadow-xl flex items-center gap-2 animate-bounce">
+      <div className="absolute -top-0 -right-0 md:-right-8 z-30 bg-white/90 backdrop-blur-md border border-slate-200 px-4 py-2 rounded-2xl shadow-xl flex items-center gap-2 animate-bounce">
         <span className="relative flex h-3 w-3">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
           <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>

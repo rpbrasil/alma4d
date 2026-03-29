@@ -16,6 +16,7 @@
     "@mui/icons-material": "^7.3.9",
     "@mui/material": "^7.3.9",
     "@supabase/supabase-js": "^2.99.3",
+    "expo": "^55.0.9",
     "lucide-react": "^0.577.0",
     "next": "16.1.6",
     "react": "19.2.3",

@@ -35,12 +35,17 @@ export default function LivroPage() {
           </h1>
 
           <p className="text-xl text-foreground/80">
-            A base conceitual de todo o método.
+            Viver bem deixou de ser um sonho de consumo para se tornar a métrica
+            mais valiosa da atualidade. Ao dominar as 4 Dimensões expostas neste
+            livro, você transcende a gestão do tempo e passa a gerir sua própria
+            energia vital, transformando a rotina em um ritual poderoso.
           </p>
 
           <p className="text-foreground/70">
-            O livro estrutura os princípios e a lógica que sustentam o
-            aplicativo.
+            Este livro é o mapa para quem busca elevar o padrão de bem-estar
+            através da consciência mental, corporal e da interocepção,
+            substituindo o cansaço crônico por uma presença vibrante do
+            despertar ao repouso.
           </p>
 
           <div className="flex gap-4 flex-wrap">
@@ -88,18 +93,18 @@ export default function LivroPage() {
           </div>
         </div>
 
-         <div className="w-screen max-w-none mx-[calc(50%-50vw)] sm:w-full sm:mx-0">
-                  <div className="relative w-full aspect-2/2 bg-surface-muted">
-                    <Image
-                      src="/images/fran_book_book.jpeg"
-                      alt="livro Arquitetura Viva"
-                      fill
-                      sizes="100vw"
-                      className="object-contain"
-                      priority
-                    />
-                  </div>
-                </div>
+        <div className="w-screen max-w-none mx-[calc(50%-50vw)] sm:w-full sm:mx-0">
+          <div className="relative w-full aspect-2/2 bg-surface-muted">
+            <Image
+              src="/images/fran_book_book.jpeg"
+              alt="livro Arquitetura Viva"
+              fill
+              sizes="100vw"
+              className="object-contain"
+              priority
+            />
+          </div>
+        </div>
       </section>
 
       {/* CONTEÚDO */}
@@ -169,11 +174,13 @@ export default function LivroPage() {
         <h2 className="text-3xl font-bold mb-4">Livro e Aplicativo</h2>
 
         <p className="text-foreground/70 mb-6">
-          O livro fundamenta. O aplicativo operacionaliza.O Aplicativo alma4D -
-          surge como uma ferramenta de integração prática desse modelo. Seu
-          objetivo não é substituir o cuidado profissional, nem impor protocolos
-          rígidos, mas organizar, estimular e acompanhar hábitos de saúde
-          integral de forma acessível, ética e consciente.
+          Seja você um entusiasta da longevidade, um líder de equipes ou um
+          profissional de saúde, o convite aqui é para uma alfabetização
+          corporal e mental completa. Não se trata de esperar que o ambiente
+          melhore, mas de se preparar para o cotidiano com propósito. É o
+          conhecimento do bem-estar aplicado à vida real, entregando resultados
+          imediatos para quem compreende que o ser humano não é apenas um objeto
+          de cuidado, mas o campo onde a transformação realmente acontece.
         </p>
 
         <Link href="/app" className="text-brand font-medium hover:underline">

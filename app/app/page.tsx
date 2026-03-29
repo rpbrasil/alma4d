@@ -4,7 +4,7 @@ import PhoneMockupVideo from "../components/mockups/PhoneMockupVideo";
 
 export default function AppPage() {
   return (
-    <div className="flex flex-col gap-24 overflow-x-hidden">
+    <div className="flex flex-col gap-24">
       {/* ================= HERO ================= */}
       <section className="grid lg:grid-cols-2 gap-12 items-center">
         {/* Texto */}
@@ -15,14 +15,14 @@ export default function AppPage() {
 
           <p className="text-xl text-foreground/80 leading-relaxed">
             Inteligência aplicada ao cuidado com pessoas e à gestão de riscos
-            psicossociais
+            psicossociais.
           </p>
 
           <p className="text-foreground/70 leading-relaxed">
-            O alma4D é uma plataforma digital criada para ajudar organizações a
-            cuidar melhor das pessoas, entender o ambiente de trabalho e tomar
-            decisões responsáveis, com base em dados confiáveis, éticos e
-            alinhados às exigências legais.
+            O alma4D é uma plataforma digital criada para ajudar pessoas e
+            organizações a cuidar melhor das pessoas, entender o ambiente de
+            trabalho e tomar decisões responsáveis, com base em dados
+            confiáveis, éticos e alinhados às exigências legais.
           </p>
 
           <div className="flex flex-wrap gap-4 pt-4">
@@ -90,7 +90,7 @@ export default function AppPage() {
           </div> */}
 
           {/* O Mockup (Lado Direito) */}
-          <div className="space-y-6 order-2 md:order-1">
+          <div className="flex flex-col gap-24 overflow-x-hidden md:overflow-x-visible">
             <PhoneMockupVideo videoSrc="/videos/alma4d.mp4" />
           </div>
         </div>
@@ -187,10 +187,61 @@ export default function AppPage() {
       <section className="rounded-2xl border border-border bg-surface p-10 flex flex-col gap-6">
         <h2 className="text-3xl font-bold">A experiência completa do alma4D</h2>
 
-        <p className="text-foreground/70 max-w-2xl">
-          O aplicativo alcança seu potencial máximo quando utilizado em conjunto
-          com o livro que fundamenta o método.
-        </p>
+        <div className="text-foreground/70 max-w-2xl">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
+            {/* A.I. & Dados */}
+            <div className="flex gap-4 p-5 rounded-2xl bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all">
+              <div className="text-2xl text-[#019499]">🤖</div>
+              <div>
+                <h3 className="font-bold text-[#030870] mb-1">A.I. & Dados</h3>
+                <p className="text-sm text-slate-600 leading-relaxed">
+                  Tira o peso das escolhas, colocando a{" "}
+                  <strong>tecnologia</strong> para analisar as{" "}
+                  <strong>tendências de saúde</strong>.
+                </p>
+              </div>
+            </div>
+
+            {/* Gamificação */}
+            <div className="flex gap-4 p-5 rounded-2xl bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all">
+              <div className="text-2xl text-[#019499]">🏆</div>
+              <div>
+                <h3 className="font-bold text-[#030870] mb-1">Gamificação</h3>
+                <p className="text-sm text-slate-600 leading-relaxed">
+                  Resolve o maior problema do bem-estar, que é a falta de{" "}
+                  <strong>motivação a longo prazo</strong>.
+                </p>
+              </div>
+            </div>
+
+            {/* Conectividade */}
+            <div className="flex gap-4 p-5 rounded-2xl bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all">
+              <div className="text-2xl text-[#019499]">🌐</div>
+              <div>
+                <h3 className="font-bold text-[#030870] mb-1">Conectividade</h3>
+                <p className="text-sm text-slate-600 leading-relaxed">
+                  Mostra que o <strong>profissional</strong> não está distante,
+                  mas conectado, acompanhando o processo de perto, mesmo que
+                  seja entre uma sessão e outra. entre uma sessão e outra.
+                </p>
+              </div>
+            </div>
+
+            {/* Pragmatismo Corporativo */}
+            <div className="flex gap-4 p-5 rounded-2xl bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all">
+              <div className="text-2xl text-[#019499]">🏢</div>
+              <div>
+                <h3 className="font-bold text-[#030870] mb-1">
+                  Pragmatismo Corporativo
+                </h3>
+                <p className="text-sm text-slate-600 leading-relaxed">
+                  Resolve a <strong>NR-1</strong> de forma leve e{" "}
+                  <strong>automatizada</strong>, sem burocracia excessiva.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
 
         <div className="flex flex-wrap gap-4">
           <Link
