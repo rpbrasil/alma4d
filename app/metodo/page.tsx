@@ -52,7 +52,7 @@ export default function MetodoPage() {
       {/* ================= HERO SECTION ================= */}
       <section className="grid lg:grid-cols-2 gap-12 items-center pt-10 1 md:px-0">
         <div className="flex flex-col gap-6">
-          <div className="inline-block w-fit px-3 py-1 rounded-full bg-brand/10 text-brand text-xs font-bold tracking-widest uppercase">
+          <div className="inline-block w-fit px-3 py-1 rounded-full bg-brand/10 text-xs font-bold tracking-widest uppercase text-[#DF633F]">
             O Próximo Nível do Bem-Estar
           </div>
           <h2 className="text-4xl sm:text-6xl font-extrabold text-[#030870] leading-tight">
@@ -77,8 +77,6 @@ export default function MetodoPage() {
             </Link>
           </div>
         </div>
-
-        {/* Removido margens negativas e larguras vw que causavam o scroll */}
         <div className="relative group w-full">
           <div className="absolute inset-0 bg-[#019499]/5 blur-3xl rounded-full -z-10 animate-none sm:animate-pulse" />
           <div className="relative rounded-3xl overflow-hidden border border-slate-100 shadow-2xl bg-white">
@@ -105,9 +103,8 @@ export default function MetodoPage() {
             1. O Mapa (Livro)
           </h3>
           <p className="text-slate-600 text-sm leading-relaxed">
-            Estrutura sua <strong>alfabetização corporal</strong>. Compreenda as
-            4 dimensões e transforme sua rotina em um ritual de gestão de
-            energia vital.
+            Alcance o bem-estar integral.Compreenda as 4 dimensões e transforme
+            sua rotina em um ritual de geração de energia vital.
           </p>
         </div>
         <div className="p-8 rounded-3xl bg-white border border-slate-100 shadow-sm ring-2 ring-[#019499]/20">
@@ -118,7 +115,7 @@ export default function MetodoPage() {
           <p className="text-slate-600 text-sm leading-relaxed">
             A prática no cotidiano. Registro das dimensões,{" "}
             <strong>análises por I.A.</strong> e gamificação para manter a
-            consistência e o propósito.
+            motivação e o propósito.
           </p>
         </div>
         <div className="p-8 rounded-3xl bg-[#030870] text-white shadow-xl shadow-blue-900/20">
@@ -126,8 +123,8 @@ export default function MetodoPage() {
           <h3 className="text-xl font-bold mb-3 text-white">3. A Evolução</h3>
           <p className="text-blue-100 text-sm leading-relaxed">
             Onde a teoria e prática se tornam{" "}
-            <strong>estratégia de vida</strong>. Resultados imediatos para todos
-            os níveis.
+            <strong>estratégia de vida</strong>. Resultados percebidos para
+            todos os níveis.
           </p>
         </div>
       </section>
@@ -152,9 +149,8 @@ export default function MetodoPage() {
               Para Você
             </h4>
             <p className="text-sm text-slate-600 leading-relaxed">
-              Saia do automático. Domine a <strong>interocepção</strong> e
-              utilize a I.A. do app para ajustar sua rotina e fortalecer sua
-              saúde.
+              Saia do automático. Utilize a I.A. do app para ajustar sua rotina
+              e fortalecer sua saúde.
             </p>
           </div>
           <div className="p-8 rounded-3xl bg-slate-50 border border-transparent hover:border-[#019499]/30 transition-all">
@@ -166,7 +162,7 @@ export default function MetodoPage() {
             </h4>
             <p className="text-sm text-slate-600 leading-relaxed">
               Engajamento clínico total. Acompanhe a jornada do cliente em tempo
-              real com dados precisos e compartilhados.
+              real com dados compartilhados.
             </p>
           </div>
           <div className="p-8 rounded-3xl bg-slate-50 border border-transparent hover:border-[#019499]/30 transition-all">
@@ -207,10 +203,10 @@ export default function MetodoPage() {
               {/* 1. Container Principal (O Círculo) - Adicionada a classe 'group' para controlar o hover */}
               <div className="group relative w-32 h-32 md:w-40 md:h-40 rounded-full border-2 border-slate-100 bg-white shadow-sm hover:shadow-xl transition-all duration-500 ease-out overflow-hidden p-4">
                 {/* 2. Efeito de Brilho de Fundo (Glow Sutil no Hover) */}
-                <div className="absolute inset-0 bg-gradient-to-br from-[#019499]/10 to-[#030870]/10 opacity-0 group-hover:opacity-100 transition-opacity duration-700 -z-10" />
+                <div className="absolute inset-0 bg-linear-to-br from-[#019499]/10 to-[#030870]/10 opacity-0 group-hover:opacity-100 transition-opacity duration-700 -z-10" />
 
                 {/* 3. Container da Imagem Interna (com movimento suave no hover) */}
-                <div className="relative w-full h-full transition-transform duration-500 ease-out group-hover:scale-105 group-hover:-translate-y-1">
+                <div className="relative w-full h-full -translate-y-2 transition-transform duration-500 ease-out group-hover:scale-105 group-hover:-translate-y-3">
                   <Image
                     src="/images/alma4d-bicolor-nobground-256.png"
                     alt="Logo alma4D"
@@ -221,7 +217,7 @@ export default function MetodoPage() {
                 </div>
 
                 {/* 4. Overlay de Brilho (Efeito de Lente sutil) */}
-                <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-white/0 via-white/30 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                <div className="absolute inset-0 rounded-full bg-linear-to-tr from-white/0 via-white/30 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               </div>
             </div>
           </div>
