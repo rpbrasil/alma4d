@@ -14,12 +14,11 @@ export default function AutoraPage() {
 
           <p className="text-xl text-foreground/80 leading-relaxed">
             Autora do livro <strong>Arquitetura Viva do Autocuidado</strong> e
-            pesquisadora do cuidado integral do ser humano.
+            pesquisadora do bem-estarintegral do ser humano.
           </p>
 
           <p className="text-foreground/70 leading-relaxed">
-            Sua trajetória une ciência, sensibilidade e experiência prática,
-            construindo caminhos possíveis de bem-estar no cotidiano.
+            Sua trajetória engloba conhecimento, sensibilidade e experiência prática, transformando vidas ao longo de 30 anos.
           </p>
         </div>
 
@@ -45,8 +44,7 @@ export default function AutoraPage() {
         <div className="max-w-3xl flex flex-col gap-4">
           <h2 className="text-3xl font-bold">Trajetória</h2>
           <p className="text-foreground/70">
-            Uma caminhada construída ao longo de décadas de escuta, estudo e
-            prática.
+            
           </p>
         </div>
 
@@ -55,7 +53,7 @@ export default function AutoraPage() {
             <h3 className="text-xl font-semibold mb-2">Formação</h3>
             <p className="text-foreground/70">
               Formada em Arquitetura e Urbanismo, Fran ampliou seu campo de
-              atuação para o estudo do espaço humano — interno e externo.
+              atuação para o estudo das relações humanas com seus ambientes.
             </p>
           </div>
 
@@ -85,13 +83,13 @@ export default function AutoraPage() {
           <h2 className="text-3xl font-bold">Visão de bem-estar</h2>
 
           <p className="text-foreground/70 leading-relaxed">
-            O trabalho de Fran nasce da escuta atenta e da vivência com pessoas
+            O trabalho de Fran surge da vivência profissional com pessoas
             e grupos ao longo de muitos anos.
           </p>
 
           <p className="text-foreground/70 leading-relaxed">
-            Para ela, o bem-estar não é um ideal distante, mas um caminho
-            possível — construído diariamente por meio de escolhas conscientes,
+            Para ela, o bem-estar não é um ideal distante, mas um objetivo
+            possível — perseguido diariamente por meio de escolhas conscientes,
             relações significativas e uma vida com sentido.
           </p>
         </div>
@@ -118,24 +116,21 @@ export default function AutoraPage() {
             Arquitetura Viva do Autocuidado
           </h2>
           <p className="text-foreground/70">
-            Uma síntese viva de sua trajetória e visão de cuidado integral.
+            
           </p>
         </div>
 
         <div className="grid md:grid-cols-2 gap-8">
           <div className="rounded-xl bg-surface-muted p-6">
             <p className="text-foreground/70 leading-relaxed">
-              O livro <strong>Arquitetura Viva do Autocuidado</strong> nasce do
-              princípio de que o bem-estar é uma construção consciente. Um
-              caminho onde corpo, emoções, mente e propósito se integram ao
-              cotidiano.
+              O livro <strong>Arquitetura Viva do Autocuidado</strong> propoe que o bem-estar é uma construção consciente. Um
+              processo onde corpo, emoções, mente e propósito se integram com disciplina e método ao cotidiano.
             </p>
           </div>
 
           <div className="rounded-xl bg-surface-muted p-6">
             <p className="text-foreground/70 leading-relaxed">
-              Aqui o autocuidado deixa de ser teoria e passa a estar nas mãos do
-              leitor — como prática simples, viva e possível.
+              Aqui o leitor passa a entender autocuidado não só como prática de vida mas também como fonte principal da sua evolução.
             </p>
           </div>
         </div>
