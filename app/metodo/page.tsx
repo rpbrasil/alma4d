@@ -71,7 +71,7 @@ export default function MetodoPage() {
             </Link>
             <Link
               href="/download"
-              className="rounded-xl border-2 border-slate-200 px-8 py-4 font-bold hover:bg-slate-50 transition-all text-center"
+              className="bg-[#DF633F] rounded-xl border-2 border-slate-200 px-8 py-4 font-bold hover:bg-slate-50 transition-all text-center"
             >
               Baixar o App
             </Link>

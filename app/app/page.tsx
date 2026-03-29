@@ -19,16 +19,20 @@ export default function AppPage() {
           </p>
 
           <p className="text-foreground/70 leading-relaxed">
-            O alma4D é uma plataforma digital criada para ajudar pessoas e
-            organizações a cuidar melhor das pessoas, entender o ambiente de
-            trabalho e tomar decisões responsáveis, com base em dados
-            confiáveis, éticos e alinhados às exigências legais.
+            O alma4D é um aplicativo que auxilia pessoas físicas na gestão do
+            autocuidado. Profissionais de saúde, bem-estar e desenvolvimento
+            humano podem acompanhar a jornada de seus clientes, oferecendo
+            orientações e acompanhamentos personalizados. Nas organizações, o
+            aplicativo apoia programas de bem‑estar e qualidade de vida no
+            trabalho, permitindo o mapeamento de riscos psicossociais, a geração
+            de indicadores agregados e a emissão de relatórios alinhados às
+            exigências legais e às boas práticas de gestão.
           </p>
 
           <div className="flex flex-wrap gap-4 pt-4">
             <Link
               href="/download"
-              className="bg-brand text-white px-6 py-3 rounded-md font-medium hover:bg-brand/90 transition-colors"
+              className="bg-[#DF633F] text-white px-6 py-3 rounded-md font-medium hover:bg-brand/90 transition-colors"
             >
               Baixar o App
             </Link>
@@ -253,7 +257,7 @@ export default function AppPage() {
 
           <Link
             href="/download"
-            className="border border-border px-6 py-3 rounded-md font-medium hover:bg-surface-muted transition-colors"
+            className="bg-[#DF633F] border border-border px-6 py-3 rounded-md font-medium hover:bg-surface-muted transition-colors"
           >
             Baixar o App
           </Link>

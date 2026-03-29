@@ -36,7 +36,7 @@ export default function AutoraPage() {
           />
 
           {/* Linha full-width alinhada ao bottom da imagem */}
-          <div className="absolute bottom-0 left-1/2 h-1 w-screen -translate-x-1/2 bg-brand" />
+          <div className="absolute bottom-0 left-1/2 h-1 w-screen -translate-x-1/2 bg-[#DF633F]" />
         </div>
       </section>
 
@@ -114,7 +114,9 @@ export default function AutoraPage() {
       {/* ================= O LIVRO ================= */}
       <section className="flex flex-col gap-12">
         <div className="max-w-3xl flex flex-col gap-4">
-          <h2 className="text-3xl font-bold">Arquitetura Viva do Autocuidado</h2>
+          <h2 className="text-3xl font-bold">
+            Arquitetura Viva do Autocuidado
+          </h2>
           <p className="text-foreground/70">
             Uma síntese viva de sua trajetória e visão de cuidado integral.
           </p>
@@ -123,9 +125,10 @@ export default function AutoraPage() {
         <div className="grid md:grid-cols-2 gap-8">
           <div className="rounded-xl bg-surface-muted p-6">
             <p className="text-foreground/70 leading-relaxed">
-              O livro <strong>Arquitetura Viva do Autocuidado</strong> nasce do princípio de que o
-              bem-estar é uma construção consciente. Um caminho onde corpo,
-              emoções, mente e propósito se integram ao cotidiano.
+              O livro <strong>Arquitetura Viva do Autocuidado</strong> nasce do
+              princípio de que o bem-estar é uma construção consciente. Um
+              caminho onde corpo, emoções, mente e propósito se integram ao
+              cotidiano.
             </p>
           </div>
 
@@ -152,7 +155,7 @@ export default function AutoraPage() {
         <div className="flex flex-wrap gap-4">
           <Link
             href="/livro"
-            className="bg-brand text-white px-6 py-3 rounded-md font-medium hover:bg-brand/90 transition-colors"
+            className="bg-[#DF633F] text-white px-6 py-3 rounded-md font-medium hover:bg-brand/90 transition-colors"
           >
             Conhecer o Livro
           </Link>
