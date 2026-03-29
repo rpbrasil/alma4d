@@ -43,9 +43,7 @@ export default function LivroPage() {
 
           <p className="text-foreground/70">
             Este livro é o mapa para quem busca elevar o padrão de bem-estar
-            através da consciência mental, corporal e da interocepção,
-            substituindo o cansaço crônico por uma presença vibrante do
-            despertar ao repouso.
+            pela sensibilização da consciência física e mental. Ao longo das práticas voce notará que o desânimo crônico, a fadiga e a falta de perspectiva darão lugar a uma presença vibrante da pessoa que todos querem ter por perto. O conhecimento aqui apresentado é a chave para você assumir um novo estilo de viver, mais saudável e produtivo.
           </p>
 
           <div className="flex gap-4 flex-wrap">
@@ -132,7 +130,7 @@ export default function LivroPage() {
         <div className="w-screen mx-[calc(50%-50vw)] sm:w-full sm:mx-0">
           <div className="relative w-full aspect-2/1 rounded-lg overflow-hidden">
             <Image
-              src="/images/alma4d-metodo-1200600.png"
+              src="/images/fran_book_book.jpeg"
               alt="Visão integrada teoria e prática alma4D"
               fill
               className="object-contain"
