@@ -3,34 +3,18 @@ import Link from "next/link";
 import Image from "next/image";
 
 export const metadata: Metadata = {
-  title: "O Método alma4D — Livro, Aplicativo e Prática Integrada",
+  title: "O Método alma4D — Consciência e Tecnologia Integradas",
   description:
-    "Conheça o método alma4D: fundamentos no livro e prática no aplicativo. Um sistema integrado para compreender, aplicar e evoluir continuamente.",
+    "O alma4D une os fundamentos do livro à prática do aplicativo. Um ecossistema de alfabetização corporal, monitoramento por IA e conformidade NR-1.",
   keywords: [
     "alma4D",
     "método alma4D",
-    "livro Arquitetura Viva",
-    "aplicativo alma4D",
-    "método integrado",
-    "conhecimento e tecnologia",
-    "prática contínua",
+    "NR-1 riscos psicossociais",
+    "interocepção",
+    "bem-estar corporativo",
+    "IA saúde",
   ],
-  alternates: {
-    canonical: "/metodo",
-  },
-  openGraph: {
-    title: "O Método alma4D",
-    description:
-      "Livro e aplicativo integrados em um método único: compreender, aplicar e evoluir continuamente.",
-    type: "website",
-    locale: "pt_BR",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "O Método alma4D",
-    description:
-      "Fundamentos no livro, prática no aplicativo — um método integrado para evolução contínua.",
-  },
+  alternates: { canonical: "/metodo" },
 };
 
 export default function MetodoPage() {
@@ -40,506 +24,232 @@ export default function MetodoPage() {
     mainEntity: [
       {
         "@type": "Question",
-        name: "O método alma4D é só um aplicativo?",
+        name: "O que é o Método alma4D?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "Não. O aplicativo é a parte prática. O método é sustentado pelo conteúdo do livro e pela integração entre compreensão e prática contínua.",
+          text: "É um sistema integrado que une a base conceitual do livro à prática tecnológica do aplicativo para elevar o padrão de bem-estar através das 4 Dimensões de Avaliação.",
         },
       },
       {
         "@type": "Question",
-        name: "Preciso do livro para usar o aplicativo?",
+        name: "Como o app ajuda na NR-1?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "Você pode usar o aplicativo, mas o livro aprofunda a compreensão e dá coerência ao processo, especialmente para consistência de longo prazo.",
-        },
-      },
-      {
-        "@type": "Question",
-        name: "Qual a melhor forma de começar?",
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: "Se você valoriza base conceitual, comece pelo livro. Se precisa de prática imediata, comece pelo aplicativo e depois aprofunde no livro.",
-        },
-      },
-      {
-        "@type": "Question",
-        name: "O que significa ‘um método vivo’?",
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: "Significa que o alma4D não é apenas conteúdo para consumir. Ele foi desenhado para ser vivido no cotidiano, com continuidade e evolução.",
-        },
-      },
-      {
-        "@type": "Question",
-        name: "Existe oferta conjunta do livro com o aplicativo?",
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: "Sim. A oferta integrada foi pensada para entregar a experiência completa do método: fundamento conceitual e prática contínua.",
+          text: "O alma4D operacionaliza o mapeamento de riscos psicossociais exigido pela NR-1, gerando relatórios analíticos e soluções acionáveis para empresas.",
         },
       },
     ],
   };
 
   return (
-    <div className="flex flex-col gap-24">
-      {/* JSON-LD (FAQ) */}
+    <div className="flex flex-col gap-20 pb-20">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
       />
-      {/* ================= HERO ================= */}
-      <section className="grid lg:grid-cols-2 gap-12 items-center">
-        {/* Texto */}
+
+      {/* ================= HERO SECTION ================= */}
+      <section className="grid lg:grid-cols-2 gap-12 items-center pt-10">
         <div className="flex flex-col gap-6">
-          <h1 className="text-4xl sm:text-5xl font-bold text-brand">alma4D</h1>
-
-          <p className="text-xl text-foreground/80 leading-relaxed">
-            Um método vivo que une <strong>conhecimento</strong> e{" "}
-            <strong>tecnologia</strong>.
+          <div className="inline-block w-fit px-3 py-1 rounded-full bg-brand/10 text-brand text-xs font-bold tracking-widest uppercase">
+            O Próximo Nível do Bem-Estar
+          </div>
+          <h1 className="text-5xl sm:text-6xl font-extrabold text-[#030870] leading-tight">
+            alma4D: Um <span className="text-[#019499]">Método Vivo</span>.
+          </h1>
+          <p className="text-xl text-slate-600 leading-relaxed">
+            Onde o <strong>fundamento teórico</strong> do livro encontra a{" "}
+            <strong>inteligência prática</strong> do aplicativo.
           </p>
-
-          <p className="text-foreground/70 leading-relaxed">
-            O livro estrutura o pensamento. <br />O aplicativo transforma esse
-            conteúdo em prática contínua.
-          </p>
-
           <div className="flex flex-wrap gap-4 pt-4">
             <Link
-              href="/metodo"
-              className="inline-flex items-center justify-center rounded-md bg-brand px-6 py-3 text-white font-semibold hover:bg-brand/90 transition-colors"
+              href="#como-funciona"
+              className="rounded-xl bg-[#030870] px-8 py-4 text-white font-bold hover:bg-[#030870]/90 transition-all shadow-lg shadow-blue-900/20"
             >
               Conhecer o Método
             </Link>
-
             <Link
               href="/download"
-              className="inline-flex items-center justify-center rounded-md border border-border px-6 py-3 font-semibold hover:bg-surface-muted transition-colors"
+              className="rounded-xl border-2 border-slate-200 px-8 py-4 font-bold hover:bg-slate-50 transition-all"
             >
               Baixar o App
             </Link>
           </div>
         </div>
 
-        {/* Mídia */}
-        <div className="w-screen max-w-none mx-[calc(50%-50vw)] sm:w-full sm:mx-0">
-          <div className="relative w-full aspect-2/2 bg-surface-muted">
-            <Image
-              src="/images/fran_book_book.jpeg"
-              alt="Infográfico do método alma4D"
-              fill
-              sizes="100vw"
-              className="object-contain"
-              priority
-            />
-          </div>
-        </div>
-      </section>
-      {/* ================= HERO ================= */}
-      <section className="flex flex-col gap-6 max-w-3xl">
-        <h1 className="text-4xl sm:text-5xl font-bold text-brand">
-          O Método alma4D
-        </h1>
-        {/* 1. A Figura (Infográfico) - Otimizado para Visibilidade Máxima */}
-        <div className="w-screen max-w-none mx-[calc(50%-50vw)] sm:w-full sm:mx-0">
-          <div className="max-w-none px-4 md:px-12">
+        <div className="relative group">
+          <div className="absolute inset-0 bg-[#019499]/5 blur-3xl rounded-full -z-10 animate-pulse" />
+          <div className="relative rounded-3xl overflow-hidden border border-slate-100 shadow-2xl">
             <Image
               src="/images/alma4d-resumo-1612.png"
-              alt="Infográfico Ciclo de Inteligência e Cuidado Organizacional alma4D"
+              alt="Infográfico alma4D"
               width={1612}
               height={1000}
-              sizes="100vw"
-              className="w-full h-auto object-contain"
+              className="w-full h-auto"
               priority
             />
           </div>
         </div>
-        <p className="text-xl text-foreground/80 leading-relaxed">
-          O alma4D é um sistema integrado que conecta{" "}
-          <strong>compreensão</strong> e <strong>aplicação prática</strong>.
-        </p>
+      </section>
 
-        <p className="text-foreground/70 leading-relaxed">
-          O livro estrutura os fundamentos. O aplicativo transforma esses
-          fundamentos em prática contínua — e o método mantém tudo coerente.
-        </p>
-
-        <div className="flex flex-wrap gap-3 pt-2">
-          <Link
-            href="/livro"
-            className="inline-flex items-center justify-center rounded-md border border-border bg-surface px-4 py-2 text-sm font-semibold hover:bg-surface-muted transition-colors"
-          >
-            Explorar o Livro
-          </Link>
-
-          <Link
-            href="/app"
-            className="inline-flex items-center justify-center rounded-md border border-border bg-surface px-4 py-2 text-sm font-semibold hover:bg-surface-muted transition-colors"
-          >
-            Ver o Aplicativo
-          </Link>
-
-          <Link
-            href="/download"
-            className="inline-flex items-center justify-center rounded-md bg-brand-accent px-4 py-2 text-sm font-semibold text-white hover:bg-brand-accent/90 transition-colors"
-          >
-            Livro + App
-          </Link>
+      {/* ================= OS TRÊS PILARES (CONFLUÊNCIA) ================= */}
+      <section id="como-funciona" className="grid md:grid-cols-3 gap-8">
+        <div className="p-8 rounded-3xl bg-white border border-slate-100 shadow-sm">
+          <div className="text-4xl mb-4">📘</div>
+          <h3 className="text-xl font-bold text-[#030870] mb-3">
+            1. O Mapa (Livro)
+          </h3>
+          <p className="text-slate-600 text-sm leading-relaxed">
+            Estrutura sua <strong>alfabetização corporal</strong>. Compreenda as
+            4 dimensões e transforme sua rotina em um ritual de gestão de
+            energia vital.
+          </p>
+        </div>
+        <div className="p-8 rounded-3xl bg-white border border-slate-100 shadow-sm ring-2 ring-[#019499]/20">
+          <div className="text-4xl mb-4">📱</div>
+          <h3 className="text-xl font-bold text-[#030870] mb-3">
+            2. O GPS (Aplicativo)
+          </h3>
+          <p className="text-slate-600 text-sm leading-relaxed">
+            A prática no cotidiano. Registro das dimensões,{" "}
+            <strong>análises por I.A.</strong> e gamificação para manter a
+            consistência e o propósito.
+          </p>
+        </div>
+        <div className="p-8 rounded-3xl bg-[#030870] text-white shadow-xl shadow-blue-900/20">
+          <div className="text-4xl mb-4">🚀</div>
+          <h3 className="text-xl font-bold mb-3 text-white">3. A Evolução</h3>
+          <p className="text-blue-100 text-sm leading-relaxed">
+            Onde a teoria e prática se tornam{" "}
+            <strong>estratégia de vida</strong>. Resultados imediatos para
+            indivíduos, profissionais e empresas.
+          </p>
         </div>
       </section>
 
-      {/* ================= ÍNDICE (UX + SEO) ================= */}
-      <section className="rounded-2xl border border-border bg-surface p-8">
-        <h2 className="text-2xl font-bold mb-4">Nesta página</h2>
-        <ul className="grid sm:grid-cols-2 gap-3 text-foreground/70">
-          <li>
-            <a className="hover:underline" href="#o-que-e">
-              O que é o método na prática
-            </a>
-          </li>
-          <li>
-            <a className="hover:underline" href="#dois-pilares">
-              Os dois pilares: livro e aplicativo
-            </a>
-          </li>
-          <li>
-            <a className="hover:underline" href="#como-funciona">
-              Como funciona (3 movimentos)
-            </a>
-          </li>
-          <li>
-            <a className="hover:underline" href="#beneficios">
-              Benefícios do método
-            </a>
-          </li>
-          <li>
-            <a className="hover:underline" href="#para-quem">
-              Para quem é
-            </a>
-          </li>
-          <li>
-            <a className="hover:underline" href="#como-comecar">
-              Como começar
-            </a>
-          </li>
-          <li>
-            <a className="hover:underline" href="#experiencia-completa">
-              Livro + App (experiência completa)
-            </a>
-          </li>
-          <li>
-            <a className="hover:underline" href="#faq">
-              Perguntas frequentes
-            </a>
-          </li>
-        </ul>
-      </section>
-
-      {/* ================= O QUE É ================= */}
-      <section id="o-que-e" className="flex flex-col gap-6">
-        <div className="max-w-3xl flex flex-col gap-3">
-          <h2 className="text-3xl font-bold">
-            O que é, na prática, o método alma4D
+      {/* ================= PARA QUEM É (ABORDAGENS) ================= */}
+      <section className="flex flex-col gap-12">
+        <div className="text-center max-w-2xl mx-auto">
+          <h2 className="text-3xl font-bold text-[#030870]">
+            Impacto em todas as esferas
           </h2>
-          <p className="text-foreground/70 leading-relaxed">
-            O método alma4D existe para evitar dois extremos comuns: teoria sem
-            aplicação (entender muito, mudar pouco) e prática sem fundamento
-            (fazer muito, mas sem clareza).
-          </p>
-          <p className="text-foreground/70 leading-relaxed">
-            Ele funciona como um eixo: você compreende a lógica no livro, aplica
-            no aplicativo e consolida pela repetição consciente — criando
-            continuidade e evolução.
-          </p>
-        </div>
-      </section>
-
-      {/* ================= DOIS PILARES ================= */}
-      <section id="dois-pilares" className="flex flex-col gap-10">
-        <div className="max-w-3xl flex flex-col gap-3">
-          <h2 className="text-3xl font-bold">Os dois pilares do alma4D</h2>
-          <p className="text-foreground/70 leading-relaxed">
-            O método foi desenhado com dois pilares complementares: o livro dá
-            fundamento e o aplicativo sustenta a prática.
+          <p className="text-slate-500 mt-4">
+            Uma solução integrada para diferentes necessidades.
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-8">
-          <div className="rounded-xl border border-border bg-surface p-8 flex flex-col gap-4">
-            <h3 className="text-2xl font-semibold">📘 O Livro (fundamento)</h3>
-            <p className="text-foreground/70 leading-relaxed">
-              O livro oferece conceitos, estrutura e visão. É onde você entende
-              o “porquê” do sistema e ganha coerência para aplicar com
-              consistência.
+        <div className="grid lg:grid-cols-3 gap-6">
+          {/* Pessoas Físicas */}
+          <div className="p-8 rounded-3xl bg-slate-50 border border-transparent hover:border-[#019499]/30 transition-all">
+            <h4 className="font-bold text-[#030870] mb-4 flex items-center gap-2">
+              <span className="w-8 h-8 rounded-lg bg-white flex items-center justify-center shadow-sm">
+                👤
+              </span>
+              Para Você
+            </h4>
+            <p className="text-sm text-slate-600 leading-relaxed">
+              Saia do automático. Domine a <strong>interocepção</strong> e
+              utilize a I.A. do app para ajustar sua rotina, ganhar energia e
+              fortalecer sua saúde física e mental.
             </p>
-            <Link
-              href="/livro"
-              className="mt-auto text-brand font-semibold hover:underline"
-            >
-              Explorar o Livro →
-            </Link>
           </div>
 
-          <div className="rounded-xl border border-border bg-surface p-8 flex flex-col gap-4">
-            <h3 className="text-2xl font-semibold">
-              📱 O Aplicativo (prática)
-            </h3>
-            <p className="text-foreground/70 leading-relaxed">
-              O aplicativo traduz os fundamentos em experiência prática:
-              acompanhamento, continuidade e interação. Ele existe para reduzir
-              fricção e aumentar consistência.
+          {/* Profissionais */}
+          <div className="p-8 rounded-3xl bg-slate-50 border border-transparent hover:border-[#019499]/30 transition-all">
+            <h4 className="font-bold text-[#030870] mb-4 flex items-center gap-2">
+              <span className="w-8 h-8 rounded-lg bg-white flex items-center justify-center shadow-sm">
+                🩺
+              </span>
+              Para Profissionais
+            </h4>
+            <p className="text-sm text-slate-600 leading-relaxed">
+              A ferramenta definitiva de <strong>engajamento clínico</strong>.
+              Acompanhe a jornada do cliente em tempo real e acelere resultados
+              com dados precisos e compartilhados.
             </p>
-            <div className="mt-auto flex flex-wrap gap-3">
-              <Link
-                href="/app"
-                className="text-brand font-semibold hover:underline"
-              >
-                Ver o Aplicativo →
-              </Link>
+          </div>
+
+          {/* Empresas */}
+          <div className="p-8 rounded-3xl bg-slate-50 border border-transparent hover:border-[#019499]/30 transition-all">
+            <h4 className="font-bold text-[#030870] mb-4 flex items-center gap-2">
+              <span className="w-8 h-8 rounded-lg bg-white flex items-center justify-center shadow-sm">
+                🏢
+              </span>
+              Para Empresas
+            </h4>
+            <p className="text-sm text-slate-600 leading-relaxed">
+              Conformidade total com a <strong>NR-1</strong>. Automatize o
+              mapeamento de riscos psicossociais e promova uma cultura de
+              produtividade sustentável e saúde mental.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* ================= EXPERIÊNCIA INTEGRADA (LIVRO + APP) ================= */}
+      <section className="bg-gradient-to-br from-[#030870] to-[#019499] rounded-[3rem] p-12 text-white overflow-hidden relative">
+        <div className="relative z-10 grid md:grid-cols-2 gap-12 items-center">
+          <div className="space-y-6">
+            <h2 className="text-3xl md:text-4xl font-bold">
+              A Experiência Completa
+            </h2>
+            <p className="text-blue-50 leading-relaxed">
+              O método alma4D alcança sua máxima eficácia na integração: o livro
+              sustenta o raciocínio e o aplicativo sustenta a ação. Juntos, eles
+              eliminam o ciclo de começa e para, criando uma evolução
+              contínua.
+            </p>
+            <div className="flex flex-wrap gap-4">
               <Link
                 href="/download"
-                className="text-brand-secondary font-semibold hover:underline"
+                className="bg-white text-[#030870] px-8 py-3 rounded-xl font-bold hover:scale-105 transition-transform"
               >
-                Baixar o App →
+                Oferta Livro + App
               </Link>
+            </div>
+          </div>
+          <div className="flex justify-center">
+            <div className="relative w-64 h-64 md:w-80 md:h-80 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-sm border border-white/20">
+              <span className="text-6xl">🔄</span>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ================= COMO FUNCIONA ================= */}
-      <section id="como-funciona" className="flex flex-col gap-10">
-        <div className="max-w-3xl flex flex-col gap-3">
-          <h2 className="text-3xl font-bold">
-            Como o método funciona (3 movimentos)
-          </h2>
-          <p className="text-foreground/70 leading-relaxed">
-            Você pode entender o método alma4D como um ciclo progressivo:
-            compreender, aplicar e evoluir continuamente.
-          </p>
-        </div>
-
-        <div className="grid md:grid-cols-3 gap-8">
-          <div className="rounded-xl bg-surface-muted p-6 flex flex-col gap-3">
-            <h3 className="text-xl font-semibold">1) Compreensão</h3>
-            <p className="text-foreground/70">
-              Entenda fundamentos, vocabulário e lógica. Isso evita prática
-              mecânica.
-            </p>
-          </div>
-          <div className="rounded-xl bg-surface-muted p-6 flex flex-col gap-3">
-            <h3 className="text-xl font-semibold">2) Aplicação</h3>
-            <p className="text-foreground/70">
-              A prática acontece no cotidiano. O app reduz fricção e sustenta
-              consistência.
-            </p>
-          </div>
-          <div className="rounded-xl bg-surface-muted p-6 flex flex-col gap-3">
-            <h3 className="text-xl font-semibold">3) Evolução contínua</h3>
-            <p className="text-foreground/70">
-              Revisão e ajuste constantes: você não reinicia do zero — você
-              evolui.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* ================= BENEFÍCIOS ================= */}
-      <section id="beneficios" className="flex flex-col gap-10">
-        <div className="max-w-3xl flex flex-col gap-3">
-          <h2 className="text-3xl font-bold">Benefícios do método alma4D</h2>
-          <p className="text-foreground/70 leading-relaxed">
-            O método é útil quando você busca coerência, clareza e continuidade
-            — integrando teoria e prática sem fragmentação.
-          </p>
-        </div>
-
-        <div className="grid md:grid-cols-2 gap-6">
-          {[
-            ["Coerência", "Um sistema com fundamento, sem atalhos desconexos."],
-            ["Clareza", "Saber o que está fazendo e por quê."],
-            ["Continuidade", "Sair do ciclo de “começa e para”."],
-            ["Aplicação concreta", "Transformar leitura em ação consistente."],
-          ].map(([title, desc]) => (
-            <div
-              key={title}
-              className="rounded-xl border border-border bg-surface p-6"
-            >
-              <h3 className="text-xl font-semibold">{title}</h3>
-              <p className="text-foreground/70 mt-2">{desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ================= PARA QUEM É ================= */}
-      <section id="para-quem" className="flex flex-col gap-10">
-        <div className="max-w-3xl flex flex-col gap-3">
-          <h2 className="text-3xl font-bold">Para quem o método foi criado</h2>
-          <p className="text-foreground/70 leading-relaxed">
-            O método foi criado para todos os interessados em atuar ativamente
-            em seu próprio benefício ou de terceiros na obtenção de conteúdos e
-            práticas de vida saudável.
-          </p>
-        </div>
-
-        <div className="rounded-2xl bg-surface-muted p-8">
-          <ul className="list-disc list-inside space-y-3 text-foreground/70">
-            <li>
-              Pessoas que valorizam aplicativos com embasamento sólido ou que
-              queiram levar sua longevidade a sério.
-            </li>
-            <li>
-              Profissionais podem adotar a metodologia para organizar
-              didaticamente seu trabalho e esclarecer ao cliente as etapas e os
-              objetivos do que se propõe a fazer.{" "}
-            </li>
-            <li>
-              Empresas podem engajar colaboradores em programas de bem-estar e
-              saúde mental. Como bônus, alma4D resolve a operacionalização do
-              mapeamento de risco psicossocial, inclusive com emissão de
-              relatórios, conforme previsto na legislação.
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      {/* ================= COMO COMEÇAR ================= */}
-      <section id="como-comecar" className="flex flex-col gap-10">
-        <div className="max-w-3xl flex flex-col gap-3">
-          <h2 className="text-3xl font-bold">Como começar</h2>
-          <p className="text-foreground/70 leading-relaxed">
-            Você pode iniciar por três caminhos. O melhor depende do seu
-            momento: visão geral, base conceitual ou prática imediata.
-          </p>
-        </div>
-
-        <div className="grid md:grid-cols-3 gap-8">
-          <div className="rounded-xl border border-border bg-surface p-6 flex flex-col gap-3">
-            <h3 className="text-xl font-semibold">A) Começar pelo método</h3>
-            <p className="text-foreground/70">
-              Ideal para entender o sistema antes de escolher livro/app.
-            </p>
-            <div className="mt-auto flex flex-col gap-2">
-              <Link
-                href="/livro"
-                className="text-brand font-semibold hover:underline"
-              >
-                Ir para o Livro →
-              </Link>
-              <Link
-                href="/app"
-                className="text-brand font-semibold hover:underline"
-              >
-                Ir para o App →
-              </Link>
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-border bg-surface p-6 flex flex-col gap-3">
-            <h3 className="text-xl font-semibold">B) Começar pelo livro</h3>
-            <p className="text-foreground/70">
-              Ideal para construir base conceitual antes da prática.
-            </p>
-            <Link
-              href="/livro"
-              className="mt-auto text-brand font-semibold hover:underline"
-            >
-              Explorar o Livro →
-            </Link>
-          </div>
-
-          <div className="rounded-xl border border-border bg-surface p-6 flex flex-col gap-3">
-            <h3 className="text-xl font-semibold">
-              C) Começar pelo aplicativo
-            </h3>
-            <p className="text-foreground/70">
-              Ideal para prática imediata — e depois aprofundar no livro.
-            </p>
-            <div className="mt-auto flex flex-col gap-2">
-              <Link
-                href="/download"
-                className="text-brand-secondary font-semibold hover:underline"
-              >
-                Baixar o App →
-              </Link>
-              <Link
-                href="/livro"
-                className="text-brand font-semibold hover:underline"
-              >
-                Ver o Livro →
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ================= EXPERIÊNCIA COMPLETA ================= */}
-      <section
-        id="experiencia-completa"
-        className="rounded-2xl border border-border bg-surface p-10 flex flex-col gap-6"
-      >
-        <h2 className="text-3xl font-bold">
-          A experiência completa (Livro + App)
+      {/* ================= FAQ SIMPLIFICADO ================= */}
+      <section id="faq" className="max-w-4xl mx-auto w-full space-y-8">
+        <h2 className="text-3xl font-bold text-[#030870] text-center">
+          Dúvidas Frequentes
         </h2>
-
-        <p className="text-foreground/70 max-w-3xl">
-          O método alma4D alcança sua forma mais consistente quando livro e
-          aplicativo são usados juntos: o livro sustenta o raciocínio e o
-          aplicativo sustenta a prática.
-        </p>
-
-        <div className="flex flex-wrap gap-4">
-          <Link
-            href="/download"
-            className="inline-flex items-center justify-center rounded-md bg-brand-accent px-6 py-3 text-white font-semibold hover:bg-brand-accent/90 transition-colors"
-          >
-            Ver Oferta Livro + App
-          </Link>
-
-          <Link
-            href="/download"
-            className="inline-flex items-center justify-center rounded-md border border-border px-6 py-3 font-semibold hover:bg-surface-muted transition-colors"
-          >
-            Baixar o App
-          </Link>
-        </div>
-      </section>
-
-      {/* ================= FAQ ================= */}
-      <section id="faq" className="flex flex-col gap-8">
-        <h2 className="text-3xl font-bold">Perguntas frequentes</h2>
-
         <div className="grid gap-4">
           {[
             {
-              q: "O método alma4D é só um aplicativo?",
-              a: "Não. O aplicativo é a parte prática. O método é sustentado pelo conteúdo do livro e pela integração entre compreensão e prática contínua.",
+              q: "O método é só um aplicativo?",
+              a: "Não. O app é a ferramenta de execução. O método é a união da inteligência do livro com a prática guiada pela tecnologia.",
             },
             {
-              q: "Preciso do livro para usar o aplicativo?",
-              a: "Você pode usar o aplicativo, mas o livro aprofunda a compreensão e dá coerência ao processo, especialmente para consistência de longo prazo.",
+              q: "O alma4D substitui acompanhamento médico?",
+              a: "Não. Ele complementa o trabalho de profissionais, fornecendo dados e engajamento para que o tratamento ou mentoria seja mais eficiente.",
             },
             {
-              q: "Qual a melhor forma de começar?",
-              a: "Se você valoriza base conceitual, comece pelo livro. Se precisa de prática imediata, comece pelo aplicativo e depois aprofunde no livro.",
+              q: "Como o app resolve a NR-1?",
+              a: "Através de questionários validados e monitoramento contínuo, o app gera relatórios de riscos psicossociais prontos para a gestão de RH e segurança do trabalho.",
             },
-            {
-              q: "O que significa ‘um método vivo’?",
-              a: "Significa que o alma4D não é apenas conteúdo para consumir. Ele foi desenhado para ser vivido no cotidiano, com continuidade e evolução.",
-            },
-            {
-              q: "Existe oferta conjunta do livro com o aplicativo?",
-              a: "Sim. A oferta integrada foi pensada para entregar a experiência completa do método: fundamento conceitual e prática contínua.",
-            },
-          ].map((item) => (
-            <div
-              key={item.q}
-              className="rounded-xl border border-border bg-surface p-6"
+          ].map((faq, i) => (
+            <details
+              key={i}
+              className="group p-6 rounded-2xl border border-slate-100 bg-white hover:border-[#019499]/20 transition-all cursor-pointer"
             >
-              <h3 className="text-xl font-semibold">{item.q}</h3>
-              <p className="text-foreground/70 mt-2">{item.a}</p>
-            </div>
+              <summary className="font-bold text-[#030870] list-none flex justify-between items-center">
+                {faq.q}
+                <span className="text-[#019499] group-open:rotate-180 transition-transform">
+                  ▼
+                </span>
+              </summary>
+              <p className="text-slate-600 mt-4 text-sm leading-relaxed">
+                {faq.a}
+              </p>
+            </details>
           ))}
         </div>
       </section>
