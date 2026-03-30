@@ -14,7 +14,7 @@ export const metadata: Metadata = {
     "bem-estar corporativo",
     "IA saúde",
   ],
-  alternates: { canonical: "/metodo" },
+  alternates: { canonical: "/" },
 };
 
 export default function MetodoPage() {

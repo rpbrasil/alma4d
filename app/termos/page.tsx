@@ -58,7 +58,8 @@ export default function TermosPage() {
           </ul>
           <p className="mt-2">
             As respostas não devem ser interpretadas como aconselhamento
-            profissional, jurídico, médico, financeiro ou técnico.
+            profissional, jurídico, médico, psicológico, financeiro ou de
+            qualquer outra natureza.
           </p>
         </article>
 
@@ -70,6 +71,14 @@ export default function TermosPage() {
           <p>
             O usuário é responsável por avaliar criticamente as informações
             apresentadas e, quando necessário, buscar orientação especializada.
+          </p>
+          <p>
+            O usuário está ciente de que, ao buscar orientação especializada, deverá verificar a idoneidade dos profissionais nos respectivos conselhos de classe e em outras fontes de informação. O usuário não poderá em nenhum momento alegar desconhecimento de que a plataforma não fornece indicação ou referências e nem incentiva o acesso destes profissionais.
+          </p>
+          <p>
+            O usuário é responsável por todas as escolhas que fizer no
+            aplicativo, inclusive agendamento e consultas com profissionais que
+            expoe suas qualificacoes na plataforma.
           </p>
           <p className="mt-2">É proibido utilizar o aplicativo para:</p>
           <ul className="mt-3 list-disc pl-6">

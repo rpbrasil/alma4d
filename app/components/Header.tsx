@@ -47,7 +47,7 @@ export function Header() {
       <div className="w-full px-0 py-0.5 md:max-w-5xl md:mx-auto md:px-6 md:py-1 flex items-center justify-between">
         {/* Logo */}
         <Link
-          href="/metodo"
+          href="/"
           className="flex items-center gap-2 mr-auto md:mr-0 hover:opacity-90 transition-opacity order-1 md:order-0"
           onClick={() => setOpen(false)}
           aria-label="Ir para a página inicial"
@@ -70,7 +70,7 @@ export function Header() {
           className="hidden md:flex items-center gap-6"
           aria-label="Navegação principal"
         >
-          <NavLink href="/metodo">Método</NavLink>
+          <NavLink href="/">Método</NavLink>
           <NavLink href="/livro">Livro</NavLink>
           <NavLink href="/app">Aplicativo</NavLink>
           <NavLink href="/autora">Autora</NavLink>
@@ -120,7 +120,7 @@ export function Header() {
             className="flex flex-col px-4 py-3 gap-4"
             aria-label="Navegação mobile"
           >
-            <NavLink href="/metodo" onClick={() => setOpen(false)}>
+            <NavLink href="/" onClick={() => setOpen(false)}>
               Método
             </NavLink>
             <NavLink href="/livro" onClick={() => setOpen(false)}>

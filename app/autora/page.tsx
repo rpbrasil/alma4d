@@ -69,8 +69,8 @@ export default function AutoraPage() {
             <h3 className="text-xl font-semibold mb-2">Pesquisa contínua</h3>
             <p className="text-foreground/70">
               Com formação em Neuropsicologia do Desenvolvimento,
-              Psicopedagogia, Monitoria de Museus (MAC-USP) e estudos sobre modos
-              de vida saudáveis.
+              Psicopedagogia, Monitoria de Museus (MAC-USP) e estudos sobre
+              modos de vida saudáveis.
             </p>
           </div>
         </div>
@@ -156,7 +156,7 @@ export default function AutoraPage() {
           </Link>
 
           <Link
-            href="/metodo"
+            href="/"
             className="border border-border px-6 py-3 rounded-md font-medium hover:bg-surface-muted transition-colors"
           >
             Ver o Método

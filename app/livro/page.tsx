@@ -52,10 +52,7 @@ export default function LivroPage() {
           </p>
 
           <div className="flex gap-4 flex-wrap">
-            <Link
-              href="/metodo"
-              className="text-brand font-medium hover:underline"
-            >
+            <Link href="/" className="text-brand font-medium hover:underline">
               Ver o Método
             </Link>
 
