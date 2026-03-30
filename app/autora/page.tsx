@@ -18,7 +18,8 @@ export default function AutoraPage() {
           </p>
 
           <p className="text-foreground/70 leading-relaxed">
-            Sua trajetória engloba conhecimento, sensibilidade e experiência prática, transformando vidas ao longo de 30 anos.
+            Conhecimento, sensibilidade e experiência prática, transformando
+            vidas ao longo de 30 anos de trajetória.
           </p>
         </div>
 
@@ -43,9 +44,7 @@ export default function AutoraPage() {
       <section className="flex flex-col gap-12">
         <div className="max-w-3xl flex flex-col gap-4">
           <h2 className="text-3xl font-bold">Trajetória</h2>
-          <p className="text-foreground/70">
-            
-          </p>
+          <p className="text-foreground/70"></p>
         </div>
 
         <div className="grid md:grid-cols-3 gap-8">
@@ -69,8 +68,8 @@ export default function AutoraPage() {
           <div className="rounded-xl bg-surface-muted p-6">
             <h3 className="text-xl font-semibold mb-2">Pesquisa contínua</h3>
             <p className="text-foreground/70">
-              Com formação livre em Neuropsicologia do Desenvolvimento,
-              Psicopedagogia, Monitoria de Museus (MAC-USP) e estudos em modos
+              Com formação em Neuropsicologia do Desenvolvimento,
+              Psicopedagogia, Monitoria de Museus (MAC-USP) e estudos sobre modos
               de vida saudáveis.
             </p>
           </div>
@@ -83,8 +82,8 @@ export default function AutoraPage() {
           <h2 className="text-3xl font-bold">Visão de bem-estar</h2>
 
           <p className="text-foreground/70 leading-relaxed">
-            O trabalho de Fran surge da vivência profissional com pessoas
-            e grupos ao longo de muitos anos.
+            O trabalho de Fran surge da vivência profissional com pessoas e
+            grupos ao longo de muitos anos.
           </p>
 
           <p className="text-foreground/70 leading-relaxed">
@@ -115,22 +114,23 @@ export default function AutoraPage() {
           <h2 className="text-3xl font-bold">
             Arquitetura Viva do Autocuidado
           </h2>
-          <p className="text-foreground/70">
-            
-          </p>
+          <p className="text-foreground/70"></p>
         </div>
 
         <div className="grid md:grid-cols-2 gap-8">
           <div className="rounded-xl bg-surface-muted p-6">
             <p className="text-foreground/70 leading-relaxed">
-              O livro <strong>Arquitetura Viva do Autocuidado</strong> propoe que o bem-estar é uma construção consciente. Um
-              processo onde corpo, emoções, mente e propósito se integram com disciplina e método ao cotidiano.
+              O livro <strong>Arquitetura Viva do Autocuidado</strong> propoe
+              que o bem-estar é uma construção consciente. Um processo onde
+              corpo, emoções, mente e propósito se integram com disciplina e
+              método ao cotidiano.
             </p>
           </div>
 
           <div className="rounded-xl bg-surface-muted p-6">
             <p className="text-foreground/70 leading-relaxed">
-              Aqui o leitor passa a entender autocuidado não só como prática de vida mas também como fonte principal da sua evolução.
+              Aqui o leitor passa a entender autocuidado não só como prática de
+              vida mas também como fonte principal da sua evolução.
             </p>
           </div>
         </div>

@@ -31,19 +31,24 @@ export default function LivroPage() {
       <section className="grid lg:grid-cols-2 gap-12 items-center">
         <div className="flex flex-col gap-6">
           <h1 className="text-4xl sm:text-5xl font-bold text-brand">
-            Arquitetura Viva do Autocuidado
+            Arquitetura <span className="text-[#019499]">Viva</span> do
+            Autocuidado
           </h1>
 
           <p className="text-xl text-foreground/80">
             Viver bem deixou de ser um sonho de consumo para se tornar a métrica
             mais valiosa da atualidade. Ao dominar as 4 Dimensões expostas neste
-            livro, você transcende a gestão do tempo e passa a gerir sua própria
-            energia vital, transformando a rotina em um ritual poderoso.
+            livro, você aprende a gerir sua própria energia vital, transformando
+            a rotina em um ritual poderoso.
           </p>
 
           <p className="text-foreground/70">
             Este livro é o mapa para quem busca elevar o padrão de bem-estar
-            pela sensibilização da consciência física e mental. Ao longo das práticas você notará que o desânimo crônico, a fadiga e a falta de perspectiva darão lugar àquela presença vibrante da pessoa que todos querem ter por perto. O conhecimento aqui apresentado é a chave para assumir um novo estilo de viver, mais saudável e produtivo.
+            pela sensibilização da consciência física e mental. Ao longo das
+            práticas você notará que o desânimo crônico, a fadiga e a falta de
+            perspectiva darão lugar àquela presença vibrante da pessoa que todos
+            querem ter por perto. O conhecimento aqui apresentado é a chave para
+            assumir um novo estilo de viver, mais saudável e produtivo.
           </p>
 
           <div className="flex gap-4 flex-wrap">
@@ -107,7 +112,7 @@ export default function LivroPage() {
 
       {/* CONTEÚDO */}
       <section className="grid md:grid-cols-3 gap-8">
-        <div className="bg-surface-muted p-6 rounded-xl flex flex-col gap-4">
+        <div className="w-screen mx-[calc(50%-50vw)] sm:w-full sm:mx-0">
           {/* Imagem no topo do card */}
           <div className="relative w-full aspect-4/3 rounded-lg overflow-hidden">
             <Image
@@ -128,7 +133,7 @@ export default function LivroPage() {
         </div>
 
         <div className="w-screen mx-[calc(50%-50vw)] sm:w-full sm:mx-0">
-          <div className="relative w-full aspect-2/1 rounded-lg overflow-hidden">
+          <div className="relative w-full aspect-4/3 rounded-lg overflow-hidden">
             <Image
               src="/images/fran_book_book.jpeg"
               alt="Visão integrada teoria e prática alma4D"
@@ -146,7 +151,7 @@ export default function LivroPage() {
           </div>
         </div>
 
-        <div className="bg-surface-muted p-6 rounded-xl flex flex-col gap-4">
+        <div className="w-screen mx-[calc(50%-50vw)] sm:w-full sm:mx-0">
           {/* Imagem no topo do card */}
           <div className="relative w-full aspect-4/3 rounded-lg overflow-hidden">
             <Image

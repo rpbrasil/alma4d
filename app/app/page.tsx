@@ -10,7 +10,7 @@ export default function AppPage() {
         {/* Texto */}
         <div className="flex flex-col gap-6 max-w-3xl">
           <h1 className="text-4xl sm:text-5xl font-bold text-brand">
-            O Aplicativo alma4D
+            O Aplicativo alma<span className="text-[#019499]">4D</span>
           </h1>
 
           <p className="text-xl text-foreground/80 leading-relaxed">
@@ -19,7 +19,11 @@ export default function AppPage() {
           </p>
 
           <p className="text-foreground/70 leading-relaxed">
-            O alma4D é um aplicativo que auxilia pessoas físicas na gestão do
+            <strong>
+              <span className="text-[#030870]">alma</span>
+              <span className="text-[#019499]">4D</span>
+            </strong>{" "}
+            é um aplicativo que auxilia pessoas físicas na gestão do
             autocuidado. Profissionais de saúde, bem-estar e desenvolvimento
             humano podem acompanhar a jornada de seus clientes, oferecendo
             orientações e acompanhamentos personalizados. Nas organizações, o

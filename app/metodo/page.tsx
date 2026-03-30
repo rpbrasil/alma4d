@@ -161,7 +161,8 @@ export default function MetodoPage() {
               Para Profissionais
             </h4>
             <p className="text-sm text-slate-600 leading-relaxed">
-              Engajamento clínico total. Acompanhe os relatórios da jornada do cliente e envie mensagens em tempo real.
+              Engajamento clínico total. Acompanhe os relatórios da jornada do
+              cliente e envie mensagens em tempo real.
             </p>
           </div>
           <div className="p-8 rounded-3xl bg-slate-50 border border-transparent hover:border-[#019499]/30 transition-all">
@@ -181,31 +182,48 @@ export default function MetodoPage() {
 
       {/* ================= EXPERIÊNCIA INTEGRADA ================= */}
       <section className="px-1 md:px-0">
-        <div className="bg-linear-to-br from-[#030870] to-[#019499] rounded-[2.5rem] md:rounded-[3rem] p-8 md:p-12 text-white overflow-hidden relative">
+        <div className="bg-gradient-to-br from-[#030870] to-[#019499] rounded-[2.5rem] md:rounded-[3rem] p-8 md:p-12 text-white overflow-hidden relative shadow-2xl shadow-[#030870]/20">
           <div className="relative z-10 grid md:grid-cols-2 gap-12 items-center">
             <div className="space-y-6">
-              <h2 className="md:text-4xl font-bold text-[#019499]">
+              <h2 className="text-3xl md:text-4xl font-bold text-[#019499]">
                 A Experiência Completa
               </h2>
-              <p className="text-blue-50 leading-relaxed">
+              <p className="text-blue-50 leading-relaxed text-sm md:text-base">
                 O método alma4D alcança sua máxima eficácia na integração: o
                 livro sustenta o raciocínio e o aplicativo sustenta a ação.
               </p>
               <Link
                 href="/download"
-                className="inline-block bg-[#DF633F] text-[#030870] px-8 py-3 rounded-xl font-bold hover:scale-105 transition-transform text-center"
+                className="inline-block bg-[#DF633F] text-white px-8 py-3 rounded-xl font-bold hover:bg-[#DF633F]/90 transition-all text-center shadow-lg shadow-[#DF633F]/30"
               >
                 Oferta Livro + App
               </Link>
             </div>
-            <div className="flex justify-center">
-              {/* 1. Container Principal (O Círculo) - Adicionada a classe 'group' para controlar o hover */}
-              <div className="group relative w-32 h-32 md:w-40 md:h-40 rounded-full border-2 border-slate-100 bg-white shadow-sm hover:shadow-xl transition-all duration-500 ease-out overflow-hidden p-4">
-                {/* 2. Efeito de Brilho de Fundo (Glow Sutil no Hover) */}
-                <div className="absolute inset-0 bg-linear-to-br from-[#019499]/10 to-[#030870]/10 opacity-0 group-hover:opacity-100 transition-opacity duration-700 -z-10" />
 
-                {/* 3. Container da Imagem Interna (com movimento suave no hover) */}
-                <div className="relative w-full h-full -translate-y-2 transition-transform duration-500 ease-out group-hover:scale-105 group-hover:-translate-y-3">
+            <div className="flex justify-center">
+              {/* Container do Círculo com Efeito de RELEVO CONSTANTE (Físico/Polido) */}
+              {/* A mágica está no combo de shadows e no gradiente de fundo */}
+              <div
+                className="relative w-36 h-36 md:w-44 md:h-44 rounded-full flex items-center justify-center p-5
+             /* 1. Gradiente de Fundo que simula curvatura (Glossy) */
+             bg-gradient-to-br from-white via-slate-50 to-slate-200
+             /* 2. Sombras externas para relevo (Projeção e Difusão) */
+             shadow-[0_15px_30px_-5px_rgba(0,0,0,0.35),0_5px_10px_-3px_rgba(0,0,0,0.2)]
+             /* 3. Borda sutil para acabamento premium */
+             border border-white/60
+             transition-transform duration-500 hover:scale-105"
+              >
+                {/* 4. Sombra Interna na Base (Essencial para o volume/curvatura) */}
+                <div className="absolute inset-0 rounded-full shadow-[inset_0_-8px_15px_rgba(0,0,0,0.1)] pointer-events-none" />
+
+                {/* 5. Superfície Reluzente (Glossy Fixa - Simula luz de estúdio) */}
+                <div className="absolute inset-0 rounded-full bg-linear-to-tr from-transparent via-white/50 to-white/10 pointer-events-none" />
+
+                {/* 6. Brilho de Borda Superior (Simula luz batendo no topo da curvatura) */}
+                <div className="absolute inset-[2px] rounded-full border-t-[2px] border-white/90 pointer-events-none" />
+
+                {/* Container da Imagem Interna (com leve flutuação) */}
+                <div className="relative w-full h-full -translate-y-1 transition-transform duration-500 ease-out group-hover:-translate-y-2">
                   <Image
                     src="/images/alma4d-bicolor-nobground-256.png"
                     alt="Logo alma4D"
@@ -214,9 +232,6 @@ export default function MetodoPage() {
                     priority
                   />
                 </div>
-
-                {/* 4. Overlay de Brilho (Efeito de Lente sutil) */}
-                <div className="absolute inset-0 rounded-full bg-linear-to-tr from-white/0 via-white/30 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               </div>
             </div>
           </div>
