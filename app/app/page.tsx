@@ -188,14 +188,14 @@ export default function AppPage() {
       </section>
 
       {/* ================= CTA FINAL ================= */}
-      <section className="rounded-2xl border border-border bg-surface p-10 flex flex-col gap-6">
+      <section className="rounded-2xl border border-border bg-surface p-1 flex flex-col gap-6">
         <h2 className="text-3xl font-bold">A experiência completa do alma4D</h2>
-
-        <div className="text-foreground/70 max-w-2xl">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
+        <div className="text-foreground/70 w-full lg:max-w-4xl">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-2 md:p-4">
             {/* A.I. & Dados */}
             <div className="flex gap-4 p-5 rounded-2xl bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all">
-              <div className="text-2xl text-[#019499]">🤖</div>
+              <div className="text-2xl text-[#019499] shrink-0">🤖</div>{" "}
+              {/* shrink-0 impede o emoji de espremer */}
               <div>
                 <h3 className="font-bold text-[#030870] mb-1">A.I. & Dados</h3>
                 <p className="text-sm text-slate-600 leading-relaxed">
@@ -208,7 +208,7 @@ export default function AppPage() {
 
             {/* Gamificação */}
             <div className="flex gap-4 p-5 rounded-2xl bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all">
-              <div className="text-2xl text-[#019499]">🏆</div>
+              <div className="text-2xl text-[#019499] shrink-0">🏆</div>
               <div>
                 <h3 className="font-bold text-[#030870] mb-1">Gamificação</h3>
                 <p className="text-sm text-slate-600 leading-relaxed">
@@ -220,20 +220,19 @@ export default function AppPage() {
 
             {/* Conectividade */}
             <div className="flex gap-4 p-5 rounded-2xl bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all">
-              <div className="text-2xl text-[#019499]">🌐</div>
+              <div className="text-2xl text-[#019499] shrink-0">🌐</div>
               <div>
                 <h3 className="font-bold text-[#030870] mb-1">Conectividade</h3>
                 <p className="text-sm text-slate-600 leading-relaxed">
                   Mostra que o <strong>profissional</strong> não está distante,
-                  mas conectado, acompanhando o processo de perto, mesmo que
-                  seja entre uma sessão e outra. entre uma sessão e outra.
+                  mas conectado, acompanhando o processo de perto.
                 </p>
               </div>
             </div>
 
             {/* Pragmatismo Corporativo */}
             <div className="flex gap-4 p-5 rounded-2xl bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all">
-              <div className="text-2xl text-[#019499]">🏢</div>
+              <div className="text-2xl text-[#019499] shrink-0">🏢</div>
               <div>
                 <h3 className="font-bold text-[#030870] mb-1">
                   Pragmatismo Corporativo
@@ -246,7 +245,6 @@ export default function AppPage() {
             </div>
           </div>
         </div>
-
         <div className="flex flex-wrap gap-4">
           <Link
             href="/download"

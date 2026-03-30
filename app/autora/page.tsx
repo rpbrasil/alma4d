@@ -89,7 +89,7 @@ export default function AutoraPage() {
 
           <p className="text-foreground/70 leading-relaxed">
             Para ela, o bem-estar não é um ideal distante, mas um objetivo
-            possível — perseguido diariamente por meio de escolhas conscientes,
+            possível, perseguido diariamente por meio de escolhas conscientes,
             relações significativas e uma vida com sentido.
           </p>
         </div>
