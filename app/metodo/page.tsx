@@ -182,10 +182,10 @@ export default function MetodoPage() {
 
       {/* ================= EXPERIÊNCIA INTEGRADA ================= */}
       <section className="px-1 md:px-0">
-        <div className="bg-gradient-to-br from-[#030870] to-[#019499] rounded-[2.5rem] md:rounded-[3rem] p-8 md:p-12 text-white overflow-hidden relative shadow-2xl shadow-[#030870]/20">
+        <div className="bg-linear-to-br from-[#030870] to-[#019499] rounded-[2.5rem] md:rounded-[3rem] p-8 md:p-12 text-white overflow-hidden relative shadow-2xl shadow-[#030870]/20">
           <div className="relative z-10 grid md:grid-cols-2 gap-12 items-center">
             <div className="space-y-6">
-              <h2 className="text-3xl md:text-4xl font-bold text-[#019499]">
+              <h2 className="md:text-4xl font-bold text-[#019499]">
                 A Experiência Completa
               </h2>
               <p className="text-blue-50 leading-relaxed text-sm md:text-base">
@@ -201,35 +201,74 @@ export default function MetodoPage() {
             </div>
 
             <div className="flex justify-center">
-              {/* Container do Círculo com Efeito de RELEVO CONSTANTE (Físico/Polido) */}
-              {/* A mágica está no combo de shadows e no gradiente de fundo */}
+              {/* “Card”/área onde o círculo está: sombra suave para evidenciar o encaixe */}
               <div
-                className="relative w-36 h-36 md:w-44 md:h-44 rounded-full flex items-center justify-center p-5
-             /* 1. Gradiente de Fundo que simula curvatura (Glossy) */
-             bg-gradient-to-br from-white via-slate-50 to-slate-200
-             /* 2. Sombras externas para relevo (Projeção e Difusão) */
-             shadow-[0_15px_30px_-5px_rgba(0,0,0,0.35),0_5px_10px_-3px_rgba(0,0,0,0.2)]
-             /* 3. Borda sutil para acabamento premium */
-             border border-white/60
-             transition-transform duration-500 hover:scale-105"
+                className="relative rounded-3xl p-6 md:p-8 bg-slate-50/60 border border-white/60
+                  shadow-[0_20px_45px_-25px_rgba(2,6,23,0.35),0_10px_22px_-18px_rgba(2,6,23,0.25)]
+                  backdrop-blur-sm"
               >
-                {/* 4. Sombra Interna na Base (Essencial para o volume/curvatura) */}
-                <div className="absolute inset-0 rounded-full shadow-[inset_0_-8px_15px_rgba(0,0,0,0.1)] pointer-events-none" />
+                {/* halo bem sutil pra dar “ambiente” */}
+                <div
+                  className="pointer-events-none absolute -inset-6 rounded-2rem
+                    bg-[radial-gradient(closest-side,rgba(255,255,255,0.55),transparent_70%)]"
+                />
 
-                {/* 5. Superfície Reluzente (Glossy Fixa - Simula luz de estúdio) */}
-                <div className="absolute inset-0 rounded-full bg-linear-to-tr from-transparent via-white/50 to-white/10 pointer-events-none" />
+                <div
+                  className="
+        group relative w-36 h-36 md:w-44 md:h-44 rounded-full
+        flex items-center justify-center p-5
+        bg-[radial-gradient(circle_at_30%_25%,#ffffff_0%,#f8fafc_35%,#e2e8f0_72%,#cbd5e1_100%)]
+        border border-white/70
+        ring-1 ring-slate-900/5
+        transition-transform duration-500 hover:scale-105
+        /* Elevação (sombras externas) + relevo (inset) em camadas */
+        shadow-[0_18px_40px_-18px_rgba(2,6,23,0.55),0_6px_16px_-10px_rgba(2,6,23,0.35),
+                inset_0_1px_0_rgba(255,255,255,0.85),
+                inset_0_-14px_22px_rgba(2,6,23,0.16),
+                inset_14px_14px_22px_rgba(2,6,23,0.08),
+                inset_-14px_-14px_22px_rgba(255,255,255,0.55)]
+      "
+                >
+                  {/* Brilho especular (gloss) — “mancha” de luz */}
+                  <div
+                    className="pointer-events-none absolute inset-0 rounded-full
+                   bg-[radial-gradient(circle_at_28%_22%,rgba(255,255,255,0.95)_0%,rgba(255,255,255,0.55)_18%,rgba(255,255,255,0.12)_35%,transparent_60%)]
+                   mix-blend-screen"
+                  />
 
-                {/* 6. Brilho de Borda Superior (Simula luz batendo no topo da curvatura) */}
-                <div className="absolute inset-[2px] rounded-full border-t-[2px] border-white/90 pointer-events-none" />
+                  {/* “Verniz” diagonal bem sutil */}
+                  <div
+                    className="pointer-events-none absolute inset-0 rounded-full
+                   bg-[linear-gradient(135deg,rgba(255,255,255,0.35),transparent_45%,rgba(255,255,255,0.12))]
+                   opacity-80"
+                  />
 
-                {/* Container da Imagem Interna (com leve flutuação) */}
-                <div className="relative w-full h-full -translate-y-1 transition-transform duration-500 ease-out group-hover:-translate-y-2">
-                  <Image
-                    src="/images/alma4d-bicolor-nobground-256.png"
-                    alt="Logo alma4D"
-                    fill
-                    className="object-contain"
-                    priority
+                  {/* Linha de recorte/chanfro */}
+                  <div
+                    className="pointer-events-none absolute inset-3px rounded-full
+                      ring-1 ring-white/70"
+                  />
+
+                  {/* Container da imagem com flutuação + sombra para “assentar” no relevo */}
+                  <div className="relative w-full h-full -translate-y-1 transition-transform duration-500 ease-out group-hover:-translate-y-2">
+                    <Image
+                      src="/images/alma4d-bicolor-nobground-256.png"
+                      alt="Logo alma4D"
+                      fill
+                      className="
+            object-contain
+            drop-shadow-0_10px_14px_rgba(2,6,23,0.28)
+            drop-shadow-0_2px_4px_rgba(2,6,23,0.18)
+          "
+                      priority
+                    />
+                  </div>
+
+                  {/* Sombra de contato (bem leve) para dar “profundidade” interna */}
+                  <div
+                    className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2
+                      w-3/5 h-4 rounded-full blur-xl
+                      bg-[radial-gradient(closest-side,rgba(2,6,23,0.22),transparent)]"
                   />
                 </div>
               </div>

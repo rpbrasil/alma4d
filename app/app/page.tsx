@@ -216,7 +216,7 @@ export default function AppPage() {
               <div>
                 <h3 className="font-bold text-[#030870] mb-1">Gamificação</h3>
                 <p className="text-sm text-slate-600 leading-relaxed">
-                  Resolve o maior problema do bem-estar, que é a falta de{" "}
+                  Soluciona o maior problema do bem-estar, que é a falta de{" "}
                   <strong>motivação a longo prazo</strong>.
                 </p>
               </div>
@@ -228,8 +228,7 @@ export default function AppPage() {
               <div>
                 <h3 className="font-bold text-[#030870] mb-1">Conectividade</h3>
                 <p className="text-sm text-slate-600 leading-relaxed">
-                  Mostra que o <strong>profissional</strong> não está distante,
-                  mas conectado, acompanhando o processo de perto.
+                  Mostra que o <strong>profissional</strong> não está distante do seu cliente, mas conectado e atento, acompanhando o processo de perto.
                 </p>
               </div>
             </div>
@@ -242,7 +241,7 @@ export default function AppPage() {
                   Pragmatismo Corporativo
                 </h3>
                 <p className="text-sm text-slate-600 leading-relaxed">
-                  Resolve a <strong>NR-1</strong> de forma leve e{" "}
+                  Resolve o <strong>Mapeamento Psicossocial da NR-1</strong> de forma leve e{" "}
                   <strong>automatizada</strong>, sem burocracia excessiva.
                 </p>
               </div>

@@ -103,7 +103,7 @@ export function Header() {
             aria-label={open ? "Fechar menu" : "Abrir menu"}
             aria-expanded={open}
             aria-controls="mobile-nav"
-            className="inline-flex items-center justify-center rounded-md border border-border px-2 py-1.5 hover:bg-surface-muted transition-colors mr-3.5"
+            className="inline-flex items-center justify-center rounded-md border border-border px-4 py-1.5 hover:bg-surface-muted transition-colors mr-3.5"
           >
             {open ? "✕" : "☰"}
           </button>
