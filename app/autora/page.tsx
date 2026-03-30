@@ -14,7 +14,7 @@ export default function AutoraPage() {
 
           <p className="text-xl text-foreground/80 leading-relaxed">
             Autora do livro <strong>Arquitetura Viva do Autocuidado</strong> e
-            pesquisadora do bem-estarintegral do ser humano.
+            pesquisadora do bem-estar integral do ser humano.
           </p>
 
           <p className="text-foreground/70 leading-relaxed">

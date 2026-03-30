@@ -103,7 +103,7 @@ export default function MetodoPage() {
             1. O Mapa (Livro)
           </h3>
           <p className="text-slate-600 text-sm leading-relaxed">
-            Alcance o bem-estar integral.Compreenda as 4 dimensões e transforme
+            Alcance o bem-estar integral. Compreenda as 4 dimensões e transforme
             sua rotina em um ritual de geração de energia vital.
           </p>
         </div>
@@ -161,8 +161,7 @@ export default function MetodoPage() {
               Para Profissionais
             </h4>
             <p className="text-sm text-slate-600 leading-relaxed">
-              Engajamento clínico total. Acompanhe a jornada do cliente em tempo
-              real com dados compartilhados.
+              Engajamento clínico total. Acompanhe os relatórios da jornada do cliente e envie mensagens em tempo real.
             </p>
           </div>
           <div className="p-8 rounded-3xl bg-slate-50 border border-transparent hover:border-[#019499]/30 transition-all">
