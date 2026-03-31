@@ -176,7 +176,7 @@ export default function LivroPage() {
         <p className="text-foreground/70 mb-6">
           Seja você um entusiasta da longevidade, um líder de equipes ou um
           profissional de saúde, o convite aqui é para uma alfabetização
-          corporal e mental completa. Não se trata de esperar que o ambiente
+          corporal e mental completas. Não se trata de esperar que o ambiente
           melhore, mas de se preparar para o cotidiano com propósito. É o
           conhecimento do bem-estar aplicado à vida real, entregando resultados
           imediatos para quem compreende que o ser humano não é apenas um objeto

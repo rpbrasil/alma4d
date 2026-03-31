@@ -20,7 +20,7 @@ export default function AppPage() {
         }}
       >
         <iframe
-          src="http://alma4d.com.br/alma4dweb"
+          src="http://localhost:8081"
           style={{
             width: "100%",
             height: "100%",
