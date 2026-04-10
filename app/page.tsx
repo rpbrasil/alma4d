@@ -174,7 +174,7 @@ export default function MetodoPage() {
             </h4>
             <p className="text-sm text-slate-600 leading-relaxed">
               Conformidade <strong>NR-1</strong>. Automatize o mapeamento de
-              riscos psicossociais e promova produtividade sustentável.
+              riscos psicossociais e adote ações preventivas.
             </p>
           </div>
         </div>
@@ -297,7 +297,7 @@ export default function MetodoPage() {
             },
             {
               q: "Como o app resolve a NR-1?",
-              a: "Gera relatórios oficiais para mapeamento de riscos psicossociais, facilitando a gestão de RH.",
+              a: "Gera relatórios oficiais para mapeamento de riscos psicossociais, facilitando a gestão de RH. Realiza monitoramento contínuo para ações preventivas, promovendo um ambiente de trabalho mais saudável e produtivo.",
             },
           ].map((faq, i) => (
             <details
