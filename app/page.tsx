@@ -81,7 +81,7 @@ export default function MetodoPage() {
           <div className="absolute inset-0 bg-[#019499]/5 blur-3xl rounded-full -z-10 animate-none sm:animate-pulse" />
           <div className="relative rounded-3xl overflow-hidden border border-slate-100 shadow-2xl bg-white">
             <Image
-              src="/images/alma4d-resumo-1612.png"
+              src="/images/deviceframes.png"
               alt="Infográfico alma4D"
               width={1612}
               height={1000}
@@ -292,7 +292,7 @@ export default function MetodoPage() {
               a: "Não. O app é a ferramenta de execução. O método é a união da inteligência do livro com a prática guiada pela tecnologia.",
             },
             {
-              q: "O alma4D substitui acompanhamento médico?",
+              q: "O alma4D substitui acompanhamento médico ou psicológico?",
               a: "Não. Ele complementa o trabalho dos profissionais, compartilhando dados para acompanhamento, facilitando o agendamento de consultas e a troca de mensagens.",
             },
             {

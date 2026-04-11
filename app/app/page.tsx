@@ -163,28 +163,25 @@ export default function AppPage() {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-8">
-          {/* ===== IMAGEM FULL BLEED MOBILE ===== */}
-          <div className="-mx-4 sm:mx-0 aspect-video bg-surface-muted rounded-none sm:rounded-xl flex items-center justify-center">
+        <div className="grid md:grid-cols-2 gap-8 items-stretch">
+          {/* ===== COLUNA 1: FLUXO ===== */}
+          <div className="relative aspect-video bg-surface-muted rounded-xl overflow-hidden">
             <Image
               src="/images/alma4d-fluxo-site-semtxt.png"
               alt="Fluxo do método alma4D"
-              width={1407}
-              height={791}
-              sizes="100vw"
-              className="w-full h-auto object-contain"
+              fill
+              className="object-contain p-4" // 'p-4' evita que a imagem encoste nas bordas
               priority
             />
           </div>
 
-          <div className="aspect-video bg-surface-muted rounded-xl flex items-center justify-center">
+          {/* ===== COLUNA 2: MOCKUP ===== */}
+          <div className="relative aspect-video bg-surface-muted rounded-xl overflow-hidden">
             <Image
-              src="/images/olhoClinicoPad2.jpeg"
+              src="/images/mockup_misto.png"
               alt="alma4D"
-              width={300}
-              height={300}
-              sizes="(max-width: 768px) 50vw, 300px"
-              className="object-contain"
+              fill
+              className="object-contain p-4"
               priority
             />
           </div>
@@ -228,7 +225,9 @@ export default function AppPage() {
               <div>
                 <h3 className="font-bold text-[#030870] mb-1">Conectividade</h3>
                 <p className="text-sm text-slate-600 leading-relaxed">
-                  Mostra que o <strong>profissional</strong> não está distante do seu cliente, mas conectado e atento, acompanhando o processo de perto.
+                  Mostra que o <strong>profissional</strong> não está distante
+                  do seu cliente, mas conectado e atento, acompanhando o
+                  processo de perto.
                 </p>
               </div>
             </div>
@@ -241,8 +240,9 @@ export default function AppPage() {
                   Pragmatismo Corporativo
                 </h3>
                 <p className="text-sm text-slate-600 leading-relaxed">
-                  Resolve o <strong>Mapeamento Psicossocial da NR-1</strong> de forma leve e{" "}
-                  <strong>automatizada</strong>, sem burocracia excessiva.
+                  Resolve o <strong>Mapeamento Psicossocial da NR-1</strong> de
+                  forma leve e <strong>automatizada</strong>, sem burocracia
+                  excessiva.
                 </p>
               </div>
             </div>

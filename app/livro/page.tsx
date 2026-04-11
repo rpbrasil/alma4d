@@ -96,7 +96,7 @@ export default function LivroPage() {
         <div className="w-screen max-w-none mx-[calc(50%-50vw)] sm:w-full sm:mx-0">
           <div className="relative w-full aspect-2/2 bg-surface-muted">
             <Image
-              src="/images/fran_book_book.jpeg"
+              src="/images/livro3.jpeg"
               alt="livro Arquitetura Viva"
               fill
               sizes="100vw"
@@ -132,7 +132,7 @@ export default function LivroPage() {
         <div className="w-screen mx-[calc(50%-50vw)] sm:w-full sm:mx-0">
           <div className="relative w-full aspect-4/3 rounded-lg overflow-hidden">
             <Image
-              src="/images/fran_book_book.jpeg"
+              src="/images/livropad.jpeg"
               alt="Visão integrada teoria e prática alma4D"
               fill
               className="object-contain"
