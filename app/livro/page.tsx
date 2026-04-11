@@ -132,7 +132,7 @@ export default function LivroPage() {
         <div className="w-screen mx-[calc(50%-50vw)] sm:w-full sm:mx-0">
           <div className="relative w-full aspect-4/3 rounded-lg overflow-hidden">
             <Image
-              src="/images/livropad.jpeg"
+              src="/images/livroPad.jpeg"
               alt="Visão integrada teoria e prática alma4D"
               fill
               className="object-contain"
