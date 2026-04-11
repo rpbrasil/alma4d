@@ -19,7 +19,7 @@ export default function AppPage() {
           </p>
 
           <p className="text-foreground/70 leading-relaxed">
-            <strong>
+            <strong className="text-2xl">
               <span className="text-[#030870]">alma</span>
               <span className="text-[#019499]">4D</span>
             </strong>{" "}
@@ -190,7 +190,13 @@ export default function AppPage() {
 
       {/* ================= CTA FINAL ================= */}
       <section className="rounded-2xl border border-border bg-surface p-1 flex flex-col gap-6">
-        <h2 className="text-3xl font-bold">A experiência completa do alma4D</h2>
+        <h2 className="text-3xl font-bold">
+          A experiência completa do{" "}
+          <span className="text-4xl">
+            <span className="text-[#030870]">alma</span>
+            <span className="text-[#019499]">4D</span>
+          </span>
+        </h2>
         <div className="text-foreground/70 w-full lg:max-w-4xl">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-2 md:p-4">
             {/* A.I. & Dados */}

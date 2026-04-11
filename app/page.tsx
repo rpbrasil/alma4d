@@ -53,7 +53,7 @@ export default function MetodoPage() {
       <section className="grid lg:grid-cols-2 gap-12 items-center pt-10 1 md:px-0">
         <div className="flex flex-col gap-6">
           <div className="inline-block w-fit px-3 py-1 rounded-full bg-brand/10 text-xs font-bold tracking-widest uppercase text-[#DF633F]">
-            O Próximo Nível do Bem-Estar
+            O Próximo Nível do seu Bem-Estar
           </div>
           <h2 className="text-4xl sm:text-6xl font-extrabold text-[#030870] leading-tight">
             alma4D: Um <span className="text-[#019499]">Método Vivo</span>.
