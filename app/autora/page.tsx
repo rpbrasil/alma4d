@@ -131,7 +131,7 @@ export default function AutoraPage() {
       <section className="rounded-2xl border border-border bg-surface p-10 flex flex-col gap-6">
         <h2 className="text-3xl font-bold">Outras iniciativas</h2>
         <p className="text-foreground/70 max-w-2xl">
-          Fran também atua na configuração de plataformas empresariais de
+          Fran também atua na oferta de plataformas empresariais de
           benefícios e no desenvolvimento de dinâmicas de transformação de
           grupos, como o Jogo da Transformação. Confira abaixo!
         </p>
