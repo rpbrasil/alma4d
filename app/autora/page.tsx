@@ -133,33 +133,121 @@ export default function AutoraPage() {
               vida mas também como fonte principal da sua evolução.
             </p>
           </div>
+          <div className="flex flex-wrap gap-4">
+            <Link
+              href="/livro"
+              className="bg-[#DF633F] text-white px-6 py-3 rounded-md font-medium hover:bg-brand/90 transition-colors"
+            >
+              Conhecer o Livro
+            </Link>
+
+            <Link
+              href="/"
+              className="border border-border px-6 py-3 rounded-md font-medium hover:bg-surface-muted transition-colors"
+            >
+              Ver o Método
+            </Link>
+          </div>
         </div>
       </section>
 
       {/* ================= CTA FINAL ================= */}
       <section className="rounded-2xl border border-border bg-surface p-10 flex flex-col gap-6">
         <h2 className="text-3xl font-bold">
-          Conheça o método que sustenta o aplicativo
+          Conheça outras iniciativas da Fran
         </h2>
 
         <p className="text-foreground/70 max-w-2xl">
-          O aplicativo alma4D, o livro Arquitetura Viva do Autocuidado e o
-          método formam um único percurso de consciência.
+          Fran também atua na disponibilização sob-medida de plataformas empresariais de benefícios e no desenvolvimento de dinâmicas de transformação pessoal e grupal, como o Jogo da Transformação. Confira abaixo!
         </p>
-
-        <div className="flex flex-wrap gap-4">
+        <div className="flex flex-wrap gap-6">
           <Link
-            href="/livro"
-            className="bg-[#DF633F] text-white px-6 py-3 rounded-md font-medium hover:bg-brand/90 transition-colors"
+            href="https://beneshop.site"
+            aria-label="Abrir página do livro: Plataformas para Corpo, Mente e Bolso"
+            className="
+      group relative w-[360px] overflow-hidden rounded-2xl
+      border border-[#030870]/10 bg-white shadow-sm
+      transition-all duration-300
+      hover:-translate-y-1 hover:shadow-xl hover:shadow-[#030870]/10
+      focus:outline-none focus:ring-2 focus:ring-[#019499]/40
+    "
           >
-            Conhecer o Livro
+            <Image
+              src="/images/beneshopsite.png"
+              alt="Plataformas para Corpo, Mente e Bolso"
+              width={360}
+              height={360}
+              className="
+        h-[360px] w-[360px] object-cover
+        transition-transform duration-500
+        group-hover:scale-[1.03]
+      "
+              priority
+            />
+
+            {/* Overlay suave para leitura do texto */}
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
+
+            {/* Badge */}
+            <span
+              className="
+        absolute left-4 top-4 rounded-full px-3 py-1 text-xs font-semibold
+        bg-[#019499] text-white shadow-sm
+      "
+            >
+              Destaque
+            </span>
+
+            {/* Texto sobre a imagem */}
+            <div className="absolute inset-x-0 bottom-0 p-4">
+              <p className="text-white text-base font-bold leading-snug drop-shadow">
+                Plataformas para Corpo, Mente e Bolso
+              </p>
+              <p className="mt-1 text-white/85 text-sm">Ver detalhes →</p>
+            </div>
           </Link>
 
           <Link
-            href="/"
-            className="border border-border px-6 py-3 rounded-md font-medium hover:bg-surface-muted transition-colors"
+            href="/contato"
+            aria-label="Abrir página do livro: Jogo da Transformação"
+            className="
+      group relative w-[360px] overflow-hidden rounded-2xl
+      border border-[#030870]/10 bg-white shadow-sm
+      transition-all duration-300
+      hover:-translate-y-1 hover:shadow-xl hover:shadow-[#6126E2]/15
+      focus:outline-none focus:ring-2 focus:ring-[#019499]/40
+    "
           >
-            Ver o Método
+            <Image
+              src="/images/transformacao.png"
+              alt="Jogo da Transformação"
+              width={360}
+              height={360}
+              className="
+        h-[360px] w-[360px] object-cover
+        transition-transform duration-500
+        group-hover:scale-[1.03]
+      "
+              priority
+            />
+
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
+
+            <span
+              className="
+        absolute left-4 top-4 rounded-full px-3 py-1 text-xs font-semibold
+        bg-[#6126E2] text-white shadow-sm
+      "
+            >
+              Novo
+            </span>
+
+            <div className="absolute inset-x-0 bottom-0 p-4">
+              <p className="text-white text-base font-bold leading-snug drop-shadow">
+                Jogo da Transformação
+              </p>
+              <p className="mt-1 text-white/85 text-sm">Ver detalhes →</p>
+            </div>
           </Link>
         </div>
       </section>
