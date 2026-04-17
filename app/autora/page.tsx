@@ -3,7 +3,7 @@ import Link from "next/link";
 
 export default function AutoraPage() {
   return (
-    <div className="flex flex-col gap-24">
+    <div className="flex flex-col gap-24 overflow-x-hidden">
       {/* ================= HERO ================= */}
       <section className="grid lg:grid-cols-2 gap-12 items-center">
         {/* Texto */}
@@ -24,8 +24,7 @@ export default function AutoraPage() {
         </div>
 
         {/* Imagem */}
-        <div className="relative flex justify-center">
-          {/* Imagem */}
+        <div className="relative flex justify-center w-full max-w-full overflow-hidden">
           <Image
             src="/images/fran_book_bw.jpeg"
             alt="Fran Abbud"
@@ -35,8 +34,8 @@ export default function AutoraPage() {
             priority
           />
 
-          {/* Linha full-width alinhada ao bottom da imagem */}
-          <div className="absolute bottom-0 left-1/2 h-1 w-screen -translate-x-1/2 bg-[#DF633F]" />
+          {/* Linha inferior segura */}
+          <div className="absolute bottom-0 inset-x-0 h-1 bg-[#DF633F]" />
         </div>
       </section>
 
@@ -44,211 +43,143 @@ export default function AutoraPage() {
       <section className="flex flex-col gap-12">
         <div className="max-w-3xl flex flex-col gap-4">
           <h2 className="text-3xl font-bold">Trajetória</h2>
-          <p className="text-foreground/70"></p>
         </div>
 
         <div className="grid md:grid-cols-3 gap-8">
-          <div className="rounded-xl bg-surface-muted p-6">
-            <h3 className="text-xl font-semibold mb-2">Formação</h3>
-            <p className="text-foreground/70">
-              Formada em Arquitetura e Urbanismo, Fran ampliou seu campo de
-              atuação para o estudo das relações humanas com seus ambientes.
-            </p>
-          </div>
-
-          <div className="rounded-xl bg-surface-muted p-6">
-            <h3 className="text-xl font-semibold mb-2">Experiência</h3>
-            <p className="text-foreground/70">
-              Atuou em Recursos Humanos na área da saúde e por 18 anos como
-              Terapeuta Artística Antroposófica, acompanhando processos de
-              transformação individual.
-            </p>
-          </div>
-
-          <div className="rounded-xl bg-surface-muted p-6">
-            <h3 className="text-xl font-semibold mb-2">Pesquisa contínua</h3>
-            <p className="text-foreground/70">
-              Com formação em Neuropsicologia do Desenvolvimento,
-              Psicopedagogia, Monitoria de Museus (MAC-USP) e estudos sobre
-              modos de vida saudáveis.
-            </p>
-          </div>
+          {[
+            {
+              title: "Formação",
+              text: "Formada em Arquitetura e Urbanismo, Fran ampliou seu campo de atuação para o estudo das relações humanas com seus ambientes.",
+            },
+            {
+              title: "Experiência",
+              text: "Atuou em Recursos Humanos na área da saúde e por 18 anos como Terapeuta Artística Antroposófica.",
+            },
+            {
+              title: "Pesquisa contínua",
+              text: "Formação em Neuropsicologia, Psicopedagogia, Monitoria de Museus e estudos sobre modos de vida saudáveis.",
+            },
+          ].map((item) => (
+            <div key={item.title} className="rounded-xl bg-surface-muted p-6">
+              <h3 className="text-xl font-semibold mb-2">{item.title}</h3>
+              <p className="text-foreground/70">{item.text}</p>
+            </div>
+          ))}
         </div>
       </section>
 
-      {/* ================= VISÃO DE BEM-ESTAR ================= */}
+      {/* ================= VISÃO ================= */}
       <section className="grid md:grid-cols-2 gap-12 items-center">
         <div className="flex flex-col gap-4">
           <h2 className="text-3xl font-bold">Visão de bem-estar</h2>
 
           <p className="text-foreground/70 leading-relaxed">
-            O trabalho de Fran surge da vivência profissional com pessoas e
-            grupos ao longo de muitos anos.
-          </p>
-
-          <p className="text-foreground/70 leading-relaxed">
-            Para ela, o bem-estar não é um ideal distante, mas um objetivo
-            possível, perseguido diariamente por meio de escolhas conscientes,
-            relações significativas e uma vida com sentido.
+            Para Fran, o bem-estar é construído diariamente por escolhas
+            conscientes, relações significativas e vida com sentido.
           </p>
         </div>
 
-        <div className="aspect-video bg-surface-muted rounded-xl flex items-center justify-center text-foreground/50">
-          {/* Imagem */}
-          <div className="flex justify-center">
-            <Image
-              src="/images/livro1.jpeg"
-              alt="Fran Abbud"
-              width={360}
-              height={360}
-              className="rounded-2xl object-cover"
-              priority
-            />
-          </div>
+        <div className="aspect-video rounded-xl bg-surface-muted flex items-center justify-center overflow-hidden">
+          <Image
+            src="/images/livro1.jpeg"
+            alt="Fran Abbud"
+            width={360}
+            height={360}
+            className="rounded-2xl object-cover"
+            priority
+          />
         </div>
       </section>
 
       {/* ================= O LIVRO ================= */}
       <section className="flex flex-col gap-12">
-        <div className="max-w-3xl flex flex-col gap-4">
-          <h2 className="text-3xl font-bold">
-            Arquitetura Viva do Autocuidado
-          </h2>
-          <p className="text-foreground/70"></p>
-        </div>
+        <h2 className="text-3xl font-bold">Arquitetura Viva do Autocuidado</h2>
 
         <div className="grid md:grid-cols-2 gap-8">
           <div className="rounded-xl bg-surface-muted p-6">
             <p className="text-foreground/70 leading-relaxed">
-              O livro <strong>Arquitetura Viva do Autocuidado</strong> propoe
-              que o bem-estar é uma construção consciente. Um processo onde
-              corpo, emoções, mente e propósito se integram com disciplina e
-              método ao cotidiano.
+              O bem-estar é uma construção consciente que integra corpo,
+              emoções, mente e propósito ao cotidiano.
             </p>
           </div>
 
           <div className="rounded-xl bg-surface-muted p-6">
             <p className="text-foreground/70 leading-relaxed">
-              Aqui o leitor passa a entender autocuidado não só como prática de
-              vida mas também como fonte principal da sua evolução.
+              O autocuidado torna-se fonte principal de evolução pessoal.
             </p>
           </div>
-          <div className="flex flex-wrap gap-4">
-            <Link
-              href="/livro"
-              className="bg-[#DF633F] text-white px-6 py-3 rounded-md font-medium hover:bg-brand/90 transition-colors"
-            >
-              Conhecer o Livro
-            </Link>
+        </div>
 
-            <Link
-              href="/"
-              className="border border-border px-6 py-3 rounded-md font-medium hover:bg-surface-muted transition-colors"
-            >
-              Ver o Método
-            </Link>
-          </div>
+        <div className="flex flex-wrap gap-4">
+          <Link
+            href="/livro"
+            className="bg-[#DF633F] text-white px-6 py-3 rounded-md font-medium hover:opacity-90 transition"
+          >
+            Conhecer o Livro
+          </Link>
+
+          <Link
+            href="/"
+            className="border border-border px-6 py-3 rounded-md font-medium hover:bg-surface-muted transition"
+          >
+            Ver o Método
+          </Link>
         </div>
       </section>
 
       {/* ================= CTA FINAL ================= */}
       <section className="rounded-2xl border border-border bg-surface p-10 flex flex-col gap-6">
-        <h2 className="text-3xl font-bold">
-          Conheça outras iniciativas da Fran
-        </h2>
+        <h2 className="text-3xl font-bold">Outras iniciativas</h2>
 
-        <p className="text-foreground/70 max-w-2xl">
-          Fran também atua na disponibilização sob-medida de plataformas empresariais de benefícios e no desenvolvimento de dinâmicas de transformação pessoal e grupal, como o Jogo da Transformação. Confira abaixo!
-        </p>
         <div className="flex flex-wrap gap-6">
-          <Link
-            href="https://beneshop.site"
-            aria-label="Abrir página do livro: Plataformas para Corpo, Mente e Bolso"
-            className="
-      group relative w-[360px] overflow-hidden rounded-2xl
-      border border-[#030870]/10 bg-white shadow-sm
-      transition-all duration-300
-      hover:-translate-y-1 hover:shadow-xl hover:shadow-[#030870]/10
-      focus:outline-none focus:ring-2 focus:ring-[#019499]/40
-    "
-          >
-            <Image
-              src="/images/beneshopsite.png"
-              alt="Plataformas para Corpo, Mente e Bolso"
-              width={360}
-              height={360}
+          {[
+            {
+              href: "https://beneshop.site",
+              img: "/images/beneshopsite.png",
+              label: "Plataformas para Corpo, Mente e Bolso",
+              badge: "Destaque",
+              badgeColor: "#019499",
+            },
+            {
+              href: "/contato",
+              img: "/images/transformacao.png",
+              label: "Jogo da Transformação",
+              badge: "Novo",
+              badgeColor: "#6126E2",
+            },
+          ].map((item) => (
+            <Link
+              key={item.label}
+              href={item.href}
               className="
-        h-[360px] w-[360px] object-cover
-        transition-transform duration-500
-        group-hover:scale-[1.03]
-      "
-              priority
-            />
-
-            {/* Overlay suave para leitura do texto */}
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
-
-            {/* Badge */}
-            <span
-              className="
-        absolute left-4 top-4 rounded-full px-3 py-1 text-xs font-semibold
-        bg-[#019499] text-white shadow-sm
-      "
+                group relative w-full max-w-[360px] aspect-square
+                overflow-hidden rounded-2xl
+                border border-[#030870]/10 bg-white
+                transition hover:-translate-y-1 hover:shadow-xl
+              "
             >
-              Destaque
-            </span>
+              <Image
+                src={item.img}
+                alt={item.label}
+                fill
+                className="object-cover transition-transform group-hover:scale-[1.03]"
+              />
 
-            {/* Texto sobre a imagem */}
-            <div className="absolute inset-x-0 bottom-0 p-4">
-              <p className="text-white text-base font-bold leading-snug drop-shadow">
-                Plataformas para Corpo, Mente e Bolso
-              </p>
-              <p className="mt-1 text-white/85 text-sm">Ver detalhes →</p>
-            </div>
-          </Link>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
 
-          <Link
-            href="/contato"
-            aria-label="Abrir página do livro: Jogo da Transformação"
-            className="
-      group relative w-[360px] overflow-hidden rounded-2xl
-      border border-[#030870]/10 bg-white shadow-sm
-      transition-all duration-300
-      hover:-translate-y-1 hover:shadow-xl hover:shadow-[#6126E2]/15
-      focus:outline-none focus:ring-2 focus:ring-[#019499]/40
-    "
-          >
-            <Image
-              src="/images/transformacao.png"
-              alt="Jogo da Transformação"
-              width={360}
-              height={360}
-              className="
-        h-[360px] w-[360px] object-cover
-        transition-transform duration-500
-        group-hover:scale-[1.03]
-      "
-              priority
-            />
+              <span
+                style={{ backgroundColor: item.badgeColor }}
+                className="absolute left-4 top-4 rounded-full px-3 py-1 text-xs font-semibold text-white"
+              >
+                {item.badge}
+              </span>
 
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
-
-            <span
-              className="
-        absolute left-4 top-4 rounded-full px-3 py-1 text-xs font-semibold
-        bg-[#6126E2] text-white shadow-sm
-      "
-            >
-              Novo
-            </span>
-
-            <div className="absolute inset-x-0 bottom-0 p-4">
-              <p className="text-white text-base font-bold leading-snug drop-shadow">
-                Jogo da Transformação
-              </p>
-              <p className="mt-1 text-white/85 text-sm">Ver detalhes →</p>
-            </div>
-          </Link>
+              <div className="absolute bottom-0 p-4 text-white">
+                <p className="font-bold">{item.label}</p>
+                <p className="text-sm opacity-85">Ver detalhes →</p>
+              </div>
+            </Link>
+          ))}
         </div>
       </section>
     </div>
