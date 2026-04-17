@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
+import MetodoModal from "./components/MetodoModal";
 
 export const metadata: Metadata = {
   title: "O Método alma4D — Consciência e Tecnologia Integradas",
@@ -18,6 +19,7 @@ export const metadata: Metadata = {
 };
 
 export default function MetodoPage() {
+  
   const faqJsonLd = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
@@ -63,12 +65,7 @@ export default function MetodoPage() {
             <strong>inteligência prática</strong> do aplicativo.
           </p>
           <div className="flex flex-wrap gap-4 pt-4">
-            <a
-              href="#como-funciona"
-              className="rounded-xl bg-[#030870] px-8 py-4 text-white font-bold hover:bg-[#030870]/90 transition-all shadow-lg shadow-blue-900/20 text-center"
-            >
-              Conhecer o Método
-            </a>
+            <MetodoModal />
             <Link
               href="/download"
               className="bg-[#DF633F] rounded-xl border-2 border-slate-200 px-8 py-4 font-bold hover:bg-slate-50 transition-all text-center"
@@ -174,7 +171,7 @@ export default function MetodoPage() {
             </h4>
             <p className="text-sm text-slate-600 leading-relaxed">
               Conformidade <strong>NR-1</strong>. Automatize o mapeamento de
-              riscos psicossociais e adote ações preventivas.
+              riscos psicossociais e promova produtividade sustentável.
             </p>
           </div>
         </div>
@@ -183,14 +180,12 @@ export default function MetodoPage() {
       {/* ================= EXPERIÊNCIA INTEGRADA ================= */}
       <section className="px-1 md:px-0">
         <div className="bg-linear-to-br from-[#030870] to-[#019499] rounded-[2.5rem] md:rounded-[3rem] p-8 md:p-12 text-white overflow-hidden relative shadow-2xl shadow-[#030870]/20">
-          {/* Container Grid: items-center garante alinhamento vertical entre as colunas */}
           <div className="relative z-10 grid md:grid-cols-2 gap-12 items-center">
-            {/* LADO DO TEXTO: Centralizado no mobile, esquerda no desktop */}
-            <div className="space-y-6 text-center md:text-left flex flex-col items-center md:items-start">
-              <h2 className="text-3xl md:text-4xl font-bold text-[#019499]">
+            <div className="space-y-6">
+              <h2 className="md:text-4xl font-bold text-[#019499]">
                 A Experiência Completa
               </h2>
-              <p className="text-blue-50 leading-relaxed text-sm md:text-base max-w-md">
+              <p className="text-blue-50 leading-relaxed text-sm md:text-base">
                 O método alma4D alcança sua máxima eficácia na integração: o
                 livro sustenta o raciocínio e o aplicativo sustenta a ação.
               </p>
@@ -202,67 +197,75 @@ export default function MetodoPage() {
               </Link>
             </div>
 
-            {/* LADO DA IMAGEM: Já possui justify-center para manter o círculo no meio */}
             <div className="flex justify-center">
-              {/* Card de fundo com blur */}
+              {/* “Card”/área onde o círculo está: sombra suave para evidenciar o encaixe */}
               <div
                 className="relative rounded-3xl p-6 md:p-8 bg-slate-50/60 border border-white/60
-                shadow-[0_20px_45px_-25px_rgba(2,6,23,0.35),0_10px_22px_-18px_rgba(2,6,23,0.25)]
-                backdrop-blur-sm"
+                  shadow-[0_20px_45px_-25px_rgba(2,6,23,0.35),0_10px_22px_-18px_rgba(2,6,23,0.25)]
+                  backdrop-blur-sm"
               >
-                {/* Halo sutil */}
+                {/* halo bem sutil pra dar “ambiente” */}
                 <div
                   className="pointer-events-none absolute -inset-6 rounded-2rem
-                  bg-[radial-gradient(closest-side,rgba(255,255,255,0.55),transparent_70%)]"
+                    bg-[radial-gradient(closest-side,rgba(255,255,255,0.55),transparent_70%)]"
                 />
 
-                {/* Círculo Principal (Logo) */}
                 <div
-                  className="group relative w-36 h-36 md:w-44 md:h-44 rounded-full
-                  flex items-center justify-center p-5
-                  bg-[radial-gradient(circle_at_30%_25%,#ffffff_0%,#f8fafc_35%,#e2e8f0_72%,#cbd5e1_100%)]
-                  border border-white/70
-                  ring-1 ring-slate-900/5
-                  transition-transform duration-500 hover:scale-105
-                  shadow-[0_18px_40px_-18px_rgba(2,6,23,0.55),0_6px_16px_-10px_rgba(2,6,23,0.35),
-                  inset_0_1px_0_rgba(255,255,255,0.85),
-                  inset_0_-14px_22px_rgba(2,6,23,0.16),
-                  inset_14px_14px_22px_rgba(2,6,23,0.08),
-                  inset_-14px_-14px_22px_rgba(255,255,255,0.55)]"
+                  className="
+        group relative w-36 h-36 md:w-44 md:h-44 rounded-full
+        flex items-center justify-center p-5
+        bg-[radial-gradient(circle_at_30%_25%,#ffffff_0%,#f8fafc_35%,#e2e8f0_72%,#cbd5e1_100%)]
+        border border-white/70
+        ring-1 ring-slate-900/5
+        transition-transform duration-500 hover:scale-105
+        /* Elevação (sombras externas) + relevo (inset) em camadas */
+        shadow-[0_18px_40px_-18px_rgba(2,6,23,0.55),0_6px_16px_-10px_rgba(2,6,23,0.35),
+                inset_0_1px_0_rgba(255,255,255,0.85),
+                inset_0_-14px_22px_rgba(2,6,23,0.16),
+                inset_14px_14px_22px_rgba(2,6,23,0.08),
+                inset_-14px_-14px_22px_rgba(255,255,255,0.55)]
+      "
                 >
-                  {/* Brilho especular */}
+                  {/* Brilho especular (gloss) — “mancha” de luz */}
                   <div
                     className="pointer-events-none absolute inset-0 rounded-full
-                    bg-[radial-gradient(circle_at_28%_22%,rgba(255,255,255,0.95)_0%,rgba(255,255,255,0.55)_18%,rgba(255,255,255,0.12)_35%,transparent_60%)]
-                    mix-blend-screen"
+                   bg-[radial-gradient(circle_at_28%_22%,rgba(255,255,255,0.95)_0%,rgba(255,255,255,0.55)_18%,rgba(255,255,255,0.12)_35%,transparent_60%)]
+                   mix-blend-screen"
                   />
 
-                  {/* Verniz diagonal */}
+                  {/* “Verniz” diagonal bem sutil */}
                   <div
                     className="pointer-events-none absolute inset-0 rounded-full
-                    bg-[linear-gradient(135deg,rgba(255,255,255,0.35),transparent_45%,rgba(255,255,255,0.12))]
-                    opacity-80"
+                   bg-[linear-gradient(135deg,rgba(255,255,255,0.35),transparent_45%,rgba(255,255,255,0.12))]
+                   opacity-80"
                   />
 
-                  {/* Linha de recorte */}
-                  <div className="pointer-events-none absolute inset-3px rounded-full ring-1 ring-white/70" />
+                  {/* Linha de recorte/chanfro */}
+                  <div
+                    className="pointer-events-none absolute inset-3px rounded-full
+                      ring-1 ring-white/70"
+                  />
 
-                  {/* Container da Imagem com efeito hover */}
+                  {/* Container da imagem com flutuação + sombra para “assentar” no relevo */}
                   <div className="relative w-full h-full -translate-y-1 transition-transform duration-500 ease-out group-hover:-translate-y-2">
                     <Image
                       src="/images/alma4d-bicolor-nobground-256.png"
                       alt="Logo alma4D"
                       fill
-                      className="object-contain drop-shadow-[0_10px_14px_rgba(2,6,23,0.28)] drop-shadow-[0_2px_4px_rgba(2,6,23,0.18)]"
+                      className="
+            object-contain
+            drop-shadow-0_10px_14px_rgba(2,6,23,0.28)
+            drop-shadow-0_2px_4px_rgba(2,6,23,0.18)
+          "
                       priority
                     />
                   </div>
 
-                  {/* Sombra de profundidade interna */}
+                  {/* Sombra de contato (bem leve) para dar “profundidade” interna */}
                   <div
                     className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2
-                    w-3/5 h-4 rounded-full blur-xl
-                    bg-[radial-gradient(closest-side,rgba(2,6,23,0.22),transparent)]"
+                      w-3/5 h-4 rounded-full blur-xl
+                      bg-[radial-gradient(closest-side,rgba(2,6,23,0.22),transparent)]"
                   />
                 </div>
               </div>
@@ -286,12 +289,12 @@ export default function MetodoPage() {
               a: "Não. O app é a ferramenta de execução. O método é a união da inteligência do livro com a prática guiada pela tecnologia.",
             },
             {
-              q: "O alma4D substitui acompanhamento médico ou psicológico?",
+              q: "O alma4D substitui acompanhamento médico?",
               a: "Não. Ele complementa o trabalho dos profissionais, compartilhando dados para acompanhamento, facilitando o agendamento de consultas e a troca de mensagens.",
             },
             {
               q: "Como o app resolve a NR-1?",
-              a: "Gera relatórios oficiais para mapeamento de riscos psicossociais, facilitando a gestão de RH. Realiza monitoramento contínuo para ações preventivas, promovendo um ambiente de trabalho mais saudável e produtivo.",
+              a: "Gera relatórios oficiais para mapeamento de riscos psicossociais, facilitando a gestão de RH.",
             },
           ].map((faq, i) => (
             <details

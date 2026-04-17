@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
+import MetodoModal from "../components/MetodoModal";
+import { useState, useEffect } from "react";
+
 
 export const metadata: Metadata = {
   title: "O Método alma4D — Consciência e Tecnologia Integradas",
@@ -18,6 +21,20 @@ export const metadata: Metadata = {
 };
 
 export default function MetodoPage() {
+
+  
+const [open, setOpen] = useState(false);
+
+  // Fecha com ESC
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+
+    if (open) window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
   const faqJsonLd = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
@@ -63,12 +80,7 @@ export default function MetodoPage() {
             <strong>inteligência prática</strong> do aplicativo.
           </p>
           <div className="flex flex-wrap gap-4 pt-4">
-            <Link
-              href="#como-funciona"
-              className="rounded-xl bg-[#030870] px-8 py-4 text-white font-bold hover:bg-[#030870]/90 transition-all shadow-lg shadow-blue-900/20 text-center"
-            >
-              Conhecer o Método
-            </Link>
+            <MetodoModal />
             <Link
               href="/download"
               className="bg-[#DF633F] rounded-xl border-2 border-slate-200 px-8 py-4 font-bold hover:bg-slate-50 transition-all text-center"
