@@ -130,7 +130,12 @@ export default function AutoraPage() {
       {/* ================= CTA FINAL ================= */}
       <section className="rounded-2xl border border-border bg-surface p-10 flex flex-col gap-6">
         <h2 className="text-3xl font-bold">Outras iniciativas</h2>
-
+        <p className="text-foreground/70 max-w-2xl">
+          Fran também atua na disponibilização sob-medida de plataformas
+          empresariais de benefícios e no desenvolvimento de dinâmicas de
+          transformação de grupos, como o Jogo da Transformação. Confira
+          abaixo!
+        </p>
         <div className="flex flex-wrap gap-6">
           {[
             {
