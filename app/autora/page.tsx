@@ -97,7 +97,7 @@ export default function AutoraPage() {
           {/* Imagem */}
           <div className="flex justify-center">
             <Image
-              src="/images/fran_book3.png"
+              src="/images/livro1.jpeg"
               alt="Fran Abbud"
               width={360}
               height={360}

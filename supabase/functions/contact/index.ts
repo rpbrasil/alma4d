@@ -36,7 +36,6 @@ function escapeHtml(input: string) {
 }
 
 serve(async (req: Request) => {
-  // ✅ PRE-FLIGHT CORS (tem que estar no topo) [2](https://supabase.com/docs/guides/functions/cors)
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -74,11 +73,82 @@ serve(async (req: Request) => {
 
     const subject = `Contato do site - ${safeNome}`;
     const html = `
-      <h2>Novo contato</h2>
-      <p><b>Nome:</b> ${safeNome}</p>
-      <p><b>Email:</b> ${safeEmail}</p>
-      <p><b>Mensagem:</b><br/>${safeMsg}</p>
-    `;
+<table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f6f8;padding:24px 0;">
+  <tr>
+    <td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:8px;overflow:hidden;font-family:Arial,Helvetica,sans-serif;">
+
+        <!-- Header / Logo -->
+        <tr>
+          <td align="center" style="padding:24px;background-color:#019499;">
+            <img
+              src="https://alma4d.com.br/images/alma4d-1024v2.png"
+              alt="alma4D"
+              width="140"
+              style="display:block;border:0;outline:none;text-decoration:none;"
+            />
+          </td>
+        </tr>
+
+        <!-- Body -->
+        <tr>
+          <td style="padding:32px;color:#333333;">
+            <h2 style="margin:0 0 16px 0;font-size:22px;color:#019499;">
+              Novo contato pelo site
+            </h2>
+
+            <p style="margin:0 0 12px 0;font-size:15px;">
+              <strong>Nome:</strong><br/>
+              ${safeNome}
+            </p>
+
+            <p style="margin:0 0 12px 0;font-size:15px;">
+              <strong>E-mail:</strong><br/>
+              <a href="mailto:${safeEmail}" style="color:#019499;text-decoration:none;">
+                ${safeEmail}
+              </a>
+            </p>
+
+            <p style="margin:24px 0 8px 0;font-size:15px;">
+              <strong>Mensagem:</strong>
+            </p>
+
+            <div
+              style="
+                background-color:#f4f6f8;
+                border-radius:6px;
+                padding:16px;
+                font-size:14px;
+                line-height:1.5;
+                color:#333333;
+              "
+            >
+              ${safeMsg}
+            </div>
+          </td>
+        </tr>
+
+        <!-- Divider -->
+        <tr>
+          <td style="padding:0 32px;">
+            <hr style="border:none;border-top:1px solid #e0e0e0;" />
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="padding:20px 32px;font-size:12px;color:#777777;text-align:center;">
+            Este e-mail foi enviado a partir do formulário de contato do site.<br/>
+            <strong>alma4D</strong> · voss.digital
+          </td>
+        </tr>
+
+      </table>
+    </td>
+  </tr>
+</table>
+`;
+
 
     const result = await sendEmailResend(CONTACT_TO_EMAIL, subject, html);
 

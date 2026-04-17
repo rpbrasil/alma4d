@@ -1,16 +1,23 @@
 "use client";
 
-import React from "react";
+import React, { SubmitEventHandler } from "react";
+import { createClient } from "@supabase/supabase-js";
 
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+);
+console.log("Supabase client initialized:", {
+  url: process.env.NEXT_PUBLIC_SUPABASE_URL,
+  anonKey: Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
+});
 export default function Contato() {
   const [sending, setSending] = React.useState(false);
   const [status, setStatus] = React.useState<"idle" | "ok" | "error">("idle");
   const [message, setMessage] = React.useState("");
 
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+  const onSubmit: SubmitEventHandler<HTMLFormElement> = async (e) => {
     e.preventDefault();
-    setStatus("idle");
-    setMessage("");
 
     const form = e.currentTarget;
     const formData = new FormData(form);
@@ -30,18 +37,13 @@ export default function Contato() {
     try {
       setSending(true);
 
-      const endpoint = process.env.NEXT_PUBLIC_CONTACT_ENDPOINT!;
-      const r = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+      const { error } = await supabase.functions.invoke("contact", {
+        body: payload,
       });
 
-      const data = await r.json().catch(() => ({}));
-
-      if (!r.ok) {
+      if (error) {
         setStatus("error");
-        setMessage(data?.error || "Falha ao enviar. Tente novamente.");
+        setMessage(error.message);
         return;
       }
 
@@ -54,7 +56,7 @@ export default function Contato() {
     } finally {
       setSending(false);
     }
-  }
+  };
 
   return (
     <section className="max-w-xl mx-auto text-center min-h-full flex flex-col justify-center">
