@@ -1,12 +1,23 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { corsHeaders } from "jsr:@supabase/supabase-js/cors";
-// recomendado pela Supabase para CORS no browser [2](https://supabase.com/docs/guides/functions/cors)
+
+export const config = {
+  auth: false, // ✅ formulário público
+};
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
-const CONTACT_TO_EMAIL = Deno.env.get("CONTACT_TO_EMAIL") ?? ""; // destino
+const CONTACT_TO_EMAIL = Deno.env.get("CONTACT_TO_EMAIL") ?? "";
 
-async function sendEmailResend(to: string, subject: string, html: string) {
-  if (!RESEND_API_KEY) return { ok: false, reason: "no_resend_key" };
+async function sendEmailResend(params: {
+  to: string;
+  subject: string;
+  html: string;
+  replyTo?: string;
+}) {
+  if (!RESEND_API_KEY) {
+    console.error("RESEND_API_KEY não configurada");
+    return { ok: false };
+  }
 
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -16,9 +27,10 @@ async function sendEmailResend(to: string, subject: string, html: string) {
     },
     body: JSON.stringify({
       from: "alma4D <cliente@voss.digital>",
-      to,
-      subject,
-      html,
+      to: params.to,
+      subject: params.subject,
+      html: params.html,
+      reply_to: params.replyTo,
     }),
   });
 
@@ -26,6 +38,7 @@ async function sendEmailResend(to: string, subject: string, html: string) {
   return { ok: res.ok, raw: json };
 }
 
+// Sanitização básica
 function escapeHtml(input: string) {
   return input
     .replaceAll("&", "&amp;")
@@ -36,6 +49,7 @@ function escapeHtml(input: string) {
 }
 
 serve(async (req: Request) => {
+  // ✅ CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -71,96 +85,126 @@ serve(async (req: Request) => {
     const safeEmail = escapeHtml(String(email));
     const safeMsg = escapeHtml(String(mensagem)).replaceAll("\n", "<br/>");
 
-    const subject = `Contato do site - ${safeNome}`;
-    const html = `
-<table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f6f8;padding:24px 0;">
+    /* ===========================================================
+        EMAIL INTERNO (ADMIN)
+       =========================================================== */
+
+    const subjectAdmin = `📩 Novo contato pelo site – ${safeNome}`;
+
+    const htmlAdmin = `
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f8;padding:24px 0;">
   <tr>
     <td align="center">
-      <table width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:8px;overflow:hidden;font-family:Arial,Helvetica,sans-serif;">
-
-        <!-- Header / Logo -->
+      <table width="600" cellpadding="0" cellspacing="0"
+        style="background:#ffffff;border-radius:8px;font-family:Arial,Helvetica,sans-serif;">
         <tr>
-          <td align="center" style="padding:24px;background-color:#019499;">
-            <img
-              src="https://alma4d.com.br/images/alma4d-1024v2.png"
-              alt="alma4D"
-              width="140"
-              style="display:block;border:0;outline:none;text-decoration:none;"
-            />
+          <td align="center" style="padding:24px;">
+            <img src="https://alma4d.com.br/images/alma4d-bicolor-nobground-256.png"
+              width="100" alt="alma4D" style="display:block;border:0;" />
           </td>
         </tr>
-
-        <!-- Body -->
         <tr>
-          <td style="padding:32px;color:#333333;">
-            <h2 style="margin:0 0 16px 0;font-size:22px;color:#019499;">
-              Novo contato pelo site
-            </h2>
+          <td style="padding:32px;color:#333;">
+            <h2 style="color:#019499;margin-top:0;">Novo contato pelo site</h2>
 
-            <p style="margin:0 0 12px 0;font-size:15px;">
-              <strong>Nome:</strong><br/>
-              ${safeNome}
+            <p><strong>Nome:</strong><br/>${safeNome}</p>
+            <p><strong>E‑mail:</strong><br/>
+              <a href="mailto:${safeEmail}" style="color:#019499;">${safeEmail}</a>
             </p>
 
-            <p style="margin:0 0 12px 0;font-size:15px;">
-              <strong>E-mail:</strong><br/>
-              <a href="mailto:${safeEmail}" style="color:#019499;text-decoration:none;">
-                ${safeEmail}
-              </a>
-            </p>
-
-            <p style="margin:24px 0 8px 0;font-size:15px;">
-              <strong>Mensagem:</strong>
-            </p>
-
-            <div
-              style="
-                background-color:#f4f6f8;
-                border-radius:6px;
-                padding:16px;
-                font-size:14px;
-                line-height:1.5;
-                color:#333333;
-              "
-            >
+            <p><strong>Mensagem:</strong></p>
+            <div style="background:#f4f6f8;padding:16px;border-radius:6px;">
               ${safeMsg}
             </div>
           </td>
         </tr>
-
-        <!-- Divider -->
         <tr>
-          <td style="padding:0 32px;">
-            <hr style="border:none;border-top:1px solid #e0e0e0;" />
+          <td style="padding:20px;text-align:center;font-size:12px;color:#777;">
+            Formulário de contato · alma4D · voss.digital
           </td>
         </tr>
-
-        <!-- Footer -->
-        <tr>
-          <td style="padding:20px 32px;font-size:12px;color:#777777;text-align:center;">
-            Este e-mail foi enviado a partir do formulário de contato do site.<br/>
-            <strong>alma4D</strong> · voss.digital
-          </td>
-        </tr>
-
       </table>
     </td>
   </tr>
 </table>
 `;
 
+    const sentAdmin = await sendEmailResend({
+      to: CONTACT_TO_EMAIL,
+      subject: subjectAdmin,
+      html: htmlAdmin,
+      replyTo: safeEmail, // ✅ responder direto ao usuário
+    });
 
-    const result = await sendEmailResend(CONTACT_TO_EMAIL, subject, html);
-
-    if (!result.ok) {
+    if (!sentAdmin.ok) {
       return new Response(
-        JSON.stringify({ error: "Falha ao enviar email.", details: result }),
+        JSON.stringify({ error: "Falha ao enviar e‑mail interno." }),
         {
           status: 502,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         },
       );
     }
+
+    /* ===========================================================
+        EMAIL DE CONFIRMAÇÃO AO USUÁRIO
+       =========================================================== */
+
+    const subjectUser = "Recebemos sua mensagem ✅";
+
+    const htmlUser = `
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f8;padding:24px 0;">
+  <tr>
+    <td align="center">
+      <table width="600" cellpadding="0" cellspacing="0"
+        style="background:#ffffff;border-radius:8px;font-family:Arial,Helvetica,sans-serif;">
+        <tr>
+          <td align="center" style="padding:24px;">
+            <img src="https://alma4d.com.br/images/alma4d-bicolor-nobground-256.png"
+              width="100" alt="alma4D" style="display:block;border:0;" />
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:32px;color:#333;">
+            <h2 style="color:#019499;margin-top:0;">
+              Recebemos sua mensagem ✅
+            </h2>
+
+            <p>Olá <strong>${safeNome}</strong>,</p>
+
+            <p>
+              Obrigado por entrar em contato. Sua mensagem foi recebida com sucesso
+              e encaminhada para nossa equipe.
+            </p>
+
+            <p>
+              Em breve responderemos pelo e‑mail:<br/>
+              <strong>${safeEmail}</strong>
+            </p>
+
+            <p>
+              Caso queira complementar sua mensagem, basta responder este e‑mail.
+            </p>
+
+            <p style="margin-top:32px;">
+              Atenciosamente,<br/>
+              <strong>Equipe alma4D</strong><br/>
+              voss.digital
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+`;
+
+    await sendEmailResend({
+      to: safeEmail,
+      subject: subjectUser,
+      html: htmlUser,
+      replyTo: CONTACT_TO_EMAIL,
+    });
 
     return new Response(JSON.stringify({ ok: true }), {
       status: 200,
@@ -169,7 +213,7 @@ serve(async (req: Request) => {
   } catch (error) {
     return new Response(
       JSON.stringify({
-        error: "Erro ao processar request.",
+        error: "Erro ao processar requisição.",
         details: String(error),
       }),
       {
