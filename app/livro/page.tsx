@@ -174,7 +174,7 @@ export default function LivroPage() {
         <h2 className="text-3xl font-bold mb-4">Livro e Aplicativo</h2>
 
         <p className="text-foreground/70 mb-6">
-          Seja você é um entusiasta da longevidade, um líder de equipes ou um
+          Seja você um entusiasta da longevidade, um líder de equipes ou um
           profissional de saúde, o convite aqui é para uma alfabetização
           corporal e mental completas. Não se trata de esperar que o ambiente
           melhore, mas de se preparar para o cotidiano com propósito. É o
