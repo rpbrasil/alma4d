@@ -131,9 +131,9 @@ export default function AutoraPage() {
       <section className="rounded-2xl border border-border bg-surface p-10 flex flex-col gap-6">
         <h2 className="text-3xl font-bold">Outras iniciativas</h2>
         <p className="text-foreground/70 max-w-2xl">
-          Fran também atua na oferta de plataformas empresariais de
-          benefícios e no desenvolvimento de dinâmicas de transformação de
-          grupos, como o Jogo da Transformação. Confira abaixo!
+          Fran também atua na oferta de plataformas empresariais de benefícios e
+          no desenvolvimento de dinâmicas de transformação de grupos, como o
+          Jogo da Transformação. Confira abaixo!
         </p>
         <div className="flex flex-wrap gap-6">
           {[
@@ -155,14 +155,13 @@ export default function AutoraPage() {
             <Link
               key={item.label}
               href={item.href}
-              className=" group relative w-full max-w-90 aspect-square overflow-hidden rounded-2xl border border-[#030870]/10 bg-white transition hover:-translate-y-1 hover:shadow-xl"
+              className="group relative w-full max-w-90 aspect-square overflow-hidden rounded-2xl border border-[#030870]/10 bg-gray-100 transition hover:-translate-y-1 hover:shadow-xl"
             >
               <Image
                 src={item.img}
                 alt={item.label}
-                width={360}
-                height={360}
-                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                fill
+                className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
                 sizes="(max-width: 640px) 100vw, 360px"
               />
               <div className="absolute inset-0 bg-linear-to-t from-black/55 via-black/10 to-transparent" />
