@@ -128,26 +128,28 @@ export default function AutoraPage() {
       </section>
 
       {/* ================= CTA FINAL ================= */}
-      <section className="rounded-2xl border border-border bg-surface p-10 flex flex-col gap-6">
+      <section className="rounded-2xl border border-border bg-surface px-[5%] py-10  flex flex-col gap-6">
         <h2 className="text-3xl font-bold">Outras iniciativas</h2>
+
         <p className="text-foreground/70 max-w-2xl">
           Fran também atua na oferta de plataformas empresariais de benefícios e
           no desenvolvimento de dinâmicas de transformação de grupos, como o
           Jogo da Transformação. Confira abaixo!
         </p>
-        <div className="flex flex-wrap gap-6">
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           {[
             {
               href: "https://beneshop.site",
-              img: "/images/beneshopsite.png",
+              img: "/images/beneshopLogo.png",
               label: "Plataformas para Corpo, Mente e Bolso",
               badge: "Destaque",
               badgeColor: "#019499",
             },
             {
               href: "/contato",
-              img: "/images/transformacao.png",
-              label: "Jogo da Transformação",
+              img: "/images/fcpLogo.png",
+              label: "FCP - Frameworks for Change Program",
               badge: "Novo",
               badgeColor: "#6126E2",
             },
@@ -155,16 +157,18 @@ export default function AutoraPage() {
             <Link
               key={item.label}
               href={item.href}
-              className="group relative w-full max-w-90 aspect-square overflow-hidden rounded-2xl border border-[#030870]/10 bg-gray-100 transition hover:-translate-y-1 hover:shadow-xl"
+              className="group relative aspect-square overflow-hidden rounded-2xl border border-[#030870]/10 bg-gray-100 transition hover:-translate-y-1 hover:shadow-xl"
             >
               <Image
                 src={item.img}
                 alt={item.label}
                 fill
                 className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-                sizes="(max-width: 640px) 100vw, 360px"
+                sizes="(max-width: 640px) 100vw, 50vw"
               />
+
               <div className="absolute inset-0 bg-linear-to-t from-black/55 via-black/10 to-transparent" />
+
               <span
                 style={{ backgroundColor: item.badgeColor }}
                 className="absolute left-4 top-4 rounded-full px-3 py-1 text-xs font-semibold text-white"
