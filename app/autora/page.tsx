@@ -14,7 +14,7 @@ export default function AutoraPage() {
 
           <p className="text-xl text-foreground/80 leading-relaxed">
             Autora do livro <strong>Arquitetura Viva do Autocuidado</strong> e
-            pesquisadora do bem-estar integral do ser humano.
+            pesquisadora para o bem-estar integral do ser humano.
           </p>
 
           <p className="text-foreground/70 leading-relaxed">
@@ -132,9 +132,9 @@ export default function AutoraPage() {
         <h2 className="text-3xl font-bold">Outras iniciativas</h2>
 
         <p className="text-foreground/70 max-w-2xl">
-          Fran também atua na oferta de plataformas empresariais de benefícios e
-          no desenvolvimento de dinâmicas de transformação de grupos, como o
-          Jogo da Transformação. Confira abaixo!
+          Fran também atua em plataformas empresariais de benefícios e
+          no desenvolvimento de dinâmicas para transformação de grupos, como o
+          Jogo FCP - Frameworks for Change Program. Confira abaixo!
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
