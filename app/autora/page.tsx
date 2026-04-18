@@ -165,12 +165,7 @@ export default function AutoraPage() {
 
               <div className="absolute inset-0 bg-linear-to-t from-black/55 via-black/10 to-transparent" />
 
-              <span
-                style={{ backgroundColor: item.badgeColor }}
-                className="absolute left-4 top-4 rounded-full px-3 py-1 text-xs font-semibold text-white"
-              >
-                {item.badge}
-              </span>
+              {/* sem  */}
 
               <div className="absolute bottom-0 p-4 text-white">
                 <p className="font-bold">{item.label}</p>
