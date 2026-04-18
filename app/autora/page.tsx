@@ -137,14 +137,14 @@ export default function AutoraPage() {
           {[
             {
               href: "https://beneshop.site",
-              img: "/images/beneshopLogo.png",
+              img: "https://alma4d.com.br/images/beneshop-logo.png",
               label: "Plataformas para Corpo, Mente e Bolso",
               badge: "Destaque",
               badgeColor: "#019499",
             },
             {
               href: "/contato",
-              img: "/images/fcpLogo.png",
+              img: "https://alma4d.com.br/images/fcp-logo.png",
               label: "FCP - Frameworks for Change Program",
               badge: "Novo",
               badgeColor: "#6126E2",
