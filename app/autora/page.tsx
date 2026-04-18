@@ -95,14 +95,13 @@ export default function AutoraPage() {
         <div className="grid md:grid-cols-2 gap-8">
           <div className="rounded-xl bg-surface-muted p-6">
             <p className="text-foreground/70 leading-relaxed">
-              O bem-estar é uma construção consciente que integra corpo,
-              emoções, mente e propósito ao cotidiano.
+              O bem-estar é consequência do conjunto de práticas que integram corpo, emoções, mente e propósito à sua rotina diária.
             </p>
           </div>
 
           <div className="rounded-xl bg-surface-muted p-6">
             <p className="text-foreground/70 leading-relaxed">
-              O autocuidado torna-se fonte principal de evolução pessoal.
+              O autocuidado, mais do que uma postura adotada em virtude de um problema de saúde, torna-se fonte primária de evolução pessoal.
             </p>
           </div>
         </div>
@@ -128,8 +127,8 @@ export default function AutoraPage() {
         <h2 className="text-3xl font-bold">Outras iniciativas</h2>
 
         <p className="text-foreground/70 max-w-2xl">
-          Fran também atua em plataformas empresariais de benefícios e
-          no desenvolvimento de dinâmicas para transformação de grupos, como o
+          Fran também atua profissionalmente em <strong>plataformas empresariais de benefícios</strong> e
+          no desenvolvimento de <strong>dinâmicas para transformação de grupos</strong>, como o
           FCP - Frameworks for Change Program. Confira abaixo!
         </p>
 
