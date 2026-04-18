@@ -180,7 +180,6 @@ export default function AutoraPage() {
           ))}
         </div>
       </section>
-      ``
     </div>
   );
 }
