@@ -38,7 +38,6 @@ export default function AutoraPage() {
           <div className="absolute bottom-0 inset-x-0 h-1 bg-[#DF633F]" />
         </div>
       </section>
-
       {/* ================= TRAJETÓRIA ================= */}
       <section className="flex flex-col gap-12">
         <div className="max-w-3xl flex flex-col gap-4">
@@ -67,7 +66,6 @@ export default function AutoraPage() {
           ))}
         </div>
       </section>
-
       {/* ================= VISÃO ================= */}
       <section className="grid md:grid-cols-2 gap-12 items-center">
         <div className="flex flex-col gap-4">
@@ -90,7 +88,6 @@ export default function AutoraPage() {
           />
         </div>
       </section>
-
       {/* ================= O LIVRO ================= */}
       <section className="flex flex-col gap-12">
         <h2 className="text-3xl font-bold">Arquitetura Viva do Autocuidado</h2>
@@ -126,15 +123,14 @@ export default function AutoraPage() {
           </Link>
         </div>
       </section>
-
       {/* ================= CTA FINAL ================= */}
-      <section className="rounded-2xl border border-border bg-surface px-[5%] py-10  flex flex-col gap-6">
+      <section className="rounded-2xl border border-border bg-surface px-[5%] py-10 flex flex-col gap-6">
         <h2 className="text-3xl font-bold">Outras iniciativas</h2>
 
         <p className="text-foreground/70 max-w-2xl">
           Fran também atua em plataformas empresariais de benefícios e
           no desenvolvimento de dinâmicas para transformação de grupos, como o
-          Jogo FCP - Frameworks for Change Program. Confira abaixo!
+          FCP - Frameworks for Change Program. Confira abaixo!
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -184,6 +180,7 @@ export default function AutoraPage() {
           ))}
         </div>
       </section>
+      ``
     </div>
   );
 }
