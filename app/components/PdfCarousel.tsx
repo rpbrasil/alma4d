@@ -3,7 +3,7 @@
 import React from "react";
 import dynamic from "next/dynamic";
 
-// ✅ Importar componentes do react-pdf via dynamic para não rodar no SSR
+// ✅ Importar react-pdf sem SSR
 const Document = dynamic(() => import("react-pdf").then((m) => m.Document), {
   ssr: false,
 });
@@ -12,16 +12,23 @@ const Page = dynamic(() => import("react-pdf").then((m) => m.Page), {
 });
 
 type PdfCarouselProps = {
-  fileUrl: string; // ex: "/documentos/metodo.pdf"
+  fileUrl: string;
+  showControls?: boolean;
+  compactControls?: boolean;
 };
 
-export default function PdfCarousel({ fileUrl }: PdfCarouselProps) {
+export default function PdfCarousel({
+  fileUrl,
+  showControls = true,
+  compactControls = false,
+}: PdfCarouselProps) {
   const [numPages, setNumPages] = React.useState(0);
   const [page, setPage] = React.useState(1);
   const [width, setWidth] = React.useState(600);
+
   const containerRef = React.useRef<HTMLDivElement>(null);
 
-  // ✅ Configura o worker SOMENTE no client e no mesmo módulo de uso do react-pdf
+  // ✅ Worker do pdf.js
   React.useEffect(() => {
     let mounted = true;
 
@@ -40,12 +47,15 @@ export default function PdfCarousel({ fileUrl }: PdfCarouselProps) {
     };
   }, []);
 
-  // ✅ Responsivo: mede largura disponível
+  // ✅ Responsivo (largura)
   React.useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
 
-    const resize = () => setWidth(Math.min(el.clientWidth, 900));
+    const resize = () => {
+      setWidth(Math.min(el.clientWidth, 1100));
+    };
+
     resize();
 
     const ro = new ResizeObserver(resize);
@@ -60,64 +70,81 @@ export default function PdfCarousel({ fileUrl }: PdfCarouselProps) {
   }
 
   return (
-    <div className="w-full">
-      {/* Controles */}
-      <div className="flex items-center justify-between gap-3 mb-4">
-        <button
-          type="button"
-          onClick={() => setPage((p) => Math.max(1, p - 1))}
-          disabled={page <= 1}
-          className="px-4 py-2 rounded-lg border border-[#030870]/20 disabled:opacity-50"
+    <div className="h-full w-full flex flex-col overflow-hidden">
+      {/* ✅ CONTROLES */}
+      {showControls && (
+        <div
+          className={[
+            "shrink-0 flex items-center gap-3 bg-white",
+            compactControls
+              ? "justify-end px-4 py-2"
+              : "justify-between px-4 py-3 border-b border-[#030870]/10",
+          ].join(" ")}
         >
-          Anterior
-        </button>
+          <button
+            type="button"
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page <= 1}
+            className="px-4 py-2 rounded-lg border border-[#030870]/20 disabled:opacity-50"
+          >
+            Anterior
+          </button>
 
-        <span className="text-sm font-semibold text-[#030870]">
-          Página {page} de {numPages || "—"}
-        </span>
+          {!compactControls && (
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1}
+              className="px-4 py-2 rounded-lg border border-[#030870]/20 disabled:opacity-50"
+            >
+              Anterior
+            </button>
+          )}
 
-        <button
-          type="button"
-          onClick={() => setPage((p) => Math.min(numPages || 1, p + 1))}
-          disabled={!numPages || page >= numPages}
-          className="px-4 py-2 rounded-lg bg-[#019499] text-white disabled:opacity-50"
-        >
-          Próxima
-        </button>
-      </div>
+          {!compactControls && (
+            <span className="text-sm font-semibold text-[#030870]">
+              Página {page} de {numPages || "—"}
+            </span>
+          )}
 
-      {/* Viewer */}
+          <button
+            type="button"
+            onClick={() => setPage((p) => Math.min(numPages || 1, p + 1))}
+            disabled={!numPages || page >= numPages}
+            className="px-4 py-2 rounded-lg bg-[#019499] text-white disabled:opacity-50"
+          >
+            Próxima
+          </button>
+        </div>
+      )}
+
+      {/* ✅ PDF */}
       <div
         ref={containerRef}
-        className="w-full rounded-2xl border border-[#030870]/10 bg-white shadow-sm overflow-hidden"
+        className="flex-1 overflow-hidden bg-[#030870]/3 flex items-center justify-center"
       >
-        <div className="flex justify-center p-4 bg-[#030870]/3">
-          <Document
-            file={fileUrl}
-            onLoadSuccess={onLoadSuccess}
-            loading={<div className="p-10 text-[#030870]">Carregando PDF…</div>}
-            error={
-              <div className="p-10 text-red-600">
-                Erro ao carregar o PDF. Verifique o caminho: <b>{fileUrl}</b>
-              </div>
-            }
-          >
-            <Page
-              pageNumber={page}
-              width={width}
-              renderTextLayer={false}
-              renderAnnotationLayer={false}
-              loading={
-                <div className="p-10 text-[#030870]">Renderizando página…</div>
-              }
-            />
-          </Document>
-        </div>
+        <Document
+          file={fileUrl}
+          onLoadSuccess={onLoadSuccess}
+          loading={<div className="p-10 text-[#030870]">Carregando PDF…</div>}
+          error={
+            <div className="p-10 text-red-600">
+              Erro ao carregar o PDF. Caminho inválido: <b>{fileUrl}</b>
+            </div>
+          }
+        >
+          <Page
+            pageNumber={page}
+            width={width}
+            renderTextLayer={false}
+            renderAnnotationLayer={false}
+          />
+        </Document>
       </div>
 
-      {/* Indicadores */}
-      {numPages > 1 && (
-        <div className="flex flex-wrap justify-center gap-2 mt-4">
+      {/* ✅ INDICADORES — só quando NÃO compacto */}
+      {showControls && !compactControls && numPages > 1 && (
+        <div className="shrink-0 flex flex-wrap justify-center gap-2 py-3 border-t border-[#030870]/10 bg-white">
           {Array.from({ length: numPages }, (_, i) => i + 1).map((n) => (
             <button
               key={n}

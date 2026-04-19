@@ -31,6 +31,19 @@ export default function MetodoModal({
     };
   }, [open]);
 
+  function useIsMobile() {
+    const [isMobile, setIsMobile] = useState(false);
+
+    useEffect(() => {
+      const check = () => setIsMobile(window.innerWidth < 768);
+      check();
+      window.addEventListener("resize", check);
+      return () => window.removeEventListener("resize", check);
+    }, []);
+
+    return isMobile;
+  }
+  const isMobile = useIsMobile();
   return (
     <>
       {/* BOTÃO */}
@@ -43,9 +56,11 @@ export default function MetodoModal({
       </button>
 
       {/* MODAL */}
+      {/* MODAL */}
+
       {open && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center p-2"
           role="dialog"
           aria-modal="true"
         >
@@ -56,52 +71,73 @@ export default function MetodoModal({
           />
 
           {/* CONTEÚDO */}
-          <div className="relative z-10 w-full max-w-4xl rounded-2xl bg-white shadow-2xl overflow-hidden">
+          <div
+            className={`
+        relative z-10 w-full max-w-5xl
+        ${isMobile ? "max-h-[94vh]" : "max-h-[98vh]"}
+        rounded-2xl bg-white shadow-2xl
+        overflow-hidden flex flex-col
+      `}
+          >
             {/* HEADER */}
-            <div className="flex items-center justify-between gap-4 border-b border-black/10 p-6">
-              <div>
-                <h3 className="text-xl font-bold text-[#030870]">
-                  Conheça o Método
-                </h3>
-                <p className="text-sm text-[#030870]/70">
-                  Navegue pelas páginas do PDF usando os controles.
-                </p>
+            <div className="flex items-center justify-between gap-4 border-b border-black/10 px-4 py-3 shrink-0">
+              <h3 className="text-lg font-bold text-[#030870]">
+                Conheça o Método
+              </h3>
+
+              <div className="flex items-center gap-3">
+                {!isMobile && (
+                  <a
+                    href={fileUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-sm font-semibold text-[#019499] hover:underline"
+                  >
+                    Abrir em nova aba
+                  </a>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  className="rounded-lg px-2 py-1 text-[#030870] hover:bg-[#030870]/10"
+                  aria-label="Fechar"
+                >
+                  ✕
+                </button>
               </div>
-
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                className="rounded-lg px-3 py-2 text-[#030870] hover:bg-[#030870]/10"
-                aria-label="Fechar"
-              >
-                ✕
-              </button>
             </div>
 
-            {/* BODY (PDF) */}
-            <div className="p-6">
-              <PdfCarousel fileUrl={fileUrl} />
+            {/* BODY */}
+            <div className="flex-1 overflow-hidden">
+              <PdfCarousel
+                fileUrl={fileUrl}
+                showControls
+                compactControls={!isMobile}                
+              />
             </div>
 
-            {/* FOOTER */}
-            <div className="flex flex-wrap justify-end gap-3 border-t border-black/10 p-6">
-              <a
-                href={fileUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="rounded-xl border border-black/10 px-5 py-2.5 font-semibold text-[#030870] hover:bg-black/5"
-              >
-                Abrir em nova aba
-              </a>
+            {/* FOOTER — SOMENTE MOBILE */}
+            {isMobile && (
+              <div className="shrink-0 border-t border-black/10 p-4 flex justify-between gap-3">
+                <a
+                  href={fileUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-xl border border-black/10 px-4 py-2 font-semibold text-[#030870]"
+                >
+                  Abrir PDF
+                </a>
 
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                className="rounded-xl bg-[#019499] px-5 py-2.5 font-semibold text-white hover:bg-[#019499]/90"
-              >
-                Fechar
-              </button>
-            </div>
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  className="rounded-xl bg-[#019499] px-4 py-2 font-semibold text-white"
+                >
+                  Fechar
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
