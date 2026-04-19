@@ -90,7 +90,7 @@ export default function PdfCarousel({
             Anterior
           </button>
 
-          {!compactControls && (
+          {/* {!compactControls && (
             <button
               type="button"
               onClick={() => setPage((p) => Math.max(1, p - 1))}
@@ -99,7 +99,7 @@ export default function PdfCarousel({
             >
               Anterior
             </button>
-          )}
+          )} */}
 
           {!compactControls && (
             <span className="text-sm font-semibold text-[#030870]">
