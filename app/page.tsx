@@ -181,7 +181,7 @@ export default function MetodoPage() {
       <section className="px-1 md:px-0">
         <div className="bg-linear-to-br from-[#030870] to-[#019499] rounded-[2.5rem] md:rounded-[3rem] p-8 md:p-12 text-white overflow-hidden relative shadow-2xl shadow-[#030870]/20">
           <div className="relative z-10 grid md:grid-cols-2 gap-12 items-center">
-            <div className="space-y-6">
+            <div className="space-y-6 text-center md:text-left items-center md:items-start flex flex-col">
               <h2 className="md:text-4xl font-bold text-[#019499]">
                 A Experiência Completa
               </h2>
@@ -191,7 +191,7 @@ export default function MetodoPage() {
               </p>
               <Link
                 href="/download"
-                className="inline-block bg-[#DF633F] text-white px-8 py-3 rounded-xl font-bold hover:bg-[#DF633F]/90 transition-all text-center shadow-lg shadow-[#DF633F]/30"
+                className="inline-flex justify-center bg-[#DF633F] text-white px-8 py-3 rounded-xl font-bold hover:bg-[#DF633F]/90 transition-all text-center shadow-lg shadow-[#DF633F]/30"
               >
                 Oferta Livro + App
               </Link>

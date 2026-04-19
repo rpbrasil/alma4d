@@ -29,7 +29,7 @@ export default function LivroPage() {
     <div className="flex flex-col gap-24">
       {/* HERO */}
       <section className="grid lg:grid-cols-2 gap-12 items-center">
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-6 text-center md:text-left items-center md:items-start">
           <h1 className="text-4xl sm:text-5xl font-bold text-brand">
             Arquitetura <span className="text-[#019499]">Viva</span> do
             Autocuidado
@@ -51,7 +51,7 @@ export default function LivroPage() {
             assumir um novo estilo de viver, mais saudável e produtivo.
           </p>
 
-          <div className="flex gap-4 flex-wrap">
+          <div className="flex gap-4 flex-wrap justify-center md:justify-start text-center md:text-left">
             <Link href="/" className="text-brand font-medium hover:underline">
               Ver o Método
             </Link>
@@ -65,7 +65,7 @@ export default function LivroPage() {
           </div>
 
           {/* Badge oficial Amazon (Available at Amazon) */}
-          <div className="pt-2">
+          <div className="pt-2 flex flex-col items-center md:items-start">
             <a
               href={amazonUrl}
               target="_blank"
@@ -170,22 +170,33 @@ export default function LivroPage() {
       </section>
 
       {/* RELAÇÃO COM APP */}
-      <section className="bg-surface border border-border rounded-2xl p-10">
-        <h2 className="text-3xl font-bold mb-4">Livro e Aplicativo</h2>
 
-        <p className="text-foreground/70 mb-6">
-          Seja você um entusiasta da longevidade, um líder de equipes ou um
-          profissional de saúde, o convite aqui é para uma alfabetização
-          corporal e mental completas. Não se trata de esperar que o ambiente
-          melhore, mas de se preparar para o cotidiano com propósito. É o
-          conhecimento do bem-estar aplicado à vida real, entregando resultados
-          imediatos para quem compreende que o ser humano não é apenas um objeto
-          de cuidado, mas o campo onde a transformação realmente acontece.
-        </p>
+      <section className="bg-surface border border-border rounded-2xl p-6 sm:p-8 md:p-10 text-center md:text-left">
+        <div className="mx-auto w-full max-w-2xl md:max-w-3xl">
+          <h2 className="text-2xl sm:text-3xl font-bold mb-4">
+            Livro e Aplicativo
+          </h2>
 
-        <Link href="/app" className="text-brand font-medium hover:underline">
-          Ver o Aplicativo
-        </Link>
+          <p className="text-foreground/70 mb-6">
+            Seja você um entusiasta da longevidade, um líder de equipes ou um
+            profissional de saúde, o convite aqui é para uma alfabetização
+            corporal e mental completas. Não se trata de esperar que o ambiente
+            melhore, mas de se preparar para o cotidiano com propósito. É o
+            conhecimento do bem-estar aplicado à vida real, entregando
+            resultados imediatos para quem compreende que o ser humano não é
+            apenas um objeto de cuidado, mas o campo onde a transformação
+            realmente acontece.
+          </p>
+
+          <div className="flex justify-center md:justify-start">
+            <Link
+              href="/app"
+              className="text-brand font-medium hover:underline"
+            >
+              Ver o Aplicativo
+            </Link>
+          </div>
+        </div>
       </section>
     </div>
   );

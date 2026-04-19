@@ -4,14 +4,16 @@ import Image from "next/image";
 export default function DownloadPage() {
    const amazonUrl = "https://www.amazon.com.br/dp/ASIN";
   return (
-    <section className="max-w-3xl mx-auto flex flex-col gap-8 py-16">
-      <h1 className="text-4xl font-bold text-brand">Baixar o aplicativo e o livro</h1>
+    <section className="max-w-3xl mx-auto flex flex-col gap-8 py-16 text-center md:text-left items-center md:items-start">
+      <h1 className="text-4xl font-bold text-brand">
+        Baixar o aplicativo e o livro
+      </h1>
 
       <p className="text-foreground/70">
         Escolha sua plataforma preferida para acessar o aplicativo alma4D.
       </p>
 
-      <div className="flex flex-col sm:flex-row gap-6 items-start">
+      <div className="flex flex-col sm:flex-row gap-6 items-center sm:items-start justify-center sm:justify-start">
         {/* App Store */}
         <a
           href="https://apps.apple.com/"
@@ -45,7 +47,8 @@ export default function DownloadPage() {
       </div>
 
       <p className="text-foreground/70">
-        Escolha sua plataforma preferida para acessar o livro Arquitetura Viva na Amazon.
+        Escolha sua plataforma preferida para acessar o livro Arquitetura Viva
+        na Amazon.
       </p>
       <div className="pt-2">
         <a
