@@ -48,11 +48,11 @@ export default function AutoraPage() {
           {[
             {
               title: "Formação",
-              text: "Formada em Arquitetura e Urbanismo, Fran ampliou seu campo de atuação para o estudo das relações humanas com seus ambientes.",
+              text: "Formada em Arquitetura e Urbanismo, Fran ampliou seu campo de estudo para as questões humanas nas suas interfaces, do autoconhecimento aos relacionamentos sociais.",
             },
             {
               title: "Experiência",
-              text: "Atuou em Recursos Humanos na área da saúde e por 18 anos como Terapeuta Artística Antroposófica.",
+              text: "Atuou em Recursos Humanos na área da saúde e por 18 anos como Terapeuta Antroposófica.",
             },
             {
               title: "Pesquisa contínua",

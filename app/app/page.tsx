@@ -14,7 +14,7 @@ export default function AppPage() {
           </h1>
 
           <p className="text-xl text-foreground/80 leading-relaxed">
-            Inteligência aplicada ao cuidado com pessoas e à gestão de riscos
+            Inteligência aplicada ao cuidado com pessoas e à detecção de riscos
             psicossociais.
           </p>
 
