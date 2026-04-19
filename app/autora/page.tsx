@@ -56,7 +56,7 @@ export default function AutoraPage() {
             },
             {
               title: "Pesquisa contínua",
-              text: "Formação em Neuropsicologia, Psicopedagogia, Monitoria de Museus e estudos sobre modos de vida saudáveis.",
+              text: "Após sua graduação, mantem estudos e projetos em Neuropsicologia, Psicopedagogia, Monitoria de Museus e modos de vida saudáveis.",
             },
           ].map((item) => (
             <div key={item.title} className="rounded-xl bg-surface-muted p-6">
