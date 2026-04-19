@@ -7,60 +7,60 @@ export default function TermosPage() {
   return (
     <main className="max-w-3xl mx-auto px-4 py-10">
       {/* Header */}
+      <header className="mb-8">
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-brand">
+          Termos de Uso
+        </h1>
+      </header>
 
-      <h1 className="text-2xl sm:text-3xl font-extrabold text-brand">
-        Termos de Uso
-      </h1>
-      {/* Se quiser, pode colocar o logo aqui */}
-
-      {/* Card base */}
       <section className="space-y-6 text-slate-700 text-sm leading-relaxed">
-        {/* Termo Geral */}
+        {/* Introdução */}
+        <article className="rounded-2xl border border-border bg-surface p-5">
+          <p>
+            Estes Termos de Uso regulam o acesso e a utilização do aplicativo
+            <strong> alma4D</strong>. Ao acessar ou utilizar o aplicativo, o
+            usuário declara estar ciente e de acordo com as condições aqui
+            estabelecidas.
+          </p>
+        </article>
+
+        {/* Conta e acesso */}
         <article className="rounded-2xl border border-border bg-surface p-5">
           <h2 className="text-lg font-extrabold text-brand mb-2">
-            📜 Termos e Condições de Uso
+            👤 Conta e Acesso
           </h2>
           <p>
-            Ao utilizar este aplicativo, você concorda com os seguintes termos e
-            condições de uso. Estes termos regem o relacionamento entre você
-            (usuário) e os responsáveis pelo aplicativo, garantindo
-            transparência, segurança e conformidade com a legislação vigente,
-            incluindo:
+            O acesso ao aplicativo ocorre por meio de autenticação via número de
+            telefone, utilizando código de uso único (OTP). O usuário é
+            responsável por manter a confidencialidade de suas credenciais e
+            pelas atividades realizadas em sua conta.
           </p>
-          <ul className="mt-3 list-disc pl-6">
-            <li>Marco Civil da Internet (Lei nº 12.965/2014)</li>
-            <li>
-              Lei Geral de Proteção de Dados Pessoais – LGPD (Lei nº
-              13.709/2018)
-            </li>
-          </ul>
         </article>
 
         {/* IA */}
         <article className="rounded-2xl border border-border bg-surface p-5">
           <h2 className="text-lg font-extrabold text-brand mb-2">
-            🤖 Uso de Inteligência Artificial
+            🤖 Uso de Sistemas Automatizados e Inteligência Artificial
           </h2>
           <p>
-            O aplicativo pode utilizar agentes de inteligência artificial para
-            fornecer informações, sugestões, respostas e interações
-            automatizadas.
-          </p>
-          <p className="mt-2">
-            Embora busquemos oferecer conteúdos úteis e relevantes, não
-            garantimos:
+            O aplicativo pode utilizar sistemas automatizados, incluindo
+            recursos de inteligência artificial, com a finalidade de oferecer
+            sugestões, respostas ou análises de apoio ao usuário.
           </p>
           <ul className="mt-3 list-disc pl-6">
-            <li>Veracidade</li>
-            <li>Precisão</li>
-            <li>Atualidade</li>
-            <li>Consistência</li>
+            <li>
+              As informações fornecidas possuem caráter informativo e
+              orientativo
+            </li>
+            <li>
+              Não constituem aconselhamento médico, psicológico, jurídico ou
+              profissional
+            </li>
+            <li>Não substituem a avaliação de profissionais qualificados</li>
+            <li>
+              A tomada de decisões é de exclusiva responsabilidade do usuário
+            </li>
           </ul>
-          <p className="mt-2">
-            As respostas não devem ser interpretadas como aconselhamento
-            profissional, jurídico, médico, psicológico, financeiro ou de
-            qualquer outra natureza.
-          </p>
         </article>
 
         {/* Responsabilidade */}
@@ -70,46 +70,60 @@ export default function TermosPage() {
           </h2>
           <p>
             O usuário é responsável por avaliar criticamente as informações
-            apresentadas e, quando necessário, buscar orientação especializada.
+            apresentadas no aplicativo e, quando necessário, buscar orientação
+            especializada de profissionais devidamente habilitados.
           </p>
-          <p>
-            O usuário está ciente de que, ao buscar orientação especializada, deverá verificar a idoneidade dos profissionais nos respectivos conselhos de classe e em outras fontes de informação. O usuário não poderá em nenhum momento alegar desconhecimento de que a plataforma não fornece indicação ou referências e nem incentiva o acesso destes profissionais.
+          <p className="mt-2">
+            O alma4D não se responsabiliza por decisões tomadas com base nas
+            informações disponibilizadas nem por serviços prestados por
+            terceiros.
           </p>
-          <p>
-            O usuário é responsável por todas as escolhas que fizer no
-            aplicativo, inclusive agendamento e consultas com profissionais que
-            expoe suas qualificacoes na plataforma.
-          </p>
-          <p className="mt-2">É proibido utilizar o aplicativo para:</p>
-          <ul className="mt-3 list-disc pl-6">
-            <li>Atividades ilegais</li>
-            <li>Conteúdos ofensivos ou discriminatórios</li>
-            <li>Violações de direitos de terceiros</li>
-          </ul>
-        </article>
-
-        {/* Atualizações */}
-        <article className="rounded-2xl border border-border bg-surface p-5">
-          <h2 className="text-lg font-extrabold text-brand mb-2">
-            🔄 Atualizações dos Termos
-          </h2>
-          <p>
-            Podemos atualizar estes termos periodicamente. Recomendamos que você
-            revise esta página com frequência para estar ciente de eventuais
-            alterações.
+          <p className="mt-2">
+            É vedada a utilização do aplicativo para fins ilegais, abusivos,
+            discriminatórios ou que violem direitos de terceiros.
           </p>
         </article>
 
-        {/* Aceite (informativo) */}
+        {/* Teste e assinatura */}
         <article className="rounded-2xl border border-border bg-surface p-5">
           <h2 className="text-lg font-extrabold text-brand mb-2">
-            ✅ Aceite dos Termos
+            💳 Período de Teste e Assinaturas
           </h2>
           <p>
-            O aceite destes termos é realizado durante o cadastro no site ou no
-            aplicativo. Ao continuar utilizando nossos serviços, você declara
-            estar ciente e de acordo com todos os termos apresentados acima.
+            O aplicativo pode oferecer um período de teste gratuito, durante o
+            qual determinadas funcionalidades estarão disponíveis sem custo.
           </p>
+          <p className="mt-2">
+            Após o término do período de teste, o acesso completo poderá estar
+            condicionado a uma assinatura ativa. Pagamentos e assinaturas são
+            processados pela plataforma de distribuição utilizada (Google Play
+            ou Apple App Store), estando sujeitos aos seus respectivos termos.
+          </p>
+        </article>
+
+        {/* Limitação */}
+        <article className="rounded-2xl border border-border bg-surface p-5">
+          <h2 className="text-lg font-extrabold text-brand mb-2">
+            ⚠️ Limitação de Responsabilidade
+          </h2>
+          <p>
+            O aplicativo é fornecido “como está”, sem garantias de funcionamento
+            ininterrupto ou livre de erros. O alma4D poderá, a seu critério,
+            modificar, suspender ou descontinuar funcionalidades do aplicativo.
+          </p>
+        </article>
+
+        {/* Alterações */}
+        <article className="rounded-2xl border border-border bg-surface p-5">
+          <h2 className="text-lg font-extrabold text-brand mb-2">
+            🔄 Alterações nos Termos
+          </h2>
+          <p>
+            Estes Termos de Uso podem ser atualizados periodicamente. O uso
+            contínuo do aplicativo após alterações implica a aceitação das novas
+            versões.
+          </p>
+          <p className="mt-2 italic">Última atualização: Abril de 2026</p>
         </article>
       </section>
     </main>

@@ -15,25 +15,36 @@ export default function PrivacidadePage() {
       </header>
 
       <section className="space-y-6 text-slate-700 text-sm leading-relaxed">
+        {/* Introdução */}
+        <article className="rounded-2xl border border-border bg-surface p-5">
+          <p>
+            Esta Política de Privacidade descreve como o aplicativo{" "}
+            <strong>alma4D</strong>
+            coleta, utiliza, armazena e protege os dados pessoais de seus
+            usuários.
+          </p>
+        </article>
+
         {/* Coleta */}
         <article className="rounded-2xl border border-border bg-surface p-5">
           <h2 className="text-lg font-extrabold text-brand mb-2">
             📥 Coleta de Dados
           </h2>
-          <p>
-            Ao utilizar o aplicativo, podemos coletar os seguintes dados
-            pessoais:
-          </p>
+          <p>Podemos coletar os seguintes dados pessoais:</p>
           <ul className="mt-3 list-disc pl-6">
-            <li>Nome, e-mail e informações de login</li>
-            <li>Dados de uso e navegação no aplicativo</li>
             <li>
-              Informações fornecidas voluntariamente em formulários ou pesquisas
+              Número de telefone, utilizado exclusivamente para autenticação via
+              código de uso único (OTP)
+            </li>
+            <li>Dados básicos de uso e navegação no aplicativo</li>
+            <li>
+              Informações fornecidas voluntariamente pelo usuário durante o uso
+              do aplicativo
             </li>
           </ul>
           <p className="mt-2">
-            A coleta ocorre com base no seu consentimento ou para cumprimento de
-            obrigações legais e contratuais.
+            O número de telefone não é utilizado para marketing, publicidade ou
+            contato comercial.
           </p>
         </article>
 
@@ -42,28 +53,32 @@ export default function PrivacidadePage() {
           <h2 className="text-lg font-extrabold text-brand mb-2">
             🧠 Uso dos Dados
           </h2>
-          <p>Os dados coletados são utilizados para:</p>
+          <p>Os dados coletados podem ser utilizados para:</p>
           <ul className="mt-3 list-disc pl-6">
-            <li>Melhorar a experiência do usuário</li>
-            <li>Personalizar conteúdos e funcionalidades</li>
-            <li>Realizar análises estatísticas e operacionais</li>
-            <li>Garantir segurança e prevenção contra fraudes</li>
+            <li>Autenticação segura de usuários</li>
+            <li>Funcionamento e melhoria do aplicativo</li>
+            <li>Análises operacionais e de desempenho</li>
+            <li>Segurança e prevenção contra fraudes</li>
           </ul>
           <p className="mt-2">
-            Não utilizamos seus dados para fins discriminatórios ou abusivos.
+            O aplicativo não utiliza dados pessoais para fins discriminatórios,
+            abusivos ou ilícitos.
           </p>
         </article>
 
-        {/* Segurança */}
+        {/* Notificações */}
         <article className="rounded-2xl border border-border bg-surface p-5">
           <h2 className="text-lg font-extrabold text-brand mb-2">
-            🔒 Armazenamento e Segurança
+            🔔 Notificações
           </h2>
-          <p>
-            Seus dados são armazenados em ambientes seguros e protegidos por
-            medidas técnicas e administrativas adequadas. Adotamos práticas de
-            segurança da informação para evitar acessos não autorizados,
-            vazamentos ou alterações indevidas.
+          <ul className="mt-3 list-disc pl-6">
+            <li>Lembretes configurados pelo próprio usuário</li>
+            <li>Atualizações e informações relevantes sobre o aplicativo</li>
+            <li>Mensagens importantes relacionadas ao uso do serviço</li>
+          </ul>
+          <p className="mt-2">
+            As notificações podem ser gerenciadas ou desativadas a qualquer
+            momento nas configurações do dispositivo.
           </p>
         </article>
 
@@ -72,15 +87,33 @@ export default function PrivacidadePage() {
           <h2 className="text-lg font-extrabold text-brand mb-2">
             🤝 Compartilhamento de Dados
           </h2>
-          <p>Seus dados não são compartilhados com terceiros, exceto:</p>
+          <p>
+            Os dados pessoais podem ser compartilhados exclusivamente com
+            provedores de tecnologia essenciais ao funcionamento do aplicativo,
+            incluindo:
+          </p>
           <ul className="mt-3 list-disc pl-6">
-            <li>Quando exigido por lei ou ordem judicial</li>
             <li>
-              Com parceiros que atuam na operação do app, sob cláusulas de
-              confidencialidade
+              <strong>Firebase (Google LLC)</strong> – infraestrutura e
+              notificações
             </li>
-            <li>Com seu consentimento explícito</li>
+            <li>
+              <strong>Supabase</strong> – autenticação e armazenamento de dados
+            </li>
           </ul>
+          <p className="mt-2">O alma4D não vende dados pessoais a terceiros.</p>
+        </article>
+
+        {/* Segurança */}
+        <article className="rounded-2xl border border-border bg-surface p-5">
+          <h2 className="text-lg font-extrabold text-brand mb-2">
+            🔒 Armazenamento e Segurança
+          </h2>
+          <p>
+            Os dados são armazenados em ambientes seguros, protegidos por
+            medidas técnicas e administrativas adequadas para prevenir acessos
+            não autorizados, perda ou uso indevido.
+          </p>
         </article>
 
         {/* Retenção */}
@@ -89,9 +122,9 @@ export default function PrivacidadePage() {
             📅 Retenção de Dados
           </h2>
           <p>
-            Os dados são mantidos pelo tempo necessário para cumprir as
-            finalidades descritas nesta política ou conforme exigido por
-            obrigações legais.
+            Os dados pessoais são mantidos apenas pelo tempo necessário para
+            cumprir as finalidades descritas nesta política ou conforme exigido
+            por lei.
           </p>
         </article>
 
@@ -100,12 +133,10 @@ export default function PrivacidadePage() {
           <h2 className="text-lg font-extrabold text-brand mb-2">
             🧾 Seus Direitos
           </h2>
-          <p>Você tem direito a:</p>
           <ul className="mt-3 list-disc pl-6">
-            <li>Confirmar a existência de tratamento de dados</li>
-            <li>Acessar, corrigir ou excluir seus dados pessoais</li>
-            <li>Solicitar anonimização ou portabilidade</li>
-            <li>Revogar consentimento a qualquer momento</li>
+            <li>Confirmar a existência de tratamento de dados pessoais</li>
+            <li>Acessar, corrigir ou excluir seus dados</li>
+            <li>Revogar consentimentos concedidos</li>
           </ul>
           <p className="mt-2">
             Para exercer seus direitos, utilize os canais de suporte disponíveis
@@ -120,9 +151,10 @@ export default function PrivacidadePage() {
           </h2>
           <p>
             Esta Política de Privacidade pode ser atualizada periodicamente.
-            Recomendamos que você revise esta página regularmente para estar
-            ciente de eventuais mudanças.
+            Recomendamos que o usuário revise este conteúdo sempre que
+            necessário.
           </p>
+          <p className="mt-2 italic">Última atualização: Abril de 2026</p>
         </article>
       </section>
     </main>
