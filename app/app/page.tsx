@@ -26,11 +26,11 @@ export default function AppPage() {
             é um aplicativo que auxilia pessoas físicas na gestão do
             autocuidado. Profissionais de saúde, bem-estar e desenvolvimento
             humano podem acompanhar a jornada de seus clientes, oferecendo
-            orientações e acompanhamentos personalizados. Nas organizações, o
+            orientações e acompanhamento personalizado. Nas organizações, o
             aplicativo apoia programas de bem‑estar e qualidade de vida no
             trabalho, permitindo o mapeamento de riscos psicossociais, a geração
             de indicadores agregados e a emissão de relatórios alinhados às
-            exigências legais e às boas práticas de gestão.
+            exigências legais NR-1 e às boas práticas de gestão.
           </p>
 
           <div className="flex flex-wrap gap-4 pt-4 justify-center md:justify-start">
