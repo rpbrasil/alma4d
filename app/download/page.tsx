@@ -47,7 +47,7 @@ export default function DownloadPage() {
       </div>
 
       <p className="text-foreground/70">
-        Escolha sua plataforma preferida para acessar o livro Arquitetura Viva
+        Clique no ícone abaixo para acessar o livro Arquitetura Viva
         na Amazon.
       </p>
       <div className="pt-2">

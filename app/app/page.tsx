@@ -107,10 +107,10 @@ export default function AppPage() {
       {/* ================= O QUE O APP FAZ ================= */}
       <section className="flex flex-col gap-12">
         <div className="w-full max-w-2xl md:max-w-3xl flex flex-col gap-4 text-center md:text-left">
-          <h2 className="text-3xl font-bold">Versões do Aplicativo</h2>
+          <h2 className="text-3xl font-bold">Visões do Aplicativo</h2>
           <p className="text-foreground/70">
             No melhor conceito de ecossistema, o aplicativo contempla todos os
-            componentes e tem versões para: indivíduos, profissionais e
+            componentes e tem utilidade para: indivíduos, profissionais e
             empresas.
           </p>
         </div>
