@@ -7,10 +7,10 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
 );
-console.log("Supabase client initialized:", {
-  url: process.env.NEXT_PUBLIC_SUPABASE_URL,
-  anonKey: Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
-});
+// console.log("Supabase client initialized:", {
+//   url: process.env.NEXT_PUBLIC_SUPABASE_URL,
+//   anonKey: Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
+// });
 export default function Contato() {
   const [sending, setSending] = React.useState(false);
   const [status, setStatus] = React.useState<"idle" | "ok" | "error">("idle");
