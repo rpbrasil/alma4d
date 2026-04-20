@@ -249,7 +249,7 @@ export default function MetodoPage() {
                   {/* Container da imagem com flutuação + sombra para “assentar” no relevo */}
                   <div className="relative w-full h-full -translate-y-1 transition-transform duration-500 ease-out group-hover:-translate-y-2">
                     <Image
-                      src="/images/alma4d-bicolor-nobground-256.png"
+                      src="/images/alma4d-bicolor-nobground-256.webp"
                       alt="Logo alma4D"
                       fill
                       className="

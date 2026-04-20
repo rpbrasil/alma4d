@@ -99,7 +99,7 @@ serve(async (req: Request) => {
         style="background:#ffffff;border-radius:8px;font-family:Arial,Helvetica,sans-serif;">
         <tr>
           <td align="center" style="padding:24px;">
-            <img src="https://alma4d.com.br/images/alma4d-bicolor-nobground-256.png"
+            <img src="https://alma4d.com.br/images/alma4d-bicolor-nobground-256.webp"
               width="100" alt="alma4D" style="display:block;border:0;" />
           </td>
         </tr>
@@ -160,7 +160,7 @@ serve(async (req: Request) => {
         style="background:#ffffff;border-radius:8px;font-family:Arial,Helvetica,sans-serif;">
         <tr>
           <td align="center" style="padding:24px;">
-            <img src="https://alma4d.com.br/images/alma4d-bicolor-nobground-256.png"
+            <img src="https://alma4d.com.br/images/alma4d-bicolor-nobground-256.webp"
               width="100" alt="alma4D" style="display:block;border:0;" />
           </td>
         </tr>
