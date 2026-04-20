@@ -56,7 +56,7 @@ export default function AutoraPage() {
             },
             {
               title: "Pesquisa contínua",
-              text: "Após sua graduação, mantem estudos e projetos em Neuropsicologia, Psicopedagogia, Monitoria de Museus e modos de vida saudáveis.",
+              text: "Após sua graduação, mantem estudos e projetos em Neurociência, Neuropsicologia, Health and Wellness e Mentoria do HeartMath.",
             },
           ].map((item) => (
             <div key={item.title} className="rounded-xl bg-surface-muted p-6">
@@ -94,15 +94,15 @@ export default function AutoraPage() {
 
         <div className="grid md:grid-cols-2 gap-8">
           <div className="rounded-xl bg-surface-muted p-6">
-            <p className="text-foreground/70 leading-relaxed">
+            <blockquote className="border-l-4 border-brand pl-6 py-2 italic text-foreground/70 my-6">
               O bem-estar é consequência do conjunto de práticas que integram corpo, emoções, mente e propósito à sua rotina diária.
-            </p>
+            </blockquote>
           </div>
 
           <div className="rounded-xl bg-surface-muted p-6">
-            <p className="text-foreground/70 leading-relaxed">
-              O autocuidado, mais do que uma postura adotada em virtude de um problema de saúde, torna-se fonte primária de evolução pessoal.
-            </p>
+            <blockquote className="border-l-4 border-brand pl-6 py-2 italic text-foreground/70 my-6">
+              O autocuidado, antes uma postura adotada em virtude de um problema de saúde, torna-se fonte primária de evolução pessoal.
+            </blockquote>
           </div>
         </div>
 
