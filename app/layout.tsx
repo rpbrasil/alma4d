@@ -1,6 +1,11 @@
 import "./globals.css";
 import { Header } from "./components/Header";
 import dynamic from "next/dynamic";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  metadataBase: new URL("https://alma4d.com.br"),
+};
 
 const Footer = dynamic(() =>
   import("./components/Footer").then((mod) => mod.Footer),
