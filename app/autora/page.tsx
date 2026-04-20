@@ -168,7 +168,7 @@ export default function AutoraPage() {
 
               <div className="absolute bottom-0 p-4 text-white">
                 <p className="font-bold">{item.label}</p>
-                <p className="text-sm opacity-85">Ver detalhes →</p>
+                <p className="text-sm opacity-85">Solicite informações →</p>
               </div>
             </Link>
           ))}
