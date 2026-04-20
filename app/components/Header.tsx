@@ -55,7 +55,7 @@ export function Header() {
           {/* Container define o tamanho da logo */}
           <div className="relative h-11 w-52 sm:w-60 md:h-14 md:w-72 lg:w-80 ml-0 sm:ml-0">
             <Image
-              src="/images/alma4d-bicolor-nobground-256.png"
+              src="/images/alma4d-bicolor-nobground-256.webp"
               alt="alma4D"
               fill
               sizes="(max-width: 640px) 208px, (max-width: 768px) 240px, (max-width: 1024px) 288px, 320px"

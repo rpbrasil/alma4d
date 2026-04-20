@@ -26,7 +26,7 @@ export default function AutoraPage() {
         {/* Imagem */}
         <div className="relative flex justify-center w-full max-w-full overflow-hidden">
           <Image
-            src="/images/fran_book_bw.jpeg"
+            src="/images/fran_book_bw.webp"
             alt="Fran Abbud"
             width={360}
             height={360}
@@ -95,13 +95,15 @@ export default function AutoraPage() {
         <div className="grid md:grid-cols-2 gap-8">
           <div className="rounded-xl bg-surface-muted p-6">
             <blockquote className="border-l-4 border-brand pl-6 py-2 italic text-foreground/70 my-6">
-              O bem-estar é consequência do conjunto de práticas que integram corpo, emoções, mente e propósito à sua rotina diária.
+              O bem-estar é consequência do conjunto de práticas que integram
+              corpo, emoções, mente e propósito à sua rotina diária.
             </blockquote>
           </div>
 
           <div className="rounded-xl bg-surface-muted p-6">
             <blockquote className="border-l-4 border-brand pl-6 py-2 italic text-foreground/70 my-6">
-              O autocuidado, antes uma postura adotada em virtude de um problema de saúde, torna-se fonte primária de evolução pessoal.
+              O autocuidado, antes uma postura adotada em virtude de um problema
+              de saúde, torna-se fonte primária de evolução pessoal.
             </blockquote>
           </div>
         </div>
@@ -127,9 +129,11 @@ export default function AutoraPage() {
         <h2 className="text-3xl font-bold">Outras iniciativas</h2>
 
         <p className="text-foreground/70 max-w-2xl">
-          Fran também atua profissionalmente em <strong>plataformas empresariais de benefícios</strong> e
-          no desenvolvimento de <strong>dinâmicas para transformação de grupos</strong>, como o
-          FCP - Frameworks for Change Program. Confira abaixo!
+          Fran também atua profissionalmente em{" "}
+          <strong>plataformas empresariais de benefícios</strong> e no
+          desenvolvimento de{" "}
+          <strong>dinâmicas para transformação de grupos</strong>, como o FCP -
+          Frameworks for Change Program. Confira abaixo!
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">

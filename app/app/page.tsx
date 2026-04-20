@@ -118,7 +118,7 @@ export default function AppPage() {
         {/* ===== FULL BLEED NO MOBILE ===== */}
         <div className="-mx-4 sm:mx-0 overflow-hidden">
           <Image
-            src="/images/alma4d-usuarios.png"
+            src="/images/alma4d-usuarios.webp"
             alt="Infográfico Ciclo alma4D"
             width={1000}
             height={957}
@@ -178,7 +178,7 @@ export default function AppPage() {
           {/* ===== COLUNA 2: MOCKUP ===== */}
           <div className="relative aspect-video bg-surface-muted rounded-xl overflow-hidden">
             <Image
-              src="/images/mockup_misto.png"
+              src="/images/mockup_misto.webp"
               alt="alma4D"
               fill
               className="object-contain p-4"

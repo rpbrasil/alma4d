@@ -78,7 +78,7 @@ export default function MetodoPage() {
           <div className="absolute inset-0 bg-[#019499]/5 blur-3xl rounded-full -z-10 animate-none sm:animate-pulse" />
           <div className="relative rounded-3xl overflow-hidden border border-slate-100 shadow-2xl bg-white">
             <Image
-              src="/images/deviceframes.png"
+              src="/images/deviceframes.webp"
               alt="Infográfico alma4D"
               width={1612}
               height={1000}
