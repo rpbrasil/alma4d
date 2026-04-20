@@ -84,6 +84,7 @@ export default function MetodoPage() {
               height={1000}
               className="w-full h-auto object-contain"
               priority
+              fetchPriority="high"
             />
           </div>
         </div>
