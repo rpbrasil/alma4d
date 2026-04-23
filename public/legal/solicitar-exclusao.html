@@ -28,12 +28,22 @@
 
         header img {
             width: 96px;
+            height: auto;
             margin-bottom: 16px;
         }
 
         h1 {
             color: #030870;
             font-size: 22px;
+            margin-bottom: 8px;
+        }
+
+        p {
+            font-size: 14px;
+        }
+
+        section {
+            margin-bottom: 16px;
         }
 
         form {
@@ -45,16 +55,19 @@
         }
 
         label {
+            display: block;
             font-weight: 700;
             font-size: 14px;
+            margin-bottom: 6px;
         }
 
         input {
             width: 100%;
             border: 1px solid #d1d5db;
             border-radius: 12px;
-            padding: 12px;
-            margin: 8px 0 16px;
+            padding: 12px 14px;
+            font-size: 14px;
+            margin-bottom: 16px;
         }
 
         button {
@@ -64,19 +77,30 @@
             border: none;
             border-radius: 12px;
             padding: 12px;
+            font-size: 14px;
             font-weight: 700;
             cursor: pointer;
+        }
+
+        button:hover {
+            opacity: 0.9;
         }
 
         .notice {
             font-size: 13px;
             color: #374151;
+            margin-top: 12px;
+        }
+
+        ul.notice {
+            padding-left: 20px;
+            list-style: disc;
         }
 
         footer {
+            margin-top: 28px;
             font-size: 12px;
             color: #6b7280;
-            margin-top: 28px;
             text-align: center;
         }
     </style>
@@ -100,23 +124,18 @@
             cpf = cpf.replace(/\D/g, "");
             if (cpf.length !== 11 || /^(\d)\1+$/.test(cpf)) return false;
 
-            let soma = 0, resto;
-
-            for (let i = 0; i < 9; i++)
-                soma += parseInt(cpf[i]) * (10 - i);
-
-            resto = (soma * 10) % 11;
+            let soma = 0;
+            for (let i = 0; i < 9; i++) soma += cpf[i] * (10 - i);
+            let resto = (soma * 10) % 11;
             if (resto === 10) resto = 0;
-            if (resto !== parseInt(cpf[9])) return false;
+            if (resto != cpf[9]) return false;
 
             soma = 0;
-            for (let i = 0; i < 10; i++)
-                soma += parseInt(cpf[i]) * (11 - i);
-
+            for (let i = 0; i < 10; i++) soma += cpf[i] * (11 - i);
             resto = (soma * 10) % 11;
             if (resto === 10) resto = 0;
 
-            return resto === parseInt(cpf[10]);
+            return resto == cpf[10];
         }
 
         function gerarProtocolo() {
@@ -128,33 +147,38 @@
         }
 
         function enviarSolicitacao() {
-            const cpf = document.getElementById("cpf").value;
-            const cel = document.getElementById("celular").value;
+            const celular = document.getElementById("celular").value.trim();
+            const cpf = document.getElementById("cpf").value.trim();
+
+            if (!celular) {
+                alert("Informe o celular cadastrado.");
+                return;
+            }
 
             if (!validarCPF(cpf)) {
                 alert("CPF inválido. Verifique os dados informados.");
                 return;
             }
 
-            if (!cel) {
-                alert("Informe o celular cadastrado.");
-                return;
-            }
-
             const protocolo = gerarProtocolo();
 
-            const body = encodeURIComponent(
+            const assunto = encodeURIComponent(
+                `Solicitação de Exclusão de Dados - ${protocolo}`
+            );
+
+            const corpo = encodeURIComponent(
                 `Protocolo: ${protocolo}\n\n` +
-                `Solicito o processamento da exclusão dos dados pessoais do usuário cadastrado no aplicativo alma4D,\n` +
-                `identificado pelo CPF ${cpf} e telefone celular ${cel}.\n\n` +
-                `Declaro ser o titular dos dados informados e estou ciente de que a solicitação será analisada\n` +
-                `conforme a Lei nº 13.709/2018 (LGPD), podendo haver retenção temporária de dados\n` +
-                `para cumprimento de obrigações legais ou contratuais.\n\n` +
-                `Prazo de processamento: até 48 horas após validação.`
+                `Solicito o processamento da exclusão dos dados pessoais do usuário cadastrado no aplicativo alma4D, ` +
+                `identificado pelo CPF ${cpf} e pelo número de telefone celular ${celular}.\n\n` +
+                `Declaro que sou o titular dos dados informados e estou ciente de que esta solicitação será analisada ` +
+                `em conformidade com a Lei nº 13.709/2018 (Lei Geral de Proteção de Dados – LGPD).\n\n` +
+                `Estou ciente de que determinados dados poderão ser temporariamente retidos quando necessários para ` +
+                `cumprimento de obrigações legais, regulatórias ou contratuais, inclusive em casos de assinaturas ativas.\n\n` +
+                `Após a validação, os dados elegíveis serão excluídos ou anonimizados no prazo máximo de 48 (quarenta e oito) horas.`
             );
 
             window.location.href =
-                `mailto:cliente@voss.digital?subject=Solicitação de Exclusão de Dados - ${protocolo}&body=${body}`;
+                `mailto:cliente@voss.digital?subject=${assunto}&body=${corpo}`;
         }
     </script>
 </head>
@@ -164,25 +188,55 @@
         <header>
             <img src="https://alma4d.com.br/images/alma4d-bicolor-nobground-256.png" alt="alma4D" />
             <h1>Solicitação de Exclusão de Dados</h1>
+            <p>
+                Este canal destina-se ao exercício dos direitos do titular de dados pessoais,
+                conforme a Lei nº 13.709/2018 (Lei Geral de Proteção de Dados – LGPD).
+            </p>
         </header>
 
-        <form onsubmit="event.preventDefault(); enviarSolicitacao();">
-            <label>Celular cadastrado (login)</label>
-            <input id="celular" oninput="this.value = mascaraCel(this.value)" placeholder="(11) 99999-9999">
+        <section>
+            <p>
+                O titular dos dados pessoais poderá solicitar, a qualquer momento,
+                a exclusão de seus dados pessoais tratados pelo aplicativo
+                <strong>alma4D</strong>, observadas as hipóteses legais de retenção previstas
+                na legislação aplicável.
+            </p>
+        </section>
 
-            <label>CPF do titular</label>
-            <input id="cpf" oninput="this.value = mascaraCPF(this.value)" placeholder="000.000.000-00">
+        <section>
+            <p><strong>Como solicitar a exclusão:</strong></p>
+            <ul class="notice">
+                <li>Informe o número de telefone celular utilizado no cadastro;</li>
+                <li>Informe o CPF do titular dos dados;</li>
+                <li>Clique em “Enviar solicitação por e‑mail”.</li>
+            </ul>
+        </section>
+
+        <form onsubmit="event.preventDefault(); enviarSolicitacao();">
+            <label for="celular">Celular cadastrado (login)</label>
+            <input id="celular" type="tel" placeholder="(11) 99999-9999"
+                oninput="this.value = mascaraCel(this.value)" />
+
+            <label for="cpf">CPF do titular dos dados</label>
+            <input id="cpf" type="text" placeholder="000.000.000-00" oninput="this.value = mascaraCPF(this.value)" />
 
             <p class="notice">
-                Os dados elegíveis serão excluídos ou anonimizados em até <strong>48 horas</strong>,
-                salvo hipóteses legais de retenção.
+                Após a validação da solicitação, os dados pessoais elegíveis serão excluídos
+                ou anonimizados no prazo máximo de
+                <strong>48 (quarenta e oito) horas</strong>, salvo quando a manutenção
+                temporária for necessária para cumprimento de obrigação legal,
+                regulatória ou contratual.
             </p>
 
             <button type="submit">Enviar solicitação por e‑mail</button>
         </form>
 
         <footer>
-            <p>Contato oficial: <strong>cliente@voss.digital</strong></p>
+            <p>
+                Canal oficial de atendimento:
+                <br />
+                <strong>cliente@voss.digital</strong>
+            </p>
         </footer>
     </main>
 </body>
