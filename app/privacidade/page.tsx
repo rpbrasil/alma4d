@@ -143,7 +143,27 @@ export default function PrivacidadePage() {
             no aplicativo.
           </p>
         </article>
-
+        {/* Exclusão de Dados */}
+        <article className="rounded-2xl border border-border bg-surface p-5">
+          <h2 className="text-lg font-extrabold text-brand mb-2">
+            🗑️ Exclusão de Dados
+          </h2>
+          <p>
+            O usuário pode solicitar a exclusão definitiva de seus dados
+            pessoais a qualquer momento.
+          </p>
+          <p className="mt-2">
+            Para solicitar a exclusão de dados, entre em contato pelo e-mail:
+            <br />
+            <strong>cliente@voss.digital</strong>
+          </p>
+          <p className="mt-2">
+            A solicitação será analisada e processada em conformidade com a
+            legislação aplicável, podendo haver retenção temporária de
+            determinados dados quando exigido por obrigações legais ou
+            regulatórias.
+          </p>
+        </article>
         {/* Alterações */}
         <article className="rounded-2xl border border-border bg-surface p-5">
           <h2 className="text-lg font-extrabold text-brand mb-2">
