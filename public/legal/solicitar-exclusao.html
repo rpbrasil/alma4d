@@ -23,7 +23,12 @@
 
         header {
             text-align: center;
-            margin-bottom: 24px;
+            margin-bottom: 32px;
+        }
+
+        header img {
+            max-width: 140px;
+            margin-bottom: 16px;
         }
 
         h1 {
@@ -72,6 +77,10 @@
             cursor: pointer;
         }
 
+        button:hover {
+            opacity: 0.9;
+        }
+
         .notice {
             font-size: 13px;
             color: #374151;
@@ -79,63 +88,99 @@
         }
 
         footer {
-            margin-top: 24px;
+            margin-top: 28px;
             font-size: 12px;
             color: #6b7280;
             text-align: center;
         }
     </style>
+
+    <script>
+        function enviarSolicitacao() {
+            const celular = document.getElementById("celular").value.trim();
+            const cpf = document.getElementById("cpf").value.trim();
+
+            if (!celular || !cpf) {
+                alert("Por favor, preencha o CPF e o celular cadastrado.");
+                return;
+            }
+
+            const subject = encodeURIComponent(
+                "Solicitação de Exclusão de Dados - alma4D"
+            );
+
+            const body = encodeURIComponent(
+                "Solicito o processamento da exclusão dos dados pessoais do usuário " +
+                "cadastrado no aplicativo alma4D, identificado pelo CPF " +
+                cpf +
+                " e pelo número de telefone celular " +
+                celular +
+                ".\n\n" +
+                "Declaro que sou o titular dos dados informados e estou ciente de que " +
+                "a solicitação será analisada em conformidade com a Lei Geral de Proteção " +
+                "de Dados (Lei nº 13.709/2018), podendo haver retenção temporária de " +
+                "determinados dados quando necessária para cumprimento de obrigações " +
+                "legais ou contratuais, incluindo eventuais assinaturas ativas.\n\n" +
+                "Após a validação, estou ciente de que os dados elegíveis serão excluídos " +
+                "ou anonimizados no prazo máximo de 48 (quarenta e oito) horas."
+            );
+
+            window.location.href =
+                "mailto:cliente@voss.digital?subject=" + subject + "&body=" + body;
+        }
+    </script>
 </head>
 
 <body>
     <main>
         <header>
-            <h1>Solicitação de Exclusão de Dados – alma4D</h1>
+            <!-- Substitua pelo caminho correto do logo -->
+            <img src="https://alma4d.com.br/images/alma4d-bicolor-nobground-256.png" alt="alma4D" style="width: 96px;" />
+            <h1>Solicitação de Exclusão de Dados</h1>
             <p>
-                Este canal destina-se ao exercício dos direitos do titular de dados
-                pessoais, nos termos da Lei nº 13.709/2018 (Lei Geral de Proteção de Dados – LGPD).
+                Canal destinado ao exercício dos direitos do titular de dados pessoais,
+                conforme a Lei nº 13.709/2018 (LGPD).
             </p>
         </header>
 
         <section>
             <p>
-                O titular dos dados pessoais poderá solicitar, a qualquer momento, a
-                exclusão de seus dados pessoais tratados pelo aplicativo <strong>alma4D</strong>,
-                observadas as hipóteses legais de retenção previstas na legislação aplicável.
+                O titular poderá solicitar a exclusão de seus dados pessoais tratados
+                pelo aplicativo <strong>alma4D</strong>, observadas as hipóteses legais
+                de retenção previstas na legislação aplicável.
             </p>
         </section>
 
-        <form>
-            <label for="identificador">
-                E‑mail ou número de telefone informado no cadastro
+        <form onsubmit="event.preventDefault(); enviarSolicitacao();">
+            <label for="celular">
+                Número de telefone celular cadastrado (login)
             </label>
-            <input type="text" id="identificador" placeholder="Informe seu e‑mail ou telefone" disabled />
+            <input type="tel" id="celular" placeholder="Ex: (11) 99999-9999" />
+
+            <label for="cpf">
+                CPF do titular dos dados
+            </label>
+            <input type="text" id="cpf" placeholder="Ex: 000.000.000-00" />
 
             <p class="notice">
-                Após o recebimento e validação da solicitação, os dados pessoais do titular serão excluídos ou anonimizados de nossos sistemas no prazo máximo de <strong>48 (quarenta e oito) horas</strong>, salvo quando a manutenção de determinados dados for necessária para:
+                Após a validação da solicitação, os dados pessoais elegíveis serão
+                excluídos ou anonimizados de nossos sistemas no prazo máximo de
+                <strong>48 (quarenta e oito) horas</strong>, salvo quando a manutenção de
+                determinados dados for necessária para cumprimento de obrigação legal,
+                regulatória ou contratual.
             </p>
 
-            <ul class="notice">
-                <li>cumprimento de obrigação legal ou regulatória;</li>
-                <li>execução de contrato vigente, incluindo assinaturas ativas;</li>
-                <li>exercício regular de direitos em processos administrativos ou judiciais.</li>
-            </ul>
-
-            <p class="notice">
-                Concluídas as obrigações legais ou contratuais aplicáveis, os dados remanescentes serão excluídos de forma definitiva.
-            </p>
-
-            <button type="button" onclick="window.location.href='mailto:cliente@voss.digital?subject=Solicitação de Exclusão de Dados - alma4D'">
-                Enviar solicitação
+            <button type="submit">
+                Enviar solicitação por e‑mail
             </button>
         </form>
 
         <footer>
             <p>
-                Para formalizar a solicitação ou esclarecer dúvidas,
-                o titular deverá entrar em contato pelo e‑mail:
+                Em caso de dúvidas adicionais, entre em contato pelo e‑mail:
+                <br />
+                <strong>cliente@voss.digital</strong>
             </p>
-            <p><strong>cliente@voss.digital</strong></p>
         </footer>
     </main>
 </body>
