@@ -100,8 +100,7 @@ export default function LancamentoPage() {
 
           <p className="text-lg text-foreground/80 leading-relaxed">
             O <strong>livro Arquitetura Viva</strong> e o{" "}
-            <strong>aplicativo alma4D</strong> chegam juntos para transformar a
-            forma como você cuida de si mesmo.
+            <strong>aplicativo alma4D</strong> chegam juntos para mudar a forma como você cuida de si mesmo.
           </p>
 
           <p className="text-lg text-foreground/80 leading-relaxed">
