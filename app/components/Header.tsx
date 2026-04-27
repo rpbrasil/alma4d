@@ -90,6 +90,15 @@ export function Header() {
             Download
           </Link>
 
+          {/* ✅ Cliente - Link com estilo highlight */}
+          <Link
+            href="/cliente"
+            className="inline-flex items-center justify-center rounded-md px-4 py-1.5 text-sm font-semibold text-brand-secondary hover:text-brand-secondary/80 transition-colors border border-brand-secondary/30 hover:border-brand-secondary/60 dark:border-brand-secondary/30 dark:hover:border-brand-secondary/60"
+            aria-label="Ir para Área de Cliente"
+          >
+            Clientes
+          </Link>
+
           <ThemeToggle />
         </nav>
 
@@ -149,6 +158,16 @@ export function Header() {
               ].join(" ")}
             >
               Download
+            </Link>
+
+            {/* ✅ Área de Cliente no mobile */}
+            <Link
+              href="/cliente"
+              onClick={() => setOpen(false)}
+              className="mt-1 inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-semibold text-brand-secondary border border-brand-secondary/30 hover:bg-surface-muted transition-colors dark:hover:bg-surface-muted/50"
+              aria-label="Ir para Área de Cliente"
+            >
+              Área de Cliente
             </Link>
           </nav>
         </div>

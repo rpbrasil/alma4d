@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 
 export default function DownloadPage() {
-   const amazonUrl = "https://www.amazon.com.br/dp/ASIN";
+  const amazonUrl = "https://www.amazon.com.br/dp/ASIN";
   return (
     <section className="max-w-3xl mx-auto flex flex-col gap-8 py-16 text-center md:text-left items-center md:items-start">
       <h1 className="text-4xl font-bold text-brand">
@@ -15,12 +15,7 @@ export default function DownloadPage() {
 
       <div className="flex flex-col sm:flex-row gap-6 items-center sm:items-start justify-center sm:justify-start">
         {/* App Store */}
-        <a
-          href="https://apps.apple.com/"
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="Baixar na App Store"
-        >
+        <Link href="/lancamento" aria-label="Baixar na App Store">
           <Image
             src="/badges/appleBadge.svg"
             alt="Download on the App Store"
@@ -28,33 +23,25 @@ export default function DownloadPage() {
             height={60}
             priority
           />
-        </a>
+        </Link>
 
         {/* Google Play */}
-        <a
-          href="https://play.google.com/store"
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="Disponível no Google Play"
-        >
+        <Link href="/lancamento" aria-label="Disponível no Google Play">
           <Image
             src="/badges/googleBadge.svg"
             alt="Get it on Google Play"
             width={180}
             height={60}
           />
-        </a>
+        </Link>
       </div>
 
       <p className="text-foreground/70">
-        Clique no ícone abaixo para acessar o livro Arquitetura Viva
-        na Amazon.
+        Clique no ícone abaixo para acessar o livro Arquitetura Viva na Amazon.
       </p>
       <div className="pt-2">
-        <a
-          href={amazonUrl}
-          target="_blank"
-          rel="noopener noreferrer"
+        <Link
+          href="/lancamento"
           aria-label="Comprar o livro na Amazon"
           className="inline-block"
         >
@@ -65,7 +52,7 @@ export default function DownloadPage() {
             height={60}
             priority
           />
-        </a>
+        </Link>
         <p className="text-xs text-foreground/50 mt-2">
           Link direciona para a página do livro na Amazon.
         </p>

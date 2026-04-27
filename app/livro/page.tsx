@@ -23,7 +23,7 @@ export const metadata: Metadata = {
 
 export default function LivroPage() {
   // Troque pelo ASIN real quando tiver:
-  const amazonUrl = "https://www.amazon.com.br/dp/ASIN";
+  //const amazonUrl = "https://www.amazon.com.br/dp/ASIN";
 
   return (
     <div className="flex flex-col gap-24">
@@ -81,26 +81,21 @@ export default function LivroPage() {
 
           {/* Badge oficial Amazon (Available at Amazon) */}
           <div className="pt-2 flex flex-col items-center md:items-start">
-            <a
-              href={amazonUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Comprar o livro na Amazon"
-              className="inline-block"
-            >
+            <Link href="/lancamento" aria-label="Comprar o livro na Amazon" className="inline-block">
+             
               <Image
                 src="/badges/available_at_amazon_br_vertical.png"
                 alt="Available at Amazon"
                 width={200}
                 height={60}
-                // Aqui é onde “travava” no mobile: width fixo.
+                // Aqui é onde "travava" no mobile: width fixo.
                 // Mantemos a proporção, mas deixamos responsivo até um limite agradável.
                 sizes="(max-width: 640px) 80vw, 200px"
                 style={{ width: "min(80vw, 220px)", height: "auto" }}
                 className="block"
                 priority
               />
-            </a>
+            </Link>
 
             <p className="text-xs text-foreground/50 mt-2">
               Link direciona para a página do livro na Amazon.
