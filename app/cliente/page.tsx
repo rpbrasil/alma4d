@@ -7,7 +7,7 @@ export default function ClientePage() {
     <section className="max-w-xl mx-auto text-center min-h-full flex flex-col justify-center px-4">
       {/* Header */}
       <div className="text-center mb-4">
-        <h1 className="text-3xl font-bold text-foreground">Área de Cliente</h1>
+        <h1 className="text-3xl font-bold text-foreground">Acesso de Clientes</h1>
       </div>
 
       {/* Formulário de Login */}
