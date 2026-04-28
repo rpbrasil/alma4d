@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import React, { useState } from "react";
 import { usePathname } from "next/navigation";
-import { ThemeToggle } from "./ThemeToggle";
+import { ThemeToggle } from "../ThemeToggle";
 
 function NavLink({
   href,
@@ -34,7 +34,7 @@ function NavLink({
   );
 }
 
-export function Header() {
+export function PublicHeader() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
 

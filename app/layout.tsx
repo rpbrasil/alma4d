@@ -1,5 +1,5 @@
 import "./globals.css";
-import { Header } from "./components/Header";
+import { PublicHeader } from "./components/public/PublicHeader";
 import dynamic from "next/dynamic";
 import type { Metadata } from "next";
 
@@ -19,7 +19,7 @@ export default function RootLayout({
   return (
     <html lang="pt-BR">
       <body className="min-h-screen flex flex-col">
-        <Header />
+        <PublicHeader />
         <main className="flex-1 max-w-5xl mx-auto px-6 mt-12">{children}</main>
         <Footer />
       </body>

@@ -1,5 +1,5 @@
 import React from "react";
-import { LoginForm } from "@/app/components/forms/LoginForm";
+import { LoginForm } from "@/components/forms/LoginForm";
 //import { Lock } from "lucide-react";
 
 export default function ClientePage() {
