@@ -1,15 +1,5 @@
+// app/layout.tsx
 import "./globals.css";
-import { PublicHeader } from "./components/public/PublicHeader";
-import dynamic from "next/dynamic";
-import type { Metadata } from "next";
-
-export const metadata: Metadata = {
-  metadataBase: new URL("https://alma4d.com.br"),
-};
-
-const Footer = dynamic(() =>
-  import("./components/Footer").then((mod) => mod.Footer),
-);
 
 export default function RootLayout({
   children,
@@ -18,10 +8,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR">
-      <body className="min-h-screen flex flex-col">
-        <PublicHeader />
-        <main className="flex-1 max-w-5xl mx-auto px-6 mt-12">{children}</main>
-        <Footer />
+      <body className="min-h-screen flex flex-col overflow-x-hidden">
+        {children}
       </body>
     </html>
   );

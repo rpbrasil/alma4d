@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import PhoneMockupVideo from "../components/mockups/PhoneMockupVideo";
+import PhoneMockupVideo from "../../components/mockups/PhoneMockupVideo";
 
 export default function AppPage() {
   return (

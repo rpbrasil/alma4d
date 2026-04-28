@@ -2,9 +2,9 @@ import Link from "next/link";
 import Image from "next/image";
 
 export default function DownloadPage() {
-  const amazonUrl = "https://www.amazon.com.br/dp/ASIN";
+  //const amazonUrl = "https://www.amazon.com.br/dp/ASIN";
   return (
-    <section className="max-w-3xl mx-auto flex flex-col gap-8 py-16 text-center md:text-left items-center md:items-start">
+    <section className="flex flex-col gap-8 py-16 text-center md:text-left items-center md:items-start">
       <h1 className="text-4xl font-bold text-brand">
         Baixar o aplicativo e o livro
       </h1>

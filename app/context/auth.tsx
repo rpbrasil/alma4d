@@ -8,6 +8,7 @@ type AuthContextValue = {
     email?: string;
   };
   role?: "admin" | "cliente" | "gestor" | "usuario";
+  loading: boolean;
   signOut: () => Promise<void>;
 };
 
@@ -17,6 +18,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value: AuthContextValue = {
     user: null,
     role: "cliente",
+    loading: false,
     signOut: async () => {
       console.log("logout (stub)");
     },

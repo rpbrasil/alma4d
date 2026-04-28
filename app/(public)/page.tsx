@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
-import MetodoModal from "./components/MetodoModal";
+import MetodoModal from "../components/MetodoModal";
 
 export const metadata: Metadata = {
   title: "O Método alma4D — Consciência e Tecnologia Integradas",
@@ -44,14 +44,14 @@ export default function MetodoPage() {
 
   return (
     // overflow-x-hidden no container principal é a última linha de defesa contra scroll lateral
-    <div className="flex flex-col gap-20 pb-20 overflow-x-hidden">
+    <div className="flex flex-col gap-20 pb-20">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
       />
 
       {/* ================= HERO SECTION ================= */}
-      <section className="grid lg:grid-cols-2 gap-12 items-center pt-10 1 md:px-0">
+      <section className="grid lg:grid-cols-2 gap-12 items-center pt-10">
         <div className="flex flex-col gap-6">
           <div className="inline-block w-fit px-3 py-1 rounded-full bg-brand/10 text-xs font-bold tracking-widest uppercase text-[#DF633F]">
             O Próximo Nível do seu Bem-Estar

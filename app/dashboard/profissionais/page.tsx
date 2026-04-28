@@ -6,11 +6,26 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useProfissionais } from "@/hooks/useProfissionais";
 
+
+type Profissional = {
+  id: string;
+  nome: string;
+  especialidade?: string;
+  ativo: boolean;
+}; 
 export default function ProfissionaisPage() {
   const { role, loading: authLoading } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
-  const { profissionais, loading, error, search, toggleStatus, remove } =
-    useProfissionais({ autoLoad: true });
+  const {
+    profissionais: rawProfissionais,
+    loading,
+    error,
+    search,
+    toggleStatus,
+    remove,
+  } = useProfissionais({ autoLoad: true });
+
+  const profissionais = rawProfissionais ?? [];
 
   const canManage = role === "admin" || role === "cliente";
 
@@ -141,7 +156,7 @@ export default function ProfissionaisPage() {
                   </td>
                 </tr>
               ) : (
-                profissionais.map((prof) => (
+                profissionais.map((prof: Profissional) => (
                   <tr
                     key={prof.id}
                     className="hover:bg-gray-50 transition-colors"
