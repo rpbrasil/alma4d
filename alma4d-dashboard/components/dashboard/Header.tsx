@@ -52,7 +52,7 @@ export function Header() {
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
             >
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#030870] to-[#019499] flex items-center justify-center text-white text-sm font-bold">
+              <div className="w-8 h-8 rounded-full bg-linear-to-br from-[#030870] to-[#019499] flex items-center justify-center text-white text-sm font-bold">
                 {user?.email?.[0]?.toUpperCase() || "?"}
               </div>
               <span className="text-sm font-medium text-gray-700 hidden sm:block">

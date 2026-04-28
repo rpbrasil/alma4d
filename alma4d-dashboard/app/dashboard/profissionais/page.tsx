@@ -7,10 +7,10 @@ import Link from "next/link";
 import { useProfissionais } from "@/hooks/useProfissionais";
 
 export default function ProfissionaisPage() {
-  const { role, clienteId, loading: authLoading } = useAuth();
+  const { role, loading: authLoading } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const { profissionais, loading, error, search, toggleStatus, remove } =
-    useProfissionais({ clienteId: clienteId || "", autoLoad: !!clienteId });
+    useProfissionais({ autoLoad: true });
 
   const canManage = role === "admin" || role === "cliente";
 
@@ -75,7 +75,7 @@ export default function ProfissionaisPage() {
       {/* Error Alert */}
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex gap-3">
-          <AlertCircle className="text-red-600 flex-shrink-0" size={20} />
+          <AlertCircle className="text-red-600 shrink-0" size={20} />
           <div>
             <p className="font-semibold text-red-900">Erro ao carregar</p>
             <p className="text-sm text-red-700">{error}</p>

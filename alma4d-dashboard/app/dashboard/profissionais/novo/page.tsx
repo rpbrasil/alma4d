@@ -10,9 +10,8 @@ import type { ProfissionalFormData } from "@/types/profissional";
 
 export default function NovoProfissionalPage() {
   const router = useRouter();
-  const { clienteId, role, loading: authLoading } = useAuth();
+  const { role, loading: authLoading } = useAuth();
   const { create, loading } = useProfissionais({
-    clienteId: "",
     autoLoad: false,
   });
 
@@ -39,11 +38,6 @@ export default function NovoProfissionalPage() {
   }
 
   const handleSubmit = async (data: ProfissionalFormData) => {
-    if (!clienteId) {
-      throw new Error("Cliente ID não encontrado");
-    }
-
-    // Aqui você pode adicionar lógica específica se necessário
     const profAberta = await create(data);
 
     // Redirecionar após criar

@@ -3,27 +3,21 @@
 import { useState, useCallback, useEffect } from "react";
 import {
   getProfissionaisCrud,
-  getProfissionaisAtivos,
   createProfissional,
   updateProfissional,
   deleteProfissional,
   toggleProfissionalStatus,
   searchProfissionais,
 } from "@/services/profissionais";
-import type {
-  Profissional,
-  ProfissionalCrud,
-  ProfissionalFormData,
-} from "@/types/profissional";
+import type { Profissional, ProfissionalFormData } from "@/types/profissional";
 
 interface UseProfissionaisOptions {
-  clienteId?: string;
   autoLoad?: boolean;
-  onlyAtivos?: boolean;
+  filtroAtivo?: boolean;
 }
 
 export function useProfissionais(options: UseProfissionaisOptions = {}) {
-  const { clienteId, autoLoad = true, onlyAtivos = false } = options;
+  const { autoLoad = true, filtroAtivo } = options;
 
   const [profissionais, setProfissionais] = useState<Profissional[]>([]);
   const [loading, setLoading] = useState(false);
@@ -31,15 +25,11 @@ export function useProfissionais(options: UseProfissionaisOptions = {}) {
 
   // Carregar profissionais
   const loadProfissionais = useCallback(async () => {
-    if (!clienteId) return;
-
     setLoading(true);
     setError(null);
 
     try {
-      const data = onlyAtivos
-        ? await getProfissionaisAtivos(clienteId)
-        : await getProfissionaisCrud(clienteId);
+      const data = await getProfissionaisCrud(filtroAtivo);
       setProfissionais(data);
     } catch (err) {
       const message =
@@ -49,12 +39,12 @@ export function useProfissionais(options: UseProfissionaisOptions = {}) {
     } finally {
       setLoading(false);
     }
-  }, [clienteId, onlyAtivos]);
+  }, [filtroAtivo]);
 
   // Buscar profissionais
   const search = useCallback(
     async (term: string) => {
-      if (!clienteId || !term) {
+      if (!term) {
         loadProfissionais();
         return;
       }
@@ -63,7 +53,7 @@ export function useProfissionais(options: UseProfissionaisOptions = {}) {
       setError(null);
 
       try {
-        const data = await searchProfissionais(clienteId, term);
+        const data = await searchProfissionais(term);
         setProfissionais(data);
       } catch (err) {
         const message =
@@ -73,35 +63,27 @@ export function useProfissionais(options: UseProfissionaisOptions = {}) {
         setLoading(false);
       }
     },
-    [clienteId, loadProfissionais],
+    [loadProfissionais],
   );
 
   // Criar profissional
-  const create = useCallback(
-    async (formData: ProfissionalFormData) => {
-      if (!clienteId) throw new Error("clienteId é obrigatório");
+  const create = useCallback(async (formData: ProfissionalFormData) => {
+    setLoading(true);
+    setError(null);
 
-      setLoading(true);
-      setError(null);
-
-      try {
-        const newProf = await createProfissional({
-          ...formData,
-          cliente_id: clienteId,
-        });
-        setProfissionais((prev) => [...prev, newProf]);
-        return newProf;
-      } catch (err) {
-        const message =
-          err instanceof Error ? err.message : "Erro ao criar profissional";
-        setError(message);
-        throw err;
-      } finally {
-        setLoading(false);
-      }
-    },
-    [clienteId],
-  );
+    try {
+      const newProf = await createProfissional(formData);
+      setProfissionais((prev) => [...prev, newProf]);
+      return newProf;
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Erro ao criar profissional";
+      setError(message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   // Atualizar profissional
   const update = useCallback(
@@ -174,10 +156,10 @@ export function useProfissionais(options: UseProfissionaisOptions = {}) {
 
   // Auto-load ao montar
   useEffect(() => {
-    if (autoLoad && clienteId) {
+    if (autoLoad) {
       loadProfissionais();
     }
-  }, [autoLoad, clienteId, loadProfissionais]);
+  }, [autoLoad, loadProfissionais]);
 
   return {
     profissionais,

@@ -30,7 +30,7 @@ export function ProfessionalCard({
       className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow cursor-pointer overflow-hidden"
     >
       {/* Header */}
-      <div className="h-24 bg-gradient-to-r from-[#030870] to-[#019499]" />
+      <div className="h-24 bg-linear-to-r from-[#030870] to-[#019499]" />
 
       {/* Content */}
       <div className="px-6 py-4 -mt-12 relative">

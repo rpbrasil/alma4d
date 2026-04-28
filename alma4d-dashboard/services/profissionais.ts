@@ -1,46 +1,18 @@
 import { createClient } from "@/lib/supabase/client";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
-import type {
-  ProfissionalCrud,
-  Profissional,
-  ProfissionalFormData,
-} from "@/types/profissional";
+import type { Profissional, ProfissionalFormData } from "@/types/profissional";
 
 /**
- * GET - Profissionais ativos (carrossel/listagem pública)
+ * GET - Profissionais ativos
  * Client-side function
  */
-export async function getProfissionaisAtivos(
-  clienteId: string,
-): Promise<Profissional[]> {
+export async function getProfissionaisAtivos(): Promise<Profissional[]> {
   try {
     const supabase = createClient();
 
     const { data, error } = await supabase
       .from("profissionais")
-      .select(
-        `
-        id,
-        nome,
-        especialidade,
-        bio_resumida,
-        foto_url,
-        calendly_url,
-        website_url,
-        linkedin_url,
-        instagram_url,
-        whatsapp_url,
-        ativo,
-        created_at,
-        cliente_id,
-        ordem,
-        destaque
-      `,
-      )
-      .eq("cliente_id", clienteId)
+      .select("*")
       .eq("ativo", true)
-      .order("destaque", { ascending: false })
-      .order("ordem", { ascending: true, nullsFirst: false })
       .order("nome", { ascending: true });
 
     if (error) throw error;
@@ -52,25 +24,27 @@ export async function getProfissionaisAtivos(
 }
 
 /**
- * GET - Todos os profissionais (CRUD)
+ * GET - Todos os profissionais (com filtro de status)
  * Client-side function
  */
 export async function getProfissionaisCrud(
-  clienteId: string,
-): Promise<ProfissionalCrud[]> {
+  filtroAtivo?: boolean,
+): Promise<Profissional[]> {
   try {
     const supabase = createClient();
 
-    const { data, error } = await supabase
-      .from("profissionais")
-      .select("*")
-      .eq("cliente_id", clienteId)
-      .order("destaque", { ascending: false })
-      .order("ordem", { ascending: true, nullsFirst: false })
-      .order("nome", { ascending: true });
+    let query = supabase.from("profissionais").select("*");
+
+    if (filtroAtivo !== undefined) {
+      query = query.eq("ativo", filtroAtivo);
+    }
+
+    const { data, error } = await query.order("nome", {
+      ascending: true,
+    });
 
     if (error) throw error;
-    return (data ?? []) as ProfissionalCrud[];
+    return (data ?? []) as Profissional[];
   } catch (error) {
     console.error("Erro ao buscar profissionais CRUD:", error);
     throw error;
@@ -106,7 +80,7 @@ export async function getProfissionalById(id: string): Promise<Profissional> {
  * Client-side function
  */
 export async function createProfissional(
-  data: ProfissionalFormData & { cliente_id: string },
+  data: ProfissionalFormData,
 ): Promise<Profissional> {
   try {
     const supabase = createClient();
@@ -119,7 +93,7 @@ export async function createProfissional(
 
     if (error) {
       if (error.code === "23505") {
-        throw new Error("CPF/CNPJ já cadastrado");
+        throw new Error("Documento (CPF/CNPJ) já cadastrado");
       }
       throw error;
     }
@@ -149,7 +123,12 @@ export async function updateProfissional(
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      if (error.code === "23505") {
+        throw new Error("Documento (CPF/CNPJ) já cadastrado");
+      }
+      throw error;
+    }
     return data as Profissional;
   } catch (error) {
     console.error("Erro ao atualizar profissional:", error);
@@ -198,7 +177,7 @@ export async function toggleProfissionalStatus(
     if (error) throw error;
     return data as Profissional;
   } catch (error) {
-    console.error("Erro ao alterar status do profissional:", error);
+    console.error("Erro ao alternar status do profissional:", error);
     throw error;
   }
 }
@@ -208,7 +187,6 @@ export async function toggleProfissionalStatus(
  * Client-side function
  */
 export async function searchProfissionais(
-  clienteId: string,
   searchTerm: string,
 ): Promise<Profissional[]> {
   try {
@@ -217,7 +195,6 @@ export async function searchProfissionais(
     const { data, error } = await supabase
       .from("profissionais")
       .select("*")
-      .eq("cliente_id", clienteId)
       .or(`nome.ilike.%${searchTerm}%,especialidade.ilike.%${searchTerm}%`)
       .order("nome", { ascending: true });
 

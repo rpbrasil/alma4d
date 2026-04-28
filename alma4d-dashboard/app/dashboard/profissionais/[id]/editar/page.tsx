@@ -14,9 +14,8 @@ export default function EditarProfissionalPage() {
   const router = useRouter();
   const params = useParams();
   const id = params?.id as string;
-  const { clienteId, role, loading: authLoading } = useAuth();
+  const { role, loading: authLoading } = useAuth();
   const { update, loading } = useProfissionais({
-    clienteId: "",
     autoLoad: false,
   });
 
@@ -58,7 +57,7 @@ export default function EditarProfissionalPage() {
   if (error) {
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-6 flex gap-3">
-        <AlertCircle className="text-red-600 flex-shrink-0" size={24} />
+        <AlertCircle className="text-red-600 shrink-0" size={24} />
         <div>
           <p className="font-semibold text-red-900">Erro</p>
           <p className="text-red-700">{error}</p>

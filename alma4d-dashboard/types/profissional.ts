@@ -22,13 +22,13 @@ export interface ProfissionalFormData {
   especialidade: string;
   documento: string; // CPF ou CNPJ
   calendly_url: string; // Obrigatório
-  bio_resumida?: string;
-  foto_url?: string;
-  website_url?: string;
-  linkedin_url?: string;
-  instagram_url?: string;
-  whatsapp_url?: string;
-  numero_conselho?: string;
+  bio_resumida?: string | null;
+  foto_url?: string | null;
+  website_url?: string | null;
+  linkedin_url?: string | null;
+  instagram_url?: string | null;
+  whatsapp_url?: string | null;
+  numero_conselho?: string | null;
 }
 
 // Helpers para validação de documento

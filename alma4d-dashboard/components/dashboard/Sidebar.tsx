@@ -69,7 +69,7 @@ export function Sidebar() {
 
       {/* Sidebar */}
       <aside
-        className={`fixed left-0 top-0 h-screen w-64 bg-gradient-to-b from-[#030870] to-[#001a4d] text-white shadow-lg transition-transform duration-300 ease-in-out z-40
+        className={`fixed left-0 top-0 h-screen w-64 bg-linear-to-b from-[#030870] to-[#001a4d] text-white shadow-lg transition-transform duration-300 ease-in-out z-40
           ${isOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0`}
       >
         {/* Logo */}

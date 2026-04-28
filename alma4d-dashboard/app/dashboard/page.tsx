@@ -5,7 +5,7 @@ import { BarChart3, Users, TrendingUp, AlertCircle } from "lucide-react";
 import Link from "next/link";
 
 export default function DashboardPage() {
-  const { user, role, clienteId, loading } = useAuth();
+  const { user, role, loading } = useAuth();
 
   if (loading) {
     return (
@@ -57,7 +57,7 @@ export default function DashboardPage() {
       {/* Info Banner */}
       {role === "cliente" && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex gap-3">
-          <AlertCircle className="text-blue-600 flex-shrink-0" size={20} />
+          <AlertCircle className="text-blue-600 shrink-0" size={20} />
           <div>
             <p className="text-sm font-semibold text-blue-900">
               Bem-vindo ao Alma4D Dashboard
