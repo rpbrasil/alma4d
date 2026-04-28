@@ -69,8 +69,18 @@ export function Sidebar() {
 
       {/* Sidebar */}
       <aside
-        className={`fixed left-0 top-0 h-screen w-64 bg-linear-to-b from-[#030870] to-[#001a4d] text-white shadow-lg transition-transform duration-300 ease-in-out z-40
-          ${isOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0`}
+        className={`
+          bg-linear-to-b from-[#030870] to-[#001a4d] text-white shadow-lg
+          w-64 min-h-screen shrink-0
+          
+          /* Mobile: overlay */
+          fixed inset-y-0 left-0 z-40
+          transform transition-transform duration-300 ease-in-out
+          ${isOpen ? "translate-x-0" : "-translate-x-full"}
+
+          /* Desktop: normal flow */
+          md:static md:translate-x-0
+        `}
       >
         {/* Logo */}
         <div className="p-6 border-b border-blue-700">
@@ -104,7 +114,7 @@ export function Sidebar() {
         </nav>
 
         {/* Footer */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-blue-700">
+        <div className="mt-auto p-4 border-t border-blue-700">
           <p className="text-blue-200 text-xs text-center">Alma4D © 2024</p>
         </div>
       </aside>
