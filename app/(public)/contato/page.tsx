@@ -1,21 +1,13 @@
 "use client";
 
-import React, { SubmitEventHandler } from "react";
-import { createClient } from "@supabase/supabase-js";
+import React, { SubmitEventHandler, useState } from "react";
 
 export const dynamic = "force-dynamic";
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-);
-// console.log("Supabase client initialized:", {
-//   url: process.env.NEXT_PUBLIC_SUPABASE_URL,
-//   anonKey: Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
-// });
+
 export default function Contato() {
-  const [sending, setSending] = React.useState(false);
-  const [status, setStatus] = React.useState<"idle" | "ok" | "error">("idle");
-  const [message, setMessage] = React.useState("");
+  const [sending, setSending] = useState(false);
+  const [status, setStatus] = useState<"idle" | "ok" | "error">("idle");
+  const [message, setMessage] = useState("");
 
   const onSubmit: SubmitEventHandler<HTMLFormElement> = async (e) => {
     e.preventDefault();
@@ -38,13 +30,21 @@ export default function Contato() {
     try {
       setSending(true);
 
-      const { error } = await supabase.functions.invoke("contact", {
-        body: payload,
-      });
+      const res = await fetch(
+        "https://SEU-PROJETO.supabase.co/functions/v1/contact",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        },
+      );
 
-      if (error) {
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
         setStatus("error");
-        setMessage(error.message);
+        setMessage(json?.error ?? "Erro ao enviar mensagem.");
         return;
       }
 
@@ -97,17 +97,8 @@ export default function Contato() {
         <button
           type="submit"
           disabled={sending}
-          className="
-          text-white px-4 py-2 rounded font-semibold transition
-          disabled:opacity-60 disabled:cursor-not-allowed
-          focus:outline-none focus:ring-2 focus:ring-[#019499]/40"
+          className="text-white px-4 py-2 rounded font-semibold transition disabled:opacity-60 disabled:cursor-not-allowed"
           style={{ backgroundColor: "#019499" }}
-          onMouseOver={(e) => {
-            if (!sending) e.currentTarget.style.backgroundColor = "#017f83";
-          }}
-          onMouseOut={(e) => {
-            e.currentTarget.style.backgroundColor = "#019499";
-          }}
         >
           {sending ? "Enviando..." : "Enviar"}
         </button>
@@ -119,7 +110,6 @@ export default function Contato() {
                 ? "text-sm text-emerald-700 text-center"
                 : "text-sm text-red-700 text-center"
             }
-            role="status"
           >
             {message}
           </p>
