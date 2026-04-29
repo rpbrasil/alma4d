@@ -1,24 +1,23 @@
 "use client";
 
 import { useAuth } from "@/context/auth";
-import { LogOut, User, Settings } from "lucide-react";
+import { LogOut, Settings, User } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 export function DashboardHeader() {
   const { user, role, signOut } = useAuth();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setIsMenuOpen(false);
+    function handleClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpen(false);
       }
     }
-
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
@@ -28,78 +27,69 @@ export function DashboardHeader() {
     router.push("/");
   };
 
+  const userInitial = user?.email?.charAt(0).toUpperCase() ?? "?";
+
   return (
-    <header className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-40 md:ml-64">
-      <div className="px-6 py-4 flex items-center justify-between">
-        {/* Left side - could have breadcrumbs */}
-        <div className="flex-1" />
+    <header className="bg-white border-b border-slate-200 sticky top-0 z-30">
+      <div className="h-14 px-6 flex items-center justify-between">
+        {/* Left: Context / breadcrumb (futuro) */}
+        <div className="text-sm text-slate-500">Dashboard</div>
 
-        {/* Right side - User Menu */}
-        <div className="flex items-center gap-4">
-          {/* User Role Badge */}
-          {role && (
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-              {role === "admin" && "👨‍💼 Admin"}
-              {role === "cliente" && "🏢 Cliente"}
-              {role === "gestor" && "👤 Gestor"}
-              {role === "usuario" && "👥 Usuário"}
-            </span>
-          )}
+        {/* Right: User */}
+        <div className="relative" ref={menuRef}>
+          <button
+            onClick={() => setOpen((v) => !v)}
+            className="flex items-center gap-3 px-3 py-1.5 rounded-md hover:bg-slate-100 transition-colors"
+          >
+            {/* Avatar neutro */}
+            <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-sm font-semibold text-slate-700">
+              {userInitial}
+            </div>
 
-          {/* User Menu */}
-          <div className="relative" ref={menuRef}>
-            <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              <div className="w-8 h-8 rounded-full bg-linear-to-br from-[#030870] to-[#019499] flex items-center justify-center text-white text-sm font-bold">
-                {user?.email?.[0]?.toUpperCase() || "?"}
-              </div>
-              <span className="text-sm font-medium text-gray-700 hidden sm:block">
+            <div className="hidden sm:flex flex-col text-left">
+              <span className="text-sm font-medium text-slate-900 leading-none">
                 {user?.email?.split("@")[0]}
               </span>
-            </button>
+              {role && (
+                <span className="text-xs text-slate-500 capitalize">
+                  {role}
+                </span>
+              )}
+            </div>
+          </button>
 
-            {/* Dropdown Menu */}
-            {isMenuOpen && (
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
-                <div className="px-4 py-2 border-b border-gray-100">
-                  <p className="text-sm font-semibold text-gray-900">
-                    {user?.email}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {role && role.charAt(0).toUpperCase() + role.slice(1)}
-                  </p>
-                </div>
+          {/* Dropdown */}
+          {open && (
+            <div className="absolute right-0 mt-2 w-52 bg-white rounded-md shadow-lg border border-slate-200 py-1 text-sm z-50">
+              <Link
+                href="/dashboard/perfil"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-2 px-4 py-2 text-slate-700 hover:bg-slate-50"
+              >
+                <User size={16} />
+                Meu perfil
+              </Link>
 
-                <Link
-                  href="/dashboard/perfil"
-                  className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  <User size={16} />
-                  Meu Perfil
-                </Link>
+              <Link
+                href="/dashboard/configuracoes"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-2 px-4 py-2 text-slate-700 hover:bg-slate-50"
+              >
+                <Settings size={16} />
+                Configurações
+              </Link>
 
-                <Link
-                  href="/dashboard/configuracoes"
-                  className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  <Settings size={16} />
-                  Configurações
-                </Link>
+              <div className="my-1 border-t border-slate-200" />
 
-                <button
-                  onClick={handleLogout}
-                  className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors border-t border-gray-100 mt-2"
-                >
-                  <LogOut size={16} />
-                  Sair
-                </button>
-              </div>
-            )}
-          </div>
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50"
+              >
+                <LogOut size={16} />
+                Sair
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </header>

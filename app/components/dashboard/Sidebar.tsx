@@ -59,37 +59,35 @@ export function Sidebar() {
 
   return (
     <>
-      {/* Mobile Menu Button */}
+      {/* Mobile toggle */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed top-4 left-4 z-50 md:hidden p-2 hover:bg-gray-100 rounded-lg"
+        className="fixed top-4 left-4 z-50 md:hidden p-2 rounded-md bg-white shadow-sm"
       >
-        {isOpen ? <X size={24} /> : <Menu size={24} />}
+        {isOpen ? <X size={20} /> : <Menu size={20} />}
       </button>
 
       {/* Sidebar */}
       <aside
         className={`
-          bg-linear-to-b from-[#030870] to-[#001a4d] text-white shadow-lg
+          bg-[#030870] text-white
           w-64 min-h-screen shrink-0
           
-          /* Mobile: overlay */
           fixed inset-y-0 left-0 z-40
           transform transition-transform duration-300 ease-in-out
           ${isOpen ? "translate-x-0" : "-translate-x-full"}
-
-          /* Desktop: normal flow */
+          
           md:static md:translate-x-0
         `}
       >
-        {/* Logo */}
-        <div className="p-6 border-b border-blue-700">
-          <h1 className="text-2xl font-bold">Alma4D</h1>
-          <p className="text-blue-200 text-sm mt-1">Dashboard</p>
+        {/* Brand */}
+        <div className="px-6 py-5 border-b border-white/10">
+          <h1 className="text-lg font-semibold tracking-wide">alma4D</h1>
+          <p className="text-xs text-white/60 mt-1">Painel Administrativo</p>
         </div>
 
         {/* Navigation */}
-        <nav className="p-4 space-y-2">
+        <nav className="mt-6 space-y-1 px-3">
           {filteredItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.href);
@@ -99,14 +97,20 @@ export function Sidebar() {
                 key={item.href}
                 href={item.href}
                 onClick={() => setIsOpen(false)}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200
+                className={`
+                  group flex items-center gap-3 px-3 py-2.5 rounded-md text-sm
+                  transition-colors
                   ${
                     active
-                      ? "bg-[#019499] text-white shadow-md"
-                      : "text-blue-100 hover:bg-blue-700 hover:text-white"
-                  }`}
+                      ? "bg-white/10 text-white border-l-2 border-[#019499]"
+                      : "text-white/70 hover:bg-white/5 hover:text-white"
+                  }
+                `}
               >
-                <Icon size={20} />
+                <Icon
+                  size={18}
+                  className={active ? "text-[#019499]" : "text-white/60"}
+                />
                 <span className="font-medium">{item.label}</span>
               </Link>
             );
@@ -114,15 +118,15 @@ export function Sidebar() {
         </nav>
 
         {/* Footer */}
-        <div className="mt-auto p-4 border-t border-blue-700">
-          <p className="text-blue-200 text-xs text-center">Alma4D © 2024</p>
+        <div className="mt-auto px-6 py-4 border-t border-white/10 text-xs text-white/50">
+          © alma4D · 2024
         </div>
       </aside>
 
-      {/* Mobile Overlay */}
+      {/* Mobile overlay */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-30 md:hidden"
+          className="fixed inset-0 bg-black/40 z-30 md:hidden"
           onClick={() => setIsOpen(false)}
         />
       )}
