@@ -1,4 +1,4 @@
-import { createServerSupabase } from "@/app/lib/supabase/server";
+import { createServerSupabase } from "@/lib/supabase/server";
 import Link from "next/link";
 
 type Cliente = {

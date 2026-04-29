@@ -82,7 +82,7 @@ Atualizar `app/components/forms/LoginForm.tsx`:
 "use client";
 
 import React, { useState } from "react";
-import { createClient } from "@/app/lib/supabase/clients";
+import { createClient } from "@/lib/supabase/clients";
 import { useRouter } from "next/navigation";
 import { Mail, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
 
@@ -137,7 +137,7 @@ export function LoginForm() {
 
 ```typescript
 import { redirect } from "next/navigation";
-import { createServerClient } from "@/app/lib/supabase/server";
+import { createServerClient } from "@/lib/supabase/server";
 
 export default async function DashboardPage() {
   const supabase = await createServerClient();

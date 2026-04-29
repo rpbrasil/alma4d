@@ -1,7 +1,7 @@
 // app/services/profissionais.ts
 "use server";
 
-import { createServerSupabase } from "@/app/lib/supabase/server";
+import { createServerSupabase } from "@/lib/supabase/server";
 import type { Profissional, ProfissionalFormData } from "@/types/profissional";
 
 export async function getProfissionalById(id: string): Promise<Profissional> {
