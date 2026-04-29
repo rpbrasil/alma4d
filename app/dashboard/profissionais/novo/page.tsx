@@ -3,21 +3,20 @@
 import { useRouter } from "next/navigation";
 import { ProfessionalForm } from "@/components/dashboard/ProfessionalForm";
 import { useAuth } from "@/context/auth";
-import { useProfissionais } from "@/hooks/useProfissionais";
+import { createProfissional } from "@/services/profissionais";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import type { ProfissionalFormData } from "@/types/profissional";
+import { useState } from "react";
 
 export default function NovoProfissionalPage() {
   const router = useRouter();
   const { role, loading: authLoading } = useAuth();
-  const { create, loading } = useProfissionais({
-    autoLoad: false,
-  });
+  const [saving, setSaving] = useState(false);
 
   if (authLoading) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex items-center justify-center py-20">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#030870] mx-auto mb-4" />
           <p className="text-gray-600">Carregando...</p>
@@ -38,11 +37,16 @@ export default function NovoProfissionalPage() {
   }
 
   const handleSubmit = async (data: ProfissionalFormData) => {
-    const profAberta = await create(data);
-
-    // Redirecionar após criar
-    router.push("/dashboard/profissionais");
-    router.refresh();
+    try {
+      setSaving(true);
+      await createProfissional(data);
+      router.push("/dashboard/profissionais");
+      router.refresh();
+    } catch {
+      alert("Erro ao criar profissional");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -68,7 +72,7 @@ export default function NovoProfissionalPage() {
       {/* Form */}
       <div className="bg-white rounded-lg shadow p-6">
         <ProfessionalForm
-          isLoading={loading}
+          isLoading={saving}
           onSubmit={handleSubmit}
           onCancel={() => router.back()}
         />

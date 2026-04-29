@@ -1,16 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { supabase } from "../../lib/supabase/clients";
+import { createClientSupabase } from "@/lib/supabase/client";
 
 export default function ActivationForm() {
-  // const supabase = createClient();
-
   const [step, setStep] = useState(1); // 1: Telefone, 2: Código, 3: Perfil
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [phone, setPhone] = useState("");
-
+  const supabase = createClientSupabase();
   // Estilo Padrão Profissional para os Inputs
   const inputClass =
     "w-full p-4 rounded-xl border border-border bg-white text-base text-foreground outline-none focus:ring-2 focus:ring-[#019499] transition-all placeholder:text-foreground/30";
@@ -21,6 +19,7 @@ export default function ActivationForm() {
     setLoading(true);
     setError(null);
     // Adicionamos o '+' internamente para o Supabase, mas removemos do input visual
+
     if (!supabase)
       throw new Error("Supabase client não inicializado (env vars ausentes).");
     const { error } = await supabase.auth.signInWithOtp({
@@ -62,7 +61,6 @@ export default function ActivationForm() {
 
     try {
       // pegar access_token do Supabase (client)
-
       if (!supabase) {
         setError("Supabase client não inicializado.");
         setLoading(false);
@@ -118,8 +116,7 @@ export default function ActivationForm() {
       } else {
         setError("Erro inesperado ao finalizar cadastro.");
       }
-    }
-    finally {
+    } finally {
       setLoading(false);
     }
   }

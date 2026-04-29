@@ -20,6 +20,17 @@ export async function getProfissionalById(id: string): Promise<Profissional> {
   return data as Profissional;
 }
 
+export async function createProfissional(
+  payload: ProfissionalFormData,
+): Promise<void> {
+  const supabase = await createServerSupabase();
+  const { error } = await supabase.from("profissionais").insert(payload);
+  if (error) {
+    throw new Error("Erro ao criar profissional");
+  }
+}
+
+
 export async function updateProfissional(
   id: string,
   payload: ProfissionalFormData,
