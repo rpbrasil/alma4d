@@ -3,24 +3,25 @@
 import { useRouter, useParams } from "next/navigation";
 import { ProfessionalForm } from "@/components/dashboard/ProfessionalForm";
 import { useAuth } from "@/context/auth";
-import { useProfissionais } from "@/hooks/useProfissionais";
 import { ArrowLeft, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { getProfissionalById } from "@/services/profissionais";
+import {
+  getProfissionalById,
+  updateProfissional,
+} from "@/services/profissionais";
 import type { ProfissionalFormData, Profissional } from "@/types/profissional";
 
 export default function EditarProfissionalPage() {
   const router = useRouter();
   const params = useParams();
   const id = params?.id as string;
+
   const { role, loading: authLoading } = useAuth();
-  const { update, loading } = useProfissionais({
-    autoLoad: false,
-  });
 
   const [profissional, setProfissional] = useState<Profissional | null>(null);
   const [loadingData, setLoadingData] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Carregar dados do profissional
@@ -86,9 +87,14 @@ export default function EditarProfissionalPage() {
   }
 
   const handleSubmit = async (data: ProfissionalFormData) => {
-    await update(id, data);
-    router.push("/dashboard/profissionais");
-    router.refresh();
+    try {
+      setSaving(true);
+      await updateProfissional(id, data);
+      router.push("/dashboard/profissionais");
+      router.refresh();
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -113,7 +119,7 @@ export default function EditarProfissionalPage() {
       <div className="bg-white rounded-lg shadow p-6">
         <ProfessionalForm
           initialData={profissional}
-          isLoading={loading}
+          isLoading={saving}
           onSubmit={handleSubmit}
           onCancel={() => router.back()}
         />
