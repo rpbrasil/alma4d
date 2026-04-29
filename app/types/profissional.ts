@@ -11,7 +11,7 @@ export interface Profissional {
   instagram_url?: string | null;
   whatsapp_url?: string | null;
   numero_conselho?: string | null;
-  ativo: boolean;
+  ativo: boolean | null;
   created_at: string;
 }
 

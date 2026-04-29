@@ -2,57 +2,23 @@
 
 import { useAuth } from "@/context/auth";
 import { Plus, Edit2, Trash2, Search, AlertCircle, Loader } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useProfissionais } from "@/hooks/useProfissionais";
+import type { Profissional } from "@/types/profissional";
 
-
-type Profissional = {
-  id: string;
-  nome: string;
-  especialidade?: string;
-  ativo: boolean;
-}; 
 export default function ProfissionaisPage() {
   const { role, loading: authLoading } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
-  const {
-    profissionais: rawProfissionais,
-    loading,
-    error,
-    search,
-    toggleStatus,
-    remove,
-  } = useProfissionais({ autoLoad: true });
 
-  const profissionais = rawProfissionais ?? [];
+  const { data: rawProfissionais, loading, error } = useProfissionais();
+
+  // 🔍 Busca local (UI only)
+  const profissionais = rawProfissionais.filter((p) =>
+    p.nome.toLowerCase().includes(searchTerm.toLowerCase()),
+  );
 
   const canManage = role === "admin" || role === "cliente";
-
-  // Buscar quando o termo muda
-  useEffect(() => {
-    if (searchTerm) {
-      search(searchTerm);
-    }
-  }, [searchTerm, search]);
-
-  const handleToggleStatus = async (id: string) => {
-    try {
-      await toggleStatus(id);
-    } catch (err) {
-      console.error("Erro ao alternar status:", err);
-    }
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!confirm("Tem certeza que deseja deletar este profissional?")) return;
-
-    try {
-      await remove(id);
-    } catch (err) {
-      console.error("Erro ao deletar:", err);
-    }
-  };
 
   if (authLoading) {
     return (
@@ -75,11 +41,11 @@ export default function ProfissionaisPage() {
             Gerencie todos os profissionais da sua organização
           </p>
         </div>
+
         {canManage && (
           <Link
             href="/dashboard/profissionais/novo"
-            className="inline-flex items-center gap-2 bg-[#030870] text-white px-4 py-2 rounded-lg hover:bg-[#020556] transition-colors disabled:opacity-50"
-            aria-disabled={loading}
+            className="inline-flex items-center gap-2 bg-[#030870] text-white px-4 py-2 rounded-lg hover:bg-[#020556] transition-colors"
           >
             <Plus size={20} />
             Novo Profissional
@@ -87,7 +53,7 @@ export default function ProfissionaisPage() {
         )}
       </div>
 
-      {/* Error Alert */}
+      {/* Error */}
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex gap-3">
           <AlertCircle className="text-red-600 shrink-0" size={20} />
@@ -98,7 +64,7 @@ export default function ProfissionaisPage() {
         </div>
       )}
 
-      {/* Search Bar */}
+      {/* Search */}
       <div className="relative">
         <Search className="absolute left-3 top-3 text-gray-400" size={20} />
         <input
@@ -113,7 +79,7 @@ export default function ProfissionaisPage() {
 
       {/* Table */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
-        {loading && (
+        {loading ? (
           <div className="flex items-center justify-center h-40">
             <div className="text-center">
               <Loader
@@ -123,9 +89,7 @@ export default function ProfissionaisPage() {
               <p className="text-gray-600">Carregando profissionais...</p>
             </div>
           </div>
-        )}
-
-        {!loading && (
+        ) : (
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
@@ -145,6 +109,7 @@ export default function ProfissionaisPage() {
                 )}
               </tr>
             </thead>
+
             <tbody className="divide-y divide-gray-200">
               {profissionais.length === 0 ? (
                 <tr>
@@ -156,7 +121,7 @@ export default function ProfissionaisPage() {
                   </td>
                 </tr>
               ) : (
-                profissionais.map((prof: Profissional) => (
+                profissionais.map((prof) => (
                   <tr
                     key={prof.id}
                     className="hover:bg-gray-50 transition-colors"
@@ -165,22 +130,22 @@ export default function ProfissionaisPage() {
                       {prof.nome}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">
-                      {prof.especialidade}
+                      {prof.especialidade || "-"}
                     </td>
                     <td className="px-6 py-4 text-sm">
-                      <button
-                        onClick={() => handleToggleStatus(prof.id)}
-                        className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full transition-colors ${
+                      <span
+                        className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                           prof.ativo
-                            ? "bg-green-100 text-green-800 hover:bg-green-200"
-                            : "bg-gray-100 text-gray-800 hover:bg-gray-200"
+                            ? "bg-green-100 text-green-800"
+                            : "bg-gray-100 text-gray-800"
                         }`}
                       >
                         {prof.ativo ? "Ativo" : "Inativo"}
-                      </button>
+                      </span>
                     </td>
+
                     {canManage && (
-                      <td className="px-6 py-4 text-sm space-x-2 flex gap-2">
+                      <td className="px-6 py-4 text-sm flex gap-2">
                         <Link
                           href={`/dashboard/profissionais/${prof.id}/editar`}
                           className="text-blue-600 hover:text-blue-800 transition-colors"
@@ -188,8 +153,9 @@ export default function ProfissionaisPage() {
                           <Edit2 size={16} />
                         </Link>
                         <button
-                          onClick={() => handleDelete(prof.id)}
-                          className="text-red-600 hover:text-red-800 transition-colors"
+                          disabled
+                          className="text-gray-400 cursor-not-allowed"
+                          title="Remoção será habilitada posteriormente"
                         >
                           <Trash2 size={16} />
                         </button>

@@ -1,19 +1,8 @@
-import { Phone, Linkedin, Instagram, Globe } from "lucide-react";
+/* eslint-disable @next/next/no-img-element */
+"use client";
 
-export interface Profissional {
-  id: string;
-  nome: string;
-  especialidade: string;
-  bio_resumida?: string;
-  foto_url?: string;
-  calendly_url?: string;
-  website_url?: string;
-  linkedin_url?: string;
-  instagram_url?: string;
-  whatsapp_url?: string;
-  ativo: boolean;
-  created_at: string;
-}
+import { Phone, Linkedin, Instagram, Globe } from "lucide-react";
+import type { Profissional } from "@/types/profissional";
 
 interface ProfessionalCardProps {
   profissional: Profissional;
@@ -49,8 +38,9 @@ export function ProfessionalCard({
 
         {/* Info */}
         <h3 className="text-lg font-bold text-gray-900">{profissional.nome}</h3>
+
         <p className="text-sm text-[#019499] font-medium">
-          {profissional.especialidade}
+          {profissional.especialidade || "-"}
         </p>
 
         {profissional.bio_resumida && (
@@ -71,15 +61,7 @@ export function ProfessionalCard({
               <Phone size={18} />
             </a>
           )}
-          {profissional.whatsapp_url && (
-            <a
-              href={profissional.whatsapp_url}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              WhatsApp
-            </a>
-          )}
+
           {profissional.linkedin_url && (
             <a
               href={profissional.linkedin_url}
@@ -90,6 +72,7 @@ export function ProfessionalCard({
               <Linkedin size={18} />
             </a>
           )}
+
           {profissional.instagram_url && (
             <a
               href={profissional.instagram_url}
@@ -100,6 +83,7 @@ export function ProfessionalCard({
               <Instagram size={18} />
             </a>
           )}
+
           {profissional.website_url && (
             <a
               href={profissional.website_url}

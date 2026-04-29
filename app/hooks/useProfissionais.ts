@@ -1,17 +1,14 @@
 // app/hooks/useProfissionais.ts
 "use client";
-
-type Profissional = {
-  id: string;
-  nome: string;
-  especialidade?: string;
-};
+import type { Profissional } from "@/types/profissional";
+import { useState } from "react";
 
 export function useProfissionais() {
-    const profissionais: Profissional[] = [];
+  const [data] = useState<Profissional[]>([]);
+
   return {
-    data: profissionais,
-    loading: false,
-    error: null,
+    data,
+    loading : false,
+    error: null
   };
 }
