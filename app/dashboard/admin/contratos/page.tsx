@@ -9,9 +9,9 @@ type Contrato = {
   tipo_contrato: string;
   data_inicio: string;
   data_fim: string | null;
-  cliente: {
+  clientes: {
     nome: string;
-  };
+  }[];
 };
 
 export default async function ContratosPage() {
@@ -63,7 +63,7 @@ export default async function ContratosPage() {
             {contratos.map((c) => (
               <tr key={c.id} className="border-b last:border-0">
                 <td className="p-3">{c.numero_contrato}</td>
-                <td className="p-3">{c.cliente?.nome}</td>
+                <td className="p-3">{c.clientes?.[0]?.nome}</td>
                 <td className="p-3 text-center">{c.versao}</td>
                 <td className="p-3 capitalize">{c.status}</td>
                 <td className="p-3">

@@ -1,4 +1,4 @@
-import { Mail, Phone, Linkedin, Instagram, Globe } from "lucide-react";
+import { Phone, Linkedin, Instagram, Globe } from "lucide-react";
 
 export interface Profissional {
   id: string;
@@ -71,12 +71,13 @@ export function ProfessionalCard({
               <Phone size={18} />
             </a>
           )}
-          {profissional.email && (
+          {profissional.whatsapp_url && (
             <a
-              href={`mailto:${profissional.email}`}
-              className="text-red-600 hover:text-red-700"
+              href={profissional.whatsapp_url}
+              target="_blank"
+              rel="noopener noreferrer"
             >
-              <Mail size={18} />
+              WhatsApp
             </a>
           )}
           {profissional.linkedin_url && (
