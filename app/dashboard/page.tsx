@@ -5,7 +5,7 @@ import { Users, BarChart3, TrendingUp } from "lucide-react";
 import Link from "next/link";
 
 export default function DashboardPage() {
-  const { user, role, loading } = useAuth();
+  const { role, loading } = useAuth();
 
   if (loading) {
     return (

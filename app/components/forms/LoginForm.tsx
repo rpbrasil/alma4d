@@ -2,8 +2,12 @@
 
 import React, { useState } from "react";
 import { Mail, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { createClientSupabase } from "@/lib/supabase/client";
 
 export function LoginForm() {
+  const supabase = createClientSupabase();
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -17,32 +21,53 @@ export function LoginForm() {
     setSuccess("");
     setIsLoading(true);
 
+    if (!email || !password) {
+      setError("Por favor, preencha todos os campos");
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      // Aqui você integraria com Supabase
-      // const { data, error } = await supabase.auth.signInWithPassword({
-      //   email,
-      //   password,
-      // });
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-      // Por enquanto, simulamos
-      if (!email || !password) {
-        setError("Por favor, preencha todos os campos");
+      if (error) {
+        setError("Email ou senha inválidos");
+        setIsLoading(false);
         return;
       }
 
-      if (!email.includes("@")) {
-        setError("Email inválido");
+      // ✅ Buscar claims do usuário recém logado
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      const role = user?.app_metadata?.role;
+
+      // 🔀 Redirect por role
+      if (role === "admin") {
+        router.push("/dashboard/admin");
+      } else if (role === "cliente") {
+        router.push("/dashboard");
+      } else if (role === "gestor") {
+        router.push("/dashboard/gestor");
+      } else {
+        router.push("/dashboard");
+      }
+
+      if (error) {
+        setError("Email ou senha inválidos");
+        setIsLoading(false);
         return;
       }
 
-      // Simulação de login bem-sucedido
-      setSuccess("Login realizado com sucesso!");
-      setEmail("");
-      setPassword("");
-    } catch (err: unknown) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Erro ao fazer login";
-      setError(errorMessage);
+      // ✅ Sessão criada (cookie HttpOnly)
+      setSuccess("Login realizado com sucesso");
+      router.push("/dashboard");
+    } catch (err) {
+      setError("Erro inesperado ao fazer login: " + (err as Error).message);
     } finally {
       setIsLoading(false);
     }

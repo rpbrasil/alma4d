@@ -1,38 +1,40 @@
 import React from "react";
 import { LoginForm } from "@/components/forms/LoginForm";
-//import { Lock } from "lucide-react";
 
-export default function ClientePage() {
+export default function LoginPage() {
   return (
-    <section className="max-w-xl mx-auto text-center min-h-full flex flex-col justify-center px-4">
+    <section className="max-w-md mx-auto px-4 pt-16 pb-12">
       {/* Header */}
-      <div className="text-center mb-4">
-        <h1 className="text-3xl font-bold text-foreground">Acesso de Clientes</h1>
-      </div>
+      <header className="text-center space-y-2 mb-6">
+        <h1 className="text-2xl font-semibold text-foreground">
+          Acesso ao painel
+        </h1>
+        <p className="text-sm text-foreground/60">
+          Entre com suas credenciais para acessar o dashboard alma4D
+        </p>
+      </header>
 
-      {/* Formulário de Login */}
-      <div className="bg-surface border border-border rounded-xl p-6 shadow-sm dark:bg-surface dark:border-border/50 max-w-md mx-auto w-full">
+      {/* Card */}
+      <div className="bg-surface border border-border rounded-xl p-6 shadow-sm">
         <LoginForm />
       </div>
 
-      {/* Rodapé */}
-      <div className="mt-3 text-center text-sm text-foreground/60">
+      {/* Ajuda */}
+      <div className="mt-4 text-center text-sm text-foreground/60">
         <p>
-          Não tem uma conta?{" "}
+          Não possui acesso?{" "}
           <a
             href="/contato"
-            className="text-brand-secondary font-medium hover:underline transition-colors"
+            className="text-brand-secondary font-medium hover:underline"
           >
             Fale conosco
           </a>
         </p>
       </div>
 
-      {/* Informações de segurança */}
-      <div className="mt-3 p-3 bg-surface-muted rounded-lg border border-border dark:bg-surface-muted/50 dark:border-border/30 max-w-md mx-auto w-full">
-        <p className="text-xs text-foreground/50 text-center">
-          ✓ Conexão segura • ✓ Dados criptografados • ✓ Privacidade garantida
-        </p>
+      {/* Segurança */}
+      <div className="mt-4 text-center text-xs text-foreground/50 border border-border rounded-lg p-3 bg-surface-muted">
+        Conexão segura • Dados criptografados • Privacidade garantida
       </div>
     </section>
   );

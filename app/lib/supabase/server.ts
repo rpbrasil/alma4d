@@ -7,29 +7,38 @@ type CookieToSet = {
   options?: CookieOptions;
 };
 
-export async function createServerSupabaseClient() {
-  // Next.js 15+: cookies() é async -> precisa await [1](https://nextjs.org/docs/app/api-reference/functions/cookies)
+export async function createServerSupabase() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error("Missing Supabase environment variables");
+  }
+
+  // ✅ Aqui o TS sabe que são strings
+  const url: string = supabaseUrl;
+  const key: string = supabaseAnonKey;
+
   const cookieStore = await cookies();
 
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet: CookieToSet[]) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options);
-            });
-          } catch {
-            // Em Server Components, o Next pode impedir escrita de cookies.
-            // Isso é esperado se você usa middleware para refresh de sessão.
-          }
-        },
+  return createServerClient(url, key, {
+    cookies: {
+      getAll() {
+        return cookieStore.getAll();
+      },
+      setAll(cookiesToSet: CookieToSet[]) {
+        try {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            cookieStore.set(name, value, options);
+          });
+        } catch {
+          // Server Components may block cookie writes (expected)
+        }
       },
     },
-  );
+  });
 }
+
+export type ServerSupabaseClient = Awaited<
+  ReturnType<typeof createServerSupabase>
+>;

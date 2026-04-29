@@ -5,20 +5,26 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Users,
-  BarChart3,
-  Settings,
   Menu,
   X,
 } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/context/auth";
+import type { LucideIcon } from "lucide-react";
+
+type NavItem = {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  roles: string[];
+};
 
 export function Sidebar() {
   const pathname = usePathname();
   const { role } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
 
-  const navItems = [
+  const navItems: NavItem[] = [
     {
       href: "/dashboard",
       label: "Dashboard",
@@ -26,28 +32,10 @@ export function Sidebar() {
       roles: ["admin", "cliente", "gestor"],
     },
     {
-      href: "/dashboard/profissionais",
-      label: "Profissionais",
+      href: "/dashboard/admin/clientes",
+      label: "Clientes",
       icon: Users,
-      roles: ["admin", "cliente"],
-    },
-    {
-      href: "/dashboard/relatorios",
-      label: "Relatórios",
-      icon: BarChart3,
-      roles: ["admin", "cliente", "gestor"],
-    },
-    {
-      href: "/dashboard/usuarios",
-      label: "Usuários",
-      icon: Users,
-      roles: ["admin", "cliente"],
-    },
-    {
-      href: "/dashboard/configuracoes",
-      label: "Configurações",
-      icon: Settings,
-      roles: ["admin", "cliente"],
+      roles: ["admin"],
     },
   ];
 
