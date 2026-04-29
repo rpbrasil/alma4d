@@ -1,12 +1,18 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Mail, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createClientSupabase } from "@/lib/supabase/client";
 
 export function LoginForm() {
-  const supabase = createClientSupabase();
+  const [supabase, setSupabase] = useState<ReturnType<
+    typeof createClientSupabase
+  > | null>(null);
+
+  useEffect(() => {
+    setSupabase(createClientSupabase());
+  }, []);
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -26,7 +32,9 @@ export function LoginForm() {
       setIsLoading(false);
       return;
     }
-
+    if (!supabase) {
+      return null; // ou um loader simples
+    }
     try {
       const { error } = await supabase.auth.signInWithPassword({
         email,

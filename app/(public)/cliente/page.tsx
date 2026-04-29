@@ -1,6 +1,8 @@
 import React from "react";
 import { LoginForm } from "@/components/forms/LoginForm";
 
+export const dynamic = "force-dynamic";
+
 export default function LoginPage() {
   return (
     <section className="max-w-md mx-auto px-4 pt-16 pb-12">
