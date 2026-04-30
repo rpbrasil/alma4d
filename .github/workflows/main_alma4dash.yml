@@ -5,17 +5,20 @@ on:
     branches:
       - main
   workflow_dispatch:
+
 permissions:
   contents: read
   id-token: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Set up Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -28,6 +31,7 @@ jobs:
 
       - name: Prepare deployment package
         run: |
+          rm -rf deploy
           mkdir deploy
           cp -R .next public package.json package-lock.json node_modules deploy/
 
@@ -46,8 +50,9 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: app
+          path: deploy
 
-      - name: Login to Azure
+      - name: Login to Azure (OIDC)
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_90E427DC40B14D62B4856B70B6E489AF }}
