@@ -1,185 +1,290 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { Mail, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClientSupabase } from "@/lib/supabase/client";
+import { createBrowserClient } from "@supabase/ssr";
+
+const supabase = createBrowserClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+);
+
+type Method = "phone" | "email";
 
 export function LoginForm() {
-  const [supabase, setSupabase] = useState<ReturnType<
-    typeof createClientSupabase
-  > | null>(null);
-
-  useEffect(() => {
-    setSupabase(createClientSupabase());
-  }, []);
   const router = useRouter();
+
+  // método
+  const [method, setMethod] = useState<Method>("phone");
+
+  // estado geral
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // phone
+  const [country, setCountry] = useState("+55"); // editável
+  const [phoneLocal, setPhoneLocal] = useState(""); // só número
+  const [otp, setOtp] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+
+  // email
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setSuccess("");
-    setIsLoading(true);
+  // refs p/ foco
+  const phoneRef = useRef<HTMLInputElement>(null);
+  const otpRef = useRef<HTMLInputElement>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
 
-    if (!email || !password) {
-      setError("Por favor, preencha todos os campos");
-      setIsLoading(false);
+  // foco automático por método/etapa
+  useEffect(() => {
+    if (method === "phone") {
+      if (!otpSent) phoneRef.current?.focus();
+      else otpRef.current?.focus();
+    } else {
+      emailRef.current?.focus();
+    }
+  }, [method, otpSent]);
+
+  /* ===========================
+     PHONE OTP
+  =========================== */
+
+  const fullPhone = `${country}${phoneLocal.replace(/\D/g, "")}`;
+
+  async function sendOtp() {
+    setError(null);
+    setLoading(true);
+
+    const { error } = await supabase.auth.signInWithOtp({ phone: fullPhone });
+
+    setLoading(false);
+
+    if (error) {
+      setError("Não foi possível enviar o código. Verifique o número.");
       return;
     }
-    if (!supabase) {
-      return null; // ou um loader simples
+
+    setOtpSent(true);
+  }
+
+  async function verifyOtp() {
+    setError(null);
+    setLoading(true);
+
+    const { error } = await supabase.auth.verifyOtp({
+      phone: fullPhone,
+      token: otp,
+      type: "sms",
+    });
+
+    setLoading(false);
+
+    if (error) {
+      setError("Código inválido ou expirado. Solicite um novo.");
+      return;
     }
-    try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
 
-      if (error) {
-        setError("Email ou senha inválidos");
-        setIsLoading(false);
-        return;
-      }
+    router.push("/dashboard");
+  }
 
-      // ✅ Buscar claims do usuário recém logado
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+  /* ===========================
+     EMAIL + SENHA
+  =========================== */
 
-      const role = user?.app_metadata?.role;
+  async function handleEmail() {
+    setError(null);
 
-      // 🔀 Redirect por role
-      if (role === "admin") {
-        router.push("/dashboard/admin");
-      } else if (role === "cliente") {
-        router.push("/dashboard");
-      } else if (role === "gestor") {
-        router.push("/dashboard/gestor");
-      } else {
-        router.push("/dashboard");
-      }
-
-      if (error) {
-        setError("Email ou senha inválidos");
-        setIsLoading(false);
-        return;
-      }
-
-      // ✅ Sessão criada (cookie HttpOnly)
-      setSuccess("Login realizado com sucesso");
-      router.push("/dashboard");
-    } catch (err) {
-      setError("Erro inesperado ao fazer login: " + (err as Error).message);
-    } finally {
-      setIsLoading(false);
+    if (!email || !password) {
+      setError("Informe email e senha para continuar.");
+      return;
     }
-  };
+
+    setLoading(true);
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    setLoading(false);
+
+    if (error) {
+      setError("Email ou senha inválidos.");
+      return;
+    }
+
+    router.push("/dashboard");
+  }
+
+  /* ===========================
+     RENDER
+  =========================== */
 
   return (
-    <div className="w-full max-w-md mx-auto">
-      <form onSubmit={handleSubmit} className="space-y-5">
-        {/* Email */}
-        <div>
-          {/* <label htmlFor="email" className="block text-sm font-medium mb-2">
-            Email
-          </label> */}
-          <div className="relative">
-            <Mail className="absolute left-3 top-3 h-5 w-5 text-brand-secondary/60" />
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="seu@email.com"
-              className="w-full pl-10 pr-4 py-2.5 border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-brand-secondary focus:border-transparent transition-colors dark:bg-surface dark:border-border/50"
-              disabled={isLoading}
-            />
-          </div>
+    <div className="space-y-6">
+      {/* Escolha do método */}
+      <div className="space-y-2">
+        <p className="text-sm font-medium text-foreground">
+          Escolha como deseja entrar
+        </p>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setMethod("phone")}
+            aria-pressed={method === "phone"}
+            className={`flex-1 rounded-lg border px-3 py-2 text-sm ${
+              method === "phone" ? "bg-surface-muted font-semibold" : ""
+            }`}
+          >
+            📱 Telefone
+          </button>
+          <button
+            type="button"
+            onClick={() => setMethod("email")}
+            aria-pressed={method === "email"}
+            className={`flex-1 rounded-lg border px-3 py-2 text-sm ${
+              method === "email" ? "bg-surface-muted font-semibold" : ""
+            }`}
+          >
+            📧 Email
+          </button>
         </div>
+      </div>
 
-        {/* Senha */}
-        <div>
-          {/* <label htmlFor="password" className="block text-sm font-medium mb-2">
-            Senha
-          </label> */}
-          <div className="relative">
-            <Lock className="absolute left-3 top-3 h-5 w-5 text-brand-secondary/60" />
-            <input
-              id="password"
-              type={showPassword ? "text" : "password"}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              className="w-full pl-10 pr-10 py-2.5 border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-brand-secondary focus:border-transparent transition-colors dark:bg-surface dark:border-border/50"
-              disabled={isLoading}
-            />
+      {/* Erro orientador */}
+      {error && (
+        <div
+          role="alert"
+          className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700"
+        >
+          {error}
+        </div>
+      )}
+
+      {/* PHONE */}
+      {method === "phone" && (
+        <div className="space-y-3">
+          {/* Etapa */}
+          <p className="text-xs text-foreground/60">
+            {otpSent
+              ? "Passo 2 de 2 • Digite o código recebido por SMS"
+              : "Passo 1 de 2 • Informe seu telefone"}
+          </p>
+
+          {/* Telefone com prefixo ancorado */}
+          <div className="flex">
             <button
               type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-3 text-brand-secondary/60 hover:text-brand-secondary transition-colors"
-              aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
-              disabled={isLoading}
+              onClick={() => setCountry(country === "+55" ? "+1" : "+55")}
+              title="Alterar país"
+              className="rounded-l-lg border border-r-0 px-3 text-sm bg-surface-muted"
             >
-              {showPassword ? (
-                <EyeOff className="h-5 w-5" />
-              ) : (
-                <Eye className="h-5 w-5" />
-              )}
+              {country}
             </button>
+            <input
+              ref={phoneRef}
+              type="tel"
+              inputMode="numeric"
+              placeholder="11 99999-9999"
+              value={phoneLocal}
+              onChange={(e) => setPhoneLocal(e.target.value)}
+              className="w-full rounded-r-lg border px-3 py-2"
+              aria-label="Telefone"
+              disabled={otpSent}
+            />
           </div>
-        </div>
 
-        {/* Mensagens de Erro e Sucesso */}
-        {error && (
-          <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm dark:bg-red-950 dark:border-red-800 dark:text-red-200">
-            {error}
-          </div>
-        )}
-
-        {success && (
-          <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm dark:bg-green-950 dark:border-green-800 dark:text-green-200">
-            {success}
-          </div>
-        )}
-
-        {/* Botão Submit */}
-        <button
-          type="submit"
-          disabled={isLoading}
-          className="w-full bg-brand-secondary text-white font-semibold py-2.5 rounded-lg hover:bg-brand-secondary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 dark:bg-brand-secondary/80 dark:hover:bg-brand-secondary/70"
-        >
-          {isLoading ? (
-            <>
-              <Loader2 className="h-5 w-5 animate-spin" />
-              Entrando...
-            </>
-          ) : (
-            "Entrar"
+          {/* OTP */}
+          {otpSent && (
+            <input
+              ref={otpRef}
+              type="text"
+              inputMode="numeric"
+              placeholder="Código de 6 dígitos"
+              value={otp}
+              onChange={(e) => setOtp(e.target.value)}
+              className="w-full rounded-lg border px-3 py-2"
+              aria-label="Código SMS"
+            />
           )}
-        </button>
 
-        {/* Links auxiliares */}
-        <div className="flex items-center justify-between text-xs">
-          <a
-            href="/contato"
-            className="text-brand-secondary hover:underline transition-colors"
-          >
-            Esqueceu a senha?
-          </a>
-          {/* <a
-            href="/contato"
-            className="text-brand-secondary hover:underline transition-colors"
-          >
-            Criar conta
-          </a> */}
+          {/* Ações */}
+          {!otpSent ? (
+            <button
+              onClick={sendOtp}
+              disabled={loading || phoneLocal.length < 8}
+              className="w-full rounded-lg bg-brand-primary py-2 text-white"
+            >
+              {loading ? "Enviando..." : "Receber código por SMS"}
+            </button>
+          ) : (
+            <div className="flex gap-2">
+              <button
+                onClick={verifyOtp}
+                disabled={loading || otp.length < 4}
+                className="flex-1 rounded-lg bg-brand-primary py-2 text-white"
+              >
+                {loading ? "Verificando..." : "Confirmar acesso"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setOtp("");
+                  setOtpSent(false);
+                }}
+                className="rounded-lg border px-3 py-2 text-sm"
+              >
+                Enviar novamente
+              </button>
+            </div>
+          )}
+
+          <p className="text-xs text-foreground/60">
+            Usaremos seu telefone apenas para autenticação.
+          </p>
         </div>
-      </form>
+      )}
+
+      {/* EMAIL */}
+      {method === "email" && (
+        <div className="space-y-3">
+          <input
+            ref={emailRef}
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full rounded-lg border px-3 py-2"
+            aria-label="Email"
+          />
+          <input
+            ref={passwordRef}
+            type="password"
+            placeholder="Senha"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleEmail()}
+            className="w-full rounded-lg border px-3 py-2"
+          />
+
+          <button
+            onClick={handleEmail}
+            disabled={loading}
+            className={`w-full rounded-lg py-2 text-white ${
+              loading
+                ? "bg-brand-primary/70 cursor-not-allowed"
+                : "bg-brand-primary hover:opacity-90"
+            }`}
+          >
+            {loading ? "Entrando..." : "Entrar no painel"}
+          </button>
+          <p className="text-xs text-foreground/60">
+            Acesso restrito para usuários autorizados.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

@@ -30,7 +30,13 @@ export async function middleware(req: NextRequest) {
   if (!user && pathname.startsWith("/dashboard")) {
     return NextResponse.redirect(new URL("/login", req.url));
   }
-
+  // 🔒 Bloqueio de área admin
+  if (
+    pathname.startsWith("/dashboard/admin") &&
+    user?.app_metadata?.claims?.role !== "admin"
+  ) {
+    return NextResponse.redirect(new URL("/dashboard", req.url));
+  }
   /* =====================================================
      🔒 USUÁRIO INATIVO
   ===================================================== */
