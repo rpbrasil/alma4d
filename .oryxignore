@@ -1,0 +1,8 @@
+android/
+ios/
+.expo/
+.expo-shared/
+.gradle/
+gradle/
+*.java
+*.kt
