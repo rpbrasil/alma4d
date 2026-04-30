@@ -23,26 +23,26 @@ export async function middleware(req: NextRequest) {
 
   const pathname = req.nextUrl.pathname;
 
-  // 🔒 Bloqueia acesso ao dashboard sem sessão
+  /* =====================================================
+     🔒 BLOQUEIO DE ROTAS PROTEGIDAS
+  ===================================================== */
+
   if (!user && pathname.startsWith("/dashboard")) {
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
+  /* =====================================================
+     🔒 USUÁRIO INATIVO
+  ===================================================== */
+
   if (user) {
-    const claims = user.app_metadata ?? {};
-    const ativo = claims.ativo;
+    const ativo = user.app_metadata?.ativo;
 
-    // 🔒 Usuário inativo → logout forçado
     if (ativo === false) {
-      const redirect = NextResponse.redirect(new URL("/login", req.url));
+      // logout limpo pelo Supabase
+      await supabase.auth.signOut();
 
-      // limpa cookies de sessão
-      redirect.cookies.getAll().forEach((cookie) => {
-        redirect.cookies.set(cookie.name, "", {
-          path: "/",
-          expires: new Date(0),
-        });
-      });
+      const redirect = NextResponse.redirect(new URL("/login", req.url));
 
       return redirect;
     }
