@@ -29,6 +29,10 @@ export function DashboardHeader() {
 
   const userInitial = user?.email?.charAt(0).toUpperCase() ?? "?";
 
+  if (typeof window === "undefined") {
+    return null;
+  }
+
   return (
     <header className="bg-white border-b border-slate-200 sticky top-0 z-30">
       <div className="h-14 px-6 flex items-center justify-between">
