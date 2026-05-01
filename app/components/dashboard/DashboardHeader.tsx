@@ -2,16 +2,20 @@
 
 import { useAuth } from "@/context/auth";
 import { LogOut, Settings, User } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useRef, useEffect, useMemo } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
+import { PAGE_TITLES } from "@/lib/pageTitles";
 
-export function DashboardHeader() {
-  const { user, role, signOut } = useAuth();
-  const [open, setOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
+export default function DashboardHeader() {
+  const { user, role, signOut, loading } = useAuth();
+  const pathname = usePathname();
   const router = useRouter();
 
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // ✅ listener só após mount (não altera HTML inicial)
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
@@ -27,44 +31,72 @@ export function DashboardHeader() {
     router.push("/");
   };
 
-  const userInitial = user?.email?.charAt(0).toUpperCase() ?? "?";
+  // ✅ título resolvido de forma estável
+  const title = useMemo(() => {
+    if (!pathname) return "Painel";
+
+    return (
+      PAGE_TITLES[pathname] ??
+      PAGE_TITLES[
+        Object.keys(PAGE_TITLES).find((p) => pathname.startsWith(p)) ?? ""
+      ] ??
+      "Painel"
+    );
+  }, [pathname]);
+
+  // ✅ placeholders ESTÁVEIS (server === client)
+  const avatarChar =
+    !loading && user?.email ? user.email.charAt(0).toUpperCase() : "?";
+
+  const username =
+    !loading && user?.email ? user.email.split("@")[0] : "Usuário";
 
   return (
-    <header className="bg-white border-b border-slate-200 sticky top-0 z-30">
+    <header suppressHydrationWarning className="bg-white border-b border-border sticky top-0 z-30">
       <div className="h-14 px-6 flex items-center justify-between">
-        {/* Left: Context / breadcrumb (futuro) */}
-        <div className="text-sm text-slate-500">Dashboard</div>
+        {/* Título dinâmico */}
+        <h1 className="text-base sm:text-lg font-semibold text-foreground">
+          {title}
+        </h1>
 
-        {/* Right: User */}
+        {/* User menu */}
         <div className="relative" ref={menuRef}>
           <button
+            type="button"
             onClick={() => setOpen((v) => !v)}
-            className="flex items-center gap-3 px-3 py-1.5 rounded-md hover:bg-slate-100 transition-colors"
+            className="flex items-center gap-3 px-3 py-1.5 rounded-md
+                       hover:bg-surface-muted transition-colors"
           >
-            {/* Avatar neutro */}
-            <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-sm font-semibold text-slate-700">
-              {userInitial}
+            <div
+              className="w-8 h-8 rounded-full bg-surface-muted
+                            flex items-center justify-center
+                            text-sm font-semibold text-foreground"
+            >
+              {avatarChar}
             </div>
 
             <div className="hidden sm:flex flex-col text-left">
-              <span className="text-sm font-medium text-slate-900 leading-none">
-                {user?.email?.split("@")[0]}
+              <span className="text-sm font-medium leading-none">
+                {username}
               </span>
-              {role && (
-                <span className="text-xs text-slate-500 capitalize">
+
+              {!loading && role && (
+                <span className="text-xs text-foreground/60 capitalize">
                   {role}
                 </span>
               )}
             </div>
           </button>
 
-          {/* Dropdown */}
-          {open && (
-            <div className="absolute right-0 mt-2 w-52 bg-white rounded-md shadow-lg border border-slate-200 py-1 text-sm z-50">
+          {open && !loading && (
+            <div
+              className="absolute right-0 mt-2 w-52 bg-white rounded-md
+                            shadow-lg border border-border py-1 text-sm z-50"
+            >
               <Link
                 href="/dashboard/perfil"
                 onClick={() => setOpen(false)}
-                className="flex items-center gap-2 px-4 py-2 text-slate-700 hover:bg-slate-50"
+                className="flex items-center gap-2 px-4 py-2 hover:bg-surface-muted"
               >
                 <User size={16} />
                 Meu perfil
@@ -73,17 +105,19 @@ export function DashboardHeader() {
               <Link
                 href="/dashboard/configuracoes"
                 onClick={() => setOpen(false)}
-                className="flex items-center gap-2 px-4 py-2 text-slate-700 hover:bg-slate-50"
+                className="flex items-center gap-2 px-4 py-2 hover:bg-surface-muted"
               >
                 <Settings size={16} />
                 Configurações
               </Link>
 
-              <div className="my-1 border-t border-slate-200" />
+              <div className="my-1 border-t border-border" />
 
               <button
+                type="button"
                 onClick={handleLogout}
-                className="w-full flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50"
+                className="w-full flex items-center gap-2 px-4 py-2
+                           text-red-600 hover:bg-red-50"
               >
                 <LogOut size={16} />
                 Sair

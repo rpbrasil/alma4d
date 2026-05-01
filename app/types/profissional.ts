@@ -13,6 +13,7 @@ export interface Profissional {
   numero_conselho?: string | null;
   ativo: boolean | null;
   created_at: string;
+  email: string | null;
 }
 
 export type ProfissionalCrud = Profissional;

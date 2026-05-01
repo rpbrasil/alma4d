@@ -3,20 +3,17 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, Menu, X } from "lucide-react";
+import {
+  LayoutDashboard,
+  Users,
+  Menu,
+  X,
+  BarChart3,
+  Settings,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 import { useAuth } from "@/context/auth";
 import type { LucideIcon } from "lucide-react";
-
-import { useSyncExternalStore } from "react";
-
-function useIsClient() {
-  return useSyncExternalStore(
-    () => () => {}, // subscribe noop
-    () => true, // client snapshot
-    () => false, // server snapshot
-  );
-}
 
 type NavItem = {
   href: string;
@@ -24,47 +21,91 @@ type NavItem = {
   icon: LucideIcon;
   roles: string[];
 };
-const navItems: NavItem[] = [
+
+/**
+ * ✅ Itens de navegação
+ * Roles sempre em lowercase
+ */
+const NAV_ITEMS: NavItem[] = [
   {
     href: "/dashboard",
-    label: "Dashboard",
+    label: "Visão geral",
     icon: LayoutDashboard,
     roles: ["admin", "cliente", "gestor"],
   },
+  // Profissionais (Cliente + Admin)
+  {
+    href: "/dashboard/profissionais",
+    label: "Profissionais",
+    icon: Users,
+    roles: ["admin", "cliente", "gestor"],
+  },
+  // Relatórios (Todos)
+  {
+    href: "/dashboard/relatorios",
+    label: "Relatórios",
+    icon: BarChart3,
+    roles: ["admin", "cliente", "gestor"],
+  },
+  // Usuários (Todos)
+  {
+    href: "/dashboard/usuarios",
+    label: "Usuários",
+    icon: Users,
+    roles: ["admin", "cliente", "gestor"],
+  },
+  // Admin - Clientes
   {
     href: "/dashboard/admin/clientes",
     label: "Clientes",
     icon: Users,
     roles: ["admin"],
   },
+  // Configurações (Todos)
+  {
+    href: "/dashboard/configuracoes",
+    label: "Configurações",
+    icon: Settings,
+    roles: ["admin", "cliente", "gestor"],
+  },
 ];
-export function Sidebar() {
+
+export default function Sidebar() {
   const pathname = usePathname();
-  const { role } = useAuth();
+  const { user, role, loading } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
 
-  const filteredItems = useMemo(
-    () => navItems.filter((item) => (role ? item.roles.includes(role) : false)),
-    [role],
-  );
+  const normalizedRole = role?.toLowerCase();
 
-  // ativo mais “inteligente”: destaca também sub-rotas
+  /**
+   * ✅ Filtra menu somente após auth resolver
+   * Durante loading, mantém HTML estável
+   */
+  const items = useMemo(() => {
+    if (loading || !normalizedRole) return [];
+    return NAV_ITEMS.filter((item) => item.roles.includes(normalizedRole));
+  }, [loading, normalizedRole]);
+
   const isActive = (href: string) => {
     if (href === "/dashboard") return pathname === "/dashboard";
     return pathname.startsWith(href);
   };
-  const isClient = useIsClient();
-  if (!isClient) return null;
+
+  /**
+   * ✅ Placeholders estáveis (server === client)
+   */
+  const username =
+    !loading && user?.email ? user.email.split("@")[0] : "Usuário";
+
   return (
-    <>
-      {/* Mobile toggle */}
+    <div suppressHydrationWarning>
       <button
         type="button"
         aria-label={isOpen ? "Fechar menu" : "Abrir menu"}
         onClick={() => setIsOpen((v) => !v)}
-        className="fixed top-4 left-4 z-50 md:hidden inline-flex items-center justify-center
-                   h-10 w-10 rounded-xl border border-border bg-surface shadow-sm
-                   hover:bg-surface-muted transition"
+        className="fixed top-4 left-4 z-50 md:hidden h-10 w-10
+                   rounded-xl border border-border bg-white shadow-sm
+                   flex items-center justify-center"
       >
         {isOpen ? <X size={18} /> : <Menu size={18} />}
       </button>
@@ -80,38 +121,39 @@ export function Sidebar() {
         ].join(" ")}
       >
         <div className="h-full flex flex-col">
-          {/* Brand */}
+          {/* Brand + User */}
           <div className="px-5 py-4 border-b border-white/10">
             <Link
               href="/dashboard"
               onClick={() => setIsOpen(false)}
-              className="flex items-center gap-3 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-secondary/40"
+              className="block"
             >
               <div className="relative h-9 w-32">
                 <Image
                   src="/images/alma4d-bicolor-nobground-256.webp"
                   alt="alma4D"
                   fill
-                  sizes="(max-width: 768px) 128px, 160px"
+                  sizes="128px"
                   className="object-contain"
                   priority
                 />
               </div>
-
-              <div className="min-w-0">
-                <p className="text-sm font-semibold leading-tight tracking-wide">
-                  Painel
-                </p>
-                <p className="text-xs text-white/60 leading-tight">
-                  Administrativo
-                </p>
-              </div>
             </Link>
+
+            <div className="mt-3">
+              <p className="text-sm font-semibold leading-tight">{username}</p>
+
+              {!loading && normalizedRole && (
+                <p className="text-xs text-white/60 capitalize">
+                  {normalizedRole}
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Navigation */}
           <nav className="px-3 py-3 space-y-1">
-            {filteredItems.map((item) => {
+            {items.map((item) => {
               const Icon = item.icon;
               const active = isActive(item.href);
 
@@ -122,18 +164,17 @@ export function Sidebar() {
                   onClick={() => setIsOpen(false)}
                   aria-current={active ? "page" : undefined}
                   className={[
-                    "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm",
-                    "transition-colors outline-none",
-                    "focus-visible:ring-2 focus-visible:ring-brand-secondary/40",
+                    "relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm",
+                    "transition-colors",
                     active
                       ? "bg-white/12 text-white"
-                      : "text-white/75 hover:text-white hover:bg-white/8",
+                      : "text-white/75 hover:bg-white/8 hover:text-white",
                   ].join(" ")}
                 >
-                  {/* Active indicator (barra) */}
+                  {/* Active indicator */}
                   <span
                     className={[
-                      "absolute left-0 top-1/2 -translate-y-1/2 h-7 w-1 rounded-r-full transition",
+                      "absolute left-0 top-1/2 -translate-y-1/2 h-7 w-1 rounded-r-full",
                       active ? "bg-brand-secondary" : "bg-transparent",
                     ].join(" ")}
                     aria-hidden="true"
@@ -142,9 +183,7 @@ export function Sidebar() {
                   <Icon
                     size={18}
                     className={
-                      active
-                        ? "text-brand-secondary"
-                        : "text-white/70 group-hover:text-white"
+                      active ? "text-brand-secondary" : "text-white/70"
                     }
                   />
 
@@ -156,9 +195,7 @@ export function Sidebar() {
 
           {/* Footer */}
           <div className="mt-auto px-5 py-4 border-t border-white/10">
-            <p className="text-xs text-white/55">
-              © {new Date().getFullYear()} alma4D
-            </p>
+            <p className="text-xs text-white/55">© alma4D</p>
           </div>
         </div>
       </aside>
@@ -168,9 +205,8 @@ export function Sidebar() {
         <div
           className="fixed inset-0 bg-black/40 z-30 md:hidden"
           onClick={() => setIsOpen(false)}
-          aria-hidden="true"
         />
       )}
-    </>
+    </div>
   );
 }
