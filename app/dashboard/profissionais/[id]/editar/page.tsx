@@ -107,12 +107,6 @@ export default function EditarProfissionalPage() {
         >
           <ArrowLeft size={20} />
         </Link>
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">
-            Editar Profissional
-          </h1>
-          <p className="text-gray-600 mt-1">{profissional.nome}</p>
-        </div>
       </div>
 
       {/* Form */}

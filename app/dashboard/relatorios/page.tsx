@@ -6,12 +6,10 @@ import {
   Download,
   FileText,
   AlertCircle,
-  Loader,
   ArrowUp,
 } from "lucide-react";
 import { useState } from "react";
 import { useRelatorios } from "@/hooks/useRelatorios";
-import Link from "next/link";
 
 export default function RelatoriosPage() {
   const { relatorios, metricas, loading, error } = useRelatorios();
@@ -37,13 +35,7 @@ export default function RelatoriosPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Relatórios</h1>
-          <p className="text-gray-600 mt-1 text-sm">
-            Visualize análises e métricas de desempenho
-          </p>
-        </div>
+      <div className="flex justify-end">
         <button className="inline-flex items-center gap-2 bg-[#019499] text-white px-4 py-2 rounded-lg hover:bg-[#017a7d] transition-colors font-medium">
           <Download size={18} />
           Exportar

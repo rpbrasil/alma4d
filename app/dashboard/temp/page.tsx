@@ -54,16 +54,6 @@ export default function DefinirSenhaAdminPage() {
 
   return (
     <section className="max-w-md mx-auto px-4 pt-16 pb-12">
-      {/* Header */}
-      <header className="text-center space-y-2 mb-6">
-        <h1 className="text-2xl font-semibold text-foreground">
-          Definir senha
-        </h1>
-        <p className="text-sm text-foreground/60">
-          Crie uma senha para acessar o painel administrativo
-        </p>
-      </header>
-
       {/* Card */}
       <div className="bg-surface border border-border rounded-xl p-6 shadow-sm space-y-4">
         {error && (

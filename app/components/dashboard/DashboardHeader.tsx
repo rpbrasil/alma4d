@@ -35,13 +35,15 @@ export default function DashboardHeader() {
   const title = useMemo(() => {
     if (!pathname) return "Painel";
 
-    return (
-      PAGE_TITLES[pathname] ??
-      PAGE_TITLES[
-        Object.keys(PAGE_TITLES).find((p) => pathname.startsWith(p)) ?? ""
-      ] ??
-      "Painel"
+    const sortedPaths = Object.keys(PAGE_TITLES).sort(
+      (a, b) => b.length - a.length,
     );
+
+    const matchedPath =
+      sortedPaths.find((path) => pathname === path) ??
+      sortedPaths.find((path) => pathname.startsWith(path));
+
+    return matchedPath ? PAGE_TITLES[matchedPath] : "Painel";
   }, [pathname]);
 
   // ✅ placeholders ESTÁVEIS (server === client)
@@ -52,12 +54,15 @@ export default function DashboardHeader() {
     !loading && user?.email ? user.email.split("@")[0] : "Usuário";
 
   return (
-    <header suppressHydrationWarning className="bg-white border-b border-border sticky top-0 z-30">
-      <div className="h-14 px-6 flex items-center justify-between">
+    <header
+      suppressHydrationWarning
+      className="bg-white border-b border-border sticky top-0 z-30"
+    >
+      <div className="h-12 px-6 flex items-center justify-between">
         {/* Título dinâmico */}
-        <h1 className="text-base sm:text-lg font-semibold text-foreground">
+        <span className="text-xs uppercase tracking-[0.18em] text-slate-500">
           {title}
-        </h1>
+        </span>
 
         {/* User menu */}
         <div className="relative" ref={menuRef}>

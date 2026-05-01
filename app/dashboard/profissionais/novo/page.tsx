@@ -59,14 +59,6 @@ export default function NovoProfissionalPage() {
         >
           <ArrowLeft size={20} />
         </Link>
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">
-            Novo Profissional
-          </h1>
-          <p className="text-gray-600 mt-1">
-            Cadastre um novo profissional na sua organização
-          </p>
-        </div>
       </div>
 
       {/* Form */}

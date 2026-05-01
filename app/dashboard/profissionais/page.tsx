@@ -21,14 +21,6 @@ export default function ProfissionaisPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-xl font-semibold text-slate-900">Profissionais</h1>
-        <p className="text-sm text-slate-500">
-          Lista de profissionais cadastrados
-        </p>
-      </div>
-
       {/* Action */}
       {canManage && (
         <div>

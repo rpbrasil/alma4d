@@ -13,8 +13,6 @@ export default function NovoClientePage() {
 
   return (
     <form action={onSubmit} className="max-w-lg space-y-4">
-      <h1 className="text-xl font-semibold">Novo cliente</h1>
-
       <select name="tipo" required className="w-full border p-2">
         <option value="cnpj">CNPJ</option>
         <option value="cpf">CPF</option>

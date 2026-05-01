@@ -39,15 +39,14 @@ export default async function ContratosPage() {
 
   return (
     <div className="space-y-6">
-      <header className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Contratos</h1>
+      <div className="flex justify-end">
         <Link
           href="/dashboard/admin/contratos/novo"
           className="bg-brand text-white px-4 py-2 rounded"
         >
           Novo contrato
         </Link>
-      </header>
+      </div>
 
       <div className="bg-white border border-border rounded-lg overflow-hidden">
         <table className="w-full text-sm">

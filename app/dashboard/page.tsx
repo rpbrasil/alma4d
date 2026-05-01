@@ -51,14 +51,6 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-10">
-      {/* Header */}
-      <header className="space-y-1">
-        <h1 className="text-3xl font-bold text-slate-900">Visão geral</h1>
-        <p className="text-sm text-slate-500">
-          Acompanhe os principais indicadores da sua operação
-        </p>
-      </header>
-
       {/* KPIs */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {kpis.map((item) => {

@@ -23,18 +23,6 @@ export default function ClientesPage() {
 
   const { clientes, loading, error } = useClientes();
 
-  // Verificar se é admin
-  if (role !== "admin") {
-    return (
-      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
-        <AlertCircle className="mx-auto text-yellow-600 mb-2" size={24} />
-        <p className="text-yellow-800 font-semibold">
-          Acesso restrito a administradores
-        </p>
-      </div>
-    );
-  }
-
   // Filtros
   const filteredClientes = useMemo(() => {
     return clientes.filter((c) => {
@@ -47,6 +35,18 @@ export default function ClientesPage() {
       return matchSearch && matchPlano;
     });
   }, [clientes, searchTerm, filterPlano]);
+
+  // Verificar se é admin
+  if (role !== "admin") {
+    return (
+      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
+        <AlertCircle className="mx-auto text-yellow-600 mb-2" size={24} />
+        <p className="text-yellow-800 font-semibold">
+          Acesso restrito a administradores
+        </p>
+      </div>
+    );
+  }
 
   const getPlanoLabel = (plano: string) => {
     const labels: { [key: string]: string } = {
@@ -86,13 +86,7 @@ export default function ClientesPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Clientes</h1>
-          <p className="text-gray-600 mt-1 text-sm">
-            Gerencie todos os clientes da plataforma
-          </p>
-        </div>
+      <div className="flex justify-end">
         <Link
           href="/dashboard/admin/clientes/novo"
           className="inline-flex items-center gap-2 bg-[#019499] text-white px-4 py-2 rounded-lg hover:bg-[#017a7d] transition-colors font-medium whitespace-nowrap"
@@ -117,10 +111,7 @@ export default function ClientesPage() {
       <div className="flex flex-col sm:flex-row gap-4">
         {/* Search */}
         <div className="flex-1 relative">
-          <Search
-            className="absolute left-3 top-3 text-gray-400"
-            size={20}
-          />
+          <Search className="absolute left-3 top-3 text-gray-400" size={20} />
           <input
             type="text"
             placeholder="Buscar por nome ou email..."
@@ -211,7 +202,9 @@ export default function ClientesPage() {
                           <p className="font-medium text-gray-900">
                             {cliente.nome}
                           </p>
-                          <p className="text-sm text-gray-500">{cliente.email}</p>
+                          <p className="text-sm text-gray-500">
+                            {cliente.email}
+                          </p>
                         </div>
                       </td>
                       <td className="px-6 py-4">
@@ -288,31 +281,6 @@ export default function ClientesPage() {
           Mostrando {filteredClientes.length} de {clientes.length} clientes
         </div>
       )}
-    </div>
-  );
-}
-            </tr>
-          </thead>
-          <tbody>
-            {lista.map((c) => (
-              <tr key={c.id} className="border-b last:border-0">
-                <td className="p-3">{c.nome}</td>
-                <td className="p-3 uppercase">{c.tipo}</td>
-                <td className="p-3">{c.documento}</td>
-                <td className="p-3">{c.ativo ? "Ativo" : "Inativo"}</td>
-                <td className="p-3 text-right">
-                  <Link
-                    href={`/dashboard/admin/clientes/${c.id}/editar`}
-                    className="text-brand-secondary text-sm"
-                  >
-                    Editar
-                  </Link>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
     </div>
   );
 }

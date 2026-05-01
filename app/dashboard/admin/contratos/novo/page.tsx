@@ -13,8 +13,6 @@ export default function NovoContratoPage() {
 
   return (
     <form action={onSubmit} className="space-y-6 max-w-2xl">
-      <h1 className="text-xl font-semibold">Novo contrato</h1>
-
       {/* Cliente (select) */}
       <select name="cliente_id" required className="w-full border p-2">
         {/* carregar clientes */}

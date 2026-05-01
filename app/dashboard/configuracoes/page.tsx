@@ -24,14 +24,6 @@ export default function ConfiguracoesPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Configurações</h1>
-        <p className="text-gray-600 mt-2">
-          Personalize suas preferências e configurações da conta
-        </p>
-      </div>
-
       {/* Settings Sections */}
       <div className="grid gap-6">
         {/* General Settings */}

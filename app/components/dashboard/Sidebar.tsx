@@ -117,42 +117,42 @@ export default function Sidebar() {
           "fixed inset-y-0 left-0 z-40",
           "transform transition-transform duration-300 ease-in-out",
           isOpen ? "translate-x-0" : "-translate-x-full",
-          "md:static md:translate-x-0",
+          "md:sticky md:top-0 md:translate-x-0",
         ].join(" ")}
       >
-        <div className="h-full flex flex-col">
+        <div className="min-h-screen flex flex-col">
           {/* Brand + User */}
           <div className="px-5 py-4 border-b border-white/10">
             <Link
               href="/dashboard"
               onClick={() => setIsOpen(false)}
-              className="block"
+              className="flex items-center gap-3"
             >
-              <div className="relative h-9 w-32">
+              <div className="relative h-12 w-12 rounded-full overflow-hidden">
                 <Image
-                  src="/images/alma4d-bicolor-nobground-256.webp"
+                  src="/images/alma4d-1024v2.png"
                   alt="alma4D"
                   fill
-                  sizes="128px"
-                  className="object-contain"
+                  sizes="48px"
+                  className="object-cover"
                   priority
                 />
               </div>
-            </Link>
-
-            <div className="mt-3">
-              <p className="text-sm font-semibold leading-tight">{username}</p>
-
-              {!loading && normalizedRole && (
-                <p className="text-xs text-white/60 capitalize">
-                  {normalizedRole}
+              <div>
+                <p className="text-sm font-semibold leading-tight">
+                  {username}
                 </p>
-              )}
-            </div>
+                {!loading && normalizedRole && (
+                  <p className="text-xs text-white/60 capitalize">
+                    {normalizedRole}
+                  </p>
+                )}
+              </div>
+            </Link>
           </div>
 
           {/* Navigation */}
-          <nav className="px-3 py-3 space-y-1">
+          <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-1">
             {items.map((item) => {
               const Icon = item.icon;
               const active = isActive(item.href);

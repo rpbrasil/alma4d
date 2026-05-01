@@ -75,14 +75,7 @@ export default function UsuariosPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Usuários</h1>
-          <p className="text-gray-600 mt-1 text-sm">
-            Gerencie permissões e acessos dos usuários
-          </p>
-        </div>
-
+      <div className="flex justify-end">
         <Link
           href="/dashboard/usuarios/novo"
           className="inline-flex items-center gap-2 bg-[#019499] text-white px-4 py-2 rounded-lg hover:bg-[#017a7d] transition-colors font-medium"
