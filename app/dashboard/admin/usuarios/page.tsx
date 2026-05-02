@@ -9,26 +9,58 @@ import {
   ToggleLeft,
   ToggleRight,
   Building2,
+  Shield,
+  User,
+  Calendar,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useAuth } from "@/context/auth";
 import {
   listarUsuariosAdmin,
+  listarClientesParaFiltro,
   setUsuarioAtivo,
   deletarUsuario,
-  listarClientesParaFiltro,
   type UsuarioRow,
   type Role,
 } from "./actions";
 
-type ClienteOption = {
-  id: string;
-  nome: string;
-};
+type ClienteOption = { id: string; nome: string };
 
 type FilterRole = "todos" | Role;
 type FilterAtivo = "todos" | "ativos" | "inativos";
+
+function fmtDateBR(iso: string | null) {
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleDateString("pt-BR");
+  } catch {
+    return iso;
+  }
+}
+
+function Badge({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className: string;
+}) {
+  return (
+    <span className={`px-3 py-1 rounded-full text-xs font-medium ${className}`}>
+      {children}
+    </span>
+  );
+}
+
+function roleBadge(role: Role) {
+  if (role === "admin") return "bg-red-100 text-red-800";
+  if (role === "cliente") return "bg-blue-100 text-blue-800";
+  if (role === "gestor") return "bg-purple-100 text-purple-800";
+  return "bg-gray-100 text-gray-800";
+}
 
 export default function UsuariosAdminPage() {
   const { role } = useAuth();
@@ -44,6 +76,9 @@ export default function UsuariosAdminPage() {
   const [filterRole, setFilterRole] = useState<FilterRole>("todos");
   const [filterAtivo, setFilterAtivo] = useState<FilterAtivo>("todos");
 
+  // ✅ domínio: por padrão só usuários vinculados a cliente
+  const [showSystemAccounts, setShowSystemAccounts] = useState(false);
+
   const [pending, startTransition] = useTransition();
   const [confirmDelete, setConfirmDelete] = useState<{
     open: boolean;
@@ -58,8 +93,9 @@ export default function UsuariosAdminPage() {
     }
 
     let mounted = true;
-
     (async () => {
+      setLoading(true);
+      setError("");
       try {
         const [u, c] = await Promise.all([
           listarUsuariosAdmin(),
@@ -70,7 +106,9 @@ export default function UsuariosAdminPage() {
           setClientes(c);
         }
       } catch (e: unknown) {
-        setError(e instanceof Error ? e.message : "Erro ao carregar usuários.");
+        const msg =
+          e instanceof Error ? e.message : "Erro ao carregar usuários.";
+        if (mounted) setError(msg);
       } finally {
         if (mounted) setLoading(false);
       }
@@ -84,28 +122,50 @@ export default function UsuariosAdminPage() {
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
 
-    return usuarios.filter((u) => {
-      if (term) {
-        const blob = `${u.nome_completo ?? ""} ${u.email ?? ""} ${
-          u.telefone ?? ""
-        }`.toLowerCase();
-        if (!blob.includes(term)) return false;
-      }
+    return usuarios
+      .filter((u) => {
+        // ✅ esconde “contas do sistema” (sem cliente) por padrão
+        if (!showSystemAccounts && !u.cliente_id) return false;
 
-      if (filterCliente !== "todos" && u.cliente_id !== filterCliente)
-        return false;
+        if (term) {
+          const blob = `${u.nome_completo ?? ""} ${u.email ?? ""} ${
+            u.telefone ?? ""
+          }`.toLowerCase();
+          if (!blob.includes(term)) return false;
+        }
 
-      if (filterRole !== "todos" && u.role !== filterRole) return false;
+        if (filterCliente !== "todos" && u.cliente_id !== filterCliente)
+          return false;
 
-      if (
-        filterAtivo !== "todos" &&
-        (filterAtivo === "ativos" ? !u.ativo : u.ativo)
-      )
-        return false;
+        if (filterRole !== "todos" && u.role !== filterRole) return false;
 
-      return true;
-    });
-  }, [usuarios, search, filterCliente, filterRole, filterAtivo]);
+        if (filterAtivo !== "todos") {
+          const wantsActive = filterAtivo === "ativos";
+          if (wantsActive ? !u.ativo : u.ativo) return false;
+        }
+
+        return true;
+      })
+      .sort((a, b) => (b.created_at > a.created_at ? 1 : -1));
+  }, [
+    usuarios,
+    search,
+    filterCliente,
+    filterRole,
+    filterAtivo,
+    showSystemAccounts,
+  ]);
+
+  const kpis = useMemo(() => {
+    const base = showSystemAccounts
+      ? usuarios
+      : usuarios.filter((u) => !!u.cliente_id);
+    const total = base.length;
+    const ativos = base.filter((u) => u.ativo).length;
+    const inativos = total - ativos;
+    const gestores = base.filter((u) => u.role === "gestor").length;
+    return { total, ativos, inativos, gestores };
+  }, [usuarios, showSystemAccounts]);
 
   function handleToggleAtivo(id: string, next: boolean) {
     startTransition(async () => {
@@ -146,7 +206,10 @@ export default function UsuariosAdminPage() {
   if (loading) {
     return (
       <div className="h-96 flex items-center justify-center">
-        <div className="animate-spin h-10 w-10 border-b-2 border-[#019499]" />
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#019499] mx-auto mb-4" />
+          <p className="text-gray-600">Carregando usuários...</p>
+        </div>
       </div>
     );
   }
@@ -154,8 +217,14 @@ export default function UsuariosAdminPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <h1 className="text-xl font-extrabold">Usuários</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-extrabold">Usuários (Admin)</h1>
+          <p className="text-sm text-gray-600">
+            Gestão real a partir do Supabase (public.usuarios) com filtro por
+            cliente.
+          </p>
+        </div>
 
         <Link
           href="/dashboard/admin/usuarios/novo"
@@ -167,27 +236,57 @@ export default function UsuariosAdminPage() {
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-700 text-sm">{error}</p>
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex gap-3">
+          <AlertCircle className="text-red-600 shrink-0" size={20} />
+          <div>
+            <p className="font-semibold text-red-900">Erro</p>
+            <p className="text-sm text-red-700">{error}</p>
+          </div>
         </div>
       )}
 
+      {/* KPIs */}
+      <div className="grid sm:grid-cols-4 gap-4">
+        <div className="rounded-xl border border-gray-200 bg-white p-4">
+          <p className="text-xs uppercase tracking-wide text-gray-500">Total</p>
+          <p className="mt-1 text-2xl font-extrabold">{kpis.total}</p>
+        </div>
+        <div className="rounded-xl border border-gray-200 bg-white p-4">
+          <p className="text-xs uppercase tracking-wide text-gray-500">
+            Ativos
+          </p>
+          <p className="mt-1 text-2xl font-extrabold">{kpis.ativos}</p>
+        </div>
+        <div className="rounded-xl border border-gray-200 bg-white p-4">
+          <p className="text-xs uppercase tracking-wide text-gray-500">
+            Inativos
+          </p>
+          <p className="mt-1 text-2xl font-extrabold">{kpis.inativos}</p>
+        </div>
+        <div className="rounded-xl border border-gray-200 bg-white p-4">
+          <p className="text-xs uppercase tracking-wide text-gray-500">
+            Gestores
+          </p>
+          <p className="mt-1 text-2xl font-extrabold">{kpis.gestores}</p>
+        </div>
+      </div>
+
       {/* Filters */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="relative">
-          <Search size={18} className="absolute left-3 top-3 text-gray-400" />
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+        <div className="lg:col-span-2 relative">
+          <Search className="absolute left-3 top-3 text-gray-400" size={18} />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar por nome, email ou telefone"
-            className="w-full pl-10 py-2 border rounded-lg"
+            placeholder="Buscar por nome, email ou telefone..."
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#019499]"
           />
         </div>
 
         <select
           value={filterCliente}
           onChange={(e) => setFilterCliente(e.target.value)}
-          className="border rounded-lg px-3 py-2"
+          className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#019499]"
         >
           <option value="todos">Todos os clientes</option>
           {clientes.map((c) => (
@@ -200,10 +299,10 @@ export default function UsuariosAdminPage() {
         <select
           value={filterRole}
           onChange={(e) => setFilterRole(e.target.value as FilterRole)}
-          className="border rounded-lg px-3 py-2"
+          className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#019499]"
         >
-          <option value="todos">Todos os papéis</option>
-          <option value="admin">Admin</option>
+          <option value="todos">Todas as funções</option>
+          <option value="admin">Administrador</option>
           <option value="cliente">Cliente</option>
           <option value="gestor">Gestor</option>
           <option value="usuario">Usuário</option>
@@ -212,7 +311,7 @@ export default function UsuariosAdminPage() {
         <select
           value={filterAtivo}
           onChange={(e) => setFilterAtivo(e.target.value as FilterAtivo)}
-          className="border rounded-lg px-3 py-2"
+          className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#019499]"
         >
           <option value="todos">Todos</option>
           <option value="ativos">Ativos</option>
@@ -220,113 +319,167 @@ export default function UsuariosAdminPage() {
         </select>
       </div>
 
-      {/* Table */}
-      <div className="bg-white border rounded-lg overflow-x-auto">
-        <table className="w-full">
-          <thead className="bg-gray-50 border-b">
-            <tr>
-              <th className="px-4 py-3 text-left text-xs font-semibold">
-                Usuário
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold">
-                Cliente
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold">
-                Papel
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold">
-                Status
-              </th>
-              <th className="px-4 py-3 text-right text-xs font-semibold">
-                Ações
-              </th>
-            </tr>
-          </thead>
+      {/* Toggle domain */}
+      <div className="flex items-center gap-2 text-sm text-gray-700">
+        <button
+          type="button"
+          className="inline-flex items-center gap-2 px-3 py-2 border rounded-lg bg-white hover:bg-gray-50"
+          onClick={() => setShowSystemAccounts((v) => !v)}
+        >
+          {showSystemAccounts ? <EyeOff size={16} /> : <Eye size={16} />}
+          {showSystemAccounts
+            ? "Ocultar contas do sistema"
+            : "Mostrar contas do sistema"}
+        </button>
+        <span className="text-xs text-gray-500">(Contas sem cliente_id)</span>
+      </div>
 
-          <tbody>
-            {filtered.map((u) => (
-              <tr key={u.id} className="border-t hover:bg-gray-50">
-                <td className="px-4 py-3">
-                  <p className="font-medium">{u.nome_completo ?? "—"}</p>
-                  <p className="text-sm text-gray-500">
-                    {u.email ?? u.telefone ?? "—"}
-                  </p>
-                </td>
+      {/* Table / Empty */}
+      {filtered.length === 0 ? (
+        <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
+          <Shield className="mx-auto text-gray-400 mb-3" size={48} />
+          <p className="text-gray-500">
+            Nenhum usuário encontrado com os filtros atuais
+          </p>
+        </div>
+      ) : (
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">
+                    Usuário
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">
+                    Cliente
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">
+                    Função
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">
+                    Último acesso
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase">
+                    Ações
+                  </th>
+                </tr>
+              </thead>
 
-                <td className="px-4 py-3 text-sm">
-                  <div className="flex items-center gap-1">
-                    <Building2 size={14} />
-                    {u.cliente_nome ?? "—"}
-                  </div>
-                </td>
+              <tbody className="divide-y divide-gray-200">
+                {filtered.map((u) => (
+                  <tr key={u.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
+                          <User size={16} className="text-gray-600" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-900">
+                            {u.nome_completo ?? "—"}
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            {u.email ?? u.telefone ?? "—"}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
 
-                <td className="px-4 py-3 text-sm capitalize">{u.role}</td>
+                    <td className="px-6 py-4 text-sm text-gray-700">
+                      <div className="flex items-center gap-1">
+                        <Building2 size={14} />
+                        {u.cliente_nome ?? "—"}
+                      </div>
+                    </td>
 
-                <td className="px-4 py-3">
-                  <span
-                    className={`px-3 py-1 text-xs rounded-full ${
-                      u.ativo
-                        ? "bg-green-100 text-green-800"
-                        : "bg-gray-100 text-gray-700"
-                    }`}
-                  >
-                    {u.ativo ? "Ativo" : "Inativo"}
-                  </span>
-                </td>
+                    <td className="px-6 py-4">
+                      <Badge className={roleBadge(u.role)}>
+                        {u.role === "admin"
+                          ? "Administrador"
+                          : u.role === "cliente"
+                            ? "Cliente"
+                            : u.role === "gestor"
+                              ? "Gestor"
+                              : "Usuário"}
+                      </Badge>
+                    </td>
 
-                <td className="px-4 py-3 text-right">
-                  <div className="flex justify-end gap-2">
-                    <Link
-                      href={`/dashboard/admin/usuarios/${u.id}/editar`}
-                      className="p-2 hover:bg-gray-100 rounded"
-                      title="Editar"
-                    >
-                      <Edit2 size={18} />
-                    </Link>
+                    <td className="px-6 py-4">
+                      <Badge
+                        className={
+                          u.ativo
+                            ? "bg-green-100 text-green-800"
+                            : "bg-gray-100 text-gray-800"
+                        }
+                      >
+                        {u.ativo ? "Ativo" : "Inativo"}
+                      </Badge>
+                    </td>
 
-                    <button
-                      onClick={() => handleToggleAtivo(u.id, !u.ativo)}
-                      className="p-2 hover:bg-gray-100 rounded"
-                      disabled={pending}
-                      title={u.ativo ? "Desativar" : "Ativar"}
-                    >
-                      {u.ativo ? (
-                        <ToggleRight size={18} />
-                      ) : (
-                        <ToggleLeft size={18} />
-                      )}
-                    </button>
+                    <td className="px-6 py-4 text-sm text-gray-500">
+                      <div className="flex items-center gap-1">
+                        <Calendar size={14} />
+                        {u.ultimo_acesso ? fmtDateBR(u.ultimo_acesso) : "Nunca"}
+                      </div>
+                    </td>
 
-                    <button
-                      onClick={() =>
-                        setConfirmDelete({
-                          open: true,
-                          id: u.id,
-                          nome: u.nome_completo ?? undefined,
-                        })
-                      }
-                      className="p-2 hover:bg-red-50 rounded text-red-600"
-                      disabled={pending}
-                      title="Deletar"
-                    >
-                      <Trash2 size={18} />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {filtered.length === 0 && (
-              <tr>
-                <td
-                  className="px-4 py-10 text-center text-sm text-gray-500"
-                  colSpan={5}
-                >
-                  Nenhum usuário encontrado com os filtros atuais.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <Link
+                          href={`/dashboard/admin/usuarios/${u.id}/editar`}
+                          className="text-blue-600 hover:text-blue-800 p-2 rounded hover:bg-blue-50"
+                          title="Editar"
+                        >
+                          <Edit2 size={18} />
+                        </Link>
+
+                        <button
+                          onClick={() => handleToggleAtivo(u.id, !u.ativo)}
+                          className="p-2 rounded hover:bg-gray-100"
+                          disabled={pending}
+                          title={u.ativo ? "Desativar" : "Ativar"}
+                        >
+                          {u.ativo ? (
+                            <ToggleRight size={18} />
+                          ) : (
+                            <ToggleLeft size={18} />
+                          )}
+                        </button>
+
+                        <button
+                          onClick={() =>
+                            setConfirmDelete({
+                              open: true,
+                              id: u.id,
+                              nome: u.nome_completo ?? undefined,
+                            })
+                          }
+                          className="text-red-600 hover:text-red-800 p-2 rounded hover:bg-red-50"
+                          disabled={pending}
+                          title="Deletar"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Footer info */}
+      <div className="text-sm text-gray-500">
+        Mostrando {filtered.length} de{" "}
+        {showSystemAccounts
+          ? usuarios.length
+          : usuarios.filter((u) => !!u.cliente_id).length}{" "}
+        usuários
       </div>
 
       {/* Confirm delete */}

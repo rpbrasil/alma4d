@@ -43,7 +43,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   // Usuários (Todos)
   {
-    href: "/dashboard/usuarios",
+    href: "/dashboard/admin/usuarios",
     label: "Usuários",
     icon: Users,
     roles: ["admin", "cliente", "gestor"],
