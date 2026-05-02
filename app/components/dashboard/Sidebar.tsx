@@ -33,13 +33,7 @@ const NAV_ITEMS: NavItem[] = [
     icon: LayoutDashboard,
     roles: ["admin", "cliente", "gestor"],
   },
-  // Profissionais (Cliente + Admin)
-  {
-    href: "/dashboard/profissionais",
-    label: "Profissionais",
-    icon: Users,
-    roles: ["admin", "cliente", "gestor"],
-  },
+
   // Relatórios (Todos)
   {
     href: "/dashboard/relatorios",
@@ -60,6 +54,13 @@ const NAV_ITEMS: NavItem[] = [
     label: "Clientes",
     icon: Users,
     roles: ["admin"],
+  },
+  // Profissionais (Cliente + Admin)
+  {
+    href: "/dashboard/profissionais",
+    label: "Profissionais",
+    icon: Users,
+    roles: ["admin", "cliente", "gestor"],
   },
   // Configurações (Todos)
   {
@@ -130,7 +131,7 @@ export default function Sidebar() {
             >
               <div className="relative h-12 w-12 rounded-full overflow-hidden">
                 <Image
-                  src="/images/alma4d-1024v2.png"
+                  src="/images/alma4d-round-512.png"
                   alt="alma4D"
                   fill
                   sizes="48px"

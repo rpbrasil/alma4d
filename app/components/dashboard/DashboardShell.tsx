@@ -1,8 +1,8 @@
 "use client";
 
 import { AuthProvider } from "@/context/auth";
-import { Sidebar } from "@/components/dashboard/Sidebar";
-import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
+import Sidebar from "@/components/dashboard/Sidebar";
+import DashboardHeader from "@/components/dashboard/DashboardHeader";
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   return (
