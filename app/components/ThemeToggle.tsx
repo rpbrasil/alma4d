@@ -5,20 +5,34 @@ import { useEffect, useState } from "react";
 const STORAGE_KEY = "theme"; // "light" | "dark"
 
 function getInitialTheme(): boolean {
-  const saved = localStorage.getItem(STORAGE_KEY);
-  if (saved === "dark") return true;
-  if (saved === "light") return false;
+  // ✅ SSR/Prerender guard (no server não existe window/localStorage)
+  if (typeof window === "undefined") return false; // default LIGHT
+
+  try {
+    const saved = window.localStorage.getItem(STORAGE_KEY);
+    if (saved === "dark") return true;
+    if (saved === "light") return false;
+  } catch {
+    // Storage pode falhar (ex: modo privado / bloqueios); seguimos com fallback
+  }
 
   // ✅ fallback: se não tem nada salvo, começa em LIGHT
   return false;
 }
 
 export function ThemeToggle() {
-  const [dark, setDark] = useState<boolean>(getInitialTheme);
+  // ✅ initializer seguro (não quebra no build)
+  const [dark, setDark] = useState<boolean>(() => getInitialTheme());
 
+  // ✅ sincroniza DOM + storage quando o estado mudar (sem setState aqui)
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);
-    localStorage.setItem(STORAGE_KEY, dark ? "dark" : "light");
+
+    try {
+      window.localStorage.setItem(STORAGE_KEY, dark ? "dark" : "light");
+    } catch {
+      // ignore
+    }
   }, [dark]);
 
   return (

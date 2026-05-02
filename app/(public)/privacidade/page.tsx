@@ -24,7 +24,6 @@ function Card({
 export default function PrivacidadePage() {
   return (
     <main className="max-w-3xl mx-auto px-4 py-10">
-      {/* Header */}
       <header className="mb-8">
         <h1 className="text-2xl sm:text-3xl font-extrabold text-brand">
           Política de Privacidade — alma4D
@@ -35,66 +34,73 @@ export default function PrivacidadePage() {
       </header>
 
       <section className="space-y-6 text-slate-700 text-sm leading-relaxed">
-        {/* Introdução */}
         <Card>
           <p>
             Esta Política de Privacidade descreve como o aplicativo{" "}
             <strong>alma4D</strong> (“Aplicativo”, “Plataforma” ou “Serviço”)
-            coleta, utiliza, armazena e protege os dados pessoais de seus
-            usuários, conforme a legislação aplicável, incluindo a{" "}
-            <strong>
-              Lei Geral de Proteção de Dados Pessoais (LGPD — Lei nº
-              13.709/2018)
-            </strong>
-            .
+            coleta, utiliza, armazena, compartilha e protege dados pessoais, em
+            conformidade com a Lei Geral de Proteção de Dados Pessoais (LGPD —
+            Lei nº 13.709/2018). Também foi estruturada para dar transparência
+            compatível com exigências de lojas, como o Google Play (divulgações
+            de coleta/uso/compartilhamento) e a App Store (informações de
+            privacidade do app).
+            [1](https://developers.google.com/android/guides/play-data-disclosure)[2](https://play.google/developer-content-policy/)[3](https://developer.apple.com/app-store/app-privacy-details/)
           </p>
         </Card>
 
-        {/* 1. Identificação do Controlador */}
-        <Card title="1. Identificação do Responsável pelo Tratamento de Dados">
+        <Card title="1. Controlador (Responsável) e Contato">
           <p>
-            O aplicativo alma4D é operado e administrado pela entidade
-            responsável pelo Serviço (“Controlador”), responsável pelo
-            tratamento de dados pessoais conforme a legislação aplicável,
-            incluindo a LGPD.
+            O aplicativo alma4D é operado e administrado pelo responsável pelo
+            Serviço (“Controlador”), que define as finalidades e meios de
+            tratamento de dados pessoais.
           </p>
           <p className="mt-3">
-            Contato para assuntos relacionados à privacidade e proteção de
-            dados:
+            Canal de contato para privacidade e proteção de dados:
           </p>
           <p className="mt-2">
-            <strong>E-mail: cliente@voss.digital</strong>
+            <strong>cliente@voss.digital</strong>
           </p>
         </Card>
 
-        {/* 4. Coleta de Dados */}
-        <Card title="4. Coleta de Dados">
-          <p>O alma4D poderá coletar e tratar os seguintes dados pessoais:</p>
+        <Card title="2. Escopo e Premissas de Tratamento">
+          <ul className="mt-3 list-disc pl-6">
+            <li>
+              Esta Política se aplica ao uso do aplicativo e aos dados tratados
+              no contexto do Serviço.
+            </li>
+            <li>
+              O tratamento ocorre apenas pelo tempo e extensão necessários às
+              finalidades descritas, observando bases legais aplicáveis.
+            </li>
+            <li>
+              Caso você não concorde com esta Política, recomenda-se interromper
+              o uso do aplicativo.
+            </li>
+          </ul>
+        </Card>
 
-          <h3 className="mt-4 font-bold text-slate-900">
-            4.1 Dados fornecidos diretamente pelo usuário
+        <Card title="3. Dados Coletados">
+          <h3 className="mt-1 font-bold text-slate-900">
+            3.1 Dados fornecidos diretamente pelo usuário
           </h3>
           <ul className="mt-3 list-disc pl-6">
             <li>Número de telefone</li>
-            <li>Dados inseridos voluntariamente no uso da plataforma</li>
-            <li>Preferências de uso e configurações pessoais</li>
+            <li>Dados inseridos voluntariamente durante o uso do Serviço</li>
+            <li>Preferências e configurações pessoais</li>
           </ul>
           <p className="mt-3">
             O número de telefone é utilizado exclusivamente para autenticação
             via código OTP (One-Time Password), gerenciamento de acesso e
-            segurança da conta.
+            segurança da conta. Os códigos OTP são temporários e não são
+            armazenados como credenciais permanentes.
           </p>
           <p className="mt-2">
-            O número de telefone não é utilizado para campanhas publicitárias,
-            marketing direto ou comercialização.
-          </p>
-          <p className="mt-2">
-            Os códigos OTP utilizados para autenticação são temporários e não
-            são armazenados como credenciais permanentes de acesso.
+            O número de telefone não é utilizado para marketing, publicidade,
+            prospecção comercial ou envio de comunicações promocionais.
           </p>
 
           <h3 className="mt-5 font-bold text-slate-900">
-            4.2 Dados coletados automaticamente
+            3.2 Dados coletados automaticamente
           </h3>
           <p className="mt-2">
             Durante a utilização do aplicativo, poderão ser coletadas
@@ -112,49 +118,70 @@ export default function PrivacidadePage() {
             <li>Interações dentro do aplicativo</li>
           </ul>
 
-          <h3 className="mt-5 font-bold text-slate-900">4.3 Dados sensíveis</h3>
+          <h3 className="mt-5 font-bold text-slate-900">3.3 Dados sensíveis</h3>
           <p className="mt-2">
-            O alma4D não solicita intencionalmente dados sensíveis, conforme
-            definição legal, salvo quando estritamente necessários para
-            funcionalidades específicas e mediante consentimento adequado.
+            O alma4D não solicita intencionalmente dados sensíveis, salvo quando
+            estritamente necessários para funcionalidades específicas e mediante
+            consentimento adequado, conforme a legislação aplicável.
           </p>
         </Card>
 
-        {/* 5. Finalidade */}
-        <Card title="5. Finalidade do Tratamento de Dados">
+        <Card title="4. Finalidades do Tratamento">
           <p>Os dados pessoais poderão ser utilizados para:</p>
           <ul className="mt-3 list-disc pl-6">
-            <li>Autenticar usuários</li>
-            <li>Garantir segurança de acesso</li>
-            <li>Prevenir fraudes e atividades indevidas</li>
+            <li>Autenticar usuários e administrar acesso</li>
+            <li>Garantir segurança e prevenção a fraudes</li>
             <li>Operar funcionalidades do aplicativo</li>
-            <li>Melhorar desempenho e experiência do usuário</li>
-            <li>Corrigir falhas técnicas</li>
+            <li>Manter, proteger e melhorar o Serviço</li>
+            <li>Diagnosticar falhas e melhorar desempenho</li>
             <li>Produzir análises estatísticas e operacionais</li>
             <li>Cumprir obrigações legais, regulatórias ou judiciais</li>
             <li>Responder solicitações administrativas ou judiciais</li>
           </ul>
-          <p className="mt-3">
-            O tratamento de dados ocorre com base nas hipóteses legais previstas
-            na LGPD.
-          </p>
         </Card>
 
-        {/* 6. Base legal */}
-        <Card title="6. Base Legal para Tratamento de Dados">
+        <Card title="5. Bases Legais (LGPD)">
           <p>O tratamento de dados poderá ocorrer com fundamento em:</p>
           <ul className="mt-3 list-disc pl-6">
-            <li>Consentimento do usuário</li>
-            <li>Execução contratual</li>
-            <li>Cumprimento de obrigação legal</li>
+            <li>Consentimento do usuário (quando aplicável)</li>
+            <li>Execução de contrato ou procedimentos preliminares</li>
+            <li>Cumprimento de obrigação legal ou regulatória</li>
             <li>Exercício regular de direitos</li>
             <li>Legítimo interesse do controlador</li>
-            <li>Proteção ao crédito, prevenção à fraude e segurança</li>
+            <li>Prevenção à fraude e segurança do titular/serviço</li>
           </ul>
         </Card>
 
-        {/* 7. Notificações */}
-        <Card title="7. Notificações">
+        <Card title="6. Compartilhamento de Dados e Operadores">
+          <p>
+            Os dados pessoais podem ser compartilhados exclusivamente quando
+            necessário para operação do Serviço, com fornecedores e parceiros
+            tecnológicos (“Operadores”), incluindo:
+          </p>
+          <ul className="mt-3 list-disc pl-6">
+            <li>
+              <strong>Firebase (Google LLC)</strong> — infraestrutura, segurança
+              e notificações
+            </li>
+            <li>
+              <strong>Supabase</strong> — autenticação e armazenamento de dados
+            </li>
+          </ul>
+          <p className="mt-3">
+            O alma4D não vende, aluga ou comercializa dados pessoais.
+          </p>
+        </Card>
+
+        <Card title="7. Transferência Internacional">
+          <p>
+            Dados podem ser armazenados ou processados fora do país de
+            residência do usuário, quando necessário para a operação do Serviço,
+            respeitando os requisitos legais aplicáveis à transferência
+            internacional.
+          </p>
+        </Card>
+
+        <Card title="8. Notificações">
           <p>
             O aplicativo poderá enviar notificações relacionadas ao Serviço:
           </p>
@@ -166,51 +193,16 @@ export default function PrivacidadePage() {
             <li>Avisos operacionais e de segurança</li>
           </ul>
           <p className="mt-3">
-            As notificações podem ser gerenciadas diretamente pelo usuário nas
-            configurações do dispositivo.
+            As notificações podem ser gerenciadas diretamente nas configurações
+            do dispositivo.
           </p>
         </Card>
 
-        {/* 8. Compartilhamento */}
-        <Card title="8. Compartilhamento de Dados">
-          <p>
-            Os dados pessoais poderão ser compartilhados exclusivamente quando
-            necessário para operação do Serviço, incluindo:
-          </p>
-          <ul className="mt-3 list-disc pl-6">
-            <li>Prestadores de serviços tecnológicos</li>
-            <li>Plataformas de autenticação</li>
-            <li>Serviços de hospedagem e infraestrutura</li>
-            <li>Ferramentas de monitoramento e análise</li>
-            <li>
-              Autoridades judiciais, administrativas ou regulatórias, quando
-              exigido por lei
-            </li>
-          </ul>
-          <p className="mt-3">Atualmente, o aplicativo pode utilizar:</p>
-          <ul className="mt-3 list-disc pl-6">
-            <li>
-              <strong>Firebase (Google LLC)</strong>
-            </li>
-            <li>
-              <strong>Supabase</strong>
-            </li>
-          </ul>
-          <p className="mt-3">
-            Os dados poderão ser armazenados e processados fora do país de
-            residência do usuário, respeitando requisitos legais de
-            transferência internacional de dados.
-          </p>
-          <p className="mt-2">
-            O alma4D não vende, aluga ou comercializa dados pessoais.
-          </p>
-        </Card>
-
-        {/* 9. Segurança */}
         <Card title="9. Armazenamento e Segurança">
           <p>
-            Os dados pessoais são armazenados em ambientes protegidos por
-            medidas técnicas e organizacionais adequadas.
+            Adotamos medidas técnicas e organizacionais adequadas para proteger
+            os dados pessoais contra acessos não autorizados, perda, uso
+            indevido ou divulgação indevida.
           </p>
           <p className="mt-3">Entre as medidas aplicadas podem estar:</p>
           <ul className="mt-3 list-disc pl-6">
@@ -221,69 +213,50 @@ export default function PrivacidadePage() {
             <li>Restrições internas de acesso</li>
           </ul>
           <p className="mt-3">
-            Embora sejam adotadas boas práticas de segurança, nenhum sistema é
-            absolutamente invulnerável.
-          </p>
-          <p className="mt-2">
-            Em caso de incidente de segurança que possa acarretar risco ou dano
-            relevante aos titulares de dados pessoais, medidas razoáveis poderão
-            ser adotadas, incluindo comunicação às autoridades competentes e aos
-            usuários afetados, conforme exigido pela legislação aplicável.
-          </p>
-          <p className="mt-2">
-            O usuário reconhece que existe risco inerente ao uso de tecnologias
-            digitais.
+            Apesar das boas práticas, nenhum sistema é absolutamente
+            invulnerável. Em caso de incidente relevante, medidas razoáveis
+            poderão ser adotadas, incluindo comunicações exigidas por lei.
           </p>
         </Card>
 
-        {/* 10. Retenção */}
         <Card title="10. Retenção de Dados">
           <p>
             Os dados pessoais serão armazenados apenas pelo período necessário
             para:
           </p>
           <ul className="mt-3 list-disc pl-6">
-            <li>Cumprimento das finalidades previstas</li>
-            <li>Atendimento a obrigações legais</li>
+            <li>Cumprimento das finalidades descritas</li>
+            <li>Atendimento a obrigações legais e regulatórias</li>
             <li>Exercício regular de direitos</li>
             <li>Auditoria, segurança e prevenção à fraude</li>
           </ul>
           <p className="mt-3">
             Após o término da necessidade de retenção, os dados poderão ser
-            eliminados, anonimizados ou bloqueados.
+            eliminados, anonimizados ou bloqueados, conforme aplicável.
           </p>
         </Card>
 
-        {/* 11. Direitos */}
-        <Card title="11. Direitos do Usuário">
-          <p>Nos termos da legislação aplicável, o usuário poderá solicitar:</p>
-          <ul className="mt-3 list-disc pl-6">
-            <li>Confirmação da existência de tratamento</li>
-            <li>Acesso aos dados pessoais</li>
-            <li>Correção de informações incompletas</li>
-            <li>Atualização de dados</li>
-            <li>Exclusão de dados pessoais</li>
-            <li>Portabilidade</li>
-            <li>Anonimização ou bloqueio</li>
-            <li>Revogação do consentimento</li>
-            <li>Informações sobre compartilhamento de dados</li>
-          </ul>
-          <p className="mt-3">
-            Solicitações poderão ser feitas por meio do contato:
+        <Card title="11. Direitos do Titular (LGPD)">
+          <p>
+            Nos termos do art. 18 da LGPD, o titular pode solicitar, entre
+            outros direitos: confirmação da existência de tratamento, acesso,
+            correção, anonimização/bloqueio/eliminação, portabilidade,
+            informação sobre compartilhamento e revogação do consentimento.
+            [4](https://www.gov.br/mds/pt-br/acesso-a-informacao/lgpd/direitos-do-titular)
           </p>
+          <p className="mt-3">Solicitações podem ser encaminhadas para:</p>
           <p className="mt-2">
             <strong>cliente@voss.digital</strong>
           </p>
           <p className="mt-3">
-            O controlador poderá solicitar comprovação de identidade antes do
-            atendimento.
+            Para segurança, o controlador poderá solicitar comprovação de
+            identidade antes do atendimento.
           </p>
         </Card>
 
-        {/* 12. Exclusão */}
         <Card title="12. Exclusão de Conta e Dados">
           <p>
-            O usuário poderá solicitar a exclusão definitiva da conta e dos
+            O usuário pode solicitar a exclusão definitiva da conta e de seus
             dados pessoais a qualquer momento.
           </p>
           <p className="mt-3">
@@ -292,68 +265,59 @@ export default function PrivacidadePage() {
           <ul className="mt-3 list-disc pl-6">
             <li>Obrigação legal de retenção</li>
             <li>Necessidade de cumprimento regulatório</li>
-            <li>Prevenção a fraudes</li>
-            <li>
-              Exercício regular de direitos em processos administrativos,
-              judiciais ou arbitrais
-            </li>
+            <li>Prevenção a fraudes e segurança</li>
+            <li>Exercício regular de direitos em processos</li>
           </ul>
-          <p className="mt-3">
-            Solicitações de exclusão devem ser encaminhadas para:
-          </p>
+          <p className="mt-3">Solicitações devem ser encaminhadas para:</p>
           <p className="mt-2">
             <strong>cliente@voss.digital</strong>
           </p>
         </Card>
 
-        {/* 13. DPO / Encarregado */}
         <Card title="13. Encarregado pelo Tratamento de Dados (LGPD)">
           <p>
-            Nos termos da LGPD, o alma4D poderá indicar formalmente um
-            responsável pelo tratamento de dados pessoais (“Encarregado” ou “DPO
-            — Data Protection Officer”), responsável pela comunicação entre:
+            Responsável:{" "}
+            <strong>Renato Augusto Jessouroun Purchio – RG 13774600</strong>
+            <br />
+            E-mail: <strong>cliente@voss.digital</strong>
+            <br />
+            Canal de atendimento LGPD: <strong>cliente@voss.digital</strong>
           </p>
-          <ul className="mt-3 list-disc pl-6">
-            <li>Usuários titulares de dados</li>
-            <li>Autoridades regulatórias</li>
-            <li>O controlador do aplicativo</li>
-          </ul>
-          <p className="mt-3">
-            O Encarregado poderá atuar no atendimento de solicitações
-            relacionadas a:
-          </p>
-          <ul className="mt-3 list-disc pl-6">
-            <li>Acesso aos dados</li>
-            <li>Correção de informações</li>
-            <li>Exclusão de dados</li>
-            <li>Revogação de consentimento</li>
-            <li>Dúvidas relacionadas à privacidade</li>
-            <li>Incidentes de segurança envolvendo dados pessoais</li>
-          </ul>
-
-          <p className="mt-4 font-bold text-slate-900">Dados do responsável:</p>
-          <ul className="mt-3 list-disc pl-6">
-            <li>
-              Responsável pelo tratamento de dados:{" "}
-              <strong>Renato Augusto Jessouroun Purchio – RG13774600</strong>
-            </li>
-            <li>
-              E-mail de contato: <strong>cliente@voss.digital</strong>
-            </li>
-            <li>
-              Canal de atendimento LGPD: <strong>cliente@voss.digital</strong>
-            </li>
-          </ul>
         </Card>
 
-        {/* 24. Contato */}
-        <Card title="Contato">
+        <Card title="14. Crianças e Adolescentes">
+          <p>
+            O aplicativo não é direcionado a menores de idade. Quando aplicável,
+            o uso por menor deve ocorrer com autorização e supervisão de
+            responsável legal, conforme a legislação aplicável.
+          </p>
+        </Card>
+
+        <Card title="15. Alterações nesta Política">
+          <p>
+            Esta Política poderá ser atualizada periodicamente. Recomendamos que
+            o usuário revise este conteúdo sempre que necessário.
+          </p>
+          <p className="mt-2 italic">Última atualização: Abril de 2026</p>
+        </Card>
+
+        <Card title="16. Lei Aplicável e Foro">
+          <p>Esta Política é regida pela legislação brasileira.</p>
+          <p className="mt-2">
+            Eventuais controvérsias relacionadas a esta Política serão tratadas,
+            sempre que possível, no foro do domicílio do controlador do
+            aplicativo,
+            <strong> salvo disposição legal em contrário</strong>.
+          </p>
+        </Card>
+
+        <Card title="17. Contato">
           <p>
             Para dúvidas, solicitações ou exercício de direitos relacionados à
             privacidade:
           </p>
           <p className="mt-2">
-            <strong>E-mail: cliente@voss.digital</strong>
+            <strong>cliente@voss.digital</strong>
           </p>
         </Card>
       </section>
