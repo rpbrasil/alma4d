@@ -106,9 +106,6 @@ export function LoginForm() {
         return;
       }
 
-      // 🔴 LOG 1: sessão logo após verificar OTP
-      const sessionAfterOtp = await supabase.auth.getSession();
-      
       setSuccess("Acesso confirmado. Redirecionando…");
       await new Promise((r) => setTimeout(r, 450));
       router.push("/dashboard");

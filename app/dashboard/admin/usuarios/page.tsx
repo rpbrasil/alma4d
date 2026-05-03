@@ -303,7 +303,7 @@ export default function UsuariosAdminPage() {
       </div>
 
       {/* Toggle domain */}
-      <div className="flex items-center gap-2 text-sm text-gray-700">
+      {/* <div className="flex items-center gap-2 text-sm text-gray-700">
         <button
           type="button"
           className="inline-flex items-center gap-2 px-3 py-2 border rounded-lg bg-white hover:bg-gray-50"
@@ -315,7 +315,7 @@ export default function UsuariosAdminPage() {
             : "Mostrar contas do sistema"}
         </button>
         <span className="text-xs text-gray-500">(Contas sem cliente_id)</span>
-      </div>
+      </div> */}
 
       {/* Table / Empty */}
       {filtered.length === 0 ? (

@@ -274,23 +274,7 @@ export default function ClientesPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-extrabold text-slate-900">Clientes</h1>
-          <p className="text-sm text-slate-600">
-            Gestão real baseada em <strong>clientes</strong> e{" "}
-            <strong>contratos</strong>.
-          </p>
-        </div>
-
-        <Link
-          href="/dashboard/admin/clientes/novo"
-          className="inline-flex items-center gap-2 bg-[#019499] text-white px-4 py-2 rounded-lg hover:bg-[#017a7d] transition-colors font-medium whitespace-nowrap"
-        >
-          <Plus size={18} />
-          Novo Cliente + Contrato
-        </Link>
-      </div>
+      
 
       {/* Error */}
       {error && (
@@ -336,7 +320,17 @@ export default function ClientesPage() {
           </p>
         </div>
       </div>
+<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        
 
+        <Link
+          href="/dashboard/admin/clientes/novo"
+          className="inline-flex items-center gap-2 bg-[#019499] text-white px-4 py-2 rounded-lg hover:bg-[#017a7d] transition-colors font-medium whitespace-nowrap"
+        >
+          <Plus size={18} />
+          Novo Cliente + Contrato
+        </Link>
+      </div>
       {/* Filters */}
       <div className="flex flex-col lg:flex-row gap-4">
         <div className="flex-1 relative">
