@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   Users,
@@ -10,8 +10,10 @@ import {
   X,
   BarChart3,
   Settings,
+  User,
+  LogOut,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useAuth } from "@/context/auth";
 import type { LucideIcon } from "lucide-react";
 
@@ -22,10 +24,6 @@ type NavItem = {
   roles: string[];
 };
 
-/**
- * ✅ Itens de navegação
- * Roles sempre em lowercase
- */
 const NAV_ITEMS: NavItem[] = [
   {
     href: "/dashboard",
@@ -33,36 +31,30 @@ const NAV_ITEMS: NavItem[] = [
     icon: LayoutDashboard,
     roles: ["admin", "cliente", "gestor"],
   },
-
-  // Relatórios (Todos)
   {
     href: "/dashboard/relatorios",
     label: "Relatórios",
     icon: BarChart3,
     roles: ["admin", "cliente", "gestor"],
   },
-  // Usuários (Todos)
   {
     href: "/dashboard/admin/usuarios",
     label: "Usuários",
     icon: Users,
     roles: ["admin", "cliente", "gestor"],
   },
-  // Admin - Clientes
   {
     href: "/dashboard/admin/clientes",
     label: "Clientes",
     icon: Users,
     roles: ["admin"],
   },
-  // Profissionais (Cliente + Admin)
   {
     href: "/dashboard/profissionais",
     label: "Profissionais",
     icon: Users,
     roles: ["admin", "cliente", "gestor"],
   },
-  // Configurações (Todos)
   {
     href: "/dashboard/configuracoes",
     label: "Configurações",
@@ -73,15 +65,14 @@ const NAV_ITEMS: NavItem[] = [
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { user, role, loading } = useAuth();
+  const router = useRouter();
+  const { user, role, loading, signOut } = useAuth();
+
   const [isOpen, setIsOpen] = useState(false);
+  const [displayName, setDisplayName] = useState("Usuário");
 
   const normalizedRole = role?.toLowerCase();
 
-  /**
-   * ✅ Filtra menu somente após auth resolver
-   * Durante loading, mantém HTML estável
-   */
   const items = useMemo(() => {
     if (loading || !normalizedRole) return [];
     return NAV_ITEMS.filter((item) => item.roles.includes(normalizedRole));
@@ -92,14 +83,37 @@ export default function Sidebar() {
     return pathname.startsWith(href);
   };
 
-  /**
-   * ✅ Placeholders estáveis (server === client)
-   */
-  const username =
-    !loading && user?.email ? user.email.split("@")[0] : "Usuário";
+  useEffect(() => {
+    if (loading || !user?.id) return;
+
+    let mounted = true;
+
+    (async () => {
+      try {
+        const { supabase } = await import("@/lib/supabase/client");
+
+        const { data } = await supabase
+          .from("usuarios")
+          .select("nome_completo")
+          .eq("id", user.id)
+          .single();
+
+        if (mounted && data?.nome_completo) {
+          setDisplayName(data.nome_completo);
+        }
+      } catch {
+        // fallback silencioso
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, [loading, user?.id]);
 
   return (
     <div suppressHydrationWarning>
+      {/* Mobile toggle */}
       <button
         type="button"
         aria-label={isOpen ? "Fechar menu" : "Abrir menu"}
@@ -139,16 +153,9 @@ export default function Sidebar() {
                   priority
                 />
               </div>
-              <div>
-                <p className="text-sm font-semibold leading-tight">
-                  {username}
-                </p>
-                {!loading && normalizedRole && (
-                  <p className="text-xs text-white/60 capitalize">
-                    {normalizedRole}
-                  </p>
-                )}
-              </div>
+              <p className="text-sm font-semibold leading-tight">
+                {displayName}
+              </p>
             </Link>
           </div>
 
@@ -172,7 +179,6 @@ export default function Sidebar() {
                       : "text-white/75 hover:bg-white/8 hover:text-white",
                   ].join(" ")}
                 >
-                  {/* Active indicator */}
                   <span
                     className={[
                       "absolute left-0 top-1/2 -translate-y-1/2 h-7 w-1 rounded-r-full",
@@ -194,9 +200,29 @@ export default function Sidebar() {
             })}
           </nav>
 
-          {/* Footer */}
-          <div className="mt-auto px-5 py-4 border-t border-white/10">
-            <p className="text-xs text-white/55">© alma4D</p>
+          {/* Account actions */}
+          <div className="px-3 py-3 border-t border-white/10 space-y-1">
+            <Link
+              href="/dashboard/perfil"
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm
+                         text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+            >
+              <User size={18} />
+              <span className="font-medium">Meu perfil</span>
+            </Link>
+
+            <button
+              type="button"
+              onClick={async () => {
+                await signOut();
+                router.push("/");
+              }}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm
+                         text-red-300 hover:bg-red-500/10 hover:text-red-200 transition-colors"
+            >
+              <LogOut size={18} />
+              <span className="font-medium">Sair</span>
+            </button>
           </div>
         </div>
       </aside>

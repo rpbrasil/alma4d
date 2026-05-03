@@ -21,22 +21,20 @@ export async function middleware(req: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const pathname = req.nextUrl.pathname;
-
   /* =====================================================
      🔒 BLOQUEIO DE ROTAS PROTEGIDAS
   ===================================================== */
 
-  if (!user && pathname.startsWith("/dashboard")) {
-    return NextResponse.redirect(new URL("/login", req.url));
-  }
+  // if (!user && pathname.startsWith("/dashboard")) {
+  //   return NextResponse.redirect(new URL("/login", req.url));
+  // }
   // 🔒 Bloqueio de área admin
-  if (
-    pathname.startsWith("/dashboard/admin") &&
-    user?.app_metadata?.claims?.role !== "admin"
-  ) {
-    return NextResponse.redirect(new URL("/dashboard", req.url));
-  }
+  // if (
+  //   pathname.startsWith("/dashboard/admin") &&
+  //   user?.app_metadata?.claims?.role !== "admin"
+  // ) {
+  //   return NextResponse.redirect(new URL("/dashboard", req.url));
+  // }
   /* =====================================================
      🔒 USUÁRIO INATIVO
   ===================================================== */

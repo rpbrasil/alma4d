@@ -1,5 +1,5 @@
-// app/hooks/useDashboardMetrics.ts
 "use client";
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/auth";
 
@@ -10,11 +10,27 @@ export interface DashboardMetric {
   href: string;
   bgColor: string;
   iconColor: string;
+  group?: "main" | "copsoq";
+}
+
+export interface UsuariosKpis {
+  total: number;
+  ativos: number;
+  inativos: number;
+  gestores: number;
 }
 
 export function useDashboardMetrics() {
   const { user, role } = useAuth();
+
   const [metrics, setMetrics] = useState<DashboardMetric[]>([]);
+  const [usuariosKpis, setUsuariosKpis] = useState<UsuariosKpis>({
+    total: 0,
+    ativos: 0,
+    inativos: 0,
+    gestores: 0,
+  });
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -27,84 +43,155 @@ export function useDashboardMetrics() {
       }
 
       try {
-        const { createClientSupabase } = await import("@/lib/supabase/client");
-        const supabase = await createClientSupabase();
-
+        const { supabase } = await import("@/lib/supabase/client");
+        
         const normalizedRole = role?.toLowerCase();
 
-        // Fetch counts based on role
         let clientesCount = 0;
-        let gestoresCount = 0;
-        let usuariosCount = 0;
+        let usuariosOperacionais = 0;
         let profissionaisCount = 0;
-        let avaliacoesCount = 0;
+
+        let totalAvaliacoes = 0;
         let mediaGeral = 0;
+        let mediaPorUsuario = 0;
+
+        let usuariosTotal = 0;
+        let usuariosAtivos = 0;
+        let usuariosInativos = 0;
+        let gestoresTotal = 0;
+
+        let copsoqAplicacoes = 0;
+        let copsoqConcluidas = 0;
+        let copsoqUsuariosAvaliados = 0;
+        let copsoqProgramacoesAtivas = 0;
 
         if (normalizedRole === "admin") {
-          // Admin sees all
-          const [clientesRes, gestoresRes, usuariosRes, profRes, avalRes] = await Promise.all([
+          /** =========================
+           * USUÁRIOS
+           ========================= */
+          const [
+            usuariosTotalRes,
+            usuariosAtivosRes,
+            usuariosInativosRes,
+            gestoresRes,
+            usuariosOperacionaisRes,
+          ] = await Promise.all([
+            supabase.from("usuarios").select("id", { count: "exact" }),
+            supabase
+              .from("usuarios")
+              .select("id", { count: "exact" })
+              .eq("ativo", true),
+            supabase
+              .from("usuarios")
+              .select("id", { count: "exact" })
+              .eq("ativo", false),
+            supabase
+              .from("usuarios")
+              .select("id", { count: "exact" })
+              .eq("role", "gestor"),
+            supabase
+              .from("usuarios")
+              .select("id", { count: "exact" })
+              .eq("role", "usuario"),
+          ]);
+
+          const [
+            aplicacoesRes,
+            concluidasRes,
+            usuariosAvaliadosRes,
+            programacoesRes,
+          ] = await Promise.all([
+            supabase.from("copsoq_aplicacoes").select("id", { count: "exact" }),
+
+            supabase
+              .from("copsoq_aplicacoes")
+              .select("id", { count: "exact" })
+              .eq("status", "concluido"),
+
+            supabase.from("copsoq_aplicacoes").select("usuario_id"),
+
+            supabase
+              .from("copsoq_programacoes")
+              .select("id", { count: "exact" })
+              .eq("ativo", true),
+          ]);
+
+          copsoqAplicacoes = aplicacoesRes.count || 0;
+          copsoqConcluidas = concluidasRes.count || 0;
+
+          if (usuariosAvaliadosRes.data) {
+            copsoqUsuariosAvaliados = new Set(
+              usuariosAvaliadosRes.data.map((a) => a.usuario_id),
+            ).size;
+          }
+
+          copsoqProgramacoesAtivas = programacoesRes.count || 0;
+
+          usuariosTotal = usuariosTotalRes.count || 0;
+          usuariosAtivos = usuariosAtivosRes.count || 0;
+          usuariosInativos = usuariosInativosRes.count || 0;
+          gestoresTotal = gestoresRes.count || 0;
+          usuariosOperacionais = usuariosOperacionaisRes.count || 0;
+
+          /** =========================
+           * CLIENTES / PROFISSIONAIS
+           ========================= */
+          const [clientesRes, profissionaisRes] = await Promise.all([
             supabase.from("clientes").select("id", { count: "exact" }),
-            supabase.from("usuarios").select("id", { count: "exact" }).eq("role", "gestor"),
-            supabase.from("usuarios").select("id", { count: "exact" }).eq("role", "usuario"),
             supabase.from("profissionais").select("id", { count: "exact" }),
-            supabase.from("avaliacoes").select("media_total", { count: "exact" }),
           ]);
 
           clientesCount = clientesRes.count || 0;
-          gestoresCount = gestoresRes.count || 0;
-          usuariosCount = usuariosRes.count || 0;
-          profissionaisCount = profRes.count || 0;
-          avaliacoesCount = avalRes.count || 0;
+          profissionaisCount = profissionaisRes.count || 0;
 
-          if (avalRes.data && avalRes.data.length > 0) {
-            const medias = avalRes.data.map(a => a.media_total).filter(m => m != null);
-            mediaGeral = medias.length > 0 ? medias.reduce((a, b) => a + b, 0) / medias.length : 0;
-          }
-        } else if (normalizedRole === "cliente") {
-          // Cliente sees their own data
-          const { data: userData } = await supabase
-            .from("usuarios")
-            .select("cliente_id")
-            .eq("id", user.id)
-            .single();
+          /** =========================
+           * AVALIAÇÕES COMPLETAS
+           ========================= */
+          const { data: avaliacoesData } = await supabase
+            .from("avaliacoes_completas")
+            .select("user_id, media_total");
 
-          if (userData?.cliente_id) {
-            const [gestoresRes, usuariosRes, profRes, avalRes] = await Promise.all([
-              supabase.from("usuarios").select("id", { count: "exact" }).eq("role", "gestor").eq("cliente_id", userData.cliente_id),
-              supabase.from("usuarios").select("id", { count: "exact" }).eq("role", "usuario").eq("cliente_id", userData.cliente_id),
-              supabase.from("profissionais").select("id", { count: "exact" }).eq("cliente_id", userData.cliente_id),
-              supabase.from("avaliacoes").select("media_total", { count: "exact" }).eq("cliente_id", userData.cliente_id),
-            ]);
+          if (avaliacoesData?.length) {
+            totalAvaliacoes = avaliacoesData.length;
 
-            gestoresCount = gestoresRes.count || 0;
-            usuariosCount = usuariosRes.count || 0;
-            profissionaisCount = profRes.count || 0;
-            avaliacoesCount = avalRes.count || 0;
+            const mediasValidas = avaliacoesData
+              .map((a) => a.media_total)
+              .filter((m) => m != null) as number[];
 
-            if (avalRes.data && avalRes.data.length > 0) {
-              const medias = avalRes.data.map(a => a.media_total).filter(m => m != null);
-              mediaGeral = medias.length > 0 ? medias.reduce((a, b) => a + b, 0) / medias.length : 0;
+            if (mediasValidas.length) {
+              mediaGeral =
+                mediasValidas.reduce((a, b) => a + b, 0) / mediasValidas.length;
             }
-          }
-        } else if (normalizedRole === "gestor") {
-          // Gestor sees their users
-          const [usuariosRes, profRes, avalRes] = await Promise.all([
-            supabase.from("usuarios").select("id", { count: "exact" }).eq("role", "usuario").eq("gestor_id", user.id),
-            supabase.from("profissionais").select("id", { count: "exact" }).eq("gestor_id", user.id),
-            supabase.from("avaliacoes").select("media_total", { count: "exact" }).eq("gestor_id", user.id),
-          ]);
 
-          usuariosCount = usuariosRes.count || 0;
-          profissionaisCount = profRes.count || 0;
-          avaliacoesCount = avalRes.count || 0;
+            const mediaPorUsuarioMap = new Map<string, number[]>();
 
-          if (avalRes.data && avalRes.data.length > 0) {
-            const medias = avalRes.data.map(a => a.media_total).filter(m => m != null);
-            mediaGeral = medias.length > 0 ? medias.reduce((a, b) => a + b, 0) / medias.length : 0;
+            avaliacoesData.forEach((a) => {
+              if (!a.user_id || a.media_total == null) return;
+              const arr = mediaPorUsuarioMap.get(a.user_id) || [];
+              arr.push(a.media_total);
+              mediaPorUsuarioMap.set(a.user_id, arr);
+            });
+
+            const mediasUsuarios = Array.from(mediaPorUsuarioMap.values()).map(
+              (arr) => arr.reduce((a, b) => a + b, 0) / arr.length,
+            );
+
+            if (mediasUsuarios.length) {
+              mediaPorUsuario =
+                mediasUsuarios.reduce((a, b) => a + b, 0) /
+                mediasUsuarios.length;
+            }
           }
         }
 
-        const newMetrics: DashboardMetric[] = [
+        setUsuariosKpis({
+          total: usuariosTotal,
+          ativos: usuariosAtivos,
+          inativos: usuariosInativos,
+          gestores: gestoresTotal,
+        });
+
+        setMetrics([
           {
             label: "Clientes",
             value: clientesCount,
@@ -114,18 +201,10 @@ export function useDashboardMetrics() {
             iconColor: "text-blue-600",
           },
           {
-            label: "Gestores",
-            value: gestoresCount,
-            icon: "UserCheck",
-            href: "/dashboard/profissionais",
-            bgColor: "bg-green-50",
-            iconColor: "text-green-600",
-          },
-          {
             label: "Usuários",
-            value: usuariosCount,
+            value: usuariosOperacionais,
             icon: "Users",
-            href: "/dashboard/usuarios",
+            href: "/dashboard/admin/usuarios",
             bgColor: "bg-purple-50",
             iconColor: "text-purple-600",
           },
@@ -138,10 +217,10 @@ export function useDashboardMetrics() {
             iconColor: "text-orange-600",
           },
           {
-            label: "Avaliações",
-            value: avaliacoesCount,
+            label: "Auto-avaliações",
+            value: totalAvaliacoes,
             icon: "BarChart3",
-            href: "/dashboard/relatorios",
+            href: "/dashboard/relatorios/avaliacoes",
             bgColor: "bg-red-50",
             iconColor: "text-red-600",
           },
@@ -149,23 +228,57 @@ export function useDashboardMetrics() {
             label: "Média Geral",
             value: mediaGeral.toFixed(1),
             icon: "TrendingUp",
-            href: "/dashboard/relatorios",
+            href: "/dashboard/relatorios/avaliacoes",
             bgColor: "bg-indigo-50",
             iconColor: "text-indigo-600",
           },
-        ].filter(metric => {
-          // Filter based on role
-          if (normalizedRole === "admin") return true;
-          if (normalizedRole === "cliente") return !["Clientes"].includes(metric.label);
-          if (normalizedRole === "gestor") return !["Clientes", "Gestores"].includes(metric.label);
-          return false;
-        });
+          {
+            label: "Média por Usuário",
+            value: mediaPorUsuario.toFixed(1),
+            icon: "TrendingUp",
+            href: "/dashboard/relatorios/avaliacoes",
+            bgColor: "bg-teal-50",
+            iconColor: "text-teal-600",
+          },
+          {
+            label: "Questionários Aplicados",
+            value: copsoqAplicacoes,
+            icon: "BarChart3",
+            href: "/dashboard/relatorios/copsoq",
+            bgColor: "bg-slate-50",
+            iconColor: "text-slate-700",
+          },
+          {
+            label: "Questionários Concluídos",
+            value: copsoqConcluidas,
+            icon: "TrendingUp",
+            href: "/dashboard/relatorios/copsoq",
+            bgColor: "bg-green-50",
+            iconColor: "text-green-700",
+          },
+          {
+            label: "Usuários Avaliados",
+            value: copsoqUsuariosAvaliados,
+            icon: "Users",
+            href: "/dashboard/relatorios/copsoq",
+            bgColor: "bg-blue-50",
+            iconColor: "text-blue-700",
+          },
+          {
+            label: "Programações Ativas",
+            value: copsoqProgramacoesAtivas,
+            icon: "Calendar",
+            href: "/dashboard/admin/programacoes",
+            bgColor: "bg-purple-50",
+            iconColor: "text-purple-700",
+          },
+        ]);
 
-        setMetrics(newMetrics);
         setError(null);
       } catch (err) {
-        const message = err instanceof Error ? err.message : "Erro ao carregar métricas";
-        setError(message);
+        setError(
+          err instanceof Error ? err.message : "Erro ao carregar métricas",
+        );
         setMetrics([]);
       } finally {
         setLoading(false);
@@ -175,5 +288,5 @@ export function useDashboardMetrics() {
     loadMetrics();
   }, [user, role]);
 
-  return { metrics, loading, error };
+  return { metrics, usuariosKpis, loading, error };
 }

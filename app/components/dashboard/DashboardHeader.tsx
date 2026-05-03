@@ -6,12 +6,16 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { PAGE_TITLES } from "@/lib/pageTitles";
+import Image from "next/image";
 
+// Uso:
+<Image src="/logo.png" width={500} height={500} alt="Descrição" />;
 export default function DashboardHeader() {
-  const { user, role, signOut, loading } = useAuth();
+  const { user, signOut, loading } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
-
+  const [clienteNome, setClienteNome] = useState<string>("Painel Corporativo");
+  const [clienteLogo, setClienteLogo] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -47,11 +51,55 @@ export default function DashboardHeader() {
   }, [pathname]);
 
   // ✅ placeholders ESTÁVEIS (server === client)
-  const avatarChar =
-    !loading && user?.email ? user.email.charAt(0).toUpperCase() : "?";
 
-  const username =
-    !loading && user?.email ? user.email.split("@")[0] : "Usuário";
+  useEffect(() => {
+    if (loading || !user?.id) return;
+
+    let mounted = true;
+
+    (async () => {
+      try {
+        const { createClient } = await import("@supabase/supabase-js");
+
+        const supabase = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        );
+
+        const { data: usuario } = await supabase
+          .from("usuarios")
+          .select("cliente_id")
+          .eq("id", user.id)
+          .single();
+
+        if (!usuario?.cliente_id || !mounted) return;
+
+        const { data: cliente } = await supabase
+          .from("clientes")
+          .select("nome, logo_url")
+          .eq("id", usuario.cliente_id)
+          .single();
+
+        if (!mounted) return;
+        if (cliente?.nome) {
+          setClienteNome(cliente.nome);
+        } else {
+          setClienteNome("Painel Corporativo");
+        }
+        if (cliente?.logo_url) {
+          setClienteLogo(cliente.logo_url);
+        } else {
+          setClienteLogo(null); // força fallback
+        }
+      } catch {
+        setClienteLogo(null);
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, [loading, user?.id]);
 
   return (
     <header
@@ -66,32 +114,26 @@ export default function DashboardHeader() {
 
         {/* User menu */}
         <div className="relative" ref={menuRef}>
-          <button
-            type="button"
-            onClick={() => setOpen((v) => !v)}
-            className="flex items-center gap-3 px-3 py-1.5 rounded-md
-                       hover:bg-surface-muted transition-colors"
-          >
-            <div
-              className="w-8 h-8 rounded-full bg-surface-muted
-                            flex items-center justify-center
-                            text-sm font-semibold text-foreground"
-            >
-              {avatarChar}
+          <div className="flex items-center gap-3">
+            <div className="relative h-8 w-8 rounded-md overflow-hidden bg-surface-muted">
+              <Image
+                src={clienteLogo ?? "/images/alma4d-round-512.png"}
+                alt="Cliente"
+                fill
+                sizes="32px"
+                className="object-contain"
+              />
             </div>
 
-            <div className="hidden sm:flex flex-col text-left">
-              <span className="text-sm font-medium leading-none">
-                {username}
+            <div className="hidden sm:flex flex-col leading-tight">
+              <span className="text-sm font-semibold text-foreground">
+                {clienteNome}
               </span>
-
-              {!loading && role && (
-                <span className="text-xs text-foreground/60 capitalize">
-                  {role}
-                </span>
-              )}
+              <span className="text-xs text-foreground/60">
+                Gestão e Indicadores
+              </span>
             </div>
-          </button>
+          </div>
 
           {open && !loading && (
             <div

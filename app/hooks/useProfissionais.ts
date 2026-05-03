@@ -1,63 +1,57 @@
 // app/hooks/useProfissionais.ts
 "use client";
+
 import type { Profissional } from "@/types/profissional";
 import { useState, useEffect } from "react";
-import { useAuth } from "@/context/auth";
+import { supabase } from "@/lib/supabase/client";
 
 export function useProfissionais() {
-  const { user } = useAuth();
   const [data, setData] = useState<Profissional[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let isMounted = true;
+    let mounted = true;
 
-    const loadProfissionais = async () => {
-      if (!user?.id) {
-        if (isMounted) {
-          setData([]);
-          setLoading(false);
-        }
-        return;
-      }
-
+    (async () => {
       try {
-        // Import dinâmico para evitar SSR issues
-        const { createClientSupabase } = await import("@/lib/supabase/client");
-        const supabase = await createClientSupabase();
+        // ✅ valida sessão no client
+        const { data: auth, error: authErr } = await supabase.auth.getUser();
 
-        const { data: profissionais, error: err } = await supabase
+        if (authErr || !auth.user) {
+          throw new Error("Sessão inválida");
+        }
+
+        const { data, error } = await supabase
           .from("profissionais")
-          .select("*")
+          .select("id,nome,ativo")
           .order("nome", { ascending: true });
 
-        if (err) throw err;
+        if (error) throw error;
 
-        if (isMounted) {
-          setData((profissionais || []) as Profissional[]);
+        if (mounted) {
+          setData((data ?? []) as Profissional[]);
           setError(null);
         }
       } catch (err) {
         const message =
           err instanceof Error ? err.message : "Erro ao carregar profissionais";
-        if (isMounted) {
+
+        if (mounted) {
           setError(message);
           setData([]);
         }
       } finally {
-        if (isMounted) {
+        if (mounted) {
           setLoading(false);
         }
       }
-    };
-
-    loadProfissionais();
+    })();
 
     return () => {
-      isMounted = false;
+      mounted = false;
     };
-  }, [user?.id]);
+  }, []);
 
   return {
     data,

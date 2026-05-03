@@ -1,7 +1,6 @@
-"use server";
+// ✅ CLIENT-SIDE ACTIONS (sem "use server")
 
 import { createClient } from "@supabase/supabase-js";
-import { createServerSupabase } from "@/lib/supabase/server";
 
 export type Role = "admin" | "cliente" | "gestor" | "usuario";
 
@@ -18,8 +17,6 @@ export type UsuarioRow = {
   ultimo_acesso: string | null;
 };
 
-type ClienteOption = { id: string; nome: string };
-
 function asRole(value: string | null | undefined): Role {
   const v = (value || "").trim().toLowerCase();
   if (v === "admin" || v === "cliente" || v === "gestor" || v === "usuario")
@@ -27,85 +24,64 @@ function asRole(value: string | null | undefined): Role {
   return "usuario";
 }
 
-// Admin DB client (service role) — server-only
-function createAdminDbClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+// ✅ Supabase client do browser (usa localStorage)
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+);
 
-  if (!url || !serviceKey) {
-    throw new Error(
-      "Env ausente: NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY.",
-    );
+// ✅ Helper: valida sessão e role admin (client)
+async function assertAdminClient() {
+  const { data: auth, error } = await supabase.auth.getUser();
+  if (error || !auth.user) {
+    throw new Error("Sessão expirada. Faça login novamente.");
   }
 
-  return createClient(url, serviceKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-}
-
-// Confirma sessão + role admin (guard)
-async function assertAdmin() {
-  const supa = await createServerSupabase();
-  const { data: auth, error: authErr } = await supa.auth.getUser();
-  if (authErr) throw new Error(authErr.message);
-  if (!auth?.user) throw new Error("Sessão expirada. Faça login novamente.");
-
-  // valida role do próprio usuário na tabela public.usuarios
-  const { data: me, error } = await supa
+  const { data: me, error: errMe } = await supabase
     .from("usuarios")
     .select("role")
     .eq("id", auth.user.id)
     .single();
 
-  if (error) throw new Error("Sem permissão para validar role do usuário.");
-  if (asRole(me?.role) !== "admin")
+  if (errMe) throw new Error("Erro ao validar permissões.");
+  if (asRole(me?.role) !== "admin") {
     throw new Error("Acesso restrito a administradores.");
+  }
 
   return auth.user.id;
 }
 
-type RawUsuario = {
-  id: string;
-  nome_completo: string | null;
-  email: string | null;
-  telefone: string | null;
-  role: string | null;
-  ativo: boolean | null;
-  cliente_id: string | null;
-  created_at: string;
-  ultimo_acesso: string | null;
-};
-
+// =====================================================
+// LISTAR USUÁRIOS (ADMIN)
+// =====================================================
 export async function listarUsuariosAdmin(): Promise<UsuarioRow[]> {
-  await assertAdmin();
-  const supabase = await createServerSupabase();
+  await assertAdminClient();
 
-  const { data: users, error: errUsers } = await supabase
+  const { data: users, error } = await supabase
     .from("usuarios")
     .select(
       "id,nome_completo,email,telefone,role,ativo,cliente_id,created_at,ultimo_acesso",
     )
     .order("created_at", { ascending: false });
 
-  if (errUsers) throw new Error(errUsers.message);
+  if (error) throw new Error(error.message);
 
-  const usuarios = (users ?? []) as RawUsuario[];
-
-  // busca nomes dos clientes em lote (sem depender de join)
+  const usuarios = users ?? [];
+  const clienteMap = new Map<string, string>();
+  // 🔹 buscar nomes dos clientes em lote
   const clienteIds = Array.from(
     new Set(usuarios.map((u) => u.cliente_id).filter(Boolean)),
   ) as string[];
 
-  const clienteMap = new Map<string, string>();
-  if (clienteIds.length) {
-    const { data: cs, error: errC } = await supabase
+  if (clienteIds.length > 0) {
+    const { data: clientes, error: errClientes } = await supabase
       .from("clientes")
       .select("id,nome")
       .in("id", clienteIds);
 
-    if (errC) throw new Error(errC.message);
+    if (errClientes) throw new Error(errClientes.message);
 
-    (cs ?? []).forEach((c: { id: string; nome: string }) => {
+    (clientes ?? []).forEach((c) => {
       clienteMap.set(c.id, c.nome);
     });
   }
@@ -124,37 +100,42 @@ export async function listarUsuariosAdmin(): Promise<UsuarioRow[]> {
   }));
 }
 
-export async function listarClientesParaFiltro(): Promise<ClienteOption[]> {
-  await assertAdmin();
-  const admin = createAdminDbClient();
+// =====================================================
+// LISTAR CLIENTES (ADMIN)
+// =====================================================
+export async function listarClientesParaFiltro() {
+  await assertAdminClient();
 
-  const { data, error } = await admin
+  const { data, error } = await supabase
     .from("clientes")
     .select("id,nome")
     .order("nome");
 
   if (error) throw new Error(error.message);
-
-  return (data ?? []) as ClienteOption[];
+  return data ?? [];
 }
 
+// =====================================================
+// ATIVAR / DESATIVAR USUÁRIO
+// =====================================================
 export async function setUsuarioAtivo(usuarioId: string, ativo: boolean) {
-  await assertAdmin();
-  const admin = createAdminDbClient();
+  await assertAdminClient();
 
-  const { error } = await admin
+  const { error } = await supabase
     .from("usuarios")
     .update({ ativo })
     .eq("id", usuarioId);
+
   if (error) throw new Error(error.message);
 }
 
-export async function deletarUsuario(usuarioId: string) {
-  await assertAdmin();
-  const admin = createAdminDbClient();
+export async function inativarUsuario(usuarioId: string) {
+  await assertAdminClient();
 
-  // Remove apenas da tabela public.usuarios.
-  // Se quiser deletar também do Auth (auth.users), faça isso no /usuarios/novo/actions.ts via admin.auth.admin.deleteUser().
-  const { error } = await admin.from("usuarios").delete().eq("id", usuarioId);
+  const { error } = await supabase
+    .from("usuarios")
+    .update({ ativo: false })
+    .eq("id", usuarioId);
+
   if (error) throw new Error(error.message);
 }

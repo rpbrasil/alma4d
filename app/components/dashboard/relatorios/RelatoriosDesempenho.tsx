@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/context/auth";
-import { createClientSupabase } from "@/lib/supabase/client";
+import { supabase } from "@/lib/supabase/client";
 import { LineChart, Line, XAxis, YAxis, Tooltip } from "recharts";
 
 type Cliente = {
@@ -95,7 +95,7 @@ export default function RelatoriosDesempenho() {
       if (!cancelled) setLoading(true);
 
       try {
-        const supabase = createClientSupabase(); // (geralmente não precisa await)
+        
         const { data: usuario, error } = await supabase
           .from("usuarios")
           .select("id, role, cliente_id")
@@ -279,7 +279,6 @@ function ListaClientes({ onSelect }: { onSelect: (cliente: Cliente) => void }) {
 
   useEffect(() => {
     const load = async () => {
-      const supabase = await createClientSupabase();
       const { data, error } = await supabase
         .from("clientes")
         .select("id, nome");
@@ -378,8 +377,6 @@ function ListaGestores({
 
   useEffect(() => {
     const load = async () => {
-      const supabase = await createClientSupabase();
-
       const { data, error } = await supabase
         .from("usuarios")
         .select("id, nome_completo")
@@ -494,8 +491,6 @@ function ListaUsuarios({
 
   useEffect(() => {
     const load = async () => {
-      const supabase = await createClientSupabase();
-
       const { data, error } = await supabase
         .from("usuarios")
         .select("id, nome_completo")
@@ -601,7 +596,6 @@ function EvolucaoUsuario({ usuario }: { usuario: Usuario }) {
       setLoading(true);
       setErro(null);
 
-      const supabase = await createClientSupabase();
       const { data, error } = await supabase
         .from("avaliacoes_completas")
         .select(

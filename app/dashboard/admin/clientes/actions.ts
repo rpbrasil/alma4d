@@ -1,8 +1,10 @@
-"use server";
+// ✅ CLIENT-SIDE ACTIONS (clientes)
 
-import { createServerSupabase } from "@/lib/supabase/server";
+import { createClient } from "@supabase/supabase-js";
 
-type ClienteRow = {
+type Role = "admin" | "cliente" | "gestor" | "usuario";
+
+export type ClienteRow = {
   id: string;
   tipo: "pf" | "pj";
   nome: string;
@@ -23,16 +25,50 @@ function friendlyDbError(err: unknown) {
   return e.message || "Erro ao acessar o banco de dados.";
 }
 
+function asRole(value: string | null | undefined): Role {
+  const v = (value || "").trim().toLowerCase();
+  if (v === "admin" || v === "cliente" || v === "gestor" || v === "usuario")
+    return v;
+  return "usuario";
+}
+
+// ✅ Supabase client do browser (localStorage)
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+);
+
+// ✅ Valida sessão + admin no CLIENT
+async function assertAdminClient() {
+  const { data: auth, error } = await supabase.auth.getUser();
+  if (error || !auth.user) {
+    throw new Error("Sessão expirada. Faça login novamente.");
+  }
+
+  const { data: me, error: errMe } = await supabase
+    .from("usuarios")
+    .select("role")
+    .eq("id", auth.user.id)
+    .single();
+
+  if (errMe) throw new Error("Erro ao validar permissões.");
+  if (asRole(me?.role) !== "admin") {
+    throw new Error("Acesso restrito a administradores.");
+  }
+
+  return auth.user.id;
+}
+
 /**
  * Lista clientes + métricas reais via contratos:
  * - contratos_count
  * - ultimo_status_contrato
- * - ultimo_inicio (data_inicio do contrato mais recente)
+ * - ultimo_inicio
  */
 export async function listarClientesAdmin(): Promise<ClienteRow[]> {
-  const supabase = await createServerSupabase();
+  await assertAdminClient();
 
-  // 1) pega clientes base
+  // 1️⃣ Clientes base
   const { data: clientes, error: errClientes } = await supabase
     .from("clientes")
     .select("id,tipo,nome,documento,email,telefone,ativo,created_at")
@@ -43,7 +79,7 @@ export async function listarClientesAdmin(): Promise<ClienteRow[]> {
 
   const ids = clientes.map((c) => c.id);
 
-  // 2) puxa contratos relacionados (só o necessário)
+  // 2️⃣ Contratos relacionados
   const { data: contratos, error: errContratos } = await supabase
     .from("contratos")
     .select("cliente_id,status,data_inicio,criado_em")
@@ -56,10 +92,11 @@ export async function listarClientesAdmin(): Promise<ClienteRow[]> {
     string,
     { count: number; lastStatus: string | null; lastInicio: string | null }
   >();
-  for (const id of ids)
-    map.set(id, { count: 0, lastStatus: null, lastInicio: null });
 
-  // como contratos está ordenado por criado_em desc, o primeiro que aparecer por cliente é o "último"
+  for (const id of ids) {
+    map.set(id, { count: 0, lastStatus: null, lastInicio: null });
+  }
+
   if (contratos) {
     for (const ct of contratos) {
       const cur = map.get(ct.cliente_id);
@@ -78,6 +115,7 @@ export async function listarClientesAdmin(): Promise<ClienteRow[]> {
       lastStatus: null,
       lastInicio: null,
     };
+
     return {
       id: c.id,
       tipo: c.tipo,
@@ -94,8 +132,11 @@ export async function listarClientesAdmin(): Promise<ClienteRow[]> {
   });
 }
 
+// =====================================================
+// ATIVAR / DESATIVAR CLIENTE
+// =====================================================
 export async function setClienteAtivo(clienteId: string, ativo: boolean) {
-  const supabase = await createServerSupabase();
+  await assertAdminClient();
 
   const { error } = await supabase
     .from("clientes")
@@ -105,12 +146,16 @@ export async function setClienteAtivo(clienteId: string, ativo: boolean) {
   if (error) throw new Error(friendlyDbError(error));
 }
 
+// =====================================================
+// DELETAR CLIENTE
+// =====================================================
 export async function deletarCliente(clienteId: string) {
-  const supabase = await createServerSupabase();
+  await assertAdminClient();
 
   const { error } = await supabase
     .from("clientes")
     .delete()
     .eq("id", clienteId);
+
   if (error) throw new Error(friendlyDbError(error));
 }

@@ -2,9 +2,9 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { createBrowserClient } from "@supabase/ssr";
+import { createClient } from "@supabase/supabase-js";
 
-const supabase = createBrowserClient(
+const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
 );
@@ -100,10 +100,15 @@ export function LoginForm() {
         token: otp.trim(),
         type: "sms",
       });
+      
       if (error) {
         setError(error.message || "Código inválido ou expirado.");
         return;
       }
+
+      // 🔴 LOG 1: sessão logo após verificar OTP
+      const sessionAfterOtp = await supabase.auth.getSession();
+      
       setSuccess("Acesso confirmado. Redirecionando…");
       await new Promise((r) => setTimeout(r, 450));
       router.push("/dashboard");

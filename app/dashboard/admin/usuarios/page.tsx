@@ -22,10 +22,11 @@ import {
   listarUsuariosAdmin,
   listarClientesParaFiltro,
   setUsuarioAtivo,
-  deletarUsuario,
+  inativarUsuario,
   type UsuarioRow,
   type Role,
 } from "./actions";
+
 
 type ClienteOption = { id: string; nome: string };
 
@@ -156,23 +157,13 @@ export default function UsuariosAdminPage() {
     showSystemAccounts,
   ]);
 
-  const kpis = useMemo(() => {
-    const base = showSystemAccounts
-      ? usuarios
-      : usuarios.filter((u) => !!u.cliente_id);
-    const total = base.length;
-    const ativos = base.filter((u) => u.ativo).length;
-    const inativos = total - ativos;
-    const gestores = base.filter((u) => u.role === "gestor").length;
-    return { total, ativos, inativos, gestores };
-  }, [usuarios, showSystemAccounts]);
-
+  
   function handleToggleAtivo(id: string, next: boolean) {
     startTransition(async () => {
       try {
         await setUsuarioAtivo(id, next);
         setUsuarios((prev) =>
-          prev.map((u) => (u.id === id ? { ...u, ativo: next } : u)),
+          prev.map((u) => (u.id === id ? { ...u, ativo: false } : u)),
         );
       } catch (e: unknown) {
         setError(e instanceof Error ? e.message : "Erro ao atualizar usuário.");
@@ -183,11 +174,11 @@ export default function UsuariosAdminPage() {
   function handleDelete(id: string) {
     startTransition(async () => {
       try {
-        await deletarUsuario(id);
+        await inativarUsuario(id);
         setUsuarios((prev) => prev.filter((u) => u.id !== id));
         setConfirmDelete({ open: false });
       } catch (e: unknown) {
-        setError(e instanceof Error ? e.message : "Erro ao deletar usuário.");
+        setError(e instanceof Error ? e.message : "Erro ao inativar usuário.");
       }
     });
   }
@@ -218,14 +209,6 @@ export default function UsuariosAdminPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-extrabold">Usuários (Admin)</h1>
-          <p className="text-sm text-gray-600">
-            Gestão real a partir do Supabase (public.usuarios) com filtro por
-            cliente.
-          </p>
-        </div>
-
         <Link
           href="/dashboard/admin/usuarios/novo"
           className="inline-flex items-center gap-2 bg-[#019499] text-white px-4 py-2 rounded-lg hover:bg-[#017a7d] transition-colors font-medium whitespace-nowrap"
@@ -246,30 +229,30 @@ export default function UsuariosAdminPage() {
       )}
 
       {/* KPIs */}
-      <div className="grid sm:grid-cols-4 gap-4">
+      {/* <div className="grid sm:grid-cols-4 gap-4">
         <div className="rounded-xl border border-gray-200 bg-white p-4">
           <p className="text-xs uppercase tracking-wide text-gray-500">Total</p>
-          <p className="mt-1 text-2xl font-extrabold">{kpis.total}</p>
+          <p className="mt-1 text-2xl font-extrabold">{usuariosKpis.total}</p>
         </div>
         <div className="rounded-xl border border-gray-200 bg-white p-4">
           <p className="text-xs uppercase tracking-wide text-gray-500">
             Ativos
           </p>
-          <p className="mt-1 text-2xl font-extrabold">{kpis.ativos}</p>
+          <p className="mt-1 text-2xl font-extrabold">{usuariosKpis.ativos}</p>
         </div>
         <div className="rounded-xl border border-gray-200 bg-white p-4">
           <p className="text-xs uppercase tracking-wide text-gray-500">
             Inativos
           </p>
-          <p className="mt-1 text-2xl font-extrabold">{kpis.inativos}</p>
+          <p className="mt-1 text-2xl font-extrabold">{usuariosKpis.inativos}</p>
         </div>
         <div className="rounded-xl border border-gray-200 bg-white p-4">
           <p className="text-xs uppercase tracking-wide text-gray-500">
             Gestores
           </p>
-          <p className="mt-1 text-2xl font-extrabold">{kpis.gestores}</p>
+          <p className="mt-1 text-2xl font-extrabold">{usuariosKpis.gestores}</p>
         </div>
-      </div>
+      </div> */}
 
       {/* Filters */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
@@ -382,7 +365,7 @@ export default function UsuariosAdminPage() {
                             {u.nome_completo ?? "—"}
                           </p>
                           <p className="text-sm text-gray-500">
-                            {u.email ?? u.telefone ?? "—"}
+                            {u.telefone ?? u.email ?? "—"}
                           </p>
                         </div>
                       </div>
@@ -459,7 +442,7 @@ export default function UsuariosAdminPage() {
                           }
                           className="text-red-600 hover:text-red-800 p-2 rounded hover:bg-red-50"
                           disabled={pending}
-                          title="Deletar"
+                          title="Inativar"
                         >
                           <Trash2 size={18} />
                         </button>
@@ -486,9 +469,9 @@ export default function UsuariosAdminPage() {
       {confirmDelete.open && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl p-5 w-full max-w-sm">
-            <p className="font-bold">Deletar usuário</p>
+            <p className="font-bold">Inativar usuário</p>
             <p className="text-sm text-gray-600 mt-1">
-              Tem certeza que deseja deletar{" "}
+              Tem certeza que deseja inativar{" "}
               <strong>{confirmDelete.nome ?? "este usuário"}</strong>?
             </p>
 
@@ -505,7 +488,7 @@ export default function UsuariosAdminPage() {
                 onClick={() => handleDelete(confirmDelete.id!)}
                 disabled={pending}
               >
-                {pending ? "Deletando..." : "Deletar"}
+                {pending ? "Inativando..." : "Inativar"}
               </button>
             </div>
           </div>

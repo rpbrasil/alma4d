@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/auth";
-import { createClientSupabase } from "@/lib/supabase/client";
+import { supabase } from "@/lib/supabase/client";
 
 export default function RelatoriosPsicossocial() {
   const { user, role } = useAuth();
@@ -18,7 +18,6 @@ export default function RelatoriosPsicossocial() {
     const init = async () => {
       if (!user?.id) return;
 
-      const supabase = await createClientSupabase();
       const { data: usuario } = await supabase
         .from("usuarios")
         .select("cliente_id")
