@@ -3,24 +3,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase/client";
-import { LineChart, Line, XAxis, YAxis, Tooltip } from "recharts";
-
-type Cliente = {
-  id: string;
-  nome: string;
-};
-
-type Gestor = {
-  id: string;
-  nome_completo: string;
-};
-
-type Usuario = {
-  id: string;
-  nome_completo: string;
-};
-
-type Step = "CLIENTES" | "GESTORES" | "USUARIOS" | "EVOLUCAO";
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  Legend,
+} from "recharts";
 
 type Role = "admin" | "cliente" | "gestor";
 
@@ -30,704 +22,1020 @@ type UsuarioMe = {
   cliente_id: string | null;
 };
 
-type ClienteRow = {
+type ClienteRow = { id: string; nome: string; ativo?: boolean | null };
+type DepartamentoRow = {
   id: string;
   nome: string;
+  cliente_id: string;
+  ativo: boolean;
 };
-
-type GestorRow = {
+type SetorRow = {
   id: string;
-  nome_completo: string | null;
+  nome: string;
+  departamento_id: string;
+  ativo: boolean;
 };
 
 type UsuarioRow = {
   id: string;
   nome_completo: string | null;
+  role: string | null;
+  ativo: boolean | null;
+  cliente_id: string | null;
+  gestor_id: string | null;
 };
 
-type Avaliacao = {
+type UsuarioOrgRow = {
+  usuario_id: string;
+  cliente_id: string | null;
+  departamento_id: string | null;
+  setor_id: string | null;
+  gestor_id: string | null;
+  ativo: boolean | null;
+};
+
+type AvaliacaoRow = {
   id: string;
   user_id: string;
   created_at: string;
-  ratings: Record<string, unknown>; // Estrutura de ratings pode variar
   media_total: number | null;
   media_fisico: number | null;
   media_vital: number | null;
   media_emocional: number | null;
   media_mental: number | null;
+  // caso exista no seu schema:
+  cliente_id?: string | null;
+  gestor_id?: string | null;
 };
 
+type PeriodPreset = "30d" | "90d" | "365d" | "all";
+
+type IdNome = { id: string; nome: string };
+
+function isoFromDaysAgo(days: number) {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  return d.toISOString();
+}
+
+function fmtDateBR(iso: string) {
+  try {
+    return new Date(iso).toLocaleDateString("pt-BR");
+  } catch {
+    return iso;
+  }
+}
+
+function toNum(v: number | null | undefined) {
+  return typeof v === "number" && Number.isFinite(v) ? v : 0;
+}
+
+function mean(values: number[]) {
+  if (!values.length) return 0;
+  return values.reduce((a, b) => a + b, 0) / values.length;
+}
+
+function uniq<T>(arr: T[]) {
+  return Array.from(new Set(arr));
+}
+
+function clamp01to10(v: number) {
+  if (!Number.isFinite(v)) return 0;
+  return Math.max(0, Math.min(10, v));
+}
+
+/* =========================
+   COMPONENTE PRINCIPAL
+========================= */
+
 export default function RelatoriosDesempenho() {
-  const { user, role: authRole } = useAuth(); // ✅ evita conflito de nome
+  const { user, role: authRole } = useAuth();
+
   const [loading, setLoading] = useState(true);
-  const [step, setStep] = useState<Step>("CLIENTES");
-
-  const [clienteSelecionado, setClienteSelecionado] = useState<Cliente | null>(
-    null,
-  );
-  const [gestorSelecionado, setGestorSelecionado] = useState<Gestor | null>(
-    null,
-  );
-  const [usuarioSelecionado, setUsuarioSelecionado] = useState<Usuario | null>(
-    null,
-  );
-
   const [me, setMe] = useState<UsuarioMe | null>(null);
 
-  // ✅ role normalizado (prioriza "me.role" vindo do banco; fallback para authRole se existir)
-  const normalizedRole: Role | null = (me?.role ??
-    (authRole as Role | undefined) ??
-    null) as Role | null;
+  // filtros
+  const [clienteId, setClienteId] = useState<string | null>(null);
+  const [departamentoId, setDepartamentoId] = useState<string | null>(null);
+  const [setorId, setSetorId] = useState<string | null>(null);
+  const [gestorId, setGestorId] = useState<string | null>(null);
+  const [usuarioId, setUsuarioId] = useState<string | null>(null);
+  const [periodo, setPeriodo] = useState<PeriodPreset>("90d");
 
-  const isAdmin = normalizedRole === "admin";
-  const isCliente = normalizedRole === "cliente";
-  const isGestor = normalizedRole === "gestor";
-
+  // carrega "me" (role + tenant)
   useEffect(() => {
-    let cancelled = false;
+    let mounted = true;
 
-    const init = async () => {
+    async function loadMe() {
       if (!user?.id) {
-        if (!cancelled) setLoading(false);
+        if (mounted) setLoading(false);
         return;
       }
 
-      if (!cancelled) setLoading(true);
-
       try {
-        
-        const { data: usuario, error } = await supabase
+        const { data, error } = await supabase
           .from("usuarios")
           .select("id, role, cliente_id")
           .eq("id", user.id)
           .single();
 
-        if (error || !usuario?.role) {
-          if (!cancelled) setLoading(false);
+        if (!mounted) return;
+
+        if (error || !data?.role) {
+          setMe(null);
           return;
         }
 
-        if (!cancelled) {
-          setMe({
-            id: usuario.id as string,
-            role: usuario.role as Role,
-            cliente_id:
-              (usuario as { cliente_id: string | null }).cliente_id ?? null,
-          });
+        const roleDb = data.role as Role;
+        setMe({
+          id: data.id,
+          role: roleDb,
+          cliente_id: data.cliente_id,
+        });
+
+        // escopo inicial por role
+        if (roleDb === "cliente" || roleDb === "gestor") {
+          setClienteId(data.cliente_id ?? null);
         }
-
-        // ... (suas regras de step aqui)
+        if (roleDb === "gestor") {
+          setGestorId(data.id); // escopo de gestor (seus usuários)
+        }
       } finally {
-        if (!cancelled) setLoading(false); // ✅ garante que sempre sai do loading
+        if (mounted) setLoading(false);
       }
-    };
-
-    init();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [user?.id]); // ✅ melhor: depende só do id
-
-  const erroVinculo = useMemo(() => {
-    if (!me) return null;
-    if ((isCliente || isGestor) && !me.cliente_id) {
-      return "Usuário sem cliente_id vinculado.";
     }
-    return null;
-  }, [me, isCliente, isGestor]);
+
+    loadMe();
+    return () => {
+      mounted = false;
+    };
+  }, [user?.id]);
+
+  const role: Role | null = (me?.role ??
+    (authRole as Role | undefined) ??
+    null) as Role | null;
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#019499]" />
+        <div className="animate-spin h-8 w-8 rounded-full border-b-2 border-(--brand)" />
       </div>
     );
   }
 
+  if (!role) return null;
+
+  // UX: admin precisa selecionar cliente para consolidar
+  const needsCliente = role === "admin" && !clienteId && !usuarioId;
+
   return (
     <div className="space-y-6">
-      {/* Breadcrumb Navigation */}
-      {step !== "CLIENTES" && (
-        <div className="flex items-center gap-2 text-sm text-gray-600">
-          <button
-            onClick={() => {
-              setClienteSelecionado(null);
-              setGestorSelecionado(null);
-              setUsuarioSelecionado(null);
-              setStep("CLIENTES");
-            }}
-            className="hover:text-[#019499] hover:underline transition"
-          >
-            Clientes
-          </button>
-          {clienteSelecionado && (
-            <>
-              <span className="text-gray-400">/</span>
-              <span className="font-medium text-gray-900">
-                {clienteSelecionado.nome}
-              </span>
-            </>
-          )}
-          {step !== "GESTORES" && gestorSelecionado && (
-            <>
-              <span className="text-gray-400">/</span>
-              <button
-                onClick={() => {
-                  setGestorSelecionado(null);
-                  setUsuarioSelecionado(null);
-                  setStep("GESTORES");
-                }}
-                className="hover:text-[#019499] hover:underline transition"
-              >
-                Gestores
-              </button>
-            </>
-          )}
-          {step !== "GESTORES" && gestorSelecionado && (
-            <>
-              <span className="text-gray-400">/</span>
-              <span className="font-medium text-gray-900">
-                {gestorSelecionado.nome_completo}
-              </span>
-            </>
-          )}
-          {step === "USUARIOS" && usuarioSelecionado && (
-            <>
-              <span className="text-gray-400">/</span>
-              <span className="font-medium text-gray-900">
-                {usuarioSelecionado.nome_completo}
-              </span>
-            </>
-          )}
+      {/* Header */}
+      <div>
+        <h2 className="text-xl font-semibold text-slate-900">
+          Relatórios de Desempenho
+        </h2>
+        <p className="text-sm text-slate-500">
+          Consolidação por empresa, departamento, setor e usuário
+        </p>
+      </div>
+
+      {/* Context Bar */}
+      <ContextBar
+        role={role}
+        meId={me?.id ?? null}
+        clienteId={clienteId}
+        setClienteId={(v) => {
+          setClienteId(v);
+          // reset cascata
+          setDepartamentoId(null);
+          setSetorId(null);
+          setGestorId(role === "gestor" ? (me?.id ?? null) : null);
+          setUsuarioId(null);
+        }}
+        departamentoId={departamentoId}
+        setDepartamentoId={(v) => {
+          setDepartamentoId(v);
+          setSetorId(null);
+          setUsuarioId(null);
+        }}
+        setorId={setorId}
+        setSetorId={(v) => {
+          setSetorId(v);
+          setUsuarioId(null);
+        }}
+        gestorId={gestorId}
+        setGestorId={(v) => {
+          setGestorId(v);
+          setUsuarioId(null);
+        }}
+        usuarioId={usuarioId}
+        setUsuarioId={setUsuarioId}
+        periodo={periodo}
+        setPeriodo={setPeriodo}
+      />
+
+      {/* Conteúdo */}
+      {needsCliente ? (
+        <div className="rounded-lg border border-slate-200 bg-white p-8 text-center">
+          <p className="text-slate-700 font-medium">
+            Selecione um cliente para visualizar o consolidado.
+          </p>
+          <p className="text-sm text-slate-500 mt-1">
+            (Admin vê múltiplos tenants; cliente/gestor já vêm com o tenant
+            fixo.)
+          </p>
         </div>
-      )}
-
-      {erroVinculo && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-700">{erroVinculo}</p>
-        </div>
-      )}
-
-      {isAdmin && step === "CLIENTES" && (
-        <ListaClientes
-          onSelect={(cliente) => {
-            setClienteSelecionado(cliente);
-            setGestorSelecionado(null);
-            setUsuarioSelecionado(null);
-            setStep("GESTORES");
-          }}
+      ) : !usuarioId ? (
+        <ConsolidadoDesempenho
+          role={role}
+          meId={me?.id ?? null}
+          clienteId={clienteId}
+          departamentoId={departamentoId}
+          setorId={setorId}
+          gestorId={gestorId}
+          periodo={periodo}
         />
-      )}
-
-      {step === "GESTORES" && clienteSelecionado && (
-        <ListaGestores
-          cliente={clienteSelecionado}
-          onSelect={(gestor) => {
-            setGestorSelecionado(gestor);
-            setUsuarioSelecionado(null);
-            setStep("USUARIOS");
-          }}
-          onBack={() => {
-            setClienteSelecionado(null);
-            setStep("CLIENTES");
-          }}
+      ) : (
+        <EvolucaoUsuario
+          usuarioId={usuarioId}
+          onBack={() => setUsuarioId(null)}
+          periodo={periodo}
         />
-      )}
-
-      {step === "USUARIOS" && gestorSelecionado && (
-        <ListaUsuarios
-          gestor={gestorSelecionado}
-          cliente={clienteSelecionado!}
-          onSelect={(usuario) => {
-            setUsuarioSelecionado(usuario);
-            setStep("EVOLUCAO");
-          }}
-          onBack={() => {
-            setGestorSelecionado(null);
-            setStep("GESTORES");
-          }}
-        />
-      )}
-
-      {step === "EVOLUCAO" && usuarioSelecionado && (
-        <>
-          <div className="flex items-center gap-2 mb-4">
-            <button
-              onClick={() => {
-                setUsuarioSelecionado(null);
-                setStep("USUARIOS");
-              }}
-              className="text-sm text-[#019499] hover:underline transition"
-            >
-              ← Voltar
-            </button>
-          </div>
-          <EvolucaoUsuario usuario={usuarioSelecionado} />
-        </>
       )}
     </div>
   );
 }
 
-function ListaClientes({ onSelect }: { onSelect: (cliente: Cliente) => void }) {
-  const [clientes, setClientes] = useState<Cliente[]>([]);
-  const [gestoresCount, setGestoresCount] = useState<Record<string, number>>(
-    {},
+/* =========================
+   CONTEXT BAR
+========================= */
+
+function ContextBar(props: {
+  role: Role;
+  meId: string | null;
+  clienteId: string | null;
+  setClienteId: (v: string | null) => void;
+  departamentoId: string | null;
+  setDepartamentoId: (v: string | null) => void;
+  setorId: string | null;
+  setSetorId: (v: string | null) => void;
+  gestorId: string | null;
+  setGestorId: (v: string | null) => void;
+  usuarioId: string | null;
+  setUsuarioId: (v: string | null) => void;
+  periodo: PeriodPreset;
+  setPeriodo: (v: PeriodPreset) => void;
+}) {
+  const {
+    role,
+    meId,
+    clienteId,
+    setClienteId,
+    departamentoId,
+    setDepartamentoId,
+    setorId,
+    setSetorId,
+    gestorId,
+    setGestorId,
+    usuarioId,
+    setUsuarioId,
+    periodo,
+    setPeriodo,
+  } = props;
+
+  return (
+    <div className="flex flex-wrap items-end gap-3 bg-white border border-slate-200 rounded-lg p-4">
+      {role === "admin" && (
+        <SelectCliente value={clienteId} onChange={setClienteId} />
+      )}
+
+      {(role === "admin" || role === "cliente") && (
+        <SelectDepartamento
+          clienteId={clienteId}
+          value={departamentoId}
+          onChange={setDepartamentoId}
+        />
+      )}
+
+      {(role === "admin" || role === "cliente") && (
+        <SelectSetor
+          departamentoId={departamentoId}
+          value={setorId}
+          onChange={setSetorId}
+        />
+      )}
+
+      {/* Gestor filter: admin/cliente podem filtrar por gestor; gestor já vem fixo */}
+      {role !== "gestor" && (
+        <SelectGestor
+          clienteId={clienteId}
+          value={gestorId}
+          onChange={setGestorId}
+        />
+      )}
+
+      <SelectUsuario
+        role={role}
+        meId={meId}
+        clienteId={clienteId}
+        departamentoId={departamentoId}
+        setorId={setorId}
+        gestorId={gestorId}
+        value={usuarioId}
+        onChange={setUsuarioId}
+      />
+
+      <SelectPeriodo value={periodo} onChange={setPeriodo} />
+    </div>
   );
+}
+
+function FieldWrap(props: {
+  label: string;
+  children: React.ReactNode;
+  hint?: string;
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="text-[11px] uppercase tracking-wide text-slate-500">
+        {props.label}
+      </span>
+      {props.children}
+      {props.hint ? (
+        <span className="text-[11px] text-slate-400">{props.hint}</span>
+      ) : null}
+    </div>
+  );
+}
+
+/* =========================
+   SELECTS IMPLEMENTADOS
+========================= */
+
+function SelectCliente(props: {
+  value: string | null;
+  onChange: (v: string | null) => void;
+}) {
+  const [items, setItems] = useState<ClienteRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const load = async () => {
+    let mounted = true;
+    (async () => {
+      setLoading(true);
       const { data, error } = await supabase
         .from("clientes")
-        .select("id, nome");
+        .select("id,nome,ativo")
+        .order("nome", { ascending: true });
 
-      if (!error && data) {
-        const rows = data as ClienteRow[];
-        setClientes(rows.map((c) => ({ id: c.id, nome: c.nome })));
-
-        // Get count of gestores per cliente
-        const counts: Record<string, number> = {};
-        for (const cliente of rows) {
-          const { count } = await supabase
-            .from("usuarios")
-            .select("*", { count: "exact", head: true })
-            .eq("role", "gestor")
-            .eq("cliente_id", cliente.id);
-          counts[cliente.id] = count || 0;
-        }
-        setGestoresCount(counts);
-      } else {
-        setClientes([]);
+      if (mounted) {
+        setItems((data ?? []).filter((c) => c.ativo !== false));
+        setLoading(false);
       }
+      if (error) {
+        // silencioso; RLS pode restringir
+        if (mounted) setItems([]);
+      }
+    })();
 
-      setLoading(false);
+    return () => {
+      mounted = false;
     };
-    load();
   }, []);
 
-  if (loading)
-    return (
-      <div className="flex items-center justify-center h-96">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#019499]" />
-      </div>
-    );
-
   return (
-    <div>
-      <div className="mb-8">
-        <h2 className="text-3xl font-bold text-gray-900 mb-2">
-          Seleção de Clientes
-        </h2>
-        <p className="text-gray-600">
-          Escolha um cliente para visualizar seus gestores e usuários
-        </p>
-      </div>
-
-      {clientes.length === 0 ? (
-        <div className="text-center py-12 bg-gray-50 rounded-lg">
-          <p className="text-gray-600">Nenhum cliente disponível</p>
-        </div>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {clientes.map((c) => (
-            <button
-              key={c.id}
-              onClick={() => onSelect(c)}
-              className="group bg-white rounded-lg border border-gray-200 p-6 hover:border-[#019499] hover:shadow-md transition-all text-left"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className="w-12 h-12 bg-linear-to-br from-[#019499] to-[#017d7b] rounded-lg flex items-center justify-center">
-                  <span className="text-white text-xl">🏢</span>
-                </div>
-                <span className="bg-[#019499] text-white text-xs font-semibold px-3 py-1 rounded-full">
-                  {gestoresCount[c.id] || 0} gestor
-                  {(gestoresCount[c.id] || 0) !== 1 ? "es" : ""}
-                </span>
-              </div>
-              <h3 className="font-bold text-gray-900 text-lg group-hover:text-[#019499] transition">
-                {c.nome}
-              </h3>
-              <p className="text-sm text-gray-500 mt-3 group-hover:text-[#019499]">
-                Clique para continuar →
-              </p>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
+    <FieldWrap label="Cliente">
+      <select
+        className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm disabled:opacity-50"
+        value={props.value ?? ""}
+        onChange={(e) => props.onChange(e.target.value || null)}
+        disabled={loading}
+      >
+        <option value="">{loading ? "Carregando…" : "Selecionar…"}</option>
+        {items.map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.nome}
+          </option>
+        ))}
+      </select>
+    </FieldWrap>
   );
 }
 
-function ListaGestores({
-  cliente,
-  onSelect,
-  onBack,
-}: {
-  cliente: Cliente;
-  onSelect: (gestor: Gestor) => void;
-  onBack: () => void;
+function SelectDepartamento(props: {
+  clienteId: string | null;
+  value: string | null;
+  onChange: (v: string | null) => void;
 }) {
-  const [gestores, setGestores] = useState<Gestor[]>([]);
-  const [usuariosCount, setUsuariosCount] = useState<Record<string, number>>(
-    {},
-  );
-  const [loading, setLoading] = useState(true);
+  const [items, setItems] = useState<DepartamentoRow[]>([]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const load = async () => {
+    let mounted = true;
+
+    (async () => {
+      if (!props.clienteId) {
+        if (mounted) setItems([]);
+        return;
+      }
+
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("departamentos")
+        .select("id,nome,cliente_id,ativo")
+        .eq("cliente_id", props.clienteId)
+        .eq("ativo", true)
+        .order("nome", { ascending: true });
+
+      if (mounted) {
+        setItems((data ?? []) as DepartamentoRow[]);
+        setLoading(false);
+      }
+      if (error && mounted) setItems([]);
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, [props.clienteId]);
+
+  const disabled = !props.clienteId;
+
+  return (
+    <FieldWrap label="Departamento">
+      <select
+        className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm disabled:opacity-50"
+        disabled={disabled || loading}
+        value={props.value ?? ""}
+        onChange={(e) => props.onChange(e.target.value || null)}
+      >
+        <option value="">
+          {disabled ? "Selecione cliente…" : loading ? "Carregando…" : "Todos"}
+        </option>
+        {items.map((d) => (
+          <option key={d.id} value={d.id}>
+            {d.nome}
+          </option>
+        ))}
+      </select>
+    </FieldWrap>
+  );
+}
+
+function SelectSetor(props: {
+  departamentoId: string | null;
+  value: string | null;
+  onChange: (v: string | null) => void;
+}) {
+  const [items, setItems] = useState<SetorRow[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+
+    (async () => {
+      if (!props.departamentoId) {
+        if (mounted) setItems([]);
+        return;
+      }
+
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("setores")
+        .select("id,nome,departamento_id,ativo")
+        .eq("departamento_id", props.departamentoId)
+        .eq("ativo", true)
+        .order("nome", { ascending: true });
+
+      if (mounted) {
+        setItems((data ?? []) as SetorRow[]);
+        setLoading(false);
+      }
+      if (error && mounted) setItems([]);
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, [props.departamentoId]);
+
+  const disabled = !props.departamentoId;
+
+  return (
+    <FieldWrap label="Setor">
+      <select
+        className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm disabled:opacity-50"
+        disabled={disabled || loading}
+        value={props.value ?? ""}
+        onChange={(e) => props.onChange(e.target.value || null)}
+      >
+        <option value="">
+          {disabled ? "Selecione depto…" : loading ? "Carregando…" : "Todos"}
+        </option>
+        {items.map((s) => (
+          <option key={s.id} value={s.id}>
+            {s.nome}
+          </option>
+        ))}
+      </select>
+    </FieldWrap>
+  );
+}
+
+function SelectGestor(props: {
+  clienteId: string | null;
+  value: string | null;
+  onChange: (v: string | null) => void;
+}) {
+  const [items, setItems] = useState<{ id: string; nome: string }[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+
+    (async () => {
+      if (!props.clienteId) {
+        if (mounted) setItems([]);
+        return;
+      }
+
+      setLoading(true);
       const { data, error } = await supabase
         .from("usuarios")
-        .select("id, nome_completo")
+        .select("id,nome_completo,ativo,role,cliente_id")
         .eq("role", "gestor")
-        .eq("cliente_id", cliente.id);
+        .eq("cliente_id", props.clienteId)
+        .eq("ativo", true)
+        .order("nome_completo", { ascending: true });
 
-      if (!error && data) {
-        const rows = data as GestorRow[];
-        setGestores(
-          rows.map((g) => ({
-            id: g.id,
-            nome_completo: g.nome_completo ?? "(sem nome)",
+      if (mounted) {
+        setItems(
+          (data ?? []).map((u) => ({
+            id: u.id,
+            nome: u.nome_completo ?? "(sem nome)",
           })),
         );
-
-        // Get count of usuarios per gestor
-        const counts: Record<string, number> = {};
-        for (const gestor of rows) {
-          const { count } = await supabase
-            .from("usuarios")
-            .select("*", { count: "exact", head: true })
-            .eq("gestor_id", gestor.id)
-            .eq("ativo", true);
-          counts[gestor.id] = count || 0;
-        }
-        setUsuariosCount(counts);
-      } else {
-        setGestores([]);
+        setLoading(false);
       }
+      if (error && mounted) setItems([]);
+    })();
 
-      setLoading(false);
+    return () => {
+      mounted = false;
     };
+  }, [props.clienteId]);
 
-    load();
-  }, [cliente.id]);
-
-  if (loading)
-    return (
-      <div className="flex items-center justify-center h-96">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#019499]" />
-      </div>
-    );
+  const disabled = !props.clienteId;
 
   return (
-    <div>
-      <div className="mb-8">
-        <button
-          onClick={onBack}
-          className="text-sm text-[#019499] hover:underline transition mb-4"
-        >
-          ← Voltar para clientes
-        </button>
-        <h2 className="text-3xl font-bold text-gray-900 mb-2">Gestores</h2>
-        <p className="text-gray-600">
-          Cliente: <span className="font-semibold">{cliente.nome}</span>
-        </p>
-      </div>
-
-      {gestores.length === 0 ? (
-        <div className="text-center py-12 bg-gray-50 rounded-lg">
-          <p className="text-gray-600">
-            Nenhum gestor disponível para este cliente
-          </p>
-        </div>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {gestores.map((g) => (
-            <button
-              key={g.id}
-              onClick={() => onSelect(g)}
-              className="group bg-white rounded-lg border border-gray-200 p-6 hover:border-[#019499] hover:shadow-md transition-all text-left"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className="w-12 h-12 bg-linear-to-br from-[#f71c86] to-[#d61863] rounded-lg flex items-center justify-center">
-                  <span className="text-white text-xl">👤</span>
-                </div>
-                <span className="bg-[#f71c86] text-white text-xs font-semibold px-3 py-1 rounded-full">
-                  {usuariosCount[g.id] || 0} usuário
-                  {(usuariosCount[g.id] || 0) !== 1 ? "s" : ""}
-                </span>
-              </div>
-              <h3 className="font-bold text-gray-900 text-lg group-hover:text-[#019499] transition">
-                {g.nome_completo}
-              </h3>
-              <p className="text-sm text-gray-500 mt-3 group-hover:text-[#019499]">
-                Clique para continuar →
-              </p>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
+    <FieldWrap label="Gestor">
+      <select
+        className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm disabled:opacity-50"
+        disabled={disabled || loading}
+        value={props.value ?? ""}
+        onChange={(e) => props.onChange(e.target.value || null)}
+      >
+        <option value="">
+          {disabled ? "Selecione cliente…" : loading ? "Carregando…" : "Todos"}
+        </option>
+        {items.map((g) => (
+          <option key={g.id} value={g.id}>
+            {g.nome}
+          </option>
+        ))}
+      </select>
+    </FieldWrap>
   );
 }
 
-function ListaUsuarios({
-  gestor,
-  cliente,
-  onSelect,
-  onBack,
-}: {
-  gestor: Gestor;
-  cliente: Cliente;
-  onSelect: (usuario: Usuario) => void;
-  onBack: () => void;
+function SelectUsuario(props: {
+  role: Role;
+  meId: string | null;
+  clienteId: string | null;
+  departamentoId: string | null;
+  setorId: string | null;
+  gestorId: string | null;
+  value: string | null;
+  onChange: (v: string | null) => void;
 }) {
-  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
-  const [avaliacoesCount, setAvaliacoesCount] = useState<
-    Record<string, number>
-  >({});
-  const [loading, setLoading] = useState(true);
+  const [items, setItems] = useState<{ id: string; nome: string }[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const disabledAdmin = props.role === "admin" && !props.clienteId;
 
   useEffect(() => {
-    const load = async () => {
-      const { data, error } = await supabase
-        .from("usuarios")
-        .select("id, nome_completo")
-        .eq("gestor_id", gestor.id)
-        .eq("ativo", true);
+    let mounted = true;
 
-      if (!error && data) {
-        const rows = data as UsuarioRow[];
-        setUsuarios(
-          rows.map((u) => ({
-            id: u.id,
-            nome_completo: u.nome_completo ?? "(sem nome)",
-          })),
-        );
-
-        // Get count of avaliacoes per usuario
-        const counts: Record<string, number> = {};
-        for (const usuario of rows) {
-          const { count } = await supabase
-            .from("avaliacoes_completas")
-            .select("*", { count: "exact", head: true })
-            .eq("user_id", usuario.id);
-          counts[usuario.id] = count || 0;
-        }
-        setAvaliacoesCount(counts);
-      } else {
-        setUsuarios([]);
+    (async () => {
+      // admin precisa escolher cliente
+      if (disabledAdmin) {
+        if (mounted) setItems([]);
+        return;
       }
 
-      setLoading(false);
+      setLoading(true);
+
+      // Base: pegar usuários a partir de usuario_organizacao para permitir dept/setor
+      // (e também filtrar por gestorId quando vier)
+      let q = supabase
+        .from("usuario_organizacao")
+        .select(
+          "usuario_id,cliente_id,departamento_id,setor_id,gestor_id,ativo",
+        );
+
+      if (props.clienteId) q = q.eq("cliente_id", props.clienteId);
+      if (props.departamentoId)
+        q = q.eq("departamento_id", props.departamentoId);
+      if (props.setorId) q = q.eq("setor_id", props.setorId);
+      if (props.gestorId) q = q.eq("gestor_id", props.gestorId);
+      q = q.eq("ativo", true);
+
+      const { data: orgRows, error: orgErr } = await q;
+
+      if (orgErr || !orgRows) {
+        if (mounted) {
+          setItems([]);
+          setLoading(false);
+        }
+        return;
+      }
+
+      const org = orgRows as UsuarioOrgRow[];
+      const ids = uniq(org.map((r) => r.usuario_id));
+
+      if (!ids.length) {
+        if (mounted) {
+          setItems([]);
+          setLoading(false);
+        }
+        return;
+      }
+
+      // Buscar nomes na tabela usuarios
+      const { data: users, error: uErr } = await supabase
+        .from("usuarios")
+        .select("id,nome_completo,ativo,role,gestor_id,cliente_id")
+        .in("id", ids)
+        .eq("ativo", true)
+        .order("nome_completo", { ascending: true });
+
+      if (uErr || !users) {
+        if (mounted) {
+          setItems([]);
+          setLoading(false);
+        }
+        return;
+      }
+
+      // Filtrar para "role=usuario" por padrão (você pode abrir para gestores depois)
+      const filtered = (users as UsuarioRow[])
+        .filter((u) => (u.role ?? "").toLowerCase() === "usuario")
+        .map((u) => ({
+          id: u.id,
+          nome: u.nome_completo ?? "(sem nome)",
+        }));
+
+      // gestor: opcionalmente incluir "meu próprio desempenho"
+      if (props.role === "gestor" && props.meId) {
+        filtered.unshift({ id: props.meId, nome: "Meu próprio desempenho" });
+      }
+
+      if (mounted) {
+        setItems(filtered);
+        setLoading(false);
+      }
+    })();
+
+    return () => {
+      mounted = false;
     };
-
-    load();
-  }, [gestor.id]);
-
-  if (loading)
-    return (
-      <div className="flex items-center justify-center h-96">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#019499]" />
-      </div>
-    );
+  }, [
+    props.role,
+    props.meId,
+    props.clienteId,
+    props.departamentoId,
+    props.setorId,
+    props.gestorId,
+    disabledAdmin,
+  ]);
 
   return (
-    <div>
-      <div className="mb-8">
-        <button
-          onClick={onBack}
-          className="text-sm text-[#019499] hover:underline transition mb-4"
-        >
-          ← Voltar para gestores
-        </button>
-        <h2 className="text-3xl font-bold text-gray-900 mb-2">Usuários</h2>
-        <p className="text-gray-600">
-          Cliente: <span className="font-semibold">{cliente.nome}</span> •
-          Gestor: <span className="font-semibold">{gestor.nome_completo}</span>
-        </p>
-      </div>
-
-      {usuarios.length === 0 ? (
-        <div className="text-center py-12 bg-gray-50 rounded-lg">
-          <p className="text-gray-600">
-            Nenhum usuário disponível para este gestor
-          </p>
-        </div>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {usuarios.map((u) => (
-            <button
-              key={u.id}
-              onClick={() => onSelect(u)}
-              className="group bg-white rounded-lg border border-gray-200 p-6 hover:border-[#019499] hover:shadow-md transition-all text-left"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className="w-12 h-12 bg-linear-to-br from-[#8b5cf6] to-[#6d28d9] rounded-lg flex items-center justify-center">
-                  <span className="text-white text-xl">👨‍💼</span>
-                </div>
-                <span className="bg-[#8b5cf6] text-white text-xs font-semibold px-3 py-1 rounded-full">
-                  {avaliacoesCount[u.id] || 0} avaliação
-                  {(avaliacoesCount[u.id] || 0) !== 1 ? "ões" : ""}
-                </span>
-              </div>
-              <h3 className="font-bold text-gray-900 text-lg group-hover:text-[#019499] transition">
-                {u.nome_completo}
-              </h3>
-              <p className="text-sm text-gray-500 mt-3 group-hover:text-[#019499]">
-                Ver relatório →
-              </p>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
+    <FieldWrap label="Usuário">
+      <select
+        className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm disabled:opacity-50"
+        disabled={disabledAdmin || loading}
+        value={props.value ?? ""}
+        onChange={(e) => props.onChange(e.target.value || null)}
+      >
+        <option value="">
+          {disabledAdmin
+            ? "Selecione cliente…"
+            : loading
+              ? "Carregando…"
+              : "Selecionar…"}
+        </option>
+        {items.map((u) => (
+          <option key={u.id} value={u.id}>
+            {u.nome}
+          </option>
+        ))}
+      </select>
+    </FieldWrap>
   );
 }
 
-function EvolucaoUsuario({ usuario }: { usuario: Usuario }) {
-  const [avaliacoes, setAvaliacoes] = useState<Avaliacao[]>([]);
+function SelectPeriodo(props: {
+  value: PeriodPreset;
+  onChange: (v: PeriodPreset) => void;
+}) {
+  return (
+    <FieldWrap label="Período">
+      <select
+        className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm"
+        value={props.value}
+        onChange={(e) => props.onChange(e.target.value as PeriodPreset)}
+      >
+        <option value="30d">Últimos 30 dias</option>
+        <option value="90d">Últimos 90 dias</option>
+        <option value="365d">Últimos 12 meses</option>
+        <option value="all">Tudo</option>
+      </select>
+    </FieldWrap>
+  );
+}
+
+/* =========================
+   CONSOLIDADO IMPLEMENTADO
+========================= */
+
+function ConsolidadoDesempenho(props: {
+  role: Role;
+  meId: string | null;
+  clienteId: string | null;
+  departamentoId: string | null;
+  setorId: string | null;
+  gestorId: string | null;
+  periodo: PeriodPreset;
+}) {
+  const { role, meId, clienteId, departamentoId, setorId, gestorId, periodo } =
+    props;
+
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
 
+  const [kpis, setKpis] = useState({
+    avaliacoes: 0,
+    usuarios: 0,
+    media_total: 0,
+    media_fisico: 0,
+    media_vital: 0,
+    media_emocional: 0,
+    media_mental: 0,
+    lastDate: null as string | null,
+  });
+
+  const [breakdown, setBreakdown] = useState<
+    {
+      label: string;
+      usuarios: number;
+      avaliacoes: number;
+      media_total: number;
+    }[]
+  >([]);
+
   useEffect(() => {
-    const load = async () => {
+    let mounted = true;
+
+    (async () => {
       setLoading(true);
       setErro(null);
 
-      const { data, error } = await supabase
-        .from("avaliacoes_completas")
-        .select(
-          "id, user_id, created_at, ratings, media_total, media_fisico, media_vital, media_emocional, media_mental",
-        )
-        .eq("user_id", usuario.id)
-        .order("created_at", { ascending: true });
+      try {
+        // 1) Determinar user_ids do escopo quando dept/setor/gestor estiverem em jogo
+        // Se não houver dept/setor, e houver gestorId, podemos filtrar diretamente por avaliacoes_completas.gestor_id (se existir)
+        // Mas para garantir, sempre conseguimos via usuario_organizacao -> user_ids
+        if (!clienteId && role === "admin") {
+          // admin sem cliente: não carrega
+          if (mounted) {
+            setKpis({
+              avaliacoes: 0,
+              usuarios: 0,
+              media_total: 0,
+              media_fisico: 0,
+              media_vital: 0,
+              media_emocional: 0,
+              media_mental: 0,
+              lastDate: null,
+            });
+            setBreakdown([]);
+            setLoading(false);
+          }
+          return;
+        }
 
-      if (error) {
-        setErro(error.message);
-        setAvaliacoes([]);
-      } else {
-        setAvaliacoes((data as Avaliacao[]) ?? []);
+        let orgQ = supabase
+          .from("usuario_organizacao")
+          .select(
+            "usuario_id,departamento_id,setor_id,gestor_id,cliente_id,ativo",
+          );
+
+        if (clienteId) orgQ = orgQ.eq("cliente_id", clienteId);
+        if (departamentoId) orgQ = orgQ.eq("departamento_id", departamentoId);
+        if (setorId) orgQ = orgQ.eq("setor_id", setorId);
+
+        // gestor:
+        // - role gestor: gestorId já é o próprio id
+        // - admin/cliente: gestorId pode ser filtro
+        if (gestorId) orgQ = orgQ.eq("gestor_id", gestorId);
+
+        orgQ = orgQ.eq("ativo", true);
+
+        const { data: orgRows, error: orgErr } = await orgQ;
+        if (orgErr) throw new Error(orgErr.message);
+
+        const org = (orgRows ?? []) as UsuarioOrgRow[];
+        let userIds = uniq(org.map((r) => r.usuario_id));
+
+        // gestor deve incluir ele mesmo no consolidado (regra que você descreveu)
+        if (role === "gestor" && meId && !userIds.includes(meId)) {
+          userIds = [meId, ...userIds];
+        }
+
+        if (!userIds.length) {
+          if (mounted) {
+            setKpis({
+              avaliacoes: 0,
+              usuarios: 0,
+              media_total: 0,
+              media_fisico: 0,
+              media_vital: 0,
+              media_emocional: 0,
+              media_mental: 0,
+              lastDate: null,
+            });
+            setBreakdown([]);
+            setLoading(false);
+          }
+          return;
+        }
+
+        // 2) Buscar avaliações do escopo
+        let avQ = supabase
+          .from("avaliacoes_completas")
+          .select(
+            "id,user_id,created_at,media_total,media_fisico,media_vital,media_emocional,media_mental",
+          )
+          .in("user_id", userIds);
+
+        if (periodo !== "all") {
+          const days = periodo === "30d" ? 30 : periodo === "90d" ? 90 : 365;
+          avQ = avQ.gte("created_at", isoFromDaysAgo(days));
+        }
+
+        const { data: avRows, error: avErr } = await avQ.order("created_at", {
+          ascending: true,
+        });
+        if (avErr) throw new Error(avErr.message);
+
+        const avs = (avRows ?? []) as AvaliacaoRow[];
+
+        // 3) KPIs compactos
+        const totals = {
+          avaliacoes: avs.length,
+          usuarios: uniq(avs.map((a) => a.user_id)).length,
+          media_total: mean(avs.map((a) => toNum(a.media_total))),
+          media_fisico: mean(avs.map((a) => toNum(a.media_fisico))),
+          media_vital: mean(avs.map((a) => toNum(a.media_vital))),
+          media_emocional: mean(avs.map((a) => toNum(a.media_emocional))),
+          media_mental: mean(avs.map((a) => toNum(a.media_mental))),
+          lastDate: avs.length ? avs[avs.length - 1].created_at : null,
+        };
+
+        // 4) Breakdown: por departamento (se dept não selecionado), por setor (se dept selecionado e setor não), ou por usuário (se setor selecionado)
+        // Para isso precisamos mapear user -> dept/setor via orgRows.
+        const byUser = new Map<
+          string,
+          { dept: string | null; setor: string | null }
+        >();
+        org.forEach((r) =>
+          byUser.set(r.usuario_id, {
+            dept: r.departamento_id ?? null,
+            setor: r.setor_id ?? null,
+          }),
+        );
+
+        // dicionários de nomes
+        const deptIds = uniq(
+          org.map((r) => r.departamento_id).filter(Boolean) as string[],
+        );
+        const setorIds = uniq(
+          org.map((r) => r.setor_id).filter(Boolean) as string[],
+        );
+
+        const [deptNames, setorNames, userNames] = await Promise.all([
+          deptIds.length
+            ? supabase.from("departamentos").select("id,nome").in("id", deptIds)
+            : Promise.resolve({ data: [] as IdNome[], error: null as IdNome | null }),
+          setorIds.length
+            ? supabase.from("setores").select("id,nome").in("id", setorIds)
+            : Promise.resolve({ data: [] as IdNome[], error: null as IdNome | null }),
+          // nomes usuários para breakdown por usuário
+          supabase
+            .from("usuarios")
+            .select("id,nome_completo")
+            .in("id", userIds),
+        ]);
+
+        const deptMap = new Map<string, string>();
+        (deptNames.data ?? []).forEach((d) => deptMap.set(d.id, d.nome));
+        const setorMap = new Map<string, string>();
+        (setorNames.data ?? []).forEach((s) => setorMap.set(s.id, s.nome));
+        const userMap = new Map<string, string>();
+        (userNames.data ?? []).forEach((u) =>
+          userMap.set(u.id, u.nome_completo ?? "(sem nome)"),
+        );
+
+        type GroupKey = string;
+        const groups = new Map<
+          GroupKey,
+          { label: string; users: Set<string>; avs: AvaliacaoRow[] }
+        >();
+
+        const groupMode: "DEPARTAMENTO" | "SETOR" | "USUARIO" = !departamentoId
+          ? "DEPARTAMENTO"
+          : !setorId
+            ? "SETOR"
+            : "USUARIO";
+
+        const pushToGroup = (
+          key: string,
+          label: string,
+          userId: string,
+          av: AvaliacaoRow,
+        ) => {
+          if (!groups.has(key))
+            groups.set(key, { label, users: new Set(), avs: [] });
+          const g = groups.get(key)!;
+          g.users.add(userId);
+          g.avs.push(av);
+        };
+
+        for (const av of avs) {
+          const meta = byUser.get(av.user_id) ?? { dept: null, setor: null };
+
+          if (groupMode === "DEPARTAMENTO") {
+            const k = meta.dept ?? "SEM_DEPARTAMENTO";
+            const label = meta.dept
+              ? (deptMap.get(meta.dept) ?? "Departamento")
+              : "Sem departamento";
+            pushToGroup(k, label, av.user_id, av);
+          } else if (groupMode === "SETOR") {
+            const k = meta.setor ?? "SEM_SETOR";
+            const label = meta.setor
+              ? (setorMap.get(meta.setor) ?? "Setor")
+              : "Sem setor";
+            pushToGroup(k, label, av.user_id, av);
+          } else {
+            const k = av.user_id;
+            const label = userMap.get(av.user_id) ?? "(sem nome)";
+            pushToGroup(k, label, av.user_id, av);
+          }
+        }
+
+        const breakdownRows = Array.from(groups.values())
+          .map((g) => ({
+            label: g.label,
+            usuarios: g.users.size,
+            avaliacoes: g.avs.length,
+            media_total: mean(g.avs.map((a) => toNum(a.media_total))),
+          }))
+          .sort((a, b) => b.media_total - a.media_total);
+
+        if (mounted) {
+          setKpis(totals);
+          setBreakdown(breakdownRows);
+          setLoading(false);
+        }
+      } catch (e: unknown) {
+        if (mounted) {
+          setErro(
+            e instanceof Error ? e.message : "Erro ao carregar consolidado.",
+          );
+          setLoading(false);
+        }
       }
+    })();
 
-      setLoading(false);
+    return () => {
+      mounted = false;
     };
-
-    load();
-  }, [usuario.id]);
-
-  const temDados = avaliacoes.length > 0;
-  const last = temDados ? avaliacoes[avaliacoes.length - 1] : null;
-  const prev = avaliacoes.length > 1 ? avaliacoes[avaliacoes.length - 2] : null;
-  const first = temDados ? avaliacoes[0] : null;
-
-  const dimensoes = useMemo(
-    () => [
-      {
-        nome: "Físico",
-        chave: "media_fisico" as const,
-        icone: "heartbeat",
-        cor: "#2e7af5ff",
-      },
-      {
-        nome: "Vital",
-        chave: "media_vital" as const,
-        icone: "leaf",
-        cor: "#79f537ff",
-      },
-      {
-        nome: "Emocional",
-        chave: "media_emocional" as const,
-        icone: "smile-beam",
-        cor: "#f71c86ff",
-      },
-      {
-        nome: "Mental",
-        chave: "media_mental" as const,
-        icone: "brain",
-        cor: "#8b5cf6",
-      },
-    ],
-    [],
-  );
-
-  const toNum = (v: number | string | null | undefined): number => {
-    if (v === null || v === undefined) return 0;
-    if (typeof v === "number") return Number.isFinite(v) ? v : 0;
-    if (typeof v === "string") {
-      const n = parseFloat(v.replace(",", "."));
-      return Number.isFinite(n) ? n : 0;
-    }
-    const n = Number(v);
-    return Number.isFinite(n) ? n : 0;
-  };
-
-  const formatDateBR = (date: string | Date, withYear = true) => {
-    const d = typeof date === "string" ? new Date(date) : date;
-    return d.toLocaleDateString("pt-BR", {
-      day: "2-digit",
-      month: "2-digit",
-      ...(withYear ? { year: "2-digit" } : {}),
-    });
-  };
-
-  const stats = useMemo(() => {
-    if (!last || !first) return null;
-
-    const lastTotal = toNum(last.media_total);
-    const firstTotal = toNum(first.media_total);
-    const prevTotal = prev ? toNum(prev.media_total) : null;
-
-    const deltaFirst = lastTotal - firstTotal;
-    const deltaPrev = prevTotal === null ? null : lastTotal - prevTotal;
-
-    let trendLabel = "—";
-    let trendArrow = "→";
-    let trendColor = "#0f172a";
-
-    if (deltaPrev !== null) {
-      if (deltaPrev > 0.2) {
-        trendLabel = "melhorando";
-        trendArrow = "↑";
-        trendColor = "#16a34a";
-      } else if (deltaPrev < -0.2) {
-        trendLabel = "piorando";
-        trendArrow = "↓";
-        trendColor = "#ef4444";
-      } else {
-        trendLabel = "estável";
-        trendArrow = "→";
-        trendColor = "#0f172a";
-      }
-    }
-
-    return {
-      lastTotal,
-      deltaFirst,
-      deltaPrev,
-      trendLabel,
-      trendArrow,
-      trendColor,
-    };
-  }, [last, first, prev]);
-
-  const chartLabels = useMemo(() => {
-    if (!avaliacoes.length) return [];
-    const n = avaliacoes.length;
-    const step = n <= 8 ? 1 : n <= 14 ? 2 : n <= 24 ? 3 : Math.ceil(n / 8);
-
-    return avaliacoes.map((a, i) => {
-      if (i % step !== 0 && i !== n - 1) return "";
-      return formatDateBR(a.created_at, false);
-    });
-  }, [avaliacoes]);
+  }, [role, meId, clienteId, departamentoId, setorId, gestorId, periodo]);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#019499]" />
-        <p className="mt-4 text-gray-600">Carregando gráficos...</p>
+      <div className="flex items-center justify-center h-60">
+        <div className="animate-spin h-8 w-8 rounded-full border-b-2 border-(--brand-secondary)" />
       </div>
     );
   }
@@ -740,287 +1048,374 @@ function EvolucaoUsuario({ usuario }: { usuario: Usuario }) {
     );
   }
 
-  if (!temDados) {
-    return (
-      <div className="text-center py-12">
-        <p className="text-gray-600">
-          Nenhuma avaliação encontrada para este usuário.
+  return (
+    <div className="space-y-6">
+      {/* KPIs compactos */}
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+        <MiniKpi label="Avaliações" value={kpis.avaliacoes} tone="brand" />
+        <MiniKpi
+          label="Usuários avaliados"
+          value={kpis.usuarios}
+          tone="secondary"
+        />
+        <MiniKpi
+          label="Média total"
+          value={kpis.media_total.toFixed(1)}
+          tone="highlight"
+        />
+        <MiniKpi
+          label="Última avaliação"
+          value={kpis.lastDate ? fmtDateBR(kpis.lastDate) : "—"}
+          tone="muted"
+        />
+      </div>
+
+      {/* Médias por dimensão */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <DimCard
+          label="Físico"
+          value={kpis.media_fisico}
+          color="var(--brand-secondary)"
+        />
+        <DimCard
+          label="Vital"
+          value={kpis.media_vital}
+          color="var(--brand-highlight)"
+        />
+        <DimCard
+          label="Emocional"
+          value={kpis.media_emocional}
+          color="var(--brand-accent)"
+        />
+        <DimCard
+          label="Mental"
+          value={kpis.media_mental}
+          color="var(--brand)"
+        />
+      </div>
+
+      {/* Breakdown table */}
+      <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+        <div className="px-4 py-3 border-b border-slate-200">
+          <p className="text-sm font-semibold text-slate-900">
+            Consolidado por{" "}
+            {!departamentoId ? "Departamento" : !setorId ? "Setor" : "Usuário"}
+          </p>
+          <p className="text-xs text-slate-500">
+            Ordenado por média total (desc)
+          </p>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="min-w-full">
+            <thead className="bg-slate-50 border-b border-slate-200">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
+                  Item
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-slate-600 uppercase tracking-wider">
+                  Usuários
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-slate-600 uppercase tracking-wider">
+                  Avaliações
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-slate-600 uppercase tracking-wider">
+                  Média total
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {breakdown.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={4}
+                    className="px-4 py-10 text-center text-sm text-slate-500"
+                  >
+                    Nenhum dado encontrado para o filtro atual.
+                  </td>
+                </tr>
+              ) : (
+                breakdown.slice(0, 20).map((r) => (
+                  <tr key={r.label} className="hover:bg-slate-50">
+                    <td className="px-4 py-3 text-sm text-slate-900 font-medium">
+                      {r.label}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-700 text-right">
+                      {r.usuarios}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-700 text-right">
+                      {r.avaliacoes}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-900 text-right font-semibold">
+                      {r.media_total.toFixed(1)}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {breakdown.length > 20 && (
+          <div className="px-4 py-2 text-xs text-slate-500 border-t border-slate-200">
+            Exibindo 20 de {breakdown.length} itens.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function MiniKpi(props: {
+  label: string;
+  value: React.ReactNode;
+  tone: "brand" | "secondary" | "highlight" | "muted";
+}) {
+  const toneClass =
+    props.tone === "brand"
+      ? "text-[var(--brand)]"
+      : props.tone === "secondary"
+        ? "text-[var(--brand-secondary)]"
+        : props.tone === "highlight"
+          ? "text-[var(--brand-highlight)]"
+          : "text-slate-700";
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-4">
+      <p className="text-xs uppercase tracking-wide text-slate-500">
+        {props.label}
+      </p>
+      <p className={`mt-1 text-2xl font-extrabold ${toneClass}`}>
+        {props.value}
+      </p>
+    </div>
+  );
+}
+
+function DimCard(props: { label: string; value: number; color: string }) {
+  const v = clamp01to10(props.value);
+  const pct = Math.min((v / 10) * 100, 100);
+
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-semibold text-slate-900">{props.label}</p>
+        <p className="text-lg font-bold" style={{ color: props.color }}>
+          {v.toFixed(1)}
         </p>
+      </div>
+      <div className="mt-3 h-2 w-full rounded-full bg-slate-200">
+        <div
+          className="h-2 rounded-full"
+          style={{ width: `${pct}%`, backgroundColor: props.color }}
+        />
+      </div>
+    </div>
+  );
+}
+
+/* =========================
+   EVOLUÇÃO DO USUÁRIO (IMPLEMENTADA)
+========================= */
+
+function EvolucaoUsuario(props: {
+  usuarioId: string;
+  onBack: () => void;
+  periodo: PeriodPreset;
+}) {
+  const { usuarioId, onBack, periodo } = props;
+
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+  const [avs, setAvs] = useState<AvaliacaoRow[]>([]);
+  const [nome, setNome] = useState<string>("");
+
+  useEffect(() => {
+    let mounted = true;
+
+    (async () => {
+      setLoading(true);
+      setErro(null);
+
+      try {
+        const [uRes, aRes] = await Promise.all([
+          supabase
+            .from("usuarios")
+            .select("id,nome_completo")
+            .eq("id", usuarioId)
+            .single(),
+          (async () => {
+            let q = supabase
+              .from("avaliacoes_completas")
+              .select(
+                "id,user_id,created_at,media_total,media_fisico,media_vital,media_emocional,media_mental",
+              )
+              .eq("user_id", usuarioId)
+              .order("created_at", { ascending: true });
+
+            if (periodo !== "all") {
+              const days =
+                periodo === "30d" ? 30 : periodo === "90d" ? 90 : 365;
+              q = q.gte("created_at", isoFromDaysAgo(days));
+            }
+            return q;
+          })(),
+        ]);
+
+        if (uRes.error) throw new Error(uRes.error.message);
+        if (aRes.error) throw new Error(aRes.error.message);
+
+        if (!mounted) return;
+
+        setNome(uRes.data?.nome_completo ?? "(sem nome)");
+        setAvs((aRes.data ?? []) as AvaliacaoRow[]);
+      } catch (e: unknown) {
+        if (mounted)
+          setErro(
+            e instanceof Error ? e.message : "Erro ao carregar evolução.",
+          );
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, [usuarioId, periodo]);
+
+  const chartData = useMemo(() => {
+    return avs.map((a) => ({
+      data: fmtDateBR(a.created_at),
+      total: toNum(a.media_total),
+      fisico: toNum(a.media_fisico),
+      vital: toNum(a.media_vital),
+      emocional: toNum(a.media_emocional),
+      mental: toNum(a.media_mental),
+    }));
+  }, [avs]);
+
+  const last = avs.length ? avs[avs.length - 1] : null;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-60">
+        <div className="animate-spin h-8 w-8 rounded-full border-b-2 border-(--brand-secondary)" />
       </div>
     );
   }
 
+  if (erro) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+        <p className="text-red-700">{erro}</p>
+      </div>
+    );
+  }
+
+  if (!avs.length) {
+    return (
+      <div className="rounded-lg border border-slate-200 bg-white p-6">
+        <button
+          onClick={onBack}
+          className="text-sm text-(--brand-secondary) hover:underline"
+        >
+          ← Voltar
+        </button>
+        <div className="mt-4 text-center text-slate-600">
+          Nenhuma avaliação encontrada para este usuário no período selecionado.
+        </div>
+      </div>
+    );
+  }
+
+  const kpiTotal = mean(avs.map((a) => toNum(a.media_total)));
+
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="text-center">
-        <h2 className="text-2xl font-bold text-gray-900">Relatório Técnico</h2>
-        <p className="text-lg text-gray-600 mt-2">{usuario.nome_completo}</p>
-        <p className="text-sm text-gray-500 mt-1">
-          Gerado em: {formatDateBR(new Date(), true)}
-          {last &&
-            ` • Última avaliação: ${formatDateBR(last.created_at, true)}`}
-        </p>
+    <div className="space-y-6">
+      <div className="rounded-lg border border-slate-200 bg-white p-6">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <button
+              onClick={onBack}
+              className="text-sm text-(--brand-secondary) hover:underline"
+            >
+              ← Voltar
+            </button>
+            <h3 className="mt-2 text-lg font-semibold text-slate-900">
+              {nome}
+            </h3>
+            <p className="text-xs text-slate-500">
+              Última avaliação: {last ? fmtDateBR(last.created_at) : "—"}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <MiniKpi label="Avaliações" value={avs.length} tone="muted" />
+            <MiniKpi
+              label="Média total (período)"
+              value={kpiTotal.toFixed(1)}
+              tone="brand"
+            />
+            <MiniKpi
+              label="Última total"
+              value={toNum(last?.media_total).toFixed(1)}
+              tone="highlight"
+            />
+          </div>
+        </div>
       </div>
 
-      {/* Situação Atual */}
-      <div>
-        <h3 className="text-xl font-bold text-center mb-6">Situação Atual</h3>
-        <div className="space-y-4">
-          {dimensoes.map((dim) => {
-            const v = last
-              ? toNum(
-                  last[dim.chave as keyof Avaliacao] as
-                    | number
-                    | string
-                    | null
-                    | undefined,
-                )
-              : 0;
-            const percentage = Math.min((v / 10) * 100, 100);
-
-            return (
-              <div
-                key={dim.chave}
-                className="bg-white rounded-lg p-4 border border-gray-200"
-              >
-                <div className="flex justify-between items-center mb-2">
-                  <span className="font-semibold text-gray-900">
-                    {dim.nome}
-                  </span>
-                  <span
-                    className="font-bold text-lg"
-                    style={{ color: dim.cor }}
-                  >
-                    {v.toFixed(1)}
-                  </span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-3">
-                  <div
-                    className="h-3 rounded-full transition-all duration-300"
-                    style={{
-                      width: `${percentage}%`,
-                      backgroundColor: dim.cor,
-                    }}
-                  />
-                </div>
-              </div>
-            );
-          })}
-
-          <div className="bg-white rounded-lg p-4 border border-gray-200">
-            <div className="flex justify-between items-center mb-2">
-              <span className="font-semibold text-gray-900">Total</span>
-              <span className="font-bold text-lg text-[#030870]">
-                {toNum(last?.media_total).toFixed(1)}
-              </span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-3">
-              <div
-                className="h-3 rounded-full bg-[#030870] transition-all duration-300"
-                style={{
-                  width: `${Math.min((toNum(last?.media_total) / 10) * 100, 100)}%`,
-                }}
+      <div className="rounded-lg border border-slate-200 bg-white p-6">
+        <h4 className="text-sm font-semibold text-slate-900 mb-4">
+          Evolução (Total e Dimensões)
+        </h4>
+        <div className="h-72">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="data" />
+              <YAxis domain={[0, 10]} />
+              <Tooltip />
+              <Legend />
+              <Line
+                type="monotone"
+                dataKey="total"
+                stroke="var(--brand)"
+                strokeWidth={3}
+                dot={false}
               />
-            </div>
-          </div>
+              <Line
+                type="monotone"
+                dataKey="fisico"
+                stroke="var(--brand-secondary)"
+                dot={false}
+              />
+              <Line
+                type="monotone"
+                dataKey="vital"
+                stroke="var(--brand-highlight)"
+                dot={false}
+              />
+              <Line
+                type="monotone"
+                dataKey="emocional"
+                stroke="var(--brand-accent)"
+                dot={false}
+              />
+              <Line
+                type="monotone"
+                dataKey="mental"
+                stroke="#64748b"
+                dot={false}
+              />
+            </LineChart>
+          </ResponsiveContainer>
         </div>
-      </div>
-
-      {/* Evolução */}
-      <div>
-        <h3 className="text-xl font-bold text-center mb-6">Evolução</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {dimensoes.map((dim) => {
-            const atual = last
-              ? toNum(
-                  last[dim.chave as keyof Avaliacao] as
-                    | number
-                    | string
-                    | null
-                    | undefined,
-                )
-              : 0;
-            const anterior = prev
-              ? toNum(
-                  prev[dim.chave as keyof Avaliacao] as
-                    | number
-                    | string
-                    | null
-                    | undefined,
-                )
-              : atual;
-            const diff = atual - anterior;
-
-            let arrow = "→";
-            if (diff > 0.15) arrow = "↑";
-            else if (diff < -0.15) arrow = "↓";
-
-            return (
-              <div
-                key={dim.chave}
-                className="bg-white rounded-lg p-6 border-l-4 shadow-sm"
-                style={{ borderLeftColor: dim.cor }}
-              >
-                <div className="flex justify-between items-start mb-4">
-                  <div
-                    className="w-12 h-12 rounded-lg flex items-center justify-center"
-                    style={{ backgroundColor: `${dim.cor}20` }}
-                  >
-                    <span className="text-2xl">{arrow}</span>
-                  </div>
-                </div>
-
-                <h4 className="font-semibold text-gray-900 mb-2">{dim.nome}</h4>
-                <p
-                  className="text-3xl font-bold mb-3"
-                  style={{ color: dim.cor }}
-                >
-                  {atual.toFixed(1)}
-                </p>
-
-                <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
-                  <div
-                    className="h-2 rounded-full transition-all duration-300"
-                    style={{
-                      width: `${Math.min((atual / 10) * 100, 100)}%`,
-                      backgroundColor: dim.cor,
-                    }}
-                  />
-                </div>
-
-                <p className="text-sm text-gray-600">
-                  {diff === 0
-                    ? "Sem variação"
-                    : `${diff > 0 ? "+" : ""}${diff.toFixed(1)} vs anterior`}
-                </p>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Gráficos */}
-      {avaliacoes.length > 1 && (
-        <div>
-          <h3 className="text-xl font-bold text-center mb-6">Gráficos</h3>
-
-          {/* Gráfico de linha - Total */}
-          <div className="bg-white rounded-lg p-6 border border-gray-200 mb-6">
-            <h4 className="text-lg font-semibold text-center mb-4">
-              Média total (linha do tempo)
-            </h4>
-            <div className="h-64">
-              <LineChart
-                width={800}
-                height={250}
-                data={avaliacoes.map((a, i) => ({
-                  name: chartLabels[i] || formatDateBR(a.created_at, false),
-                  total: toNum(a.media_total),
-                }))}
-              >
-                <XAxis dataKey="name" />
-                <YAxis domain={[0, 10]} />
-                <Tooltip />
-                <Line
-                  type="monotone"
-                  dataKey="total"
-                  stroke="#030870"
-                  strokeWidth={3}
-                  dot={{ fill: "#030870", strokeWidth: 2, r: 4 }}
-                />
-              </LineChart>
-            </div>
-          </div>
-
-          {/* Gráfico de dimensões */}
-          <div className="bg-white rounded-lg p-6 border border-gray-200">
-            <h4 className="text-lg font-semibold text-center mb-4">
-              Dimensões (evolução)
-            </h4>
-            <div className="h-64">
-              <LineChart
-                width={800}
-                height={250}
-                data={avaliacoes.map((a, i) => ({
-                  name: chartLabels[i] || formatDateBR(a.created_at, false),
-                  fisico: toNum(a.media_fisico),
-                  vital: toNum(a.media_vital),
-                  emocional: toNum(a.media_emocional),
-                  mental: toNum(a.media_mental),
-                }))}
-              >
-                <XAxis dataKey="name" />
-                <YAxis domain={[0, 10]} />
-                <Tooltip />
-                {dimensoes.map((dim) => (
-                  <Line
-                    key={dim.chave}
-                    type="monotone"
-                    dataKey={dim.chave.replace("media_", "")}
-                    stroke={dim.cor}
-                    strokeWidth={2}
-                    dot={{ fill: dim.cor, strokeWidth: 2, r: 3 }}
-                  />
-                ))}
-              </LineChart>
-            </div>
-            <div className="flex justify-center flex-wrap gap-4 mt-4">
-              {dimensoes.map((dim) => (
-                <div key={dim.chave} className="flex items-center gap-2">
-                  <div
-                    className="w-3 h-3 rounded-full"
-                    style={{ backgroundColor: dim.cor }}
-                  />
-                  <span className="text-sm font-medium text-gray-700">
-                    {dim.nome}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Resumo */}
-      {stats && (
-        <div>
-          <h3 className="text-xl font-bold text-center mb-6">Resumo</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-white rounded-lg p-6 border border-gray-200 text-center">
-              <h4 className="font-semibold text-gray-900 mb-2">Média total</h4>
-              <p className="text-3xl font-bold text-[#030870]">
-                {stats.lastTotal.toFixed(1)}
-              </p>
-            </div>
-            <div className="bg-white rounded-lg p-6 border border-gray-200 text-center">
-              <h4 className="font-semibold text-gray-900 mb-2">Desde a 1ª</h4>
-              <p
-                className={`text-3xl font-bold ${
-                  stats.deltaFirst >= 0 ? "text-green-600" : "text-red-600"
-                }`}
-              >
-                {stats.deltaFirst >= 0 ? "+" : ""}
-                {stats.deltaFirst.toFixed(1)}
-              </p>
-            </div>
-            <div className="bg-white rounded-lg p-6 border border-gray-200 text-center">
-              <h4 className="font-semibold text-gray-900 mb-2">Tendência</h4>
-              <p
-                className="text-3xl font-bold"
-                style={{ color: stats.trendColor }}
-              >
-                {stats.trendLabel} {stats.trendArrow}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Disclaimer */}
-      <div className="text-center text-sm text-gray-500 mt-8">
-        Este conteúdo foi gerado com base nas respostas do usuário e não possui
-        valor diagnóstico.
+        <p className="text-xs text-slate-500 mt-3">
+          Observação: valores de 0–10 conforme médias consolidadas em{" "}
+          <code>avaliacoes_completas</code>.
+        </p>
       </div>
     </div>
   );

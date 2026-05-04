@@ -12,8 +12,6 @@ import {
   Shield,
   User,
   Calendar,
-  Eye,
-  EyeOff,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState, useTransition } from "react";
@@ -78,7 +76,7 @@ export default function UsuariosAdminPage() {
   const [filterAtivo, setFilterAtivo] = useState<FilterAtivo>("todos");
 
   // ✅ domínio: por padrão só usuários vinculados a cliente
-  const [showSystemAccounts, setShowSystemAccounts] = useState(false);
+  const [showSystemAccounts] = useState(false);
 
   const [pending, startTransition] = useTransition();
   const [confirmDelete, setConfirmDelete] = useState<{
