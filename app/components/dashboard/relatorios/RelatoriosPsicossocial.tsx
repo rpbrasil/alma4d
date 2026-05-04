@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
 
 export default function RelatoriosPsicossocial() {
   const { user, role } = useAuth();
@@ -10,9 +11,10 @@ export default function RelatoriosPsicossocial() {
   const [loading, setLoading] = useState(true);
 
   const normalizedRole = role?.toLowerCase();
-  const isAdmin = normalizedRole === "admin";
+  
   const isCliente = normalizedRole === "cliente";
   const isGestor = normalizedRole === "gestor";
+  const router = useRouter();
 
   useEffect(() => {
     const init = async () => {
@@ -92,8 +94,11 @@ export default function RelatoriosPsicossocial() {
         <button
           className="bg-[#019499] text-white px-6 py-3 rounded-lg hover:bg-[#017a7d] transition-colors font-medium"
           disabled={!clienteId}
+          onClick={() =>
+            router.push("/dashboard/relatorios/psicossocial/copsoq")
+          }
         >
-          Abrir dashboard
+          Dashboard Psicossocial
         </button>
       </div>
     </div>

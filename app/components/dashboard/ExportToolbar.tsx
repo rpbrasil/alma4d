@@ -11,13 +11,17 @@ export type ExportColumn<T> = {
   getValue?: (row: T) => ExportValue;
 };
 
+
 type ExportToolbarProps<T extends object> = {
   title: string;
   rows: T[];
   columns: ExportColumn<T>[];
   filename?: string;
   sheetName?: string;
+  showPrint?: boolean;
+  showExcel?: boolean;
 };
+
 
 function toCellValue(v: ExportValue): string | number | boolean | null {
   if (v === undefined || v === null) return null;
@@ -27,12 +31,15 @@ function toCellValue(v: ExportValue): string | number | boolean | null {
   return String(v);
 }
 
+
 export function ExportToolbar<T extends object>({
   title,
   rows,
   columns,
   filename,
   sheetName,
+  showPrint = true,
+  showExcel = true,
 }: ExportToolbarProps<T>) {
   const handlePrint = () => window.print();
 
@@ -49,7 +56,6 @@ export function ExportToolbar<T extends object>({
           if (col.getValue) {
             raw = col.getValue(row);
           } else if (col.key) {
-            // acesso seguro sem exigir index signature no tipo T
             const rec = row as Record<string, unknown>;
             raw = rec[col.key as string] as ExportValue;
           }
@@ -77,27 +83,28 @@ export function ExportToolbar<T extends object>({
 
   return (
     <div className="flex items-center gap-2">
-      <button
-        onClick={handlePrint}
-        type="button"
-        className="inline-flex items-center gap-2 px-3 py-2
-                   border border-gray-300 rounded-lg text-gray-700
-                   hover:bg-gray-50 text-sm"
-      >
-        <Printer size={16} />
-        Imprimir
-      </button>
+      {showPrint ? (
+        <button
+          type="button"
+          onClick={handlePrint}
+          className="inline-flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 text-sm"
+        >
+          <Printer size={16} />
+          Imprimir
+        </button>
+      ) : null}
 
-      <button
-        onClick={handleExportExcel}
-        type="button"
-        className="inline-flex items-center gap-2 px-3 py-2
-                   border border-gray-300 rounded-lg text-gray-700
-                   hover:bg-gray-50 text-sm"
-      >
-        <FileSpreadsheet size={16} />
-        Excel
-      </button>
+      {showExcel ? (
+        <button
+          type="button"
+          onClick={handleExportExcel}
+          className="inline-flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 text-sm"
+        >
+          <FileSpreadsheet size={16} />
+          Excel
+        </button>
+      ) : null}
     </div>
   );
 }
+
