@@ -1,9 +1,8 @@
-// app/hooks/useProfissionais.ts
 "use client";
 
-import type { Profissional } from "@/types/profissional";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
+import type { Profissional } from "@/types/profissional";
 
 export function useProfissionais() {
   const [data, setData] = useState<Profissional[]>([]);
@@ -15,36 +14,31 @@ export function useProfissionais() {
 
     (async () => {
       try {
-        // ✅ valida sessão no client
-        const { data: auth, error: authErr } = await supabase.auth.getUser();
+        setLoading(true);
+        setError(null);
 
-        if (authErr || !auth.user) {
-          throw new Error("Sessão inválida");
-        }
+        const { data: auth } = await supabase.auth.getUser();
+        if (!auth?.user) throw new Error("Sessão inválida.");
 
         const { data, error } = await supabase
           .from("profissionais")
-          .select("id,nome,ativo")
+          .select(
+            "id,nome,especialidade,documento,email,calendly_url,whatsapp_url,numero_conselho,ativo,created_at",
+          )
           .order("nome", { ascending: true });
 
         if (error) throw error;
 
+        if (mounted) setData((data ?? []) as Profissional[]);
+      } catch (e: unknown) {
+        const msg =
+          e instanceof Error ? e.message : "Erro ao carregar profissionais";
         if (mounted) {
-          setData((data ?? []) as Profissional[]);
-          setError(null);
-        }
-      } catch (err) {
-        const message =
-          err instanceof Error ? err.message : "Erro ao carregar profissionais";
-
-        if (mounted) {
-          setError(message);
+          setError(msg);
           setData([]);
         }
       } finally {
-        if (mounted) {
-          setLoading(false);
-        }
+        if (mounted) setLoading(false);
       }
     })();
 
@@ -53,9 +47,5 @@ export function useProfissionais() {
     };
   }, []);
 
-  return {
-    data,
-    loading,
-    error,
-  };
+  return { data, loading, error };
 }

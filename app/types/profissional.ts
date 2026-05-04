@@ -2,18 +2,27 @@ export interface Profissional {
   id: string;
   nome: string;
   especialidade: string;
-  documento: string; // CPF (11 dígitos) ou CNPJ (14 dígitos)
-  calendly_url: string; // Obrigatório
+
+  // CPF (11) ou CNPJ (14) ou "PENDENTE"
+  documento: string;
+
+  // ✅ opção A: profissionais têm email próprio
+  email: string | null;
+
+  // Obrigatório (tabela profissionais: NOT NULL)
+  calendly_url: string;
+
   bio_resumida?: string | null;
   foto_url?: string | null;
   website_url?: string | null;
   linkedin_url?: string | null;
   instagram_url?: string | null;
   whatsapp_url?: string | null;
+
   numero_conselho?: string | null;
+
   ativo: boolean | null;
   created_at: string;
-  email: string | null;
 }
 
 export type ProfissionalCrud = Profissional;
@@ -21,21 +30,24 @@ export type ProfissionalCrud = Profissional;
 export interface ProfissionalFormData {
   nome: string;
   especialidade: string;
-  documento: string; // CPF ou CNPJ
-  calendly_url: string; // Obrigatório
+  documento: string;
+
+  email?: string | null;
+  numero_conselho?: string | null;
+
+  calendly_url: string;
   bio_resumida?: string | null;
   foto_url?: string | null;
   website_url?: string | null;
   linkedin_url?: string | null;
   instagram_url?: string | null;
   whatsapp_url?: string | null;
-  numero_conselho?: string | null;
 }
 
 // Helpers para validação de documento
 export function isCPFValido(cpf: string): boolean {
   if (!/^\d{11}$/.test(cpf)) return false;
-  if (/^(\d)\1+$/.test(cpf)) return false; // Todos os dígitos iguais
+  if (/^(\d)\1+$/.test(cpf)) return false;
 
   let soma = 0;
   for (let i = 0; i < 9; i++) soma += parseInt(cpf[i]) * (10 - i);
@@ -52,7 +64,7 @@ export function isCPFValido(cpf: string): boolean {
 
 export function isCNPJValido(cnpj: string): boolean {
   if (!/^\d{14}$/.test(cnpj)) return false;
-  if (/^(\d)\1+$/.test(cnpj)) return false; // Todos os dígitos iguais
+  if (/^(\d)\1+$/.test(cnpj)) return false;
 
   let soma = 0;
   let mult = 5;

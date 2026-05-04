@@ -10,6 +10,81 @@ import type { Profissional } from "@/types/profissional";
 type FilterAtivo = "todos" | "ativos" | "inativos";
 type SortBy = "nome";
 
+function onlyDigits(v: string) {
+  return (v || "").replace(/\D+/g, "");
+}
+
+function formatCPF(raw: string) {
+  const v = onlyDigits(raw).slice(0, 11);
+  const p1 = v.slice(0, 3);
+  const p2 = v.slice(3, 6);
+  const p3 = v.slice(6, 9);
+  const p4 = v.slice(9, 11);
+  let out = p1;
+  if (p2) out += "." + p2;
+  if (p3) out += "." + p3;
+  if (p4) out += "-" + p4;
+  return out;
+}
+
+function formatCNPJ(raw: string) {
+  const v = onlyDigits(raw).slice(0, 14);
+  const p1 = v.slice(0, 2);
+  const p2 = v.slice(2, 5);
+  const p3 = v.slice(5, 8);
+  const p4 = v.slice(8, 12);
+  const p5 = v.slice(12, 14);
+  let out = p1;
+  if (p2) out += "." + p2;
+  if (p3) out += "." + p3;
+  if (p4) out += "/" + p4;
+  if (p5) out += "-" + p5;
+  return out;
+}
+
+function fmtDocumento(doc: string) {
+  if (!doc) return "—";
+  const t = doc.trim();
+  if (t.toUpperCase() === "PENDENTE") return "PENDENTE";
+  const digits = onlyDigits(t);
+  if (digits.length === 11) return formatCPF(digits);
+  if (digits.length === 14) return formatCNPJ(digits);
+  return t;
+}
+
+function Kpi({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-4">
+      <p className="text-xs uppercase tracking-wide text-gray-500">{label}</p>
+      <p className="mt-1 text-2xl font-extrabold text-slate-900">{value}</p>
+    </div>
+  );
+}
+
+function getWhatsAppLink(value: string) {
+  const v = value.trim();
+
+  // Já é uma URL
+  if (v.startsWith("http://") || v.startsWith("https://")) {
+    return v;
+  }
+
+  // Apenas número → converte para wa.me
+  const digits = v.replace(/\D+/g, "");
+
+  // se vier sem DDI, assume Brasil
+  const phone =
+    digits.length === 11 || digits.length === 10 ? `55${digits}` : digits;
+
+  return `https://wa.me/${phone}`;
+}
+
+function formatWhatsAppLabel(value: string) {
+  // só para exibição bonitinha
+  if (value.startsWith("http")) return "Abrir conversa";
+  return value;
+}
+
 export default function ProfissionaisPage() {
   const { role, loading: authLoading } = useAuth();
   const { data: profissionais, loading, error } = useProfissionais();
@@ -20,18 +95,25 @@ export default function ProfissionaisPage() {
   const [filterAtivo, setFilterAtivo] = useState<FilterAtivo>("todos");
   const [sortBy] = useState<SortBy>("nome");
 
-  /* ✅ TODOS OS HOOKS FICAM AQUI EM CIMA */
-
+  // ✅ hooks sempre antes de returns
   const filtered = useMemo(() => {
     let list = [...profissionais];
 
     const term = searchTerm.trim().toLowerCase();
     if (term) {
-      list = list.filter(
-        (p) =>
-          p.nome.toLowerCase().includes(term) ||
-          (p.email || "").toLowerCase().includes(term),
-      );
+      list = list.filter((p) => {
+        const nome = (p.nome || "").toLowerCase();
+        const esp = (p.especialidade || "").toLowerCase();
+        const doc = (p.documento || "").toLowerCase();
+        const cons = (p.numero_conselho || "").toLowerCase();
+
+        return (
+          nome.includes(term) ||
+          esp.includes(term) ||
+          doc.includes(term) ||
+          cons.includes(term)
+        );
+      });
     }
 
     if (filterAtivo !== "todos") {
@@ -53,8 +135,6 @@ export default function ProfissionaisPage() {
     const inativos = total - ativos;
     return { total, ativos, inativos };
   }, [profissionais]);
-
-  /* ✅ AGORA PODE FAZER RETURNS CONDICIONAIS */
 
   if (authLoading || loading) {
     return (
@@ -126,7 +206,7 @@ export default function ProfissionaisPage() {
           <Search className="absolute left-3 top-3 text-gray-400" size={20} />
           <input
             type="text"
-            placeholder="Buscar por nome ou email..."
+            placeholder="Buscar por nome, especialidade, documento ou conselho..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg
@@ -178,7 +258,7 @@ export default function ProfissionaisPage() {
                     Especialidade
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                    Documento
+                    Documento (CPF/CNPJ/Conselho)
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                     Status
@@ -190,58 +270,102 @@ export default function ProfissionaisPage() {
               </thead>
 
               <tbody className="divide-y divide-gray-200">
-                {filtered.map((p) => (
-                  <tr key={p.id} className="hover:bg-gray-50 transition-colors">
-                    {/* Nome */}
-                    <td className="px-6 py-4">
-                      <p className="font-medium text-gray-900">{p.nome}</p>
-                    </td>
+                {filtered.map((p: Profissional) => {
+                  const docFmt = fmtDocumento(p.documento);
+                  const docPendente = docFmt === "PENDENTE";
+                  const conselho = (p.numero_conselho ?? "").trim();
 
-                    {/* Especialidade */}
-                    <td className="px-6 py-4 text-sm text-gray-600">
-                      {p.especialidade}
-                    </td>
-
-                    {/* Documento */}
-                    <td className="px-6 py-4 text-sm text-gray-600">
-                      {p.documento}
-                    </td>
-
-                    {/* Status */}
-                    <td className="px-6 py-4">
-                      <span
-                        className={
-                          p.ativo
-                            ? "inline-flex px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800"
-                            : "inline-flex px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600"
-                        }
-                      >
-                        {p.ativo ? "Ativo" : "Inativo"}
-                      </span>
-                    </td>
-
-                    {/* Ações */}
-                    <td className="px-6 py-4 text-right">
-                      <Link
-                        href={`/dashboard/profissionais/${p.id}`}
-                        className="text-[#019499] hover:underline font-medium"
-                      >
-                        Editar
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-
-                {filtered.length === 0 && (
-                  <tr>
-                    <td
-                      colSpan={5}
-                      className="px-6 py-10 text-center text-sm text-gray-500"
+                  return (
+                    <tr
+                      key={p.id}
+                      className="hover:bg-gray-50 transition-colors"
                     >
-                      Nenhum profissional encontrado
-                    </td>
-                  </tr>
-                )}
+                      {/* Nome */}
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col gap-0.5">
+                          {/* Nome */}
+                          <span className="font-medium text-gray-900">
+                            {p.nome}
+                          </span>
+
+                          {/* Email clicável */}
+                          {p.email && (
+                            <a
+                              href={`mailto:${p.email}`}
+                              className="text-sm text-slate-500 hover:text-slate-700 hover:underline"
+                            >
+                              {p.email}
+                            </a>
+                          )}
+
+                          {/* WhatsApp clicável */}
+                          {p.whatsapp_url && (
+                            <a
+                              href={getWhatsAppLink(p.whatsapp_url)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm text-slate-500 hover:text-slate-700 hover:underline"
+                            >
+                              WhatsApp: {formatWhatsAppLabel(p.whatsapp_url)}
+                            </a>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Especialidade */}
+                      <td className="px-6 py-4 text-sm text-gray-600">
+                        {p.especialidade}
+                      </td>
+
+                      {/* Documento + Conselho */}
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col gap-1">
+                          <div className="text-sm text-gray-700">
+                            {docPendente ? (
+                              <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                PENDENTE
+                              </span>
+                            ) : (
+                              <span className="font-medium">{docFmt}</span>
+                            )}
+                          </div>
+
+                          {conselho ? (
+                            <div className="text-xs text-slate-500">
+                              Conselho:{" "}
+                              <span className="font-medium text-slate-700">
+                                {conselho}
+                              </span>
+                            </div>
+                          ) : null}
+                        </div>
+                      </td>
+
+                      {/* Status */}
+                      <td className="px-6 py-4">
+                        <span
+                          className={
+                            p.ativo
+                              ? "inline-flex px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800"
+                              : "inline-flex px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600"
+                          }
+                        >
+                          {p.ativo ? "Ativo" : "Inativo"}
+                        </span>
+                      </td>
+
+                      {/* Ações */}
+                      <td className="px-6 py-4 text-right">
+                        <Link
+                          href={`/dashboard/profissionais/${p.id}/editar`}
+                          className="text-[#019499] hover:underline font-medium"
+                        >
+                          Editar
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -253,15 +377,6 @@ export default function ProfissionaisPage() {
           Mostrando {filtered.length} de {profissionais.length} profissionais
         </div>
       )}
-    </div>
-  );
-}
-
-function Kpi({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4">
-      <p className="text-xs uppercase tracking-wide text-gray-500">{label}</p>
-      <p className="mt-1 text-2xl font-extrabold text-slate-900">{value}</p>
     </div>
   );
 }
