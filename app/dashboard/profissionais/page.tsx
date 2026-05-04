@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { useAuth } from "@/context/auth";
 import { useProfissionais } from "@/hooks/useProfissionais";
 import type { Profissional } from "@/types/profissional";
+import { ExportToolbar } from "@/components/dashboard/ExportToolbar";
 
 type FilterAtivo = "todos" | "ativos" | "inativos";
 type SortBy = "nome";
@@ -171,15 +172,29 @@ export default function ProfissionaisPage() {
           </p>
         </div>
 
-        <Link
-          href="/dashboard/profissionais/novo"
-          className="inline-flex items-center gap-2 bg-[#019499] text-white
-                     px-4 py-2 rounded-lg hover:bg-[#017a7d]
-                     transition-colors font-medium"
-        >
-          <Plus size={18} />
-          Novo profissional
-        </Link>
+        <div className="flex items-center gap-3">
+          <ExportToolbar
+            title="Profissionais"
+            rows={filtered}
+            columns={[
+              { key: "nome", label: "Nome" },
+              { key: "email", label: "Email" },
+              { key: "especialidade", label: "Especialidade" },
+              { key: "documento", label: "Documento" },
+              { key: "numero_conselho", label: "Conselho" },
+              { key: "ativo", label: "Ativo" },
+            ]}
+          />
+
+          <Link
+            href="/dashboard/profissionais/novo"
+            className="inline-flex items-center gap-2 bg-[#019499]
+               text-white px-4 py-2 rounded-lg hover:bg-[#017a7d]"
+          >
+            <Plus size={18} />
+            Novo profissional
+          </Link>
+        </div>
       </div>
 
       {/* Error */}

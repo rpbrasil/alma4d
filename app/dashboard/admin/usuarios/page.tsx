@@ -24,7 +24,7 @@ import {
   type UsuarioRow,
   type Role,
 } from "./actions";
-
+import { ExportToolbar } from "@/components/dashboard/ExportToolbar";
 
 type ClienteOption = { id: string; nome: string };
 
@@ -206,14 +206,64 @@ export default function UsuariosAdminPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <Link
-          href="/dashboard/admin/usuarios/novo"
-          className="inline-flex items-center gap-2 bg-[#019499] text-white px-4 py-2 rounded-lg hover:bg-[#017a7d] transition-colors font-medium whitespace-nowrap"
-        >
-          <Plus size={18} />
-          Novo Usuário
-        </Link>
+      {/* Header */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        {/* Título */}
+        <div>
+          <h2 className="text-lg font-semibold text-slate-900">Usuários</h2>
+          <p className="text-sm text-slate-500">
+            Gerencie usuários, funções e vínculos com clientes
+          </p>
+        </div>
+
+        {/* Ações */}
+        <div className="flex items-center gap-3">
+          <ExportToolbar
+            title="Usuarios"
+            rows={filtered}
+            columns={[
+              { label: "Nome", getValue: (u) => u.nome_completo ?? "" },
+              { label: "Email", key: "email" },
+              { label: "Telefone", key: "telefone" },
+              {
+                label: "Cliente",
+                getValue: (u) => u.cliente_nome ?? "",
+              },
+              {
+                label: "Função",
+                getValue: (u) =>
+                  u.role === "admin"
+                    ? "Administrador"
+                    : u.role === "gestor"
+                      ? "Gestor"
+                      : u.role === "cliente"
+                        ? "Cliente"
+                        : "Usuário",
+              },
+              {
+                label: "Status",
+                getValue: (u) => (u.ativo ? "Ativo" : "Inativo"),
+              },
+              {
+                label: "Cadastro",
+                getValue: (u) => fmtDateBR(u.created_at),
+              },
+              {
+                label: "Último acesso",
+                getValue: (u) =>
+                  u.ultimo_acesso ? fmtDateBR(u.ultimo_acesso) : "Nunca",
+              },
+            ]}
+          />
+
+          <Link
+            href="/dashboard/admin/usuarios/novo"
+            className="inline-flex items-center gap-2 bg-[#019499] text-white px-4 py-2 rounded-lg hover:bg-[#017a7d] transition-colors font-medium whitespace-nowrap"
+          >
+            <Plus size={18} />
+            Novo Usuário
+          </Link>
+        </div>
       </div>
 
       {error && (

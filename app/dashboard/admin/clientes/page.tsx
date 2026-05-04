@@ -20,6 +20,7 @@ import {
   deletarCliente,
   setClienteAtivo,
 } from "./actions";
+import { ExportToolbar } from "@/components/dashboard/ExportToolbar";
 
 type ClienteRow = {
   id: string;
@@ -319,15 +320,60 @@ export default function ClientesPage() {
           </p>
         </div>
       </div>
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <Link
-          href="/dashboard/admin/clientes/novo"
-          className="inline-flex items-center gap-2 bg-[#019499] text-white px-4 py-2 rounded-lg hover:bg-[#017a7d] transition-colors font-medium whitespace-nowrap"
-        >
-          <Plus size={18} />
-          Novo Cliente + Contrato
-        </Link>
+      {/* Header */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        {/* Título */}
+        <div>
+          <h2 className="text-lg font-semibold text-slate-900">Clientes</h2>
+          <p className="text-sm text-slate-500">
+            Gerencie clientes, contratos e status
+          </p>
+        </div>
+
+        {/* Ações */}
+        <div className="flex items-center gap-3">
+          <ExportToolbar
+            title="Clientes"
+            rows={filteredClientes}
+            columns={[
+              { label: "Nome", key: "nome" },
+              {
+                label: "Tipo",
+                getValue: (c) => (c.tipo === "pf" ? "PF" : "PJ"),
+              },
+              {
+                label: "Documento",
+                getValue: (c) => fmtDoc(c.tipo, c.documento),
+              },
+              { label: "Email", key: "email" },
+              { label: "Telefone", key: "telefone" },
+              {
+                label: "Status",
+                getValue: (c) => (c.ativo ? "Ativo" : "Inativo"),
+              },
+              {
+                label: "Contratos",
+                key: "contratos_count",
+              },
+              {
+                label: "Cadastro",
+                getValue: (c) => fmtDateBR(c.created_at),
+              },
+            ]}
+          />
+
+          <Link
+            href="/dashboard/admin/clientes/novo"
+            className="inline-flex items-center gap-2 bg-[#019499] text-white
+                 px-4 py-2 rounded-lg hover:bg-[#017a7d]
+                 transition-colors font-medium whitespace-nowrap"
+          >
+            <Plus size={18} />
+            Novo Cliente + Contrato
+          </Link>
+        </div>
       </div>
+
       {/* Filters */}
       <div className="flex flex-col lg:flex-row gap-4">
         <div className="flex-1 relative">
