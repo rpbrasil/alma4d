@@ -10,6 +10,7 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+
   reactCompiler: true,
   trailingSlash: true,
 };

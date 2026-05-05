@@ -1,14 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { createClientSupabase } from "@/lib/supabase/client";
+import { supabase } from "@/lib/supabase/client";
 
 export default function ActivationForm() {
   const [step, setStep] = useState(1); // 1: Telefone, 2: Código, 3: Perfil
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [phone, setPhone] = useState("");
-  const supabase = createClientSupabase();
+  
   // Estilo Padrão Profissional para os Inputs
   const inputClass =
     "w-full p-4 rounded-xl border border-border bg-white text-base text-foreground outline-none focus:ring-2 focus:ring-[#019499] transition-all placeholder:text-foreground/30";

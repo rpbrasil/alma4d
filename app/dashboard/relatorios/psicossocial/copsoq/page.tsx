@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabase/client";
 import { ExportToolbar } from "@/components/dashboard/ExportToolbar";
 import { AlertCircle, Building2, Layers, ShieldAlert } from "lucide-react";
 import { CopsoqOfficialReport } from "@/dashboard/relatorios/psicossocial/copsoq/CopsoqOfficialReport";
-import { downloadPdfFromElement } from "@/components/dashboard/relatorios/copsoq/useCopsoqPdf";
+
 
 type Role = "admin" | "cliente" | "gestor" | "usuario";
 
@@ -457,27 +457,56 @@ export default function CopsoqDashboardPage() {
            {/* PDF */}
            <button
              type="button"
-             disabled={!filteredRows.length}
              onClick={async () => {
-               if (!reportRef.current) return;
-               if (!filteredRows.length) return;
+               try {
+                 if (!reportRef.current) {
+                   alert("Relatório não encontrado.");
+                   return;
+                 }
 
-               const safeCliente = (clienteNome || "cliente")
-                 .normalize("NFD")
-                 .replace(/[\u0300-\u036f]/g, "")
-                 .replace(/[^a-zA-Z0-9_-]/g, "_");
+                 // HTML do relatório (fonte única da verdade)
+                 const html = `
+        <!DOCTYPE html>
+        <html lang="pt-BR">
+          <head>
+            <meta charset="utf-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1" />
+          </head>
+          <body>
+            ${reportRef.current.outerHTML}
+          </body>
+        </html>
+      `;
 
-               await downloadPdfFromElement({
-                 element: reportRef.current,
-                 filename: `MAPEAMENTO_PSICOSSOCIAL_${safeCliente}_${reportId}.pdf`,
-               });
+                 const res = await fetch("/api/copsoq/pdf", {
+                   method: "POST",
+                   headers: {
+                     "Content-Type": "text/html",
+                   },
+                   body: html,
+                 });
+
+                 if (!res.ok) {
+                   throw new Error("Falha ao gerar PDF");
+                 }
+
+                 const blob = await res.blob();
+                 const url = window.URL.createObjectURL(blob);
+
+                 const a = document.createElement("a");
+                 a.href = url;
+                 a.download = "relatorio_psicossocial.pdf";
+                 document.body.appendChild(a);
+                 a.click();
+
+                 document.body.removeChild(a);
+                 window.URL.revokeObjectURL(url);
+               } catch (err) {
+                 console.error(err);
+                 alert("Erro ao gerar o PDF. Tente novamente.");
+               }
              }}
-             className="inline-flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 text-sm disabled:opacity-50"
-             title={
-               !filteredRows.length
-                 ? "Sem dados suficientes para gerar PDF"
-                 : "Baixar PDF oficial"
-             }
+             className="inline-flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 text-sm"
            >
              PDF
            </button>
