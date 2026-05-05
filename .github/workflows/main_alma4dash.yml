@@ -1,4 +1,4 @@
-name: Deploy Next.js app to Azure Web App - alma4dash
+name: Deploy Next.js app to Azure Web App - alma4dash (debug)
 
 on:
   push:
@@ -15,30 +15,69 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # -----------------------------
+      # Checkout
+      # -----------------------------
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # -----------------------------
+      # Node setup
+      # -----------------------------
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Show Node & NPM versions
+        run: |
+          node -v
+          npm -v
 
+      # -----------------------------
+      # Install dependencies
+      # -----------------------------
+      - name: Install dependencies
+        run: |
+          set -x
+          npm ci
+
+      - name: List node_modules (debug)
+        run: |
+          ls -la node_modules | head -n 20
+
+      # -----------------------------
+      # Build
+      # -----------------------------
       - name: Build Next.js app
         run: |
-          npm run build || (echo "BUILD FAILED" && exit 1)
+          set -x
+          npm run build
 
+      # -----------------------------
+      # Build diagnostics (runs even if build fails)
+      # -----------------------------
       - name: Debug build output
-        if: failure()
+        if: always()
         run: |
-          echo "Listing project root:"
+          echo "==== PROJECT ROOT ===="
           ls -la
-          echo "Listing .next:"
-          ls -la .next || echo ".next not found"
 
+          echo ""
+          echo "==== .next DIRECTORY ===="
+          if [ -d ".next" ]; then
+            ls -la .next
+            echo ""
+            echo "BUILD_ID:"
+            cat .next/BUILD_ID || echo "No BUILD_ID"
+          else
+            echo ".next not found"
+          fi
+
+      # -----------------------------
+      # Azure login
+      # -----------------------------
       - name: Login to Azure (OIDC)
         uses: azure/login@v2
         with:
@@ -46,7 +85,11 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_3DD2A63434FE40BBBE27FB7E9723BF9B }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_019BFA850FAD45DCB1FFB3C9956EC255 }}
 
+      # -----------------------------
+      # Deploy (only if build succeeded)
+      # -----------------------------
       - name: Deploy to Azure Web App
+        if: success()
         uses: azure/webapps-deploy@v3
         with:
           app-name: alma4dash
