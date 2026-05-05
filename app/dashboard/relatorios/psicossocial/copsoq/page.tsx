@@ -7,7 +7,6 @@ import { ExportToolbar } from "@/components/dashboard/ExportToolbar";
 import { AlertCircle, Building2, Layers, ShieldAlert } from "lucide-react";
 import { CopsoqOfficialReport } from "@/dashboard/relatorios/psicossocial/copsoq/CopsoqOfficialReport";
 
-
 type Role = "admin" | "cliente" | "gestor" | "usuario";
 
 type UsuarioAuth = {
@@ -68,9 +67,9 @@ function riskClass(nivel: RowRisco["nivel_risco"]) {
 export default function CopsoqDashboardPage() {
   const { user, role: authRole, loading: authLoading } = useAuth();
 
-    const [loading, setLoading] = useState(true);
-    const [clienteNome, setClienteNome] = useState<string>("—");
-
+  const [loading, setLoading] = useState(true);
+  const [clienteNome, setClienteNome] = useState<string>("—");
+  const [pdfLoading, setPdfLoading] = useState(false);
   const [me, setMe] = useState<UsuarioAuth | null>(null);
   const [error, setError] = useState<string>("");
 
@@ -229,36 +228,36 @@ export default function CopsoqDashboardPage() {
     };
   }, [effectiveClienteId, canViewDashboard]);
 
-    useEffect(() => {
-      let mounted = true;
+  useEffect(() => {
+    let mounted = true;
 
-      (async () => {
-        if (!effectiveClienteId) {
-          if (mounted) setClienteNome("—");
-          return;
-        }
+    (async () => {
+      if (!effectiveClienteId) {
+        if (mounted) setClienteNome("—");
+        return;
+      }
 
-        const { data, error } = await supabase
-          .from("clientes")
-          .select("nome")
-          .eq("id", effectiveClienteId)
-          .single();
+      const { data, error } = await supabase
+        .from("clientes")
+        .select("nome")
+        .eq("id", effectiveClienteId)
+        .single();
 
-        if (!mounted) return;
+      if (!mounted) return;
 
-        if (error) {
-          setClienteNome("Cliente");
-          return;
-        }
+      if (error) {
+        setClienteNome("Cliente");
+        return;
+      }
 
-        setClienteNome(data?.nome ?? "Cliente");
-      })();
+      setClienteNome(data?.nome ?? "Cliente");
+    })();
 
-      return () => {
-        mounted = false;
-      };
-    }, [effectiveClienteId]);
-    
+    return () => {
+      mounted = false;
+    };
+  }, [effectiveClienteId]);
+
   // opções de depto/setor a partir das rows (não precisa bater em tabelas)
   const departamentosOptions = useMemo(() => {
     const map = new Map<string, string>();
@@ -430,42 +429,82 @@ export default function CopsoqDashboardPage() {
     );
   }
 
- return (
-   <div className="space-y-6">
-     {/* Header + Export */}
-     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-       <div>
-         <h2 className="text-lg font-semibold text-slate-900">
-           Dashboard COPSOQ
-         </h2>
-         <p className="text-sm text-slate-500">
-           Agregado por departamento e setor • uso organizacional (LGPD/NR‑01)
-         </p>
-       </div>
+  return (
+    <div className="space-y-6">
+      {/* Header + Export */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-lg font-semibold text-slate-900">
+            Dashboard COPSOQ
+          </h2>
+          <p className="text-sm text-slate-500">
+            Agregado por departamento e setor • uso organizacional (LGPD/NR‑01)
+          </p>
+        </div>
 
-       {canExport ? (
-         <div className="flex items-center gap-2">
-           {/* Print */}
-           <button
-             type="button"
-             onClick={() => window.print()}
-             className="inline-flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 text-sm"
-           >
-             Imprimir
-           </button>
+        {canExport ? (
+          <div className="flex items-center gap-2">
+            {/* Print */}
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="inline-flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 text-sm"
+            >
+              Imprimir
+            </button>
 
-           {/* PDF */}
-           <button
-             type="button"
-             onClick={async () => {
-               try {
-                 if (!reportRef.current) {
-                   alert("Relatório não encontrado.");
-                   return;
-                 }
+            {/* PDF */}
 
-                 // HTML do relatório (fonte única da verdade)
-                 const html = `
+            <style>{`
+        .btn-pdf {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 8px 14px;
+          border-radius: 8px;
+          border: 1px solid #030870;
+          background: #030870;
+          color: #fff;
+          font-size: 13px;
+          font-weight: 600;
+          cursor: pointer;
+        }
+
+        .btn-pdf:hover:not(:disabled) {
+          background: #02065a;
+        }
+
+        .btn-pdf:disabled {
+          opacity: .6;
+          cursor: not-allowed;
+        }
+
+        .spinner {
+          width: 14px;
+          height: 14px;
+          border: 2px solid rgba(255,255,255,.4);
+          border-top-color: #fff;
+          border-radius: 50%;
+          animation: spin .8s linear infinite;
+        }
+
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
+
+            <button
+              type="button"
+              disabled={pdfLoading}
+              onClick={async () => {
+                try {
+                  if (!reportRef.current) {
+                    alert("Relatório não encontrado.");
+                    return;
+                  }
+                  setPdfLoading(true);
+                  // HTML do relatório (fonte única da verdade)
+                  const html = `
         <!DOCTYPE html>
         <html lang="pt-BR">
           <head>
@@ -478,297 +517,311 @@ export default function CopsoqDashboardPage() {
         </html>
       `;
 
-                 const safeCliente = clienteNome.replace(/[^a-zA-Z0-9]/g, "");
-                 const dataImpressao = new Date()
-                   .toLocaleDateString("pt-BR")
-                   .replace(/\//g, "-");
-                 const filename = `MapeamentoRiscoPsico_${safeCliente}_${dataImpressao}.pdf`;
+                  const safeCliente = clienteNome.replace(/[^a-zA-Z0-9]/g, "");
+                  const dataImpressao = new Date()
+                    .toLocaleDateString("pt-BR")
+                    .replace(/\//g, "-");
+                  const filename = `MapeamentoRiscoPsico_${safeCliente}_${dataImpressao}.pdf`;
 
-                 await fetch("/api/copsoq/pdf", {
-                   method: "POST",
-                   headers: { "Content-Type": "text/html" },
-                   body: html,
-                 }).then(async (res) => {
-                   const blob = await res.blob();
-                   const url = window.URL.createObjectURL(blob);
-                   const a = document.createElement("a");
-                   a.href = url;
-                   a.download = filename;
-                   a.click();
-                   window.URL.revokeObjectURL(url);
-                 });
-               } catch (err) {
-                 console.error(err);
-                 alert("Erro ao gerar o PDF. Tente novamente.");
-               }
-             }}
-             className="inline-flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 text-sm"
-           >
-             PDF
-           </button>
+                  await fetch("/api/copsoq/pdf", {
+                    method: "POST",
+                    headers: { "Content-Type": "text/html" },
+                    body: html,
+                  }).then(async (res) => {
+                    const blob = await res.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = filename;
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                  });
+                } catch (err) {
+                  console.error(err);
+                  alert("Erro ao gerar o PDF. Tente novamente.");
+                } finally {
+                  setPdfLoading(false);
+                }
+              }}
+              className="btn-pdf inline-flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 text-sm"
+            >
+              {pdfLoading ? (
+                <>
+                  <span className="spinner" />
+                  Gerando PDF…
+                </>
+              ) : (
+                <>Gerar Relatório</>
+              )}
+            </button>
 
-           {/* Excel (mantém no ExportToolbar) */}
-           <ExportToolbar
-             title="COPSOQ_Psicossocial"
-             rows={filteredRows}
-             showPrint={false}
-             showExcel={true}
-             columns={[
-               {
-                 label: "Departamento",
-                 getValue: (r) => r.departamento_nome ?? "Sem departamento",
-               },
-               { label: "Setor", getValue: (r) => r.setor_nome ?? "Sem setor" },
-               { label: "Escala", key: "escala" },
-               { label: "N respostas", key: "n_respostas" },
-               {
-                 label: "Média",
-                 getValue: (r) =>
-                   r.media === null ? null : Number(r.media.toFixed(2)),
-               },
-               { label: "Nível", getValue: (r) => riskLabel(r.nivel_risco) },
-               { label: "Prioridade", getValue: (r) => r.prioridade ?? null },
-             ]}
-           />
-         </div>
-       ) : null}
-     </div>
+            {/* Excel (mantém no ExportToolbar) */}
+            <ExportToolbar
+              title="COPSOQ_Psicossocial"
+              rows={filteredRows}
+              showPrint={false}
+              showExcel={true}
+              columns={[
+                {
+                  label: "Departamento",
+                  getValue: (r) => r.departamento_nome ?? "Sem departamento",
+                },
+                {
+                  label: "Setor",
+                  getValue: (r) => r.setor_nome ?? "Sem setor",
+                },
+                { label: "Escala", key: "escala" },
+                { label: "N respostas", key: "n_respostas" },
+                {
+                  label: "Média",
+                  getValue: (r) =>
+                    r.media === null ? null : Number(r.media.toFixed(2)),
+                },
+                { label: "Nível", getValue: (r) => riskLabel(r.nivel_risco) },
+                { label: "Prioridade", getValue: (r) => r.prioridade ?? null },
+              ]}
+            />
+          </div>
+        ) : null}
+      </div>
 
-     {/* Aviso de sigilo (compacto) */}
-     <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-sm text-slate-700">
-       <b>Confidencialidade:</b> resultados agregados (sem identificação
-       individual). Uso exclusivo para análise organizacional e preventiva.
-     </div>
+      {/* Aviso de sigilo (compacto) */}
+      <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-sm text-slate-700">
+        <b>Confidencialidade:</b> resultados agregados (sem identificação
+        individual). Uso exclusivo para análise organizacional e preventiva.
+      </div>
 
-     {/* Filtros (admin/cliente) */}
-     <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-       {isAdmin ? (
-         <div>
-           <label className="text-xs uppercase tracking-wide text-slate-500">
-             Cliente
-           </label>
-           <select
-             value={selectedClienteId ?? ""}
-             onChange={(e) => {
-               setSelectedClienteId(e.target.value || null);
-               setFilterDepartamentoId("todos");
-               setFilterSetorId("todos");
-             }}
-             className="mt-1 w-full h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm"
-           >
-             <option value="">Selecionar…</option>
-             {clientes.map((c) => (
-               <option key={c.id} value={c.id}>
-                 {c.nome ?? c.id}
-               </option>
-             ))}
-           </select>
-         </div>
-       ) : (
-         <div className="hidden lg:block" />
-       )}
+      {/* Filtros (admin/cliente) */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+        {isAdmin ? (
+          <div>
+            <label className="text-xs uppercase tracking-wide text-slate-500">
+              Cliente
+            </label>
+            <select
+              value={selectedClienteId ?? ""}
+              onChange={(e) => {
+                setSelectedClienteId(e.target.value || null);
+                setFilterDepartamentoId("todos");
+                setFilterSetorId("todos");
+              }}
+              className="mt-1 w-full h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm"
+            >
+              <option value="">Selecionar…</option>
+              {clientes.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nome ?? c.id}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : (
+          <div className="hidden lg:block" />
+        )}
 
-       <div>
-         <label className="text-xs uppercase tracking-wide text-slate-500">
-           Departamento
-         </label>
-         <select
-           value={filterDepartamentoId}
-           onChange={(e) => {
-             setFilterDepartamentoId(e.target.value);
-             setFilterSetorId("todos");
-           }}
-           className="mt-1 w-full h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm"
-         >
-           <option value="todos">Todos</option>
-           {departamentosOptions.map((d) => (
-             <option key={d.id} value={d.id}>
-               {d.nome}
-             </option>
-           ))}
-         </select>
-       </div>
+        <div>
+          <label className="text-xs uppercase tracking-wide text-slate-500">
+            Departamento
+          </label>
+          <select
+            value={filterDepartamentoId}
+            onChange={(e) => {
+              setFilterDepartamentoId(e.target.value);
+              setFilterSetorId("todos");
+            }}
+            className="mt-1 w-full h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm"
+          >
+            <option value="todos">Todos</option>
+            {departamentosOptions.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.nome}
+              </option>
+            ))}
+          </select>
+        </div>
 
-       <div>
-         <label className="text-xs uppercase tracking-wide text-slate-500">
-           Setor
-         </label>
-         <select
-           value={filterSetorId}
-           onChange={(e) => setFilterSetorId(e.target.value)}
-           className="mt-1 w-full h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm"
-         >
-           <option value="todos">Todos</option>
-           {setoresOptions.map((s) => (
-             <option key={s.id} value={s.id}>
-               {s.nome}
-             </option>
-           ))}
-         </select>
-       </div>
+        <div>
+          <label className="text-xs uppercase tracking-wide text-slate-500">
+            Setor
+          </label>
+          <select
+            value={filterSetorId}
+            onChange={(e) => setFilterSetorId(e.target.value)}
+            className="mt-1 w-full h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm"
+          >
+            <option value="todos">Todos</option>
+            {setoresOptions.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.nome}
+              </option>
+            ))}
+          </select>
+        </div>
 
-       <div className="rounded-lg border border-slate-200 bg-white p-3 flex items-center gap-3">
-         <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center">
-           <Layers className="text-slate-600" size={18} />
-         </div>
-         <div>
-           <p className="text-xs uppercase tracking-wide text-slate-500">
-             Escalas no recorte
-           </p>
-           <p className="text-lg font-extrabold text-slate-900">
-             {resumo.escalas}
-           </p>
-         </div>
-       </div>
-     </div>
+        <div className="rounded-lg border border-slate-200 bg-white p-3 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center">
+            <Layers className="text-slate-600" size={18} />
+          </div>
+          <div>
+            <p className="text-xs uppercase tracking-wide text-slate-500">
+              Escalas no recorte
+            </p>
+            <p className="text-lg font-extrabold text-slate-900">
+              {resumo.escalas}
+            </p>
+          </div>
+        </div>
+      </div>
 
-     {/* KPIs */}
-     <div className="grid sm:grid-cols-4 gap-4">
-       <div className="rounded-xl border border-gray-200 bg-white p-4">
-         <p className="text-xs uppercase tracking-wide text-gray-500">
-           Total de respostas
-         </p>
-         <p className="mt-1 text-2xl font-extrabold text-slate-900">
-           {resumo.totalRespostas}
-         </p>
-       </div>
+      {/* KPIs */}
+      <div className="grid sm:grid-cols-4 gap-4">
+        <div className="rounded-xl border border-gray-200 bg-white p-4">
+          <p className="text-xs uppercase tracking-wide text-gray-500">
+            Total de respostas
+          </p>
+          <p className="mt-1 text-2xl font-extrabold text-slate-900">
+            {resumo.totalRespostas}
+          </p>
+        </div>
 
-       <div className="rounded-xl border border-gray-200 bg-white p-4">
-         <p className="text-xs uppercase tracking-wide text-gray-500">
-           Risco alto
-         </p>
-         <p className="mt-1 text-2xl font-extrabold text-[#DF633F]">
-           {resumo.altos}
-         </p>
-       </div>
+        <div className="rounded-xl border border-gray-200 bg-white p-4">
+          <p className="text-xs uppercase tracking-wide text-gray-500">
+            Risco alto
+          </p>
+          <p className="mt-1 text-2xl font-extrabold text-[#DF633F]">
+            {resumo.altos}
+          </p>
+        </div>
 
-       <div className="rounded-xl border border-gray-200 bg-white p-4">
-         <p className="text-xs uppercase tracking-wide text-gray-500">
-           Risco médio
-         </p>
-         <p className="mt-1 text-2xl font-extrabold text-[#6126E2]">
-           {resumo.medios}
-         </p>
-       </div>
+        <div className="rounded-xl border border-gray-200 bg-white p-4">
+          <p className="text-xs uppercase tracking-wide text-gray-500">
+            Risco médio
+          </p>
+          <p className="mt-1 text-2xl font-extrabold text-[#6126E2]">
+            {resumo.medios}
+          </p>
+        </div>
 
-       <div className="rounded-xl border border-gray-200 bg-white p-4">
-         <p className="text-xs uppercase tracking-wide text-gray-500">
-           Risco baixo
-         </p>
-         <p className="mt-1 text-2xl font-extrabold text-[#019499]">
-           {resumo.baixos}
-         </p>
-       </div>
-     </div>
+        <div className="rounded-xl border border-gray-200 bg-white p-4">
+          <p className="text-xs uppercase tracking-wide text-gray-500">
+            Risco baixo
+          </p>
+          <p className="mt-1 text-2xl font-extrabold text-[#019499]">
+            {resumo.baixos}
+          </p>
+        </div>
+      </div>
 
-     {/* Conteúdo por departamento/setor */}
-     {error ? (
-       <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex gap-3">
-         <AlertCircle className="text-red-600 shrink-0" size={20} />
-         <div>
-           <p className="font-semibold text-red-900">Erro</p>
-           <p className="text-sm text-red-700">{error}</p>
-         </div>
-       </div>
-     ) : filteredRows.length === 0 ? (
-       <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
-         <Building2 className="mx-auto text-gray-400 mb-3" size={48} />
-         <p className="text-gray-500">Sem dados no recorte atual.</p>
-         <p className="text-xs text-gray-500 mt-2">
-           (Nenhuma aplicação concluída ou filtros muito restritivos.)
-         </p>
-       </div>
-     ) : (
-       <div className="space-y-6">
-         {gruposOrg.map((dep) => (
-           <div
-             key={dep.departamento_id ?? "dep-null"}
-             className="bg-white border border-slate-200 rounded-lg p-4"
-           >
-             <p className="text-sm font-extrabold text-[#030870]">
-               {dep.departamento_nome}
-             </p>
+      {/* Conteúdo por departamento/setor */}
+      {error ? (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex gap-3">
+          <AlertCircle className="text-red-600 shrink-0" size={20} />
+          <div>
+            <p className="font-semibold text-red-900">Erro</p>
+            <p className="text-sm text-red-700">{error}</p>
+          </div>
+        </div>
+      ) : filteredRows.length === 0 ? (
+        <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
+          <Building2 className="mx-auto text-gray-400 mb-3" size={48} />
+          <p className="text-gray-500">Sem dados no recorte atual.</p>
+          <p className="text-xs text-gray-500 mt-2">
+            (Nenhuma aplicação concluída ou filtros muito restritivos.)
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {gruposOrg.map((dep) => (
+            <div
+              key={dep.departamento_id ?? "dep-null"}
+              className="bg-white border border-slate-200 rounded-lg p-4"
+            >
+              <p className="text-sm font-extrabold text-[#030870]">
+                {dep.departamento_nome}
+              </p>
 
-             <div className="mt-4 space-y-4">
-               {dep.setores.map((set) => (
-                 <div
-                   key={set.setor_id ?? "set-null"}
-                   className="border-l-4 border-slate-200 pl-4"
-                 >
-                   <p className="text-sm font-bold text-slate-900">
-                     {set.setor_nome}
-                   </p>
+              <div className="mt-4 space-y-4">
+                {dep.setores.map((set) => (
+                  <div
+                    key={set.setor_id ?? "set-null"}
+                    className="border-l-4 border-slate-200 pl-4"
+                  >
+                    <p className="text-sm font-bold text-slate-900">
+                      {set.setor_nome}
+                    </p>
 
-                   <div className="mt-3 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-                     {set.rows.map((r, idx) => (
-                       <div
-                         key={`${r.escala}-${idx}`}
-                         className={`rounded-xl border p-4 ${riskClass(r.nivel_risco)}`}
-                       >
-                         <p className="font-extrabold text-slate-900">
-                           {r.escala}
-                         </p>
+                    <div className="mt-3 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                      {set.rows.map((r, idx) => (
+                        <div
+                          key={`${r.escala}-${idx}`}
+                          className={`rounded-xl border p-4 ${riskClass(r.nivel_risco)}`}
+                        >
+                          <p className="font-extrabold text-slate-900">
+                            {r.escala}
+                          </p>
 
-                         <div className="mt-2 text-sm text-slate-700 space-y-1">
-                           <div className="flex justify-between">
-                             <span className="text-slate-600">Nível</span>
-                             <span className="font-semibold">
-                               {riskLabel(r.nivel_risco)}
-                             </span>
-                           </div>
-                           <div className="flex justify-between">
-                             <span className="text-slate-600">Prioridade</span>
-                             <span className="font-semibold">
-                               {r.prioridade ?? "—"}
-                             </span>
-                           </div>
-                           <div className="flex justify-between">
-                             <span className="text-slate-600">Média</span>
-                             <span className="font-semibold">
-                               {formatNum(r.media)}
-                             </span>
-                           </div>
-                           <div className="flex justify-between">
-                             <span className="text-slate-600">N respostas</span>
-                             <span className="font-semibold">
-                               {r.n_respostas}
-                             </span>
-                           </div>
-                         </div>
-                       </div>
-                     ))}
-                   </div>
-                 </div>
-               ))}
-             </div>
+                          <div className="mt-2 text-sm text-slate-700 space-y-1">
+                            <div className="flex justify-between">
+                              <span className="text-slate-600">Nível</span>
+                              <span className="font-semibold">
+                                {riskLabel(r.nivel_risco)}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-slate-600">Prioridade</span>
+                              <span className="font-semibold">
+                                {r.prioridade ?? "—"}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-slate-600">Média</span>
+                              <span className="font-semibold">
+                                {formatNum(r.media)}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-slate-600">
+                                N respostas
+                              </span>
+                              <span className="font-semibold">
+                                {r.n_respostas}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
 
-             <p className="mt-4 text-xs text-slate-500">
-               * Resultados agregados por escala, setor e departamento.
-             </p>
-           </div>
-         ))}
-       </div>
-     )}
+              <p className="mt-4 text-xs text-slate-500">
+                * Resultados agregados por escala, setor e departamento.
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
 
-     {/* Relatório oficial (offscreen) para geração do PDF */}
-     <div
-       style={{
-         position: "absolute",
-         left: -100000,
-         top: 0,
-         width: 900,
-         opacity: 0,
-         pointerEvents: "none",
-       }}
-     >
-       <CopsoqOfficialReport
-         ref={reportRef}
-         clienteNome={clienteNome}
-         rows={filteredRows}
-         generatedAt={generatedAt}
-         reportId={reportId}
-       />
-     </div>
-   </div>
- );
+      {/* Relatório oficial (offscreen) para geração do PDF */}
+      <div
+        style={{
+          position: "absolute",
+          left: -100000,
+          top: 0,
+          width: 900,
+          opacity: 0,
+          pointerEvents: "none",
+        }}
+      >
+        <CopsoqOfficialReport
+          ref={reportRef}
+          clienteNome={clienteNome}
+          rows={filteredRows}
+          generatedAt={generatedAt}
+          reportId={reportId}
+        />
+      </div>
+    </div>
+  );
 }

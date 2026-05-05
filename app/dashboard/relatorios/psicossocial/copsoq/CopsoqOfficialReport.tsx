@@ -255,6 +255,14 @@ export const CopsoqOfficialReport = forwardRef<HTMLDivElement, Props>(
   height: 10px;
   border-radius: 6px;
 }
+  .bar.general {
+  background: #030489; /* slate-600 */
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.35);
+}
+
+.row-label .general {
+  font-weight: 700;
+}
       .dep-block {
         margin-top: 20px;
         }
@@ -382,10 +390,33 @@ export const CopsoqOfficialReport = forwardRef<HTMLDivElement, Props>(
           <div className="chart-box">
             <b>Médias das escalas</b>
 
-            {mediasEscalas.map((m) => (
+            {[
+              {
+                label: "Alto",
+                value: visaoGrafica.mediaAlto,
+                className: "high",
+              },
+              {
+                label: "Médio",
+                value: visaoGrafica.mediaMedio,
+                className: "medium",
+              },
+              {
+                label: "Baixo",
+                value: visaoGrafica.mediaBaixo,
+                className: "low",
+              },
+              {
+                label: "Geral",
+                value: visaoGrafica.mediaGeral,
+                className: "general",
+              },
+            ].map((m) => (
               <div key={m.label} className="row">
                 <div className="row-label">
-                  {m.label}: {formatNum(m.value)}
+                  <span className={m.label === "Geral" ? "general" : undefined}>
+                    {m.label}: {formatNum(m.value)}
+                  </span>
                 </div>
 
                 <div className="bar-wrap">
