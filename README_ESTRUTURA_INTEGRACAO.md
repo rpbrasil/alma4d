@@ -1,4 +1,4 @@
-# 📐 Estrutura de Integrações - Alma4D Dashboard
+# 📐 Estrutura de Integrações - alma4D Dashboard
 
 ## 🎯 Princípios de Organização
 

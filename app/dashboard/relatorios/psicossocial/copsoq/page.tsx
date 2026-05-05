@@ -478,29 +478,25 @@ export default function CopsoqDashboardPage() {
         </html>
       `;
 
-                 const res = await fetch("/api/copsoq/pdf", {
+                 const safeCliente = clienteNome.replace(/[^a-zA-Z0-9]/g, "");
+                 const dataImpressao = new Date()
+                   .toLocaleDateString("pt-BR")
+                   .replace(/\//g, "-");
+                 const filename = `MapeamentoRiscoPsico_${safeCliente}_${dataImpressao}.pdf`;
+
+                 await fetch("/api/copsoq/pdf", {
                    method: "POST",
-                   headers: {
-                     "Content-Type": "text/html",
-                   },
+                   headers: { "Content-Type": "text/html" },
                    body: html,
+                 }).then(async (res) => {
+                   const blob = await res.blob();
+                   const url = window.URL.createObjectURL(blob);
+                   const a = document.createElement("a");
+                   a.href = url;
+                   a.download = filename;
+                   a.click();
+                   window.URL.revokeObjectURL(url);
                  });
-
-                 if (!res.ok) {
-                   throw new Error("Falha ao gerar PDF");
-                 }
-
-                 const blob = await res.blob();
-                 const url = window.URL.createObjectURL(blob);
-
-                 const a = document.createElement("a");
-                 a.href = url;
-                 a.download = "relatorio_psicossocial.pdf";
-                 document.body.appendChild(a);
-                 a.click();
-
-                 document.body.removeChild(a);
-                 window.URL.revokeObjectURL(url);
                } catch (err) {
                  console.error(err);
                  alert("Erro ao gerar o PDF. Tente novamente.");
