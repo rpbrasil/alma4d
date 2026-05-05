@@ -152,7 +152,7 @@ export default function AppPage() {
       </section>
 
       {/* ================= GALERIA ================= */}
-      <section className="flex flex-col gap-12">
+      {/* <section className="flex flex-col gap-12">
         <div className="w-full max-w-2xl md:max-w-3xl flex flex-col gap-4 text-center md:text-left">
           <h2 className="text-3xl font-bold">
             Uma experiência segura desde o primeiro acesso
@@ -164,7 +164,7 @@ export default function AppPage() {
         </div>
 
         <div className="grid md:grid-cols-2 gap-8 items-stretch">
-          {/* ===== COLUNA 1: FLUXO ===== */}
+          
           <div className="relative aspect-video bg-surface-muted rounded-xl overflow-hidden">
             <Image
               src="/images/alma4d-fluxo-site-semtxt.png"
@@ -175,7 +175,7 @@ export default function AppPage() {
             />
           </div>
 
-          {/* ===== COLUNA 2: MOCKUP ===== */}
+          
           <div className="relative aspect-video bg-surface-muted rounded-xl overflow-hidden">
             <Image
               src="/images/mockup_misto.webp"
@@ -186,7 +186,7 @@ export default function AppPage() {
             />
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* ================= CTA FINAL ================= */}
       <section className="rounded-2xl border border-border bg-surface p-1 flex flex-col gap-6">
