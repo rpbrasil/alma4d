@@ -2,11 +2,11 @@
 
 
 /* alterar cor da classe text-3xl */
-@layer utilities {
+/* @layer utilities {
   .text-3xl {
     color: var(--color-brand);
   }
-}
+} */
 
 /* ========== Base tokens (CSS padrão) ========== */
 :root {

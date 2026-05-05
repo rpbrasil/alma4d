@@ -178,7 +178,7 @@ export default function MetodoPage() {
       </section>
 
       {/* ================= EXPERIÊNCIA INTEGRADA ================= */}
-      <section className="px-1 md:px-0">
+      {/* <section className="px-1 md:px-0">
         <div className="bg-linear-to-br from-[#030870] to-[#019499] rounded-[2.5rem] md:rounded-[3rem] p-8 md:p-12 text-white overflow-hidden relative shadow-2xl shadow-[#030870]/20">
           <div className="relative z-10 grid md:grid-cols-2 gap-12 items-center">
             <div className="space-y-6 text-center md:text-left items-center md:items-start flex flex-col">
@@ -199,13 +199,13 @@ export default function MetodoPage() {
 
             <div className="flex justify-center">
               {/* “Card”/área onde o círculo está: sombra suave para evidenciar o encaixe */}
-              <div
+              {/* <div
                 className="relative rounded-3xl p-6 md:p-8 bg-slate-50/60 border border-white/60
                   shadow-[0_20px_45px_-25px_rgba(2,6,23,0.35),0_10px_22px_-18px_rgba(2,6,23,0.25)]
                   backdrop-blur-sm"
               >
                 {/* halo bem sutil pra dar “ambiente” */}
-                <div
+                {/* <div
                   className="pointer-events-none absolute -inset-6 rounded-2rem
                     bg-[radial-gradient(closest-side,rgba(255,255,255,0.55),transparent_70%)]"
                 />
@@ -218,36 +218,36 @@ export default function MetodoPage() {
         border border-white/70
         ring-1 ring-slate-900/5
         transition-transform duration-500 hover:scale-105
-        /* Elevação (sombras externas) + relevo (inset) em camadas */
-        shadow-[0_18px_40px_-18px_rgba(2,6,23,0.55),0_6px_16px_-10px_rgba(2,6,23,0.35),
+        
+        {/*shadow-[0_18px_40px_-18px_rgba(2,6,23,0.55),0_6px_16px_-10px_rgba(2,6,23,0.35),
                 inset_0_1px_0_rgba(255,255,255,0.85),
                 inset_0_-14px_22px_rgba(2,6,23,0.16),
                 inset_14px_14px_22px_rgba(2,6,23,0.08),
                 inset_-14px_-14px_22px_rgba(255,255,255,0.55)]
       "
                 >
-                  {/* Brilho especular (gloss) — “mancha” de luz */}
-                  <div
+                  
+                  {/* <div
                     className="pointer-events-none absolute inset-0 rounded-full
                    bg-[radial-gradient(circle_at_28%_22%,rgba(255,255,255,0.95)_0%,rgba(255,255,255,0.55)_18%,rgba(255,255,255,0.12)_35%,transparent_60%)]
                    mix-blend-screen"
                   />
 
-                  {/* “Verniz” diagonal bem sutil */}
-                  <div
+                  
+                  {/*<div
                     className="pointer-events-none absolute inset-0 rounded-full
                    bg-[linear-gradient(135deg,rgba(255,255,255,0.35),transparent_45%,rgba(255,255,255,0.12))]
                    opacity-80"
                   />
 
-                  {/* Linha de recorte/chanfro */}
-                  <div
+                  
+                  {/*<div
                     className="pointer-events-none absolute inset-3px rounded-full
                       ring-1 ring-white/70"
                   />
 
-                  {/* Container da imagem com flutuação + sombra para “assentar” no relevo */}
-                  <div className="relative w-full h-full -translate-y-1 transition-transform duration-500 ease-out group-hover:-translate-y-2">
+                  
+                 {/* <div className="relative w-full h-full -translate-y-1 transition-transform duration-500 ease-out group-hover:-translate-y-2">
                     <Image
                       src="/images/alma4d-bicolor-nobground-256.webp"
                       alt="Logo alma4D"
@@ -261,8 +261,8 @@ export default function MetodoPage() {
                     />
                   </div>
 
-                  {/* Sombra de contato (bem leve) para dar “profundidade” interna */}
-                  <div
+                  
+                  {/*<div
                     className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2
                       w-3/5 h-4 rounded-full blur-xl
                       bg-[radial-gradient(closest-side,rgba(2,6,23,0.22),transparent)]"
@@ -272,7 +272,7 @@ export default function MetodoPage() {
             </div>
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* ================= FAQ SIMPLIFICADO ================= */}
       <section

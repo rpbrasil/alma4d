@@ -128,14 +128,14 @@ export default function Sidebar() {
       {/* Sidebar */}
       <aside
         className={[
-          "bg-brand text-white w-64 min-h-screen shrink-0",
+          "bg-brand text-white w-64 shrink-0",
           "fixed inset-y-0 left-0 z-40",
           "transform transition-transform duration-300 ease-in-out",
           isOpen ? "translate-x-0" : "-translate-x-full",
-          "md:sticky md:top-0 md:translate-x-0",
+          "md:translate-x-0", // ✅ sem sticky
         ].join(" ")}
       >
-        <div className="min-h-screen flex flex-col">
+        <div className="h-screen flex flex-col">
           {/* Brand + User */}
           <div className="px-5 py-4 border-b border-white/10">
             <Link
