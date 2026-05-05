@@ -33,9 +33,8 @@ export function useUsuarios() {
 
       try {
         // Import dinâmico
-        const { createClientSupabase } = await import("@/lib/supabase/client");
-        const supabase = await createClientSupabase();
-
+        const { supabase } = await import("@/lib/supabase/client");
+        
         // Carregar usuários
         const { data: usuariosData, error: err } = await supabase
           .from("usuarios")

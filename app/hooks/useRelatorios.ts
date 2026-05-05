@@ -42,9 +42,8 @@ export function useRelatorios() {
 
       try {
         // Import dinâmico
-        const { createClientSupabase } = await import("@/lib/supabase/client");
-        const supabase = await createClientSupabase();
-
+        const { supabase } = await import("@/lib/supabase/client");
+        
         // Carregar relatórios
         const { data: relatoriosData, error: relErr } = await supabase
           .from("relatorios")

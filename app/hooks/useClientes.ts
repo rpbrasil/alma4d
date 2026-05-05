@@ -35,9 +35,8 @@ export function useClientes() {
 
       try {
         // Import dinâmico
-        const { createClientSupabase } = await import("@/lib/supabase/client");
-        const supabase = await createClientSupabase();
-
+        const { supabase } = await import("@/lib/supabase/client");
+        
         // Carregar clientes
         const { data: clientesData, error: err } = await supabase
           .from("clientes")
