@@ -171,6 +171,14 @@ export const CopsoqOfficialReport = forwardRef<HTMLDivElement, Props>(
       });
       return linhas;
     }, [gruposOrg]);
+    const mediasEscalas = [
+      { label: "Alto", value: visaoGrafica.mediaAlto, className: "high" },
+      { label: "Médio", value: visaoGrafica.mediaMedio, className: "medium" },
+      { label: "Baixo", value: visaoGrafica.mediaBaixo, className: "low" },
+      { label: "Geral", value: visaoGrafica.mediaGeral, className: "medium" },
+    ];
+
+    const maxMedia = Math.max(...mediasEscalas.map((m) => m.value || 0));
 
     // Recortes por nível de risco
     // const recortes = useMemo(() => {
@@ -200,10 +208,7 @@ export const CopsoqOfficialReport = forwardRef<HTMLDivElement, Props>(
       h2 { font-size: 14px; margin: 18px 0 8px; color: #030870; break-after: avoid; }
       h3 { font-size: 12px; margin: 12px 0 6px; }
 
-      .anexo {
-  page-break-before: always;
-  margin-top: 10mm;
-}
+      .anexo { page-break-before: always;  margin-top: 10mm;}
 
 .anexo-panel {
   border: 1px solid #e6e6e6;
@@ -220,7 +225,8 @@ export const CopsoqOfficialReport = forwardRef<HTMLDivElement, Props>(
   color: #030870;
 }
 
-      .cover { display: flex; flex-direction: column; justify-content: space-between; min-height: 100vh; page-break-after: always; }
+      .cover {display: flex;flex-direction: column;justify-content: space-between;
+  min-height: 100%;page-break-after: always;}
       .cover-header { margin-top: 40mm; }
       .cover-title { font-size: 20px; font-weight: 800; color: #030870; margin-bottom: 12px; }
       .cover-meta { font-size: 12px; line-height: 1.6; color: #222; }
@@ -237,6 +243,18 @@ export const CopsoqOfficialReport = forwardRef<HTMLDivElement, Props>(
       .bar.high { background: #DF633F; }
       .bar.medium { background: #6126E2; }
       .bar.low { background: #019499; }
+      .bar-wrap {
+  flex: 1;
+  background: #f0f0f0;
+  border-radius: 6px;
+  height: 10px;
+  position: relative;
+}
+
+.bar {
+  height: 10px;
+  border-radius: 6px;
+}
       .dep-block {
         margin-top: 20px;
         }
@@ -328,84 +346,88 @@ export const CopsoqOfficialReport = forwardRef<HTMLDivElement, Props>(
 
           <div className="chart-box">
             <b>Distribuição dos níveis de risco (por escala)</b>
-            <div className="row">
-              <div className="row-label">
-                Alto {percent(visaoGrafica.altos.length, visaoGrafica.total)} (
-                {visaoGrafica.altos.length})
+
+            {[
+              {
+                label: "Alto",
+                value: visaoGrafica.altos.length,
+                className: "high",
+              },
+              {
+                label: "Médio",
+                value: visaoGrafica.medios.length,
+                className: "medium",
+              },
+              {
+                label: "Baixo",
+                value: visaoGrafica.baixos.length,
+                className: "low",
+              },
+            ].map((r) => (
+              <div key={r.label} className="row">
+                <div className="row-label">
+                  {r.label} {percent(r.value, visaoGrafica.total)} ({r.value})
+                </div>
+
+                <div className="bar-wrap">
+                  <div
+                    className={`bar ${r.className}`}
+                    style={{ width: percent(r.value, visaoGrafica.total) }}
+                  />
+                </div>
               </div>
-              <div
-                className="bar high"
-                style={{
-                  width: percent(visaoGrafica.altos.length, visaoGrafica.total),
-                }}
-              />
-            </div>
-            <div className="row">
-              <div className="row-label">
-                Médio {percent(visaoGrafica.medios.length, visaoGrafica.total)}{" "}
-                ({visaoGrafica.medios.length})
-              </div>
-              <div
-                className="bar medium"
-                style={{
-                  width: percent(
-                    visaoGrafica.medios.length,
-                    visaoGrafica.total,
-                  ),
-                }}
-              />
-            </div>
-            <div className="row">
-              <div className="row-label">
-                Baixo {percent(visaoGrafica.baixos.length, visaoGrafica.total)}{" "}
-                ({visaoGrafica.baixos.length})
-              </div>
-              <div
-                className="bar low"
-                style={{
-                  width: percent(
-                    visaoGrafica.baixos.length,
-                    visaoGrafica.total,
-                  ),
-                }}
-              />
-            </div>
+            ))}
           </div>
 
           <div className="chart-box">
             <b>Médias das escalas</b>
-            <div className="muted">
-              Média geral: {formatNum(visaoGrafica.mediaGeral)}
-            </div>
-            <div className="muted">
-              Alto: {formatNum(visaoGrafica.mediaAlto)}
-            </div>
-            <div className="muted">
-              Médio: {formatNum(visaoGrafica.mediaMedio)}
-            </div>
-            <div className="muted">
-              Baixo: {formatNum(visaoGrafica.mediaBaixo)}
-            </div>
+
+            {mediasEscalas.map((m) => (
+              <div key={m.label} className="row">
+                <div className="row-label">
+                  {m.label}: {formatNum(m.value)}
+                </div>
+
+                <div className="bar-wrap">
+                  <div
+                    className={`bar ${m.className}`}
+                    style={{
+                      width: `${maxMedia > 0 ? (m.value / maxMedia) * 100 : 0}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
           </div>
 
-          <h2>Volume de respostas por departamento</h2>
           <div className="chart-box">
+            <b>Volume de respostas por departamento</b>
+
             {visaoGrafica.top10.map((d) => (
               <div key={d.dep} className="row">
                 <div className="row-label">{d.dep}</div>
-                <div
-                  className="bar medium"
-                  style={{
-                    width: `${(d.total / visaoGrafica.top10[0].total) * 100}%`,
-                  }}
-                />
+
+                <div className="bar-wrap">
+                  <div
+                    className="bar medium"
+                    style={{
+                      width: `${(d.total / visaoGrafica.top10[0].total) * 100}%`,
+                    }}
+                  />
+                </div>
+
                 <div className="muted">{d.total}</div>
               </div>
             ))}
+
             {visaoGrafica.outros > 0 && (
               <div className="row">
                 <div className="row-label">Outros</div>
-                <div className="bar low" style={{ width: "30%" }} />
+
+                <div className="bar-wrap">
+                  <div className="bar low" style={{ width: "30%" }} />
+                </div>
+
                 <div className="muted">{visaoGrafica.outros}</div>
               </div>
             )}
