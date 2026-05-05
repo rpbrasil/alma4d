@@ -1,6 +1,6 @@
 // app/hooks/useRelatorios.ts
 "use client";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/context/auth";
 
 export interface Relatorio {
