@@ -30,21 +30,16 @@ jobs:
       - name: Build Next.js app
         run: npm run build
 
-      # Este passo é o segredo: ele copia os arquivos estáticos para dentro do standalone
-      - name: Copy static files to standalone
+      # Organiza os arquivos para que o Azure encontre o server.js e os estilos/imagens
+      - name: Prepare Standalone Artifact
         run: |
           cp -r public .next/standalone/
-          cp -r .next/static .next/standalone/.next/
+          mkdir -p .next/standalone/.next/static
+          cp -r .next/static/. .next/standalone/.next/static/
 
       - name: Zip artifact
         run: cd .next/standalone && zip -r ../../release.zip .
 
-      - name: Deploy to Azure Web App
-        uses: azure/webapps-deploy@v3
-        with:
-          app-name: alma4dash
-          package: ./release.zip
-          
       - name: Login to Azure (OIDC)
         uses: azure/login@v2
         with:
@@ -56,4 +51,4 @@ jobs:
         uses: azure/webapps-deploy@v3
         with:
           app-name: alma4dash
-          package: .
+          package: ./release.zip
