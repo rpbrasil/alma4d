@@ -1,9 +1,8 @@
-name: Deploy Next.js - alma4dash
+name: Fix 404 - Deploy Standalone
 
 on:
   push:
     branches: [ main ]
-  workflow_dispatch:
 
 permissions:
   contents: read
@@ -12,46 +11,40 @@ permissions:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: 'npm'
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build Next.js app
-        run: npm run build
-
-      - name: Prepare Package for Azure
+      - name: Install & Build
         run: |
-          # 1. Cria a pasta final de deploy
-          mkdir deploy_out
-          
-          # 2. Copia TUDO de dentro do standalone para a raiz da pasta de deploy
-          # O ponto '.' depois de standalone/ garante que pegamos o conteúdo, não a pasta em si
-          cp -r .next/standalone/. deploy_out/
-          
-          # 3. Copia as pastas de arquivos estáticos para o local que o standalone espera
-          mkdir -p deploy_out/.next/static
-          cp -r .next/static/. deploy_out/.next/static/
-          cp -r public/. deploy_out/public/
+          npm ci
+          npm run build
 
-      - name: Login to Azure (OIDC)
+      - name: Prepare Package
+        run: |
+          mkdir out
+          # 1. Copia o core do standalone
+          cp -r .next/standalone/. out/
+          
+          # 2. MOVE as pastas que o standalone não traz por padrão para o local correto
+          mkdir -p out/.next/static
+          cp -r .next/static/. out/.next/static/
+          cp -r public/. out/public/
+
+      - name: Login Azure
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_90E427DC40B14D62B4856B70B6E489AF }}
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_3DD2A63434FE40BBBE27FB7E9723BF9B }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_019BFA850FAD45DCB1FFB3C9956EC255 }}
 
-      - name: Deploy to Azure Web App
+      - name: Deploy
         uses: azure/webapps-deploy@v3
         with:
           app-name: alma4dash
-          package: ./deploy_out
+          package: ./out
+          clean: true # CRUCIAL: Remove lixo de deploys antigos que causam o 404
