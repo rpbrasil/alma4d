@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
+import { createBrowserClient } from "@supabase/ssr";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import {
   faQrcode,
+  faLightbulb,
   faShieldHalved,
   faCircleCheck,
   faUserCheck,
@@ -15,26 +16,15 @@ import {
   faMobileScreen,
   faChevronLeft,
   faChevronRight,
-  faLightbulb,
 } from "@fortawesome/free-solid-svg-icons";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: false,
-    },
-  },
-);
 
 type StepId = 1 | 2 | 3 | 4 | 5;
 type StepStatus = "done" | "active" | "next";
 type Step = { id: StepId; name: string; desc: string; status: StepStatus };
 
 type Sexo = "" | "M" | "F";
+
+type UsuarioRole = "admin" | "cliente" | "gestor" | "usuario";
 
 type UsuarioUpsertPayload = {
   id: string;
@@ -47,12 +37,10 @@ type UsuarioUpsertPayload = {
   aceitou_termos: boolean;
   premium_origem: "pagarme";
   tipo_plano?: string | null;
-  role?: "admin" | "cliente" | "gestor" | "usuario" | null;
+  role?: UsuarioRole | null;
   data_inicio_plano?: string | null;
   data_expiracao_plano?: string | null;
 };
-
-type UsuarioRole = "admin" | "cliente" | "gestor" | "usuario";
 
 function isUsuarioRole(v: unknown): v is UsuarioRole {
   return v === "admin" || v === "cliente" || v === "gestor" || v === "usuario";
@@ -68,24 +56,6 @@ function getErrorMessage(e: unknown, fallback = "Ocorreu um erro."): string {
   return fallback;
 }
 
-function isNonEmptyString(v: unknown): v is string {
-  return typeof v === "string" && v.trim().length > 0;
-}
-
-function normalizePhoneBR(input: string) {
-  const raw = input.trim();
-  if (!raw) return "";
-
-  if (raw.startsWith("+")) {
-    return raw.replace(/\s+/g, "");
-  }
-
-  // Se digitou só números, assume BR: +55
-  const digits = raw.replace(/\D/g, "");
-  if (!digits) return "";
-  return digits.startsWith("55") ? `+${digits}` : `+55${digits}`;
-}
-
 function onlyDigits(v: string) {
   return v.replace(/\D/g, "");
 }
@@ -94,7 +64,7 @@ function isValidCPF(input: string) {
   const cpf = onlyDigits(input);
 
   if (cpf.length !== 11) return false;
-  if (/^(\d)\1+$/.test(cpf)) return false; // evita 00000000000 etc.
+  if (/^(\d)\1+$/.test(cpf)) return false;
 
   const calcCheck = (base: string, factor: number) => {
     let sum = 0;
@@ -111,7 +81,6 @@ function isValidCPF(input: string) {
 
 function formatCPF(input: string) {
   const d = onlyDigits(input).slice(0, 11);
-  // máscara simples opcional
   return d
     .replace(/^(\d{3})(\d)/, "$1.$2")
     .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
@@ -127,6 +96,32 @@ function addDaysISO(days: number) {
 function nowISO() {
   return new Date().toISOString();
 }
+
+function formatDateBR(input: string) {
+  const d = input.replace(/\D/g, "").slice(0, 8);
+  if (d.length <= 2) return d;
+  if (d.length <= 4) return `${d.slice(0, 2)}/${d.slice(2)}`;
+  return `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}`;
+}
+
+function parseDateBRtoISO(br: string): string | null {
+  const m = br.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!m) return null;
+  const [, dd, mm, yyyy] = m;
+  const iso = `${yyyy}-${mm}-${dd}`;
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? null : iso;
+}
+
+function calculateAge(isoDate: string): number {
+  const today = new Date();
+  const birth = new Date(isoDate);
+  let age = today.getFullYear() - birth.getFullYear();
+  const m = today.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+  return age;
+}
+
 /** ===================== UI: Stepper compacto ===================== */
 
 function StepperCompact({ current }: { current: StepId }) {
@@ -182,9 +177,7 @@ function StepperCompact({ current }: { current: StepId }) {
     <section className="mt-1">
       <div className="bg-white/70 backdrop-blur rounded-2xl border border-white shadow-[0_12px_40px_rgba(3,8,112,0.06)] px-4 py-4">
         <div className="relative">
-          {/* Linha base */}
           <div className="absolute top-5 left-4 right-4 h-3px rounded-full bg-slate-200" />
-          {/* Linha progresso */}
           <div
             className="absolute top-5 left-4 h-3px rounded-full bg-brand transition-all duration-500"
             style={{ width: `calc(${progressPct}% * (100% - 2rem) / 100)` }}
@@ -326,59 +319,25 @@ function SecondaryButton({
   );
 }
 
-function formatDateBR(input: string) {
-  const d = input.replace(/\D/g, "").slice(0, 8);
-  if (d.length <= 2) return d;
-  if (d.length <= 4) return `${d.slice(0, 2)}/${d.slice(2)}`;
-  return `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}`;
-}
-
-function parseDateBRtoISO(br: string): string | null {
-  const m = br.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-  if (!m) return null;
-  const [, dd, mm, yyyy] = m;
-  const iso = `${yyyy}-${mm}-${dd}`;
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? null : iso;
-}
-
-function calculateAge(isoDate: string): number {
-  const today = new Date();
-  const birth = new Date(isoDate);
-  let age = today.getFullYear() - birth.getFullYear();
-  const m = today.getMonth() - birth.getMonth();
-  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
-    age--;
-  }
-  return age;
-}
-
-/** ===================== Wizard principal ===================== */
+/** ===================== Wizard principal (Step 4+) ===================== */
 
 export default function AtivacaoWizard() {
   const searchParams = useSearchParams();
 
-  // Origem do QR/CTA (opcional)
+  // origem/campanha continuam úteis (marketing)
   const origem = searchParams.get("origem") ?? "site";
   const campanha = searchParams.get("campanha") ?? "";
 
-  //modal termos de uso
+  // modal termos
   const [showTerms, setShowTerms] = useState(false);
 
-  // Começa na etapa 2 (vantagens) pois 1 (QR/CTA) já ocorreu.
-  const [step, setStep] = useState<StepId>(2);
+  // ✅ Começa direto no Step 4 (perfil). OTP já ocorreu no /nr1/empresa
+  const [step, setStep] = useState<StepId>(4);
 
-  // Phone OTP
-  const [phone, setPhone] = useState("");
-  const [otpSent, setOtpSent] = useState(false);
-  const [otp, setOtp] = useState("");
-  const [otpLoading, setOtpLoading] = useState(false);
-  const [otpError, setOtpError] = useState<string | null>(null);
-
-  // Usuário autenticado
+  // Usuário autenticado (deve existir após OTP no public)
   const [userId, setUserId] = useState<string | null>(null);
 
-  // Perfil (schema usuarios — enxuto para ativação)
+  // Perfil
   const [nomeCompleto, setNomeCompleto] = useState("");
   const [email, setEmail] = useState("");
   const [dataNascimento, setDataNascimento] = useState("");
@@ -395,134 +354,85 @@ export default function AtivacaoWizard() {
   const [payLoading, setPayLoading] = useState(false);
   const [payError, setPayError] = useState<string | null>(null);
 
-  const phoneRef = useRef<HTMLInputElement | null>(null);
-  const otpRef = useRef<HTMLInputElement | null>(null);
+  // ✅ Supabase browser client (mantém sessão do OTP feito no public)
+  const supabase = useMemo(() => {
+    return createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+          detectSessionInUrl: false,
+        },
+      },
+    );
+  }, []);
 
-  // foca o telefone ao entrar na etapa 3
+  // ✅ Ao montar, captura usuário autenticado (OTP já validado)
   useEffect(() => {
-    if (step === 3) {
-      phoneRef.current?.focus();
-    }
-  }, [step]);
-
-  // foca o OTP assim que enviar o código (quando aparecer o input)
-  useEffect(() => {
-    if (step === 3 && otpSent) {
-      otpRef.current?.focus();
-    }
-  }, [step, otpSent]);
-
-  async function sendOtp() {
-    setOtpError(null);
-    setOtpLoading(true);
-
-    try {
-      const normalized = normalizePhoneBR(phone);
-      if (!isNonEmptyString(normalized))
-        throw new Error("Informe um telefone válido.");
-      setPhone(normalized);
-
-      if (
-        !process.env.NEXT_PUBLIC_SUPABASE_URL ||
-        !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-      ) {
-        throw new Error(
-          "Supabase não configurado (env vars públicas ausentes).",
+    let mounted = true;
+    (async () => {
+      const { data, error } = await supabase.auth.getUser();
+      if (!mounted) return;
+      if (error || !data.user?.id) {
+        setProfileError(
+          "Sessão não encontrada. Volte e valide o telefone novamente.",
         );
+        setUserId(null);
+        return;
       }
+      setUserId(data.user.id);
+    })();
 
-      const { error } = await supabase.auth.signInWithOtp({
-        phone: normalized,
-      });
-      if (error) throw new Error(error.message);
-
-      setOtpSent(true);
-    } catch (e: unknown) {
-      setOtpError(getErrorMessage(e, "Não foi possível enviar o código."));
-    } finally {
-      setOtpLoading(false);
-    }
-  }
-
-  async function verifyOtp() {
-    setOtpError(null);
-    setOtpLoading(true);
-
-    try {
-      const normalized = normalizePhoneBR(phone);
-      if (!isNonEmptyString(normalized)) throw new Error("Telefone inválido.");
-      if (!isNonEmptyString(otp) || otp.trim().length < 4)
-        throw new Error("Informe o código recebido.");
-
-      const { data, error } = await supabase.auth.verifyOtp({
-        phone: normalized,
-        token: otp.trim(),
-        type: "sms",
-      });
-      if (error) throw new Error(error.message);
-
-      const newUserId = data.user?.id ?? null;
-      if (!newUserId)
-        throw new Error("Não foi possível obter o usuário autenticado.");
-
-      setUserId(newUserId);
-      setStep(4);
-    } catch (e: unknown) {
-      setOtpError(getErrorMessage(e, "Código inválido ou expirado."));
-    } finally {
-      setOtpLoading(false);
-    }
-  }
+    return () => {
+      mounted = false;
+    };
+  }, [supabase]);
 
   async function saveProfileAndContinue() {
     setProfileError(null);
     setProfileLoading(true);
 
     try {
-      if (!userId) throw new Error("Faça a validação do telefone primeiro.");
+      if (!userId)
+        throw new Error("Sessão inválida. Refaça a validação do telefone.");
       if (!nomeCompleto.trim()) throw new Error("Informe seu nome completo.");
       if (!aceitouTermos)
         throw new Error("Você precisa aceitar os termos para continuar.");
-      // ✅ Validação de idade (DD/MM/AAAA)
+
       const isoBirth = dataNascimento ? parseDateBRtoISO(dataNascimento) : null;
 
       if (isoBirth) {
         const age = calculateAge(isoBirth);
-
         if (age < 16) {
           throw new Error(
             "Você precisa ter pelo menos 16 anos para continuar.",
           );
         }
-
         if (age < 18 && !isEmancipated) {
           throw new Error(
             "Menores de 18 anos precisam declarar emancipação legal para continuar.",
           );
         }
       }
+
       const cpfDigits = onlyDigits(documento);
       if (!cpfDigits) throw new Error("Informe seu CPF para continuar.");
       if (!isValidCPF(cpfDigits))
         throw new Error("CPF inválido. Verifique e tente novamente.");
 
-      // ✅ 1) Buscar usuário atual (para não resetar trial/premium)
+      // Busca usuário atual (não resetar trial/premium)
       const { data: existingUser, error: fetchErr } = await supabase
         .from("usuarios")
         .select(
-          "id, role, tipo_plano, data_inicio_plano, data_expiracao_plano, ativo",
+          "id, role, tipo_plano, data_inicio_plano, data_expiracao_plano, ativo, telefone",
         )
         .eq("id", userId)
         .maybeSingle();
 
-      if (fetchErr) {
-        throw new Error(fetchErr.message);
-      }
+      if (fetchErr) throw new Error(fetchErr.message);
 
-      // ✅ 2) Regra: garantir trial de 7 dias SOMENTE se necessário
-      // - Se não existe usuário: cria trial com expiração de 7 dias
-      // - Se existe e é trial mas expiracao é null: preenche expiração (sem resetar)
-      // - Se existe e não é trial: não mexe em datas do plano
       const isNew = !existingUser;
       const existingPlan = existingUser?.tipo_plano ?? null;
       const existingExp = existingUser?.data_expiracao_plano ?? null;
@@ -545,17 +455,14 @@ export default function AtivacaoWizard() {
         startToSave = nowISO();
         expToSave = addDaysISO(7);
       } else if ((planToSave ?? "trial") === "trial") {
-        // usuário existe e é trial (ou veio null)
         if (!startToSave) startToSave = nowISO();
         if (!expToSave) expToSave = addDaysISO(7);
         if (!planToSave) planToSave = "trial";
       }
-      // se for premium/qualquer outro, não altera start/exp
 
-      // ✅ 3) Upsert final
       const payload: UsuarioUpsertPayload = {
         id: userId,
-        telefone: normalizePhoneBR(phone) || null,
+        telefone: existingUser?.telefone ?? null, // ✅ mantém telefone já validado no public
         nome_completo: nomeCompleto.trim() || null,
         email: email.trim() || null,
         data_nascimento: isoBirth,
@@ -564,7 +471,6 @@ export default function AtivacaoWizard() {
         aceitou_termos: true,
         premium_origem: "pagarme",
 
-        // ✅ garante mínimos
         role: roleToSave,
         tipo_plano: planToSave,
         data_inicio_plano: startToSave,
@@ -597,8 +503,6 @@ export default function AtivacaoWizard() {
       const body = {
         user_id: userId,
         product_id: "premium_annual",
-        // opcionais: apenas contexto e fallback
-        telefone: normalizePhoneBR(phone) || null,
         email: email.trim() || null,
         nome_completo: nomeCompleto.trim() || null,
         documento: onlyDigits(documento) || null,
@@ -624,11 +528,9 @@ export default function AtivacaoWizard() {
 
       const json = await res.json();
 
-      if (!json?.link_url) {
+      if (!json?.link_url)
         throw new Error("Resposta inválida do servidor de pagamento.");
-      }
 
-      // ✅ redireciona para o checkout Pagar.me
       window.location.href = json.link_url;
     } catch (e: unknown) {
       setPayError(getErrorMessage(e, "Não foi possível iniciar o pagamento."));
@@ -637,14 +539,14 @@ export default function AtivacaoWizard() {
     }
   }
 
+  // ✅ Voltar não pode mais ir para steps 1-3
   function back() {
     setPayError(null);
     setProfileError(null);
-    setOtpError(null);
 
     setStep((s) => {
       const nextStep = (s - 1) as number;
-      if (nextStep <= 2) return 2;
+      if (nextStep <= 4) return 4;
       if (nextStep >= 5) return 5;
       return nextStep as StepId;
     });
@@ -661,18 +563,17 @@ export default function AtivacaoWizard() {
           <div className="flex items-center justify-between gap-6">
             <div className="hidden sm:flex items-center gap-2 text-xs font-semibold text-slate-500">
               <span className="inline-flex h-2 w-2 rounded-full bg-brand-secondary" />
-              Ativação guiada
+              Ativação guiada (NR‑1)
             </div>
           </div>
 
           <div className="mt-5 max-w-2xl">
             <h1 className="text-2xl sm:text-3xl font-extrabold text-brand tracking-tight">
-              Ative seu acesso com segurança
+              Complete seu cadastro para seguir ao checkout
             </h1>
             <p className="mt-2 text-sm sm:text-base text-slate-600">
-              Você chegou por um QR Code ou CTA. Agora entenda o valor do app,
-              valide seu telefone e finalize seu cadastro para seguir ao
-              checkout.
+              Seu telefone já foi validado. Agora complete seus dados e finalize
+              o processo.
             </p>
           </div>
         </div>
@@ -688,186 +589,7 @@ export default function AtivacaoWizard() {
               aria-hidden="true"
             />
             <div className="relative bg-white rounded-2rem border border-white/60 shadow-[0_25px_70px_rgba(3,8,112,0.10)] p-4 sm:p-6">
-              {step === 2 && (
-                <div className="grid gap-6">
-                  {/* Título empolgante */}
-                  <div>
-                    <h2 className="text-xl sm:text-2xl font-extrabold text-brand">
-                      Você tem pelo menos{" "}
-                      <span className="text-brand-secondary">5 razões</span>{" "}
-                      para comprar este aplicativo
-                    </h2>
-                    <p className="mt-2 text-sm text-slate-600">
-                      Um app criado para acompanhar sua evolução com clareza,
-                      segurança e inteligência.
-                    </p>
-                  </div>
-
-                  {/* Lista numerada de benefícios */}
-                  <ol className="grid gap-4">
-                    <li className="flex gap-3">
-                      <span className="grid place-items-center h-9 w-9 min-w-2.25rem aspect-square rounded-full bg-brand-secondary text-white font-extrabold text-sm shadow-md">
-                        1
-                      </span>
-                      <p className="text-sm text-slate-700">
-                        <strong>Seu companheiro de jornada.</strong> Registre
-                        conquistas, acompanhe avanços e evolua passo a passo,
-                        com inteligência.
-                      </p>
-                    </li>
-
-                    <li className="flex gap-3">
-                      <span className="grid place-items-center h-9 w-9 min-w-2.25rem aspect-square rounded-full bg-brand-secondary text-white font-extrabold text-sm shadow-md">
-                        2
-                      </span>
-                      <p className="text-sm text-slate-700">
-                        <strong>Privacidade e segurança.</strong> Seus dados são
-                        criptografados e você decide o que compartilhar — e
-                        quando.
-                      </p>
-                    </li>
-
-                    <li className="flex gap-3">
-                      <span className="grid place-items-center h-9 w-9 min-w-2.25rem aspect-square rounded-full bg-brand-secondary text-white font-extrabold text-sm shadow-md">
-                        3
-                      </span>
-                      <p className="text-sm text-slate-700">
-                        <strong>Insights inteligentes.</strong> Gráficos,
-                        análises e métricas geradas para transformar registros
-                        em decisões.
-                      </p>
-                    </li>
-
-                    <li className="flex gap-3">
-                      <span className="grid place-items-center h-9 w-9 min-w-2.25rem aspect-square rounded-full bg-brand-secondary text-white font-extrabold text-sm shadow-md">
-                        4
-                      </span>
-                      <p className="text-sm text-slate-700">
-                        <strong>Integração com profissionais.</strong>{" "}
-                        Compartilhe resultados, comprove evolução e colabore com
-                        quem te acompanha.
-                      </p>
-                    </li>
-
-                    <li className="flex gap-3">
-                      <span className="grid place-items-center h-9 w-9 min-w-2.25rem aspect-square rounded-full bg-brand-secondary text-white font-extrabold text-sm shadow-md">
-                        5
-                      </span>
-
-                      <p className="text-sm text-slate-800">
-                        <strong className="text-brand-secondary">
-                          Preço justo.
-                        </strong>{" "}
-                        Um ano completo por{" "}
-                        <span className="inline-flex items-center gap-1 rounded-md bg-brand px-2 py-0.5 text-white font-extrabold">
-                          R$ 150
-                        </span>{" "}
-                        no Pix ou em até 5x parceladas no cartão.
-                      </p>
-                    </li>
-                  </ol>
-
-                  {/* Rodapé + CTA */}
-                  <div className="flex items-center justify-between pt-2">
-                    <span className="text-xs text-slate-500">
-                      Origem: <span className="font-semibold">{origem}</span>
-                      {campanha ? (
-                        <>
-                          {" "}
-                          • Campanha:{" "}
-                          <span className="font-semibold">{campanha}</span>
-                        </>
-                      ) : null}
-                    </span>
-
-                    <PrimaryButton onClick={() => setStep(3)}>
-                      Quero continuar
-                    </PrimaryButton>
-                  </div>
-                </div>
-              )}
-
-              {step === 3 && (
-                <div className="grid gap-5">
-                  <div>
-                    <h2 className="text-xl sm:text-2xl font-extrabold text-brand">
-                      Valide seu telefone
-                    </h2>
-                    <p className="mt-1 text-sm text-slate-600">
-                      Enviaremos um código por SMS para confirmar seu número.
-                    </p>
-                  </div>
-
-                  <div className="grid gap-4">
-                    <Field label="Telefone (WhatsApp/SMS)">
-                      <input
-                        ref={phoneRef}
-                        value={phone}
-                        onChange={(e) => setPhone(onlyDigits(e.target.value))}
-                        placeholder="55 11 99999 9999"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        autoComplete="tel"
-                        enterKeyHint={!otpSent ? "send" : "next"}
-                        className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-brand/10"
-                      />
-                    </Field>
-
-                    {otpSent && (
-                      <Field label="Código recebido (OTP)">
-                        <input
-                          ref={otpRef}
-                          value={otp}
-                          onChange={(e) =>
-                            setOtp(onlyDigits(e.target.value).slice(0, 6))
-                          }
-                          placeholder="Digite o código"
-                          inputMode="numeric"
-                          pattern="[0-9]*"
-                          autoComplete="one-time-code"
-                          enterKeyHint="done"
-                          className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm tracking-widest outline-none focus:ring-4 focus:ring-brand/10"
-                        />
-                      </Field>
-                    )}
-
-                    {otpError && (
-                      <div className="rounded-md bg-red-50 border border-red-200 p-3 text-sm text-red-700">
-                        {otpError}
-                      </div>
-                    )}
-
-                    <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
-                      <SecondaryButton onClick={back}>
-                        <FontAwesomeIcon
-                          icon={faChevronLeft}
-                          className="mr-2"
-                        />
-                        Voltar
-                      </SecondaryButton>
-
-                      {!otpSent ? (
-                        <PrimaryButton onClick={sendOtp} disabled={otpLoading}>
-                          {otpLoading ? "Enviando..." : "Enviar código"}
-                        </PrimaryButton>
-                      ) : (
-                        <PrimaryButton
-                          onClick={verifyOtp}
-                          disabled={otpLoading}
-                        >
-                          {otpLoading ? "Validando..." : "Validar código"}
-                        </PrimaryButton>
-                      )}
-                    </div>
-
-                    <p className="text-xs text-slate-500">
-                      Dica: use formato internacional (E.164). Ex.:
-                      +5511999999999.
-                    </p>
-                  </div>
-                </div>
-              )}
-
+              {/* Step 4: Perfil */}
               {step === 4 && (
                 <div className="grid gap-5">
                   <div>
@@ -875,8 +597,8 @@ export default function AtivacaoWizard() {
                       Complete seu perfil
                     </h2>
                     <p className="mt-1 text-sm text-slate-600">
-                      Só pedimos o essencial agora. O restante você completa
-                      dentro do app de pagamento.
+                      Só pedimos o essencial agora. O restante você completa no
+                      checkout.
                     </p>
                   </div>
 
@@ -903,20 +625,20 @@ export default function AtivacaoWizard() {
                       <Field label="Data de nascimento (DD/MM/AAAA)">
                         <input
                           value={dataNascimento}
-                          onChange={(e) => {
-                            setDataNascimento(formatDateBR(e.target.value));
-                          }}
+                          onChange={(e) =>
+                            setDataNascimento(formatDateBR(e.target.value))
+                          }
                           placeholder="DD/MM/AAAA"
                           inputMode="numeric"
                           className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-brand/10"
                         />
                       </Field>
+
                       {(() => {
                         const iso = parseDateBRtoISO(dataNascimento);
                         if (!iso) return null;
 
                         const age = calculateAge(iso);
-
                         if (age >= 18) return null;
 
                         if (age >= 16) {
@@ -932,8 +654,7 @@ export default function AtivacaoWizard() {
                               />
                               <span className="text-sm text-slate-700">
                                 Declaro que sou{" "}
-                                <strong>emancipado(a) legalmente</strong>,
-                                conforme a legislação brasileira.
+                                <strong>emancipado(a) legalmente</strong>.
                               </span>
                             </label>
                           );
@@ -946,6 +667,7 @@ export default function AtivacaoWizard() {
                           </div>
                         );
                       })()}
+
                       <Field label="Sexo (opcional)">
                         <select
                           value={sexo}
@@ -984,7 +706,6 @@ export default function AtivacaoWizard() {
                         onChange={(e) => setAceitouTermos(e.target.checked)}
                         className="mt-1"
                       />
-
                       <span className="text-sm text-slate-700">
                         Li e aceito os{" "}
                         <button
@@ -1015,7 +736,7 @@ export default function AtivacaoWizard() {
 
                       <PrimaryButton
                         onClick={saveProfileAndContinue}
-                        disabled={profileLoading}
+                        disabled={profileLoading || !userId}
                       >
                         {profileLoading
                           ? "Salvando..."
@@ -1026,10 +747,18 @@ export default function AtivacaoWizard() {
                         />
                       </PrimaryButton>
                     </div>
+
+                    {!userId && (
+                      <div className="rounded-md bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800">
+                        Sessão não detectada. Volte para o cadastro NR‑1 e
+                        valide o telefone novamente.
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
 
+              {/* Step 5: Pagamento */}
               {step === 5 && (
                 <div className="grid gap-5">
                   <div>
@@ -1052,8 +781,8 @@ export default function AtivacaoWizard() {
                           Plano Premium (exemplo)
                         </p>
                         <p className="text-sm text-slate-600">
-                          Acesso completo + recursos avançados. Confirmado o
-                          pagamento você já terá acesso premium.
+                          Confirmado o pagamento você terá acesso premium
+                          liberado.
                         </p>
                       </div>
                     </div>
@@ -1073,7 +802,7 @@ export default function AtivacaoWizard() {
 
                     <PrimaryButton
                       onClick={goToPayment}
-                      disabled={payLoading || !isValidCPF(documento)}
+                      disabled={payLoading || !isValidCPF(documento) || !userId}
                     >
                       {payLoading
                         ? "Abrindo checkout..."
@@ -1084,15 +813,15 @@ export default function AtivacaoWizard() {
 
                   <p className="text-xs text-slate-500">
                     Atenção: assim que confirmarmos seu pagamento você terá os
-                    serviços premium liberados.
+                    serviços liberados.
                   </p>
                 </div>
               )}
 
+              {/* Modal termos */}
               {showTerms && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
                   <div className="bg-white w-full max-w-3xl h-[85vh] rounded-xl shadow-xl overflow-hidden">
-                    {/* Header */}
                     <div className="flex items-center justify-between px-4 py-3 border-b">
                       <h2 className="font-bold text-brand">Termos de Uso</h2>
                       <button
@@ -1103,7 +832,6 @@ export default function AtivacaoWizard() {
                       </button>
                     </div>
 
-                    {/* Conteúdo */}
                     <iframe
                       src="/termos"
                       title="Termos de Uso"
