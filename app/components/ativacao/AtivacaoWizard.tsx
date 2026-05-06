@@ -60,6 +60,18 @@ function onlyDigits(v: string) {
   return v.replace(/\D/g, "");
 }
 
+function isValidNameLoose(v: string) {
+  const s = v.trim();
+  if (s.length < 2) return false;
+  if (!/[A-Za-zÀ-ÿ]/.test(s)) return false;
+  return /^[A-Za-zÀ-ÿ0-9 .,'&()-]{2,}$/.test(s);
+}
+
+function isValidEmailLoose(email: string) {
+  const s = email.trim();
+  return /^[^\s@]+@[^\s@]+\.[A-Za-z]{2,}$/.test(s);
+}
+
 function isValidCPF(input: string) {
   const cpf = onlyDigits(input);
 
@@ -393,25 +405,39 @@ export default function AtivacaoWizard() {
     setProfileLoading(true);
 
     try {
-      if (!userId)
+      if (!userId) {
         throw new Error("Sessão inválida. Refaça a validação do telefone.");
-      if (!nomeCompleto.trim()) throw new Error("Informe seu nome completo.");
-      if (!email.trim())
+      }
+
+      const nome = nomeCompleto.trim();
+      const mail = email.trim().toLowerCase();
+
+      if (!nome) throw new Error("Informe seu nome completo.");
+      if (!mail)
         throw new Error(
           "Informe seu e-mail para continuar (obrigatório para pagamento).",
         );
       if (!aceitouTermos)
         throw new Error("Você precisa aceitar os termos para continuar.");
 
-      const isoBirth = dataNascimento ? parseDateBRtoISO(dataNascimento) : null;
+      // qualidade nome/email
+      if (!isValidNameLoose(nome)) {
+        throw new Error(
+          "Informe um nome completo válido (apenas letras e caracteres comuns).",
+        );
+      }
+      if (!isValidEmailLoose(mail)) {
+        throw new Error("E-mail inválido.");
+      }
 
+      // Data nascimento (opcional)
+      const isoBirth = dataNascimento ? parseDateBRtoISO(dataNascimento) : null;
       if (isoBirth) {
         const age = calculateAge(isoBirth);
-        if (age < 16) {
+        if (age < 16)
           throw new Error(
             "Você precisa ter pelo menos 16 anos para continuar.",
           );
-        }
         if (age < 18 && !isEmancipated) {
           throw new Error(
             "Menores de 18 anos precisam declarar emancipação legal para continuar.",
@@ -419,16 +445,41 @@ export default function AtivacaoWizard() {
         }
       }
 
+      // CPF obrigatório
       const cpfDigits = onlyDigits(documento);
       if (!cpfDigits) throw new Error("Informe seu CPF para continuar.");
+      if (cpfDigits.length !== 11)
+        throw new Error("CPF deve conter 11 dígitos.");
       if (!isValidCPF(cpfDigits))
         throw new Error("CPF inválido. Verifique e tente novamente.");
 
-      // Busca usuário atual (não resetar trial/premium)
+      // ✅ Pre-check CPF duplicado (melhorado: se RLS bloquear, ignora e deixa fallback)
+      const { data: cpfOwner, error: cpfErr } = await supabase
+        .from("usuarios")
+        .select("id")
+        .eq("documento", cpfDigits)
+        .maybeSingle();
+
+      // Se a query falhar por RLS (42501), não bloqueia o fluxo.
+      // O banco ainda vai garantir UNIQUE e nosso fallback trata a mensagem amigável.
+      if (cpfErr) {
+        const code = (cpfErr as unknown as { code?: string }).code;
+        if (code && code !== "42501") {
+          throw new Error(cpfErr.message);
+        }
+      } else {
+        if (cpfOwner?.id && cpfOwner.id !== userId) {
+          throw new Error(
+            "Este CPF já está associado a outro usuário. Verifique se você está usando o telefone correto.",
+          );
+        }
+      }
+
+      // Busca usuário atual (para não resetar plano/role)
       const { data: existingUser, error: fetchErr } = await supabase
         .from("usuarios")
         .select(
-          "id, role, tipo_plano, data_inicio_plano, data_expiracao_plano, ativo, telefone",
+          "id, role, tipo_plano, data_inicio_plano, data_expiracao_plano, telefone",
         )
         .eq("id", userId)
         .maybeSingle();
@@ -464,9 +515,9 @@ export default function AtivacaoWizard() {
 
       const payload: UsuarioUpsertPayload = {
         id: userId,
-        telefone: existingUser?.telefone ?? null, // ✅ mantém telefone já validado no public
-        nome_completo: nomeCompleto.trim() || null,
-        email: email.trim() || null,
+        telefone: existingUser?.telefone ?? null,
+        nome_completo: nome || null,
+        email: mail || null,
         data_nascimento: isoBirth,
         sexo: sexo === "" ? null : sexo,
         documento: cpfDigits || null,
@@ -479,11 +530,29 @@ export default function AtivacaoWizard() {
         data_expiracao_plano: expToSave,
       };
 
-      const { error } = await supabase.from("usuarios").upsert(payload, {
-        onConflict: "id",
-      });
+      const { error: upsertErr } = await supabase
+        .from("usuarios")
+        .upsert(payload, {
+          onConflict: "id",
+        });
 
-      if (error) throw new Error(error.message);
+      if (upsertErr) {
+        const code = (upsertErr as unknown as { code?: string }).code;
+        const msg = (upsertErr.message || "").toLowerCase();
+
+        // ✅ unique violation (23505) com constraint de documento
+        if (code === "23505" && msg.includes("usuarios_documento_unique")) {
+          throw new Error(
+            "Este CPF já está associado a outro usuário. Verifique se você está usando o telefone correto.",
+          );
+        }
+
+        if (code === "23505" && msg.includes("usuarios_email_unique")) {
+          throw new Error("Este e-mail já está associado a outro usuário.");
+        }
+
+        throw new Error(upsertErr.message);
+      }
 
       setStep(5);
     } catch (e: unknown) {
@@ -495,55 +564,8 @@ export default function AtivacaoWizard() {
     }
   }
 
-  async function goToPayment() {
-    setPayError(null);
-    setPayLoading(true);
-
-    try {
-      if (!userId) throw new Error("Sessão inválida. Refaça a validação.");
-
-      const body = {
-        user_id: userId,
-        product_id: "premium_annual",
-        email: email.trim() || null,
-        nome_completo: nomeCompleto.trim() || null,
-        documento: onlyDigits(documento) || null,
-        sexo: sexo || null,
-        data_nascimento: dataNascimento || null,
-        origem,
-        campanha: campanha || null,
-      };
-
-      const res = await fetch(
-        "https://smartbeqv-afbbchhbb0hgardj.brazilsouth-01.azurewebsites.net/api/createpaymentlink",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        },
-      );
-
-      if (!res.ok) {
-        const txt = await res.text();
-        throw new Error(`Erro ao criar link (${res.status}): ${txt}`);
-      }
-
-      const json = await res.json();
-
-      if (!json?.link_url)
-        throw new Error("Resposta inválida do servidor de pagamento.");
-
-      window.location.href = json.link_url;
-    } catch (e: unknown) {
-      setPayError(getErrorMessage(e, "Não foi possível iniciar o pagamento."));
-    } finally {
-      setPayLoading(false);
-    }
-  }
-
   // ✅ Voltar não pode mais ir para steps 1-3
   function back() {
-    setPayError(null);
     setProfileError(null);
 
     setStep((s) => {
@@ -610,15 +632,23 @@ export default function AtivacaoWizard() {
                         value={nomeCompleto}
                         onChange={(e) => setNomeCompleto(e.target.value)}
                         placeholder="Seu nome e sobrenome"
+                        autoCapitalize="words"
+                        autoCorrect="off"
+                        autoComplete="name"
+                        enterKeyHint="next"
                         className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-brand/10"
                       />
                     </Field>
 
                     <Field label="E-mail (obrigatório para pagamento)">
                       <input
+                        type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="voce@exemplo.com"
+                        inputMode="email"
+                        autoComplete="email"
+                        enterKeyHint="next"
                         className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-brand/10"
                       />
                     </Field>
@@ -632,6 +662,8 @@ export default function AtivacaoWizard() {
                           }
                           placeholder="DD/MM/AAAA"
                           inputMode="numeric"
+                          autoComplete="bday"
+                          enterKeyHint="next"
                           className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-brand/10"
                         />
                       </Field>
@@ -697,6 +729,8 @@ export default function AtivacaoWizard() {
                         }
                         placeholder="000.000.000-00"
                         inputMode="numeric"
+                        autoComplete="off"
+                        enterKeyHint="done"
                         className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-brand/10"
                       />
                     </Field>

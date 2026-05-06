@@ -2,8 +2,14 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+
   images: {
     remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "api.pagar.me",
+        pathname: "/**",
+      },
       {
         protocol: "https",
         hostname: "alma4d.com.br",
@@ -11,6 +17,7 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+
   trailingSlash: false,
 };
 

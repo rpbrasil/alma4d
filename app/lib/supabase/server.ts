@@ -1,3 +1,5 @@
+import "server-only";
+
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
@@ -8,6 +10,8 @@ type CookieToSet = {
 };
 
 export async function createServerSupabase() {
+  // Mantive exatamente como você está usando (NEXT_PUBLIC_*), pois é compatível com o guia SSR.
+  // Se preferir, pode trocar por SUPABASE_URL / SUPABASE_ANON_KEY (server-only).
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -15,13 +19,9 @@ export async function createServerSupabase() {
     throw new Error("Missing Supabase environment variables");
   }
 
-  // ✅ Aqui o TS sabe que são strings
-  const url: string = supabaseUrl;
-  const key: string = supabaseAnonKey;
+  const cookieStore = await cookies(); // Next 16: cookies() é async [1](https://nextjs.org/docs/app/api-reference/functions/cookies)
 
-  const cookieStore = await cookies();
-
-  return createServerClient(url, key, {
+  return createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
       getAll() {
         return cookieStore.getAll();
@@ -32,7 +32,8 @@ export async function createServerSupabase() {
             cookieStore.set(name, value, options);
           });
         } catch {
-          // Server Components may block cookie writes (expected)
+          // Em alguns contextos (ex.: Server Components), escrita pode ser bloqueada.
+          // Fluxos com proxy/middleware lidam com refresh/persistência. [2](https://supabase.com/docs/guides/auth/server-side/creating-a-client)[3](https://github.com/supabase/ssr/blob/main/src/createServerClient.ts)
         }
       },
     },

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   ArrowRight,
   Building2,
@@ -15,44 +15,99 @@ type FormState = "idle" | "submitting" | "success" | "error";
 
 type EmpresaForm = {
   razaoSocial: string;
-  cnpj: string;
+  cnpjDigits: string; // guardamos só dígitos
   email: string;
-  telefone: string; // vamos armazenar em E.164 (+55...)
+  telefoneRaw: string; // digitado pelo usuário (com máscara)
+  telefoneE164: string; // normalizado (+55...)
   responsavel: string;
   funcionarios: number;
   aceiteLgpd: boolean;
+};
+
+type EmpresaApiResponse = {
+  success?: boolean;
+  cliente_id?: string;
+  contrato_id?: string;
+  error?: string;
 };
 
 function onlyDigits(v: string) {
   return v.replace(/\D/g, "");
 }
 
-function normalizePhoneBR(input: string) {
+/** Nome: letras + alguns símbolos comuns. Evita "###" e "123" puro. */
+function isValidNameLoose(v: string) {
+  const s = v.trim();
+  if (s.length < 2) return false;
+  // precisa ter pelo menos 1 letra
+  if (!/[A-Za-zÀ-ÿ]/.test(s)) return false;
+  // permite letras, números, espaço e caracteres comuns em nomes/razão social
+  return /^[A-Za-zÀ-ÿ0-9 .,'&()-]{2,}$/.test(s);
+}
+
+/** Email: simples e bom (sem tentar cobrir RFC inteiro). */
+function isValidEmail(email: string) {
+  const s = email.trim();
+  if (s.length < 6) return false;
+  return /^[^\s@]+@[^\s@]+\.[A-Za-z]{2,}$/.test(s);
+}
+
+function formatCNPJ(input: string) {
+  const d = onlyDigits(input).slice(0, 14);
+  return d
+    .replace(/^(\d{2})(\d)/, "$1.$2")
+    .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
+    .replace(/^(\d{2})\.(\d{3})\.(\d{3})(\d)/, "$1.$2.$3/$4")
+    .replace(/^(\d{2})\.(\d{3})\.(\d{3})\/(\d{4})(\d)/, "$1.$2.$3/$4-$5");
+}
+
+/** Validação real de CNPJ (DV). */
+function isValidCNPJ(cnpjDigits: string): boolean {
+  const cnpj = onlyDigits(cnpjDigits);
+  if (cnpj.length !== 14) return false;
+  if (/^(\d)\1+$/.test(cnpj)) return false;
+
+  const calc = (base: string, factors: number[]) => {
+    const sum = base
+      .split("")
+      .reduce((acc, dig, i) => acc + Number(dig) * factors[i], 0);
+    const mod = sum % 11;
+    return mod < 2 ? 0 : 11 - mod;
+  };
+
+  const base = cnpj.slice(0, 12);
+  const d1 = calc(base, [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+  const d2 = calc(base + d1, [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+
+  return d1 === Number(cnpj[12]) && d2 === Number(cnpj[13]);
+}
+
+/** Máscara simples de telefone BR: (11) 99999-9999 ou (11) 9999-9999 */
+function formatPhoneBR(raw: string) {
+  const d = onlyDigits(raw).slice(0, 11);
+  if (d.length <= 2) return d;
+  const ddd = d.slice(0, 2);
+  const rest = d.slice(2);
+
+  if (rest.length <= 4) return `(${ddd}) ${rest}`;
+  if (rest.length <= 8) return `(${ddd}) ${rest.slice(0, 4)}-${rest.slice(4)}`;
+  return `(${ddd}) ${rest.slice(0, 5)}-${rest.slice(5)}`;
+}
+
+/** Normaliza pra E.164. Aceita já vir com +55... */
+function normalizePhoneBRToE164(input: string) {
   const raw = input.trim();
   if (!raw) return "";
-
-  // já veio E.164
   if (raw.startsWith("+")) return raw.replace(/\s+/g, "");
 
   const digits = onlyDigits(raw);
   if (!digits) return "";
-
-  // se não tem DDI, assume BR
   if (digits.startsWith("55")) return `+${digits}`;
   return `+55${digits}`;
 }
 
 function isValidE164Phone(phone: string) {
-  // validação simples: + e 10-15 dígitos
   return /^\+\d{10,15}$/.test(phone);
-}
-
-function isValidCNPJ14(cnpjDigits: string) {
-  return /^\d{14}$/.test(cnpjDigits);
-}
-
-function isValidEmail(email: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
 export default function EmpresaNR1Page() {
@@ -75,9 +130,10 @@ export default function EmpresaNR1Page() {
 
   const [form, setForm] = useState<EmpresaForm>({
     razaoSocial: "",
-    cnpj: "",
+    cnpjDigits: "",
     email: "",
-    telefone: "",
+    telefoneRaw: "",
+    telefoneE164: "",
     responsavel: "",
     funcionarios: 0,
     aceiteLgpd: false,
@@ -88,23 +144,24 @@ export default function EmpresaNR1Page() {
   }
 
   function validarFormulario(f: EmpresaForm): string | null {
-    if (!f.razaoSocial.trim()) return "Informe a razão social.";
-
-    if (!isValidCNPJ14(f.cnpj))
-      return "CNPJ inválido. Use apenas números (14 dígitos).";
-
+    if (!isValidNameLoose(f.razaoSocial))
+      return "Informe uma razão social válida.";
+    if (!isValidCNPJ(f.cnpjDigits)) return "CNPJ inválido.";
     if (!isValidEmail(f.email)) return "E‑mail inválido.";
 
-    if (!isValidE164Phone(f.telefone))
-      return "Telefone inválido. Use DDD e número (ex.: 11 99999-9999).";
+    if (!isValidNameLoose(f.responsavel))
+      return "Informe um responsável válido.";
 
-    if (!f.responsavel.trim())
-      return "Informe o responsável pelo preenchimento.";
-
-    if (!Number.isInteger(f.funcionarios) || f.funcionarios <= 0)
+    if (!Number.isInteger(f.funcionarios) || f.funcionarios <= 0) {
       return "Número de funcionários inválido.";
+    }
 
     if (!f.aceiteLgpd) return "É obrigatório aceitar a LGPD.";
+
+    // telefone só fica válido depois que normalizamos
+    if (!isValidE164Phone(f.telefoneE164)) {
+      return "Telefone inválido. Use DDD e número (ex.: 11 99999-9999).";
+    }
 
     return null;
   }
@@ -114,20 +171,16 @@ export default function EmpresaNR1Page() {
     setOtpLoading(true);
 
     try {
-      const normalized = normalizePhoneBR(form.telefone);
-      if (!isValidE164Phone(normalized)) {
+      const e164 = normalizePhoneBRToE164(form.telefoneRaw);
+      if (!isValidE164Phone(e164)) {
         throw new Error(
           "Informe um telefone válido com DDD (ex.: 11 99999-9999).",
         );
       }
 
-      // salva telefone normalizado no form
-      update("telefone", normalized);
+      update("telefoneE164", e164);
 
-      const { error } = await supabase.auth.signInWithOtp({
-        phone: normalized,
-      });
-
+      const { error } = await supabase.auth.signInWithOtp({ phone: e164 });
       if (error) throw new Error(error.message);
 
       setOtpSent(true);
@@ -146,7 +199,7 @@ export default function EmpresaNR1Page() {
     setOtpLoading(true);
 
     try {
-      const phone = form.telefone;
+      const phone = form.telefoneE164;
       if (!isValidE164Phone(phone)) throw new Error("Telefone inválido.");
       if (!otp || otp.trim().length < 4)
         throw new Error("Informe o código recebido.");
@@ -176,16 +229,16 @@ export default function EmpresaNR1Page() {
     e.preventDefault();
     setErrorMsg(null);
 
-    // 1) valida form completo
-    const erro = validarFormulario(form);
-    if (erro) {
-      setErrorMsg(erro);
+    // exige OTP verificado
+    if (!otpVerified) {
+      setErrorMsg("Valide o telefone via código SMS antes de continuar.");
       return;
     }
 
-    // 2) exige OTP verificado
-    if (!otpVerified) {
-      setErrorMsg("Valide o telefone via código SMS antes de continuar.");
+    // valida com E.164 garantido
+    const erro = validarFormulario(form);
+    if (erro) {
+      setErrorMsg(erro);
       return;
     }
 
@@ -195,18 +248,31 @@ export default function EmpresaNR1Page() {
       const res = await fetch("/api/nr1/empresa", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        // envia o formato que sua API espera
+        body: JSON.stringify({
+          razaoSocial: form.razaoSocial.trim(),
+          cnpj: form.cnpjDigits,
+          email: form.email.trim(),
+          telefone: form.telefoneE164,
+          responsavel: form.responsavel.trim(),
+          funcionarios: form.funcionarios,
+          aceiteLgpd: form.aceiteLgpd,
+        }),
       });
 
-      const data = await res.json().catch(() => ({}));
+      const data = (await res.json().catch(() => ({}))) as EmpresaApiResponse;
 
       if (!res.ok) {
-        throw new Error(data?.error ?? "Erro desconhecido");
+        console.error("Erro /api/nr1/empresa:", data);
+        throw new Error(data.error ?? "Erro desconhecido");
+      }
+
+      if (!data.cliente_id || !data.contrato_id) {
+        throw new Error("Resposta inválida da API.");
       }
 
       setState("success");
 
-      // ✅ redireciona para o wizard fora do public
       window.location.href =
         `/ativacao?tipo=empresa&origem=nr1` +
         `&cliente_id=${data.cliente_id}` +
@@ -215,7 +281,11 @@ export default function EmpresaNR1Page() {
     } catch (err) {
       console.error(err);
       setState("error");
-      setErrorMsg("Não foi possível enviar os dados. Tente novamente.");
+      setErrorMsg(
+        err instanceof Error
+          ? err.message
+          : "Não foi possível enviar os dados. Tente novamente.",
+      );
     }
   }
 
@@ -224,7 +294,6 @@ export default function EmpresaNR1Page() {
       <div className="max-w-3xl mx-auto px-6 py-6">
         <NR1SubNav />
 
-        {/* ================= HEADER ================= */}
         <div className="text-center">
           <Building2 size={40} className="mx-auto text-brand" />
           <h1 className="mt-4 text-3xl font-extrabold text-brand">
@@ -236,8 +305,7 @@ export default function EmpresaNR1Page() {
           </p>
         </div>
 
-        {/* ================= FORM ================= */}
-        {(state === "idle" || state === "submitting") && (
+        {(state === "idle" || state === "submitting" || state === "error") && (
           <form
             onSubmit={handleSubmit}
             className="mt-10 rounded-2xl bg-surface border border-border p-8 space-y-6"
@@ -253,6 +321,10 @@ export default function EmpresaNR1Page() {
                 onChange={(e) => update("razaoSocial", e.target.value)}
                 className="mt-1 w-full h-11 rounded-lg border border-border px-3 text-sm"
                 required
+                autoCapitalize="words"
+                autoCorrect="off"
+                autoComplete="organization"
+                enterKeyHint="next"
               />
             </div>
 
@@ -264,15 +336,19 @@ export default function EmpresaNR1Page() {
                 </label>
                 <input
                   type="text"
-                  value={form.cnpj}
+                  value={formatCNPJ(form.cnpjDigits)}
                   onChange={(e) =>
                     update(
-                      "cnpj",
-                      e.target.value.replace(/\D/g, "").slice(0, 14),
+                      "cnpjDigits",
+                      onlyDigits(e.target.value).slice(0, 14),
                     )
                   }
                   className="mt-1 w-full h-11 rounded-lg border border-border px-3 text-sm"
                   required
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  autoComplete="off"
+                  enterKeyHint="next"
                 />
               </div>
 
@@ -289,6 +365,8 @@ export default function EmpresaNR1Page() {
                   }
                   className="mt-1 w-full h-11 rounded-lg border border-border px-3 text-sm"
                   required
+                  inputMode="numeric"
+                  enterKeyHint="next"
                 />
               </div>
             </div>
@@ -304,6 +382,10 @@ export default function EmpresaNR1Page() {
                 onChange={(e) => update("responsavel", e.target.value)}
                 className="mt-1 w-full h-11 rounded-lg border border-border px-3 text-sm"
                 required
+                autoCapitalize="words"
+                autoCorrect="off"
+                autoComplete="name"
+                enterKeyHint="next"
               />
             </div>
 
@@ -323,6 +405,9 @@ export default function EmpresaNR1Page() {
                   onChange={(e) => update("email", e.target.value)}
                   className="pl-9 mt-1 w-full h-11 rounded-lg border border-border px-3 text-sm"
                   required
+                  autoComplete="email"
+                  inputMode="email"
+                  enterKeyHint="next"
                 />
               </div>
             </div>
@@ -342,19 +427,21 @@ export default function EmpresaNR1Page() {
                 </label>
                 <input
                   type="tel"
-                  value={form.telefone}
+                  value={formatPhoneBR(form.telefoneRaw)}
                   onChange={(e) => {
-                    // permite digitar de forma livre; vamos normalizar no sendOtp
-                    update("telefone", e.target.value);
-                    // mudar telefone invalida verificação anterior
+                    update("telefoneRaw", e.target.value);
+                    update("telefoneE164", ""); // invalida E.164
                     setOtpVerified(false);
                     setOtpSent(false);
                     setOtp("");
                     setOtpError(null);
                   }}
                   className="mt-1 w-full h-11 rounded-lg border border-border px-3 text-sm"
-                  placeholder="11 99999-9999"
+                  placeholder="(11) 99999-9999"
                   required
+                  inputMode="tel"
+                  autoComplete="tel"
+                  enterKeyHint="send"
                 />
                 <p className="mt-1 text-xs text-slate-500">
                   Você receberá um código por SMS. Usamos o formato
@@ -385,6 +472,8 @@ export default function EmpresaNR1Page() {
                       className="mt-1 w-full h-11 rounded-lg border border-border px-3 text-sm tracking-widest"
                       placeholder="000000"
                       inputMode="numeric"
+                      autoComplete="one-time-code"
+                      enterKeyHint="done"
                     />
                   </div>
 
@@ -437,20 +526,16 @@ export default function EmpresaNR1Page() {
               </p>
             </div>
 
-            {/* Erro */}
             {errorMsg && (
               <div className="rounded-lg bg-brand-accent/10 text-brand-accent p-3 text-sm">
                 {errorMsg}
               </div>
             )}
 
-            {/* Submit */}
             <button
               type="submit"
               disabled={state === "submitting" || !otpVerified}
-              className="w-full inline-flex items-center justify-center gap-2 h-11
-                         rounded-xl bg-brand text-white font-semibold
-                         hover:bg-brand-highlight transition disabled:opacity-60"
+              className="w-full inline-flex items-center justify-center gap-2 h-11 rounded-xl bg-brand text-white font-semibold hover:bg-brand-highlight transition disabled:opacity-60"
             >
               {state === "submitting" ? (
                 "Enviando..."
@@ -469,7 +554,6 @@ export default function EmpresaNR1Page() {
           </form>
         )}
 
-        {/* ================= SUCCESS ================= */}
         {state === "success" && (
           <div className="mt-10 rounded-2xl bg-surface border border-border p-8 text-center">
             <CheckCircle2 size={40} className="mx-auto text-brand-secondary" />
@@ -477,13 +561,11 @@ export default function EmpresaNR1Page() {
               Cadastro recebido e telefone validado
             </h2>
             <p className="mt-4 text-slate-600">
-              Próximo passo: contrato e pagamento. Você receberá as instruções
-              por e‑mail.
+              Próximo passo: contrato e pagamento.
             </p>
           </div>
         )}
 
-        {/* ================= FOOTNOTE ================= */}
         <div className="mt-10 text-xs text-slate-500 text-center">
           ✔ Metodologia validada • ✔ Conformidade NR‑1 • ✔ LGPD
         </div>
