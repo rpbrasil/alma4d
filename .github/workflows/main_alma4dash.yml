@@ -29,7 +29,14 @@ jobs:
 
       - name: Build Next.js app
         run: npm run build
+      - name: Zip artifact for deployment
+        run: zip -r release.zip . # Ou aponte para a pasta de saída se estiver usando standalone
 
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: alma4dash
+          package: ./release.zip
       - name: Login to Azure (OIDC)
         uses: azure/login@v2
         with:
