@@ -28,15 +28,23 @@ jobs:
         run: npm ci
 
       - name: Build Next.js app
-        run: npm run build --no-lint
-      - name: Zip artifact for deployment
-        run: zip -r release.zip . # Ou aponte para a pasta de saída se estiver usando standalone
+        run: npm run build
+
+      # Este passo é o segredo: ele copia os arquivos estáticos para dentro do standalone
+      - name: Copy static files to standalone
+        run: |
+          cp -r public .next/standalone/
+          cp -r .next/static .next/standalone/.next/
+
+      - name: Zip artifact
+        run: cd .next/standalone && zip -r ../../release.zip .
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
           app-name: alma4dash
           package: ./release.zip
+          
       - name: Login to Azure (OIDC)
         uses: azure/login@v2
         with:
