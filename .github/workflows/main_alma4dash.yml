@@ -1,9 +1,8 @@
-name: Build and deploy Next.js - alma4dash
+name: Deploy Next.js - alma4dash
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   workflow_dispatch:
 
 permissions:
@@ -11,51 +10,40 @@ permissions:
   id-token: write
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: 22
           cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Build Next.js
+      - name: Build Next.js app
         run: npm run build
 
-      - name: Prepare deployment package (Standalone Mode)
+      - name: Prepare Package for Azure
         run: |
-          mkdir deploy
-          # Copia o servidor standalone (que já inclui as node_modules necessárias)
-          cp -R .next/standalone/. deploy/
-          # Copia os arquivos estáticos para o local correto que o standalone espera
-          mkdir -p deploy/.next/static
-          cp -R .next/static/. deploy/.next/static/
-          cp -R public/. deploy/public/
+          # 1. Cria a pasta final de deploy
+          mkdir deploy_out
+          
+          # 2. Copia TUDO de dentro do standalone para a raiz da pasta de deploy
+          # O ponto '.' depois de standalone/ garante que pegamos o conteúdo, não a pasta em si
+          cp -r .next/standalone/. deploy_out/
+          
+          # 3. Copia as pastas de arquivos estáticos para o local que o standalone espera
+          mkdir -p deploy_out/.next/static
+          cp -r .next/static/. deploy_out/.next/static/
+          cp -r public/. deploy_out/public/
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: app
-          path: deploy
-
-  deploy:
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - name: Download artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: app
-          path: deploy
-
-      - name: Login to Azure
+      - name: Login to Azure (OIDC)
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_90E427DC40B14D62B4856B70B6E489AF }}
@@ -66,4 +54,4 @@ jobs:
         uses: azure/webapps-deploy@v3
         with:
           app-name: alma4dash
-          package: deploy
+          package: ./deploy_out
