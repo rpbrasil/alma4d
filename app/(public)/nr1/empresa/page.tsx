@@ -207,7 +207,11 @@ export default function EmpresaNR1Page() {
       setState("success");
 
       // ✅ redireciona para o wizard fora do public
-      window.location.href = `/ativacao?tipo=empresa&origem=nr1&cliente_id=${data.cliente_id}&contrato_id=${data.contrato_id}`;
+      window.location.href =
+        `/ativacao?tipo=empresa&origem=nr1` +
+        `&cliente_id=${data.cliente_id}` +
+        `&contrato_id=${data.contrato_id}` +
+        `&funcionarios=${form.funcionarios}`;
     } catch (err) {
       console.error(err);
       setState("error");

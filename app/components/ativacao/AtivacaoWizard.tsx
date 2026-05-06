@@ -13,10 +13,10 @@ import {
   faCircleCheck,
   faUserCheck,
   faCreditCard,
-  faMobileScreen,
   faChevronLeft,
   faChevronRight,
 } from "@fortawesome/free-solid-svg-icons";
+import { NR1PaymentPanel } from "../../ativacao/_components/NR1PaymentPanel";
 
 type StepId = 1 | 2 | 3 | 4 | 5;
 type StepStatus = "done" | "active" | "next";
@@ -323,7 +323,9 @@ function SecondaryButton({
 
 export default function AtivacaoWizard() {
   const searchParams = useSearchParams();
-
+  const clienteId = searchParams.get("cliente_id") ?? "";
+  const contratoId = searchParams.get("contrato_id") ?? "";
+  const funcionariosParam = Number(searchParams.get("funcionarios") || "0");
   // origem/campanha continuam úteis (marketing)
   const origem = searchParams.get("origem") ?? "site";
   const campanha = searchParams.get("campanha") ?? "";
@@ -349,10 +351,6 @@ export default function AtivacaoWizard() {
   const [profileError, setProfileError] = useState<string | null>(null);
 
   const [isEmancipated, setIsEmancipated] = useState(false);
-
-  // Pagamento
-  const [payLoading, setPayLoading] = useState(false);
-  const [payError, setPayError] = useState<string | null>(null);
 
   // ✅ Supabase browser client (mantém sessão do OTP feito no public)
   const supabase = useMemo(() => {
@@ -398,6 +396,10 @@ export default function AtivacaoWizard() {
       if (!userId)
         throw new Error("Sessão inválida. Refaça a validação do telefone.");
       if (!nomeCompleto.trim()) throw new Error("Informe seu nome completo.");
+      if (!email.trim())
+        throw new Error(
+          "Informe seu e-mail para continuar (obrigatório para pagamento).",
+        );
       if (!aceitouTermos)
         throw new Error("Você precisa aceitar os termos para continuar.");
 
@@ -612,7 +614,7 @@ export default function AtivacaoWizard() {
                       />
                     </Field>
 
-                    <Field label="E-mail (opcional)">
+                    <Field label="E-mail (obrigatório para pagamento)">
                       <input
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
@@ -758,64 +760,23 @@ export default function AtivacaoWizard() {
                 </div>
               )}
 
-              {/* Step 5: Pagamento */}
-              {step === 5 && (
-                <div className="grid gap-5">
-                  <div>
-                    <h2 className="text-xl sm:text-2xl font-extrabold text-brand">
-                      Finalizar ativação
-                    </h2>
-                    <p className="mt-1 text-sm text-slate-600">
-                      Você está a um passo do checkout. O pagamento é processado
-                      via Pagar.me.
-                    </p>
-                  </div>
-
-                  <div className="rounded-xl border border-border bg-surface-muted p-4">
-                    <div className="flex items-start gap-3">
-                      <div className="mt-1 text-brand-secondary">
-                        <FontAwesomeIcon icon={faMobileScreen} />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-slate-800">
-                          Plano Premium (exemplo)
-                        </p>
-                        <p className="text-sm text-slate-600">
-                          Confirmado o pagamento você terá acesso premium
-                          liberado.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {payError && (
-                    <div className="rounded-md bg-red-50 border border-red-200 p-3 text-sm text-red-700">
-                      {payError}
-                    </div>
-                  )}
-
-                  <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
-                    <SecondaryButton onClick={back}>
-                      <FontAwesomeIcon icon={faChevronLeft} className="mr-2" />
-                      Voltar
-                    </SecondaryButton>
-
-                    <PrimaryButton
-                      onClick={goToPayment}
-                      disabled={payLoading || !isValidCPF(documento) || !userId}
-                    >
-                      {payLoading
-                        ? "Abrindo checkout..."
-                        : "Ir para o pagamento"}
-                      <FontAwesomeIcon icon={faCreditCard} className="ml-2" />
-                    </PrimaryButton>
-                  </div>
-
-                  <p className="text-xs text-slate-500">
-                    Atenção: assim que confirmarmos seu pagamento você terá os
-                    serviços liberados.
-                  </p>
-                </div>
+              {/* Step 5: Pagamento NR‑1 */}
+              {step === 5 && userId && (
+                <NR1PaymentPanel
+                  userId={userId}
+                  clienteId={clienteId}
+                  contratoId={contratoId}
+                  funcionariosInitial={funcionariosParam || 1}
+                  nomeCompleto={nomeCompleto}
+                  email={email}
+                  documento={documento}
+                  sexo={sexo}
+                  dataNascimentoISO={parseDateBRtoISO(dataNascimento)}
+                  // telefoneE164: se você tiver armazenado no usuarios.telefone, pode passar daqui.
+                  telefoneE164={null}
+                  origem={origem}
+                  campanha={campanha || null}
+                />
               )}
 
               {/* Modal termos */}
