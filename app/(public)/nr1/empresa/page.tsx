@@ -277,7 +277,10 @@ export default function EmpresaNR1Page() {
         `/ativacao?tipo=empresa&origem=nr1` +
         `&cliente_id=${data.cliente_id}` +
         `&contrato_id=${data.contrato_id}` +
-        `&funcionarios=${form.funcionarios}`;
+        `&funcionarios=${form.funcionarios}` +
+        `&nome=${encodeURIComponent(form.responsavel)}` +
+        `&email=${encodeURIComponent(form.email)}`;
+
     } catch (err) {
       console.error(err);
       setState("error");
@@ -297,7 +300,7 @@ export default function EmpresaNR1Page() {
         <div className="text-center">
           <Building2 size={40} className="mx-auto text-brand" />
           <h1 className="mt-4 text-3xl font-extrabold text-brand">
-            Aplicação do COPSOQ II BR — NR‑1
+            Riscos Psicossociais — NR‑1
           </h1>
           <p className="mt-4 text-slate-600">
             Preencha os dados da empresa. Em seguida, valide o telefone do
@@ -346,7 +349,8 @@ export default function EmpresaNR1Page() {
                   className="mt-1 w-full h-11 rounded-lg border border-border px-3 text-sm"
                   required
                   inputMode="numeric"
-                  pattern="[0-9]*"
+                  maxLength={18}
+                  pattern="\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2}"
                   autoComplete="off"
                   enterKeyHint="next"
                 />

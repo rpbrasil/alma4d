@@ -7,16 +7,16 @@ import { createBrowserClient } from "@supabase/ssr";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import {
-  faQrcode,
-  faLightbulb,
   faShieldHalved,
   faCircleCheck,
   faUserCheck,
   faCreditCard,
 } from "@fortawesome/free-solid-svg-icons";
 import { NR1PaymentPanel } from "../../ativacao/_components/NR1PaymentPanel";
+import { TERMOS_V1 } from "@/lib/termos";
+import { generateHash } from "@/lib/hash";
 
-type StepId = 1 | 2 | 3 | 4 | 5;
+type StepId = 3 | 4 | 5 | 6;
 type StepStatus = "done" | "active" | "next";
 type Step = { id: StepId; name: string; desc: string; status: StepStatus };
 
@@ -130,43 +130,30 @@ function calculateAge(isoDate: string): number {
 function StepperCompact({ current }: { current: StepId }) {
   const steps: Step[] = [
     {
-      id: 1,
-      name: "Usar",
-      desc: "QR/CTA",
-      status: current > 1 ? "done" : "active",
-    },
-    {
-      id: 2,
-      name: "Confirmar",
-      desc: "Interesse",
-      status: current === 2 ? "active" : current > 2 ? "done" : "next",
-    },
-    {
-      id: 3,
-      name: "Validar",
-      desc: "Fone",
-      status: current === 3 ? "active" : current > 3 ? "done" : "next",
-    },
-    {
       id: 4,
-      name: "Completar",
-      desc: "Perfil",
+      name: "Serviço",
+      desc: "Termos",
       status: current === 4 ? "active" : current > 4 ? "done" : "next",
     },
     {
       id: 5,
-      name: "Pagar",
+      name: "Perfil",
+      desc: "Dados",
+      status: current === 5 ? "active" : current > 5 ? "done" : "next",
+    },
+    {
+      id: 6,
+      name: "Pagamento",
       desc: "Checkout",
-      status: current === 5 ? "active" : "next",
+      status: current === 6 ? "active" : "next",
     },
   ];
 
   const icons: Record<StepId, IconDefinition> = {
-    1: faQrcode,
-    2: faLightbulb,
     3: faShieldHalved,
     4: faUserCheck,
     5: faCreditCard,
+    6: faCreditCard,
   };
 
   const activeIndex = Math.max(
@@ -298,7 +285,69 @@ function PrimaryButton({
   );
 }
 
+function StepConfirmacaoServico({ onNext }: { onNext: () => void }) {
+  const [aceite, setAceite] = useState(false);
+  return (
+    <div className="space-y-6">
+      <h2 className="text-xl font-extrabold text-brand">
+        Sobre o serviço NR‑1
+      </h2>
 
+      {/* ENTREGÁVEL */}
+      <div className="rounded-xl border p-4 bg-surface-muted">
+        <h3 className="font-semibold text-slate-800 mb-2">📄 Entregável</h3>
+
+        <p className="text-sm text-slate-600">
+          Você receberá um relatório completo em PDF contendo:
+        </p>
+
+        <ul className="mt-2 text-sm text-slate-600 list-disc pl-5 space-y-1">
+          <li>Mapeamento dos riscos psicossociais</li>
+          <li>Classificação conforme NR‑1</li>
+          <li>Documento pronto para fiscalização</li>
+          <li>Campos para definição das ações corretivas</li>
+        </ul>
+      </div>
+
+      {/* TERMOS */}
+      <div className="rounded-xl border p-4 bg-surface-muted">
+        <h3 className="font-semibold text-slate-800 mb-2">📜 Termos de uso</h3>
+
+        <p className="text-sm text-slate-600">
+          Ao prosseguir, você declara que:
+        </p>
+
+        <ul className="mt-2 text-sm text-slate-600 list-disc pl-5 space-y-1">
+          <li>As informações fornecidas são verdadeiras</li>
+          <li>O relatório será utilizado para fins legais e regulatórios</li>
+          <li>
+            A empresa é responsável pelas ações decorrentes do diagnóstico
+          </li>
+        </ul>
+
+        <div className="mt-4 flex items-start gap-2">
+          <input
+            type="checkbox"
+            checked={aceite}
+            onChange={(e) => setAceite(e.target.checked)}
+          />
+          <p className="text-sm text-slate-700">
+            Li e aceito os termos de uso e responsabilidade
+          </p>
+        </div>
+      </div>
+
+      {/* CTA */}
+      <button
+        disabled={!aceite}
+        onClick={onNext}
+        className="w-full h-11 rounded-xl bg-brand text-white font-semibold disabled:opacity-50"
+      >
+        Continuar para pagamento
+      </button>
+    </div>
+  );
+}
 /** ===================== Wizard principal (Step 4+) ===================== */
 
 export default function AtivacaoWizard() {
@@ -320,13 +369,14 @@ export default function AtivacaoWizard() {
   const [userId, setUserId] = useState<string | null>(null);
 
   // Perfil
-  const [nomeCompleto, setNomeCompleto] = useState("");
-  const [email] = useState("");
+  const nomeInicial = searchParams.get("nome") || "";
+  const emailInicial = searchParams.get("email") || "";
   const [dataNascimento] = useState("");
   const [sexo] = useState<Sexo>("");
   const [documento, setDocumento] = useState("");
   const [aceitouTermos, setAceitouTermos] = useState(false);
-
+  const [nomeCompleto, setNomeCompleto] = useState(nomeInicial);
+  const [email] = useState(emailInicial);
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
 
@@ -522,7 +572,7 @@ export default function AtivacaoWizard() {
         throw new Error(upsertErr.message);
       }
 
-      setStep(5);
+      setStep(6);
     } catch (e: unknown) {
       setProfileError(
         getErrorMessage(e, "Não foi possível salvar seus dados."),
@@ -569,8 +619,36 @@ export default function AtivacaoWizard() {
               aria-hidden="true"
             />
             <div className="relative bg-white rounded-2rem border border-white/60 shadow-[0_25px_70px_rgba(3,8,112,0.10)] p-4 sm:p-6">
-              {/* Step 4: Perfil */}
               {step === 4 && (
+                <StepConfirmacaoServico
+                  onNext={async () => {
+                    try {
+                      const termosHtml = TERMOS_V1;
+                      const termosHash = await generateHash(termosHtml);
+
+                      await fetch("/api/contrato/aceite", {
+                        method: "POST",
+                        headers: {
+                          "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({
+                          contratoId,
+                          termos_html: termosHtml,
+                          termos_hash: termosHash,
+                          versao_termos: "v1.0",
+                        }),
+                      });
+
+                      setStep(5);
+                    } catch (err) {
+                      console.error(err);
+                      alert("Erro ao registrar aceite. Tente novamente.");
+                    }
+                  }}
+                />
+              )}
+              {/* Step 5: Perfil */}
+              {step === 5 && (
                 <div className="grid gap-5">
                   {/* HEADER */}
                   <div>
@@ -685,7 +763,7 @@ export default function AtivacaoWizard() {
               )}
 
               {/* Step 5: Pagamento NR‑1 */}
-              {step === 5 && userId && (
+              {step === 6 && userId && (
                 <div className="grid gap-5">
                   {/* HEADER */}
                   <div>

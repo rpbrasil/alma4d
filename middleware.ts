@@ -4,6 +4,7 @@ import { createServerClient } from "@supabase/ssr";
 
 export async function middleware(req: NextRequest) {
   const res = NextResponse.next();
+  const { pathname } = req.nextUrl;
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -25,28 +26,27 @@ export async function middleware(req: NextRequest) {
      🔒 BLOQUEIO DE ROTAS PROTEGIDAS
   ===================================================== */
 
-  // if (!user && pathname.startsWith("/dashboard")) {
-  //   return NextResponse.redirect(new URL("/login", req.url));
-  // }
-  // 🔒 Bloqueio de área admin
-  // if (
-  //   pathname.startsWith("/dashboard/admin") &&
-  //   user?.app_metadata?.claims?.role !== "admin"
-  // ) {
-  //   return NextResponse.redirect(new URL("/dashboard", req.url));
-  // }
+  if (!user && pathname.startsWith("/dashboard")) {
+    return NextResponse.redirect(new URL("/login", req.url));
+  }
+
   /* =====================================================
-     🔒 USUÁRIO INATIVO
+     🔒 USUÁRIO INATIVO (checagem real no banco)
   ===================================================== */
 
   if (user) {
-    const ativo = user.app_metadata?.ativo;
+    const { data: profile } = await supabase
+      .from("usuarios")
+      .select("ativo")
+      .eq("id", user.id)
+      .single();
 
-    if (ativo === false) {
-      // logout limpo pelo Supabase
-      await supabase.auth.signOut();
-
+    if (profile?.ativo === false) {
       const redirect = NextResponse.redirect(new URL("/login", req.url));
+
+      // limpa sessão manualmente
+      redirect.cookies.delete("sb-access-token");
+      redirect.cookies.delete("sb-refresh-token");
 
       return redirect;
     }
