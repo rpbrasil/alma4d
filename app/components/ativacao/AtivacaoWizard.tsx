@@ -275,16 +275,16 @@ function StepConfirmacaoServico({
   imageUrl = "/images/alma4d_express_nobground.png",
 }: {
   onNext: () => void;
-    videoUrl?: string;
-    imageUrl?: string;
+  videoUrl?: string;
+  imageUrl?: string;
 }) {
   const [aceite, setAceite] = useState(false);
 
   const steps = [
-    "Mapeie os riscos psicossociais",
-    "Classifique pelo grau de risco",
-    "Imprima seu relatório para fiscalização",
-    "Implemente ações corretivas",
+    "Mapear os riscos psicossociais",
+    "Classificar pelo grau de risco",
+    "Imprimir o relatório fiscal",
+    "Registrar ações corretivas",
   ];
 
   const [index, setIndex] = useState(0);
@@ -299,13 +299,13 @@ function StepConfirmacaoServico({
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-extrabold text-brand">
-        Sobre o serviço NR‑1
+        Sobre os entregáveis deste serviço
       </h2>
 
       <div className="grid md:grid-cols-2 gap-6 items-center">
         {/* ESQUERDA */}
         <div className="rounded-xl border p-4 bg-surface-muted">
-          <h3 className="font-semibold text-slate-800 mb-2">📄 Entregável</h3>
+          <h3 className="font-semibold text-slate-800 mb-2">📄 O que você poderá fazer</h3>
 
           <ul className="mt-3 text-sm text-slate-600 list-disc pl-5 space-y-2">
             {steps.map((s) => (
@@ -327,30 +327,29 @@ function StepConfirmacaoServico({
           />
 
           {/* OVERLAY GRADIENTE */}
-          <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/40 to-black/20" />
+          <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/40 to-black/70" />
 
           {/* CONTEÚDO CENTRAL */}
           <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6">
             {/* LOGO CENTRAL */}
-            <div className="mb-6">
+            <div className="mb-2">
               <Image
                 src={imageUrl}
                 alt="alma4D"
-                width={160}
-                height={160}
+                width={120}
+                height={120}
                 className="mx-auto opacity-95"
                 priority
               />
             </div>
-
             {/* TEXTO */}
             <p className="text-white/70 text-xs uppercase tracking-widest">
               NR‑1 • Avaliação Psicossocial
             </p>
-
-            <h4 className="text-white text-lg sm:text-xl font-semibold mt-2 transition-all duration-500">
+            <h4 className="text-white text-base sm:text-lg font-semibold mt-2 transition-all duration-500">
               {steps[index]}
             </h4>
+            ``
           </div>
         </div>
       </div>
