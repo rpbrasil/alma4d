@@ -13,8 +13,6 @@ import {
   faCircleCheck,
   faUserCheck,
   faCreditCard,
-  faChevronLeft,
-  faChevronRight,
 } from "@fortawesome/free-solid-svg-icons";
 import { NR1PaymentPanel } from "../../ativacao/_components/NR1PaymentPanel";
 
@@ -107,13 +105,6 @@ function addDaysISO(days: number) {
 
 function nowISO() {
   return new Date().toISOString();
-}
-
-function formatDateBR(input: string) {
-  const d = input.replace(/\D/g, "").slice(0, 8);
-  if (d.length <= 2) return d;
-  if (d.length <= 4) return `${d.slice(0, 2)}/${d.slice(2)}`;
-  return `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}`;
 }
 
 function parseDateBRtoISO(br: string): string | null {
@@ -307,29 +298,6 @@ function PrimaryButton({
   );
 }
 
-function SecondaryButton({
-  children,
-  onClick,
-  disabled,
-}: {
-  children: React.ReactNode;
-  onClick?: () => void;
-  disabled?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className={cx(
-        "inline-flex items-center justify-center rounded-md border border-border bg-surface px-4 py-2 font-semibold text-slate-700 transition-colors",
-        "hover:bg-surface-muted disabled:opacity-50 disabled:cursor-not-allowed",
-      )}
-    >
-      {children}
-    </button>
-  );
-}
 
 /** ===================== Wizard principal (Step 4+) ===================== */
 
@@ -353,16 +321,16 @@ export default function AtivacaoWizard() {
 
   // Perfil
   const [nomeCompleto, setNomeCompleto] = useState("");
-  const [email, setEmail] = useState("");
-  const [dataNascimento, setDataNascimento] = useState("");
-  const [sexo, setSexo] = useState<Sexo>("");
+  const [email] = useState("");
+  const [dataNascimento] = useState("");
+  const [sexo] = useState<Sexo>("");
   const [documento, setDocumento] = useState("");
   const [aceitouTermos, setAceitouTermos] = useState(false);
 
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
 
-  const [isEmancipated, setIsEmancipated] = useState(false);
+  const [isEmancipated] = useState(false);
 
   // ✅ Supabase browser client (mantém sessão do OTP feito no public)
   const supabase = useMemo(() => {
@@ -564,18 +532,6 @@ export default function AtivacaoWizard() {
     }
   }
 
-  // ✅ Voltar não pode mais ir para steps 1-3
-  function back() {
-    setProfileError(null);
-
-    setStep((s) => {
-      const nextStep = (s - 1) as number;
-      if (nextStep <= 4) return 4;
-      if (nextStep >= 5) return 5;
-      return nextStep as StepId;
-    });
-  }
-
   return (
     <main
       className="min-h-screen bg-[#F0F2F5] overflow-x-hidden"
@@ -616,22 +572,48 @@ export default function AtivacaoWizard() {
               {/* Step 4: Perfil */}
               {step === 4 && (
                 <div className="grid gap-5">
+                  {/* HEADER */}
                   <div>
                     <h2 className="text-xl sm:text-2xl font-extrabold text-brand">
-                      Complete seu perfil
+                      Confirme seus dados
                     </h2>
                     <p className="mt-1 text-sm text-slate-600">
-                      Só pedimos o essencial agora. O restante você completa no
-                      checkout.
+                      Revise as informações da sua empresa e complete apenas o
+                      necessário.
                     </p>
                   </div>
 
+                  {/* RESUMO */}
+                  <div className="rounded-xl border border-border bg-surface-muted p-4">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="font-semibold text-slate-800">
+                          {clienteId ? "Empresa cadastrada" : "Empresa"}
+                        </p>
+                        <p className="text-sm text-slate-600">
+                          {funcionariosParam} funcionários
+                        </p>
+                      </div>
+
+                      <div className="text-right">
+                        <p className="text-xs text-slate-500">Estimativa</p>
+                        <p className="text-lg font-bold text-brand">
+                          {(funcionariosParam * 16).toLocaleString("pt-BR", {
+                            style: "currency",
+                            currency: "BRL",
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* PERFIL (MINIMO) */}
                   <div className="grid gap-4">
                     <Field label="Nome completo">
                       <input
                         value={nomeCompleto}
                         onChange={(e) => setNomeCompleto(e.target.value)}
-                        placeholder="Seu nome e sobrenome"
+                        placeholder="Seu nome completo"
                         autoCapitalize="words"
                         autoCorrect="off"
                         autoComplete="name"
@@ -640,88 +622,7 @@ export default function AtivacaoWizard() {
                       />
                     </Field>
 
-                    <Field label="E-mail (obrigatório para pagamento)">
-                      <input
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="voce@exemplo.com"
-                        inputMode="email"
-                        autoComplete="email"
-                        enterKeyHint="next"
-                        className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-brand/10"
-                      />
-                    </Field>
-
-                    <div className="grid sm:grid-cols-2 gap-3">
-                      <Field label="Data de nascimento (DD/MM/AAAA)">
-                        <input
-                          value={dataNascimento}
-                          onChange={(e) =>
-                            setDataNascimento(formatDateBR(e.target.value))
-                          }
-                          placeholder="DD/MM/AAAA"
-                          inputMode="numeric"
-                          autoComplete="bday"
-                          enterKeyHint="next"
-                          className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-brand/10"
-                        />
-                      </Field>
-
-                      {(() => {
-                        const iso = parseDateBRtoISO(dataNascimento);
-                        if (!iso) return null;
-
-                        const age = calculateAge(iso);
-                        if (age >= 18) return null;
-
-                        if (age >= 16) {
-                          return (
-                            <label className="flex items-start gap-3 mt-2">
-                              <input
-                                type="checkbox"
-                                checked={isEmancipated}
-                                onChange={(e) =>
-                                  setIsEmancipated(e.target.checked)
-                                }
-                                className="mt-1"
-                              />
-                              <span className="text-sm text-slate-700">
-                                Declaro que sou{" "}
-                                <strong>emancipado(a) legalmente</strong>.
-                              </span>
-                            </label>
-                          );
-                        }
-
-                        return (
-                          <div className="rounded-md bg-red-50 border border-red-200 p-3 text-sm text-red-700 mt-2">
-                            É necessário ter pelo menos <strong>16 anos</strong>{" "}
-                            para continuar.
-                          </div>
-                        );
-                      })()}
-
-                      <Field label="Sexo (opcional)">
-                        <select
-                          value={sexo}
-                          onChange={(e) => {
-                            const v = e.target.value;
-                            if (v === "" || v === "M" || v === "F") setSexo(v);
-                          }}
-                          className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-brand/10"
-                        >
-                          <option value="">—</option>
-                          <option value="F">Feminino</option>
-                          <option value="M">Masculino</option>
-                        </select>
-                      </Field>
-                    </div>
-
-                    <Field
-                      label="CPF (obrigatório para pagamento)"
-                      hint="Somente CPF. Usamos para identificação no checkout."
-                    >
+                    <Field label="CPF (obrigatório)">
                       <input
                         value={documento}
                         onChange={(e) =>
@@ -735,6 +636,15 @@ export default function AtivacaoWizard() {
                       />
                     </Field>
 
+                    {/* EMAIL (NÃO EDITÁVEL) */}
+                    <Field label="E-mail">
+                      <input
+                        value={email}
+                        disabled
+                        className="w-full rounded-md border border-border bg-slate-100 px-3 py-2 text-sm text-slate-500"
+                      />
+                    </Field>
+
                     <label className="flex items-start gap-3">
                       <input
                         type="checkbox"
@@ -743,7 +653,7 @@ export default function AtivacaoWizard() {
                         className="mt-1"
                       />
                       <span className="text-sm text-slate-700">
-                        Li e aceito os{" "}
+                        Aceito os{" "}
                         <button
                           type="button"
                           onClick={() => setShowTerms(true)}
@@ -751,7 +661,6 @@ export default function AtivacaoWizard() {
                         >
                           Termos de Uso
                         </button>
-                        .
                       </span>
                     </label>
 
@@ -761,56 +670,82 @@ export default function AtivacaoWizard() {
                       </div>
                     )}
 
-                    <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
-                      <SecondaryButton onClick={back}>
-                        <FontAwesomeIcon
-                          icon={faChevronLeft}
-                          className="mr-2"
-                        />
-                        Voltar
-                      </SecondaryButton>
-
+                    <div className="flex justify-end">
                       <PrimaryButton
                         onClick={saveProfileAndContinue}
                         disabled={profileLoading || !userId}
                       >
                         {profileLoading
-                          ? "Salvando..."
-                          : "Continuar para pagamento"}
-                        <FontAwesomeIcon
-                          icon={faChevronRight}
-                          className="ml-2"
-                        />
+                          ? "Continuando..."
+                          : "Ir para pagamento"}
                       </PrimaryButton>
                     </div>
-
-                    {!userId && (
-                      <div className="rounded-md bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800">
-                        Sessão não detectada. Volte para o cadastro NR‑1 e
-                        valide o telefone novamente.
-                      </div>
-                    )}
                   </div>
                 </div>
               )}
 
               {/* Step 5: Pagamento NR‑1 */}
               {step === 5 && userId && (
-                <NR1PaymentPanel
-                  userId={userId}
-                  clienteId={clienteId}
-                  contratoId={contratoId}
-                  funcionariosInitial={funcionariosParam || 1}
-                  nomeCompleto={nomeCompleto}
-                  email={email}
-                  documento={documento}
-                  sexo={sexo}
-                  dataNascimentoISO={parseDateBRtoISO(dataNascimento)}
-                  // telefoneE164: se você tiver armazenado no usuarios.telefone, pode passar daqui.
-                  telefoneE164={null}
-                  origem={origem}
-                  campanha={campanha || null}
-                />
+                <div className="grid gap-5">
+                  {/* HEADER */}
+                  <div>
+                    <h2 className="text-xl sm:text-2xl font-extrabold text-brand">
+                      Finalizar pagamento
+                    </h2>
+                    <p className="mt-1 text-sm text-slate-600">
+                      Escolha o método de pagamento para ativar sua empresa na
+                      NR‑1.
+                    </p>
+                  </div>
+
+                  {/* RESUMO FINAL */}
+                  <div className="rounded-xl border border-border bg-surface-muted p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="grid gap-1">
+                        <p className="font-semibold text-slate-800">
+                          NR‑1 • COPSOQ II BR
+                        </p>
+                        <p className="text-sm text-slate-600">
+                          {funcionariosParam} funcionários
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          Cliente: {clienteId.slice(0, 8)}...
+                        </p>
+                      </div>
+
+                      <div className="text-right">
+                        <p className="text-xs text-slate-500">Total estimado</p>
+                        <p className="text-lg font-bold text-brand">
+                          {(funcionariosParam * 16).toLocaleString("pt-BR", {
+                            style: "currency",
+                            currency: "BRL",
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* PAGAMENTO */}
+                  <div className="rounded-xl border border-border bg-white p-4">
+                    <NR1PaymentPanel
+                      userId={userId}
+                      clienteId={clienteId}
+                      contratoId={contratoId}
+                      funcionariosInitial={funcionariosParam || 1}
+                      nomeCompleto={nomeCompleto}
+                      email={email}
+                      documento={documento}
+                      origem={origem}
+                      campanha={campanha || null}
+                    />
+                  </div>
+
+                  {/* SEGURANÇA / CONFIANÇA */}
+                  <div className="text-xs text-slate-500 text-center">
+                    ✔ Pagamento seguro • ✔ Dados protegidos • ✔ Ativação
+                    automática após confirmação
+                  </div>
+                </div>
               )}
 
               {/* Modal termos */}

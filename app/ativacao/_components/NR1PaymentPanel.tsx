@@ -1,48 +1,53 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 
-type PaymentMethod = "pix" | "boleto" | "credit_card";
+type PaymentMethod = "pix" | "boleto";
 
-type PixTransaction = {
+type LastTransaction = {
   id?: string;
+  status?: string;
+
+  // PIX
   qr_code?: string;
   qr_code_url?: string;
   expires_at?: string;
-  status?: string;
-};
 
-type BoletoTransaction = {
-  id?: string;
+  // BOLETO (nomes podem variar; mantemos defensivo)
   boleto_url?: string;
   line?: string;
-  status?: string;
 };
-
-type LastTransaction = PixTransaction & BoletoTransaction;
 
 type Charge = {
   id?: string;
-  payment_method: string;
+  payment_method?: string; // "pix" | "boleto"
   last_transaction?: LastTransaction;
+  metadata?: Record<string, unknown>;
 };
 
 type Order = {
   id?: string;
+  status?: "pending" | "paid" | "canceled" | "failed" | string;
   amount?: number;
-  status?: string;
   charges?: Charge[];
+  metadata?: Record<string, unknown>;
 };
 
 type CreatePaymentResponse = {
-  mode?: "order";
+  mode?: string;
   order_id?: string;
   order_status?: string;
   order_code?: string;
   order_seq?: number;
   payment_method?: string;
   total_amount?: number;
+  order?: Order;
+  error?: string;
+  detail?: unknown;
+};
+
+type StatusResponse = {
   order?: Order;
   error?: string;
   detail?: unknown;
@@ -59,13 +64,17 @@ function formatMoneyBRL(cents: number) {
   });
 }
 
-function toISODateOrNull(v: string | null): string | null {
-  if (!v) return null;
-  return v;
+function msToMMSS(ms: number) {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
-function errorMessage(e: unknown, fallback: string) {
-  return e instanceof Error ? e.message : fallback;
+function getErrorMessage(e: unknown, fallback: string) {
+  if (e instanceof Error) return e.message;
+  if (typeof e === "string") return e;
+  return fallback;
 }
 
 export function NR1PaymentPanel(props: {
@@ -77,10 +86,6 @@ export function NR1PaymentPanel(props: {
   nomeCompleto: string;
   email: string;
   documento: string;
-  sexo: string;
-  dataNascimentoISO: string | null;
-
-  telefoneE164?: string | null;
 
   origem?: string | null;
   campanha?: string | null;
@@ -93,9 +98,6 @@ export function NR1PaymentPanel(props: {
     nomeCompleto,
     email,
     documento,
-    sexo,
-    dataNascimentoISO,
-    telefoneE164,
     origem,
     campanha,
   } = props;
@@ -105,43 +107,59 @@ export function NR1PaymentPanel(props: {
     funcionariosInitial || 1,
   );
   const [cupom, setCupom] = useState<string>("");
+
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
   const [result, setResult] = useState<CreatePaymentResponse | null>(null);
+
   const [copied, setCopied] = useState(false);
 
+  // countdown
+  const [remainingMs, setRemainingMs] = useState<number | null>(null);
+
+  // timers
+  const pollTimerRef = useRef<number | null>(null);
+  const countdownTimerRef = useRef<number | null>(null);
+
   const totalEstimado = useMemo(() => {
-    const unit = 1600; // estimativa UI (backend é fonte da verdade)
+    const unit = 1600; // R$16,00 em centavos (estimativa UI)
     return unit * (Number(funcionarios) || 0);
   }, [funcionarios]);
 
-  async function criarPagamento() {
+  const order = result?.order;
+  const charge = order?.charges?.[0];
+  const tx = charge?.last_transaction;
+
+  const orderId = result?.order_id ?? order?.id ?? null;
+
+  const isPaid = order?.status === "paid";
+  const isFailed = order?.status === "failed";
+  const isCanceled = order?.status === "canceled";
+  const isFinal = Boolean(isPaid || isFailed || isCanceled);
+
+  const pixExpiresAt = tx?.expires_at ?? null;
+  const pixExpired = remainingMs !== null && remainingMs <= 0;
+
+  async function criarPagamento(): Promise<void> {
     setErr(null);
     setLoading(true);
-    setResult(null);
 
     try {
       if (!email?.trim())
         throw new Error("E-mail é obrigatório para o pagamento.");
       if (!nomeCompleto?.trim())
-        throw new Error("Nome completo é obrigatório para o pagamento.");
-      if (!onlyDigits(documento))
-        throw new Error("CPF é obrigatório para o pagamento.");
+        throw new Error("Nome completo é obrigatório.");
+      if (!onlyDigits(documento)) throw new Error("CPF é obrigatório.");
       if (!Number.isInteger(funcionarios) || funcionarios <= 0)
         throw new Error("Funcionários inválido.");
-
-      if (method === "credit_card") {
-        throw new Error(
-          "Cartão (NR‑1) será habilitado depois. Use Pix ou Boleto.",
-        );
-      }
 
       const res = await fetch("/api/nr1/pagamento", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           user_id: userId,
+          product_id: "nr1_psicossocial",
           cliente_id: clienteId,
           contrato_id: contratoId,
           funcionarios,
@@ -151,9 +169,6 @@ export function NR1PaymentPanel(props: {
           email: email.trim(),
           nome_completo: nomeCompleto.trim(),
           documento: onlyDigits(documento),
-          sexo: sexo || null,
-          data_nascimento: toISODateOrNull(dataNascimentoISO),
-          telefone: telefoneE164 || null,
 
           origem: origem || null,
           campanha: campanha || null,
@@ -165,12 +180,13 @@ export function NR1PaymentPanel(props: {
         .catch(() => ({}))) as CreatePaymentResponse;
 
       if (!res.ok) {
-        throw new Error(data?.error || "Falha ao criar pagamento.");
+        const msg = data?.error ?? "Falha ao criar pagamento.";
+        throw new Error(msg);
       }
 
       setResult(data);
     } catch (e: unknown) {
-      setErr(errorMessage(e, "Erro ao criar pagamento."));
+      setErr(getErrorMessage(e, "Erro ao criar pagamento."));
     } finally {
       setLoading(false);
     }
@@ -182,30 +198,79 @@ export function NR1PaymentPanel(props: {
     setTimeout(() => setCopied(false), 1500);
   }
 
-  const order = result?.order;
-  const charge = order?.charges?.[0];
-  const tx = charge?.last_transaction;
+  // ========= Countdown (Pix) =========
+  useEffect(() => {
+    if (countdownTimerRef.current) {
+      window.clearInterval(countdownTimerRef.current);
+    }
 
-  const orderAmount = order?.amount ?? 0;
-  const chargeId = charge?.id ?? "";
-  const txId = tx?.id ?? "";
+    function initCountdown() {
+      if (!pixExpiresAt) {
+        setRemainingMs(null);
+        return;
+      }
 
-  const qrCodeUrl = tx?.qr_code_url;
-  const qrCode = tx?.qr_code;
+      const tick = () => {
+        const ms = new Date(pixExpiresAt).getTime() - Date.now();
+        setRemainingMs(ms);
+      };
 
-  const expiresAt = tx?.expires_at;
+      tick();
+      countdownTimerRef.current = window.setInterval(tick, 1000);
+    }
+
+    initCountdown();
+
+    return () => {
+      if (countdownTimerRef.current) {
+        window.clearInterval(countdownTimerRef.current);
+      }
+    };
+  }, [pixExpiresAt]);
+
+  // ========= Polling status (server route) =========
+  useEffect(() => {
+    if (pollTimerRef.current) window.clearInterval(pollTimerRef.current);
+
+    if (!orderId) return;
+    if (isFinal) return;
+
+    const pollOnce = async () => {
+      try {
+        const r = await fetch(`/api/nr1/pagamento/status?order_id=${orderId}`, {
+          cache: "no-store",
+        });
+        const j = (await r.json().catch(() => ({}))) as StatusResponse;
+        if (j?.order?.id) {
+          setResult((prev) => {
+            if (!prev) return { order_id: orderId, order: j.order };
+            return { ...prev, order: j.order };
+          });
+        }
+      } catch {
+        // silencioso: polling não derruba UI
+      }
+    };
+
+    // dispara imediato e a cada 5s
+    void pollOnce();
+    pollTimerRef.current = window.setInterval(() => void pollOnce(), 5000);
+
+    return () => {
+      if (pollTimerRef.current) window.clearInterval(pollTimerRef.current);
+    };
+  }, [orderId, isFinal]);
 
   return (
     <div className="grid gap-5">
       <div>
-        <h2 className="text-xl sm:text-2xl font-extrabold text-brand">
-          Pagamento NR‑1
-        </h2>
-        <p className="mt-1 text-sm text-slate-600">
-          Escolha Pix ou Boleto. O pagamento fica vinculado ao seu contrato.
+        <h3 className="text-lg font-extrabold text-brand">Pagamento</h3>
+        <p className="text-sm text-slate-600">
+          Escolha Pix ou Boleto e finalize.
         </p>
       </div>
 
+      {/* Resumo */}
       <div className="rounded-xl border border-border bg-surface-muted p-4">
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -223,6 +288,7 @@ export function NR1PaymentPanel(props: {
         </div>
       </div>
 
+      {/* Configuração */}
       <div className="grid sm:grid-cols-2 gap-3">
         <label className="grid gap-1">
           <span className="text-sm font-semibold text-slate-700">
@@ -234,6 +300,7 @@ export function NR1PaymentPanel(props: {
             value={funcionarios}
             onChange={(e) => setFuncionarios(Number(e.target.value))}
             className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-brand/10"
+            inputMode="numeric"
           />
         </label>
 
@@ -250,12 +317,13 @@ export function NR1PaymentPanel(props: {
         </label>
       </div>
 
+      {/* Métodos + CTA */}
       <div className="rounded-xl border border-border bg-white p-4">
         <p className="text-sm font-semibold text-slate-700 mb-3">
           Método de pagamento
         </p>
 
-        <div className="grid sm:grid-cols-3 gap-2">
+        <div className="grid sm:grid-cols-2 gap-2">
           <button
             type="button"
             onClick={() => setMethod("pix")}
@@ -279,18 +347,9 @@ export function NR1PaymentPanel(props: {
           >
             Boleto
           </button>
-
-          <button
-            type="button"
-            onClick={() => setMethod("credit_card")}
-            className="rounded-md border px-3 py-2 text-sm font-semibold border-border bg-white text-slate-400"
-            title="Em breve"
-          >
-            Cartão (em breve)
-          </button>
         </div>
 
-        <div className="mt-4">
+        <div className="mt-4 flex flex-wrap gap-2">
           <button
             type="button"
             onClick={criarPagamento}
@@ -303,6 +362,17 @@ export function NR1PaymentPanel(props: {
                 ? "Gerar Boleto"
                 : "Gerar Pix"}
           </button>
+
+          {/* Gerar novo QR (Pix) */}
+          {method === "pix" && orderId && (
+            <button
+              type="button"
+              onClick={criarPagamento}
+              className="inline-flex items-center justify-center rounded-md border border-border bg-white px-4 py-2 font-semibold text-slate-700 hover:bg-surface-muted"
+            >
+              Gerar novo QR
+            </button>
+          )}
         </div>
 
         {err && (
@@ -312,25 +382,24 @@ export function NR1PaymentPanel(props: {
         )}
       </div>
 
+      {/* Resultado */}
       {order && charge && tx && (
         <div className="rounded-xl border border-border bg-white p-4 grid gap-3">
           <div className="flex items-start justify-between">
             <div>
               <p className="font-semibold text-slate-800">
                 Status:{" "}
-                <span className="text-brand-secondary">
-                  {order.status ?? "—"}
-                </span>
+                <span className="text-brand-secondary">{order.status}</span>
               </p>
               <p className="text-xs text-slate-500">
-                Charge: {chargeId || "—"} • Transação: {txId || "—"}
+                Pedido: {order.id ?? "—"} • Cobrança: {charge.id ?? "—"}
               </p>
             </div>
             <div className="text-xs text-slate-500 text-right">
               Total
               <br />
               <span className="font-semibold text-slate-800">
-                {formatMoneyBRL(orderAmount)}
+                {formatMoneyBRL(order.amount ?? 0)}
               </span>
             </div>
           </div>
@@ -342,44 +411,70 @@ export function NR1PaymentPanel(props: {
                 Pague com Pix
               </p>
 
-              {qrCodeUrl ? (
+              {/* QR Code */}
+              {tx.qr_code_url ? (
                 <div className="flex justify-center">
                   <Image
-                    src={qrCodeUrl}
+                    src={tx.qr_code_url}
                     alt="QR Code Pix"
-                    width={260}
-                    height={260}
-                    priority
+                    width={240}
+                    height={240}
+                    unoptimized
                   />
                 </div>
-              ) : (
-                <div className="rounded-md bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800">
-                  QR Code não disponível no retorno.
+              ) : null}
+
+              {/* Countdown */}
+              {remainingMs !== null && (
+                <div
+                  className={`rounded-md p-3 text-sm font-semibold ${
+                    pixExpired
+                      ? "bg-red-50 border border-red-200 text-red-700"
+                      : "bg-amber-50 border border-amber-200 text-amber-800"
+                  }`}
+                >
+                  {pixExpired
+                    ? "QR expirou. Gere um novo QR para pagar."
+                    : `Expira em: ${msToMMSS(remainingMs)}`}
                 </div>
               )}
 
+              {/* Copia e cola */}
               <div>
                 <p className="text-xs text-slate-500 mb-1">Copia e cola</p>
                 <textarea
                   readOnly
-                  value={qrCode ?? ""}
+                  value={tx.qr_code ?? ""}
                   className="w-full h-24 rounded-md border border-border p-2 text-xs"
                 />
                 <button
                   type="button"
-                  onClick={() => qrCode && copiarPix(qrCode)}
-                  disabled={!qrCode}
+                  onClick={() =>
+                    tx.qr_code ? copiarPix(tx.qr_code) : undefined
+                  }
+                  disabled={!tx.qr_code || pixExpired}
                   className="mt-2 inline-flex items-center justify-center rounded-md border border-border bg-surface px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-surface-muted disabled:opacity-50"
                 >
                   {copied ? "Copiado ✅" : "Copiar código Pix"}
                 </button>
               </div>
 
-              {expiresAt ? (
-                <p className="text-xs text-slate-500">
-                  Expira em: {new Date(expiresAt).toLocaleString("pt-BR")}
-                </p>
-              ) : null}
+              {isPaid && (
+                <div className="rounded-md bg-green-50 border border-green-200 p-3 text-sm text-green-800 font-semibold">
+                  Pagamento confirmado ✅ Sua NR‑1 está sendo ativada
+                  automaticamente.
+                </div>
+              )}
+              {isFailed && (
+                <div className="rounded-md bg-red-50 border border-red-200 p-3 text-sm text-red-700 font-semibold">
+                  Pagamento falhou ❌ Gere um novo QR e tente novamente.
+                </div>
+              )}
+              {isCanceled && (
+                <div className="rounded-md bg-slate-100 border border-slate-200 p-3 text-sm text-slate-700 font-semibold">
+                  Pagamento cancelado.
+                </div>
+              )}
             </div>
           )}
 
@@ -408,12 +503,12 @@ export function NR1PaymentPanel(props: {
                 </div>
               ) : null}
 
-              {!tx.boleto_url && !tx.line ? (
-                <div className="rounded-md bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800">
-                  Boleto criado, mas os campos específicos não vieram no
-                  retorno. Confira no dashboard Pagar.me.
+              {isPaid && (
+                <div className="rounded-md bg-green-50 border border-green-200 p-3 text-sm text-green-800 font-semibold">
+                  Pagamento confirmado ✅ Sua NR‑1 está sendo ativada
+                  automaticamente.
                 </div>
-              ) : null}
+              )}
             </div>
           )}
         </div>
