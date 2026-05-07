@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
-
+import Image from "next/image";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import {
@@ -272,11 +272,29 @@ function PrimaryButton({
 function StepConfirmacaoServico({
   onNext,
   videoUrl = "/videos/video_nr1_demo.mp4",
+  imageUrl = "/images/alma4d_express_nobground.png",
 }: {
   onNext: () => void;
-  videoUrl?: string;
+    videoUrl?: string;
+    imageUrl?: string;
 }) {
   const [aceite, setAceite] = useState(false);
+
+  const steps = [
+    "Mapeie os riscos psicossociais",
+    "Classifique pelo grau de risco",
+    "Imprima seu relatório para fiscalização",
+    "Implemente ações corretivas",
+  ];
+
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    const t = setInterval(() => {
+      setIndex((i) => (i + 1) % steps.length);
+    }, 2500);
+    return () => clearInterval(t);
+  }, [steps.length]);
 
   return (
     <div className="space-y-6">
@@ -284,26 +302,21 @@ function StepConfirmacaoServico({
         Sobre o serviço NR‑1
       </h2>
 
-      {/* GRID */}
       <div className="grid md:grid-cols-2 gap-6 items-center">
         {/* ESQUERDA */}
         <div className="rounded-xl border p-4 bg-surface-muted">
           <h3 className="font-semibold text-slate-800 mb-2">📄 Entregável</h3>
 
-          <p className="text-sm text-slate-600">
-            Você receberá um relatório completo em PDF contendo:
-          </p>
-
           <ul className="mt-3 text-sm text-slate-600 list-disc pl-5 space-y-2">
-            <li>Mapeamento dos riscos psicossociais</li>
-            <li>Classificação conforme NR‑1</li>
-            <li>Documento pronto para fiscalização</li>
-            <li>Ações corretivas recomendadas</li>
+            {steps.map((s) => (
+              <li key={s}>{s}</li>
+            ))}
           </ul>
         </div>
 
-        {/* DIREITA - VIDEO */}
-        <div className="rounded-xl border overflow-hidden bg-black">
+        {/* DIREITA - VIDEO + OVERLAY */}
+        <div className="relative rounded-xl overflow-hidden border bg-black">
+          {/* VIDEO */}
           <video
             src={videoUrl}
             autoPlay
@@ -312,16 +325,39 @@ function StepConfirmacaoServico({
             playsInline
             className="w-full h-full object-cover"
           />
+
+          {/* OVERLAY GRADIENTE */}
+          <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/40 to-black/20" />
+
+          {/* CONTEÚDO CENTRAL */}
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6">
+            {/* LOGO CENTRAL */}
+            <div className="mb-6">
+              <Image
+                src={imageUrl}
+                alt="alma4D"
+                width={160}
+                height={160}
+                className="mx-auto opacity-95"
+                priority
+              />
+            </div>
+
+            {/* TEXTO */}
+            <p className="text-white/70 text-xs uppercase tracking-widest">
+              NR‑1 • Avaliação Psicossocial
+            </p>
+
+            <h4 className="text-white text-lg sm:text-xl font-semibold mt-2 transition-all duration-500">
+              {steps[index]}
+            </h4>
+          </div>
         </div>
       </div>
 
       {/* TERMOS */}
       <div className="rounded-xl border p-4 bg-surface-muted">
         <h3 className="font-semibold text-slate-800 mb-2">📜 Termos de uso</h3>
-
-        <p className="text-sm text-slate-600">
-          Ao prosseguir, você declara que:
-        </p>
 
         <ul className="mt-2 text-sm text-slate-600 list-disc pl-5 space-y-1">
           <li>As informações fornecidas são verdadeiras</li>
