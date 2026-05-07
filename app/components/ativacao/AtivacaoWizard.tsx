@@ -14,6 +14,17 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { NR1PaymentPanel } from "../../ativacao/_components/NR1PaymentPanel";
 
+type StepConfirmacaoServicoProps = {
+  onNext: () => void;
+  onShowTerms: () => void;
+  onShowContrato: () => void;
+  funcionarios: number;
+  aceitouTermos: boolean;
+  setAceitouTermos: (v: boolean) => void;
+  videoUrl?: string;
+  imageUrl?: string;
+};
+
 type StepId = 4 | 5 | 6;
 type StepStatus = "done" | "active" | "next";
 type Step = { id: StepId; name: string; desc: string; status: StepStatus };
@@ -27,7 +38,7 @@ type UsuarioUpsertPayload = {
   telefone: string | null;
   nome_completo: string | null;
   email: string | null;
-  data_nascimento: string | null; // YYYY-MM-DD
+  data_nascimento: string | null;
   sexo: "M" | "F" | null;
   documento: string | null;
   aceitou_termos: boolean;
@@ -269,43 +280,58 @@ function PrimaryButton({
   );
 }
 
-function StepConfirmacaoServico({
+export function StepConfirmacaoServico({
   onNext,
+  onShowTerms,
+  onShowContrato,
+  funcionarios,
   videoUrl = "/videos/video_nr1_demo.mp4",
   imageUrl = "/images/alma4d_express_nobground.png",
-}: {
-  onNext: () => void;
-  videoUrl?: string;
-  imageUrl?: string;
-}) {
-  const [aceite, setAceite] = useState(false);
+}: StepConfirmacaoServicoProps): React.ReactElement {
+  const preco = funcionarios * 16;
+  const [index, setIndex] = useState(0);
+  
 
   const steps = [
     "Mapear os riscos psicossociais",
     "Classificar pelo grau de risco",
-    "Imprimir o relatório fiscal",
+    "Gerar relatório fiscal",
     "Registrar ações corretivas",
   ];
 
-  const [index, setIndex] = useState(0);
-
   useEffect(() => {
-    const t = setInterval(() => {
-      setIndex((i) => (i + 1) % steps.length);
+    const interval = setInterval(() => {
+      setIndex((prev) => (prev + 1) % steps.length);
     }, 2500);
-    return () => clearInterval(t);
-  }, [steps.length]);
 
+    return () => clearInterval(interval);
+  }, []); // ⚠️ IMPORTANTE: vazio
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-extrabold text-brand">
-        Sobre os entregáveis deste serviço
+      <h2 className="text-xl font-extrabold text-brand text-center">
+        Avaliação Psicossocial NR‑1
       </h2>
+
+      {/* PREÇO */}
+      <div className="rounded-xl border bg-white p-4 text-center shadow-sm">
+        <p className="text-xs text-slate-500">Valor total</p>
+        <p className="text-2xl font-bold text-brand">
+          {preco.toLocaleString("pt-BR", {
+            style: "currency",
+            currency: "BRL",
+          })}
+        </p>
+        <p className="text-xs text-slate-500">
+          {funcionarios} funcionários • R$16 por colaborador
+        </p>
+      </div>
 
       <div className="grid md:grid-cols-2 gap-6 items-center">
         {/* ESQUERDA */}
         <div className="rounded-xl border p-4 bg-surface-muted">
-          <h3 className="font-semibold text-slate-800 mb-2">📄 O que você poderá fazer</h3>
+          <h3 className="font-semibold text-slate-800 mb-2">
+            📄 O que você poderá fazer
+          </h3>
 
           <ul className="mt-3 text-sm text-slate-600 list-disc pl-5 space-y-2">
             {steps.map((s) => (
@@ -314,9 +340,8 @@ function StepConfirmacaoServico({
           </ul>
         </div>
 
-        {/* DIREITA - VIDEO + OVERLAY */}
+        {/* DIREITA */}
         <div className="relative rounded-xl overflow-hidden border bg-black">
-          {/* VIDEO */}
           <video
             src={videoUrl}
             autoPlay
@@ -326,80 +351,83 @@ function StepConfirmacaoServico({
             className="w-full h-full object-cover"
           />
 
-          {/* OVERLAY GRADIENTE */}
-          <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/40 to-black/70" />
+          <div className="absolute inset-0 backdrop-blur-[2px]" />
+          <div className="absolute inset-0 bg-linear-to-t from-black/85 via-black/40 to-transparent" />
 
-          {/* CONTEÚDO CENTRAL */}
           <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6">
-            {/* LOGO CENTRAL */}
-            <div className="mb-2">
-              <Image
-                src={imageUrl}
-                alt="alma4D"
-                width={120}
-                height={120}
-                className="mx-auto opacity-95"
-                priority
-              />
-            </div>
-            {/* TEXTO */}
+            <Image
+              src={imageUrl}
+              alt="alma4D"
+              width={120}
+              height={120}
+              className="mb-2"
+              priority
+            />
+
             <p className="text-white/70 text-xs uppercase tracking-widest">
               NR‑1 • Avaliação Psicossocial
             </p>
-            <h4 className="text-white text-base sm:text-lg font-semibold mt-2 transition-all duration-500">
+
+            <h4 className="text-white text-base sm:text-lg font-semibold mt-2">
               {steps[index]}
             </h4>
-            ``
           </div>
         </div>
       </div>
 
-      {/* TERMOS */}
-      <div className="rounded-xl border p-4 bg-surface-muted">
-        <h3 className="font-semibold text-slate-800 mb-2">📜 Termos de uso</h3>
+      {/* CONTRATO */}
+      <div className="rounded-xl border p-4 bg-white space-y-4">
+        <h3 className="font-semibold text-slate-800">📜 Contrato e termos</h3>
 
-        <ul className="mt-2 text-sm text-slate-600 list-disc pl-5 space-y-1">
-          <li>As informações fornecidas são verdadeiras</li>
-          <li>O relatório será utilizado para fins legais</li>
-          <li>A empresa é responsável pelas ações decorrentes</li>
-        </ul>
-
-        <div className="mt-4 flex items-start gap-2">
-          <input
-            type="checkbox"
-            checked={aceite}
-            onChange={(e) => setAceite(e.target.checked)}
-          />
-          <p className="text-sm text-slate-700">
-            Li e aceito os termos de uso e responsabilidade
+        <div className="text-sm text-slate-600 space-y-1">
+          <p>• Serviço conforme NR‑1</p>
+          <p>• Relatório válido para fiscalização</p>
+          <p className="font-semibold">
+            • Não há reembolso após início do preenchimento
           </p>
         </div>
+
+        <div className="flex gap-4 text-sm">
+          <button onClick={onShowTerms} className="underline text-brand">
+            Termos de uso
+          </button>
+
+          <button onClick={onShowContrato} className="underline text-brand">
+            Ver minuta de contrato
+          </button>
+        </div>
+
+        <label className="flex items-start gap-2">
+          <input type="checkbox" />
+          <span className="text-sm">
+            Declaro que li e concordo com o contrato.
+          </span>
+        </label>
       </div>
 
-      {/* CTA */}
       <button
-        disabled={!aceite}
         onClick={onNext}
-        className="w-full h-11 rounded-xl bg-brand text-white font-semibold disabled:opacity-50"
+        className="w-full h-12 rounded-xl bg-brand text-white font-semibold"
       >
         Continuar para pagamento
       </button>
     </div>
   );
 }
+
 /** ===================== Wizard principal (Step 4+) ===================== */
 
 export default function AtivacaoWizard() {
-  const searchParams = useSearchParams();
+  const searchParams = useSearchParams();  
+const razaoSocial = searchParams.get("razaoSocial") ?? "";
+const cnpj = searchParams.get("cnpjDigits") ?? "";
+
   const clienteId = searchParams.get("cliente_id") ?? "";
   const contratoId = searchParams.get("contrato_id") ?? "";
   const funcionariosParam = Number(searchParams.get("funcionarios") || "0");
-  // origem/campanha continuam úteis (marketing)
+  const [aceitouTermos, setAceitouTermos] = useState(false);
   const origem = searchParams.get("origem") ?? "site";
   const campanha = searchParams.get("campanha") ?? "";
-
-  // modal termos
-  const [showTerms, setShowTerms] = useState(false);
 
   // ✅ Começa direto no Step 4 (perfil). OTP já ocorreu no /nr1/empresa
   const [step, setStep] = useState<StepId>(4);
@@ -413,13 +441,17 @@ export default function AtivacaoWizard() {
   const [dataNascimento] = useState("");
   const [sexo] = useState<Sexo>("");
   const [documento, setDocumento] = useState("");
-  const [aceitouTermos, setAceitouTermos] = useState(false);
+
   const [nomeCompleto, setNomeCompleto] = useState(nomeInicial);
   const [email] = useState(emailInicial);
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
 
+  // modal termos
+  const [showTerms, setShowTerms] = useState(false);
+  const [showContrato, setShowContrato] = useState(false);
   const [isEmancipated] = useState(false);
+  const [contratoLido, setContratoLido] = useState(false);
 
   // ✅ Supabase browser client (mantém sessão do OTP feito no public)
   const supabase = useMemo(() => {
@@ -456,6 +488,35 @@ export default function AtivacaoWizard() {
       mounted = false;
     };
   }, [supabase]);
+
+  useEffect(() => {
+    const iframe = document.getElementById(
+      "contrato-frame",
+    ) as HTMLIFrameElement;
+
+    if (!iframe) return;
+
+    iframe.onload = () => {
+      try {
+        const doc = iframe.contentWindow?.document;
+
+        if (!doc) return;
+
+        doc.addEventListener("scroll", () => {
+          const scrollTop = doc.documentElement.scrollTop;
+          const scrollHeight = doc.documentElement.scrollHeight;
+          const clientHeight = doc.documentElement.clientHeight;
+
+          if (scrollTop + clientHeight >= scrollHeight - 20) {
+            setContratoLido(true);
+          }
+        });
+      } catch {
+        // iframe cross-origin fallback
+        setContratoLido(true);
+      }
+    };
+  }, [showContrato]);
 
   async function saveProfileAndContinue() {
     setProfileError(null);
@@ -620,7 +681,7 @@ export default function AtivacaoWizard() {
       setProfileLoading(false);
     }
   }
-
+const contratoUrl = `/api/contrato/preview?nome=${encodeURIComponent(nomeCompleto)}&email=${encodeURIComponent(email)}&cpf=${encodeURIComponent(documento)}&empresa=${encodeURIComponent(razaoSocial)}&cnpj=${encodeURIComponent(cnpj)}&funcionarios=${funcionariosParam}`;
   return (
     <main
       className="min-h-screen bg-[#F0F2F5] overflow-x-hidden"
@@ -659,9 +720,15 @@ export default function AtivacaoWizard() {
             />
             <div className="relative bg-white rounded-2rem border border-white/60 shadow-[0_25px_70px_rgba(3,8,112,0.10)] p-4 sm:p-6">
               {step === 4 && (
-                <StepConfirmacaoServico onNext={() => setStep(5)} />
+                <StepConfirmacaoServico
+                  onNext={() => setStep(5)}
+                  onShowTerms={() => setShowTerms(true)}
+                  onShowContrato={() => setShowContrato(true)}
+                  funcionarios={funcionariosParam}
+                  aceitouTermos={aceitouTermos}
+                  setAceitouTermos={setAceitouTermos}
+                />
               )}
-
               {/* Step 5: Perfil */}
               {step === 5 && (
                 <div className="grid gap-5">
@@ -671,8 +738,7 @@ export default function AtivacaoWizard() {
                       Confirme seus dados
                     </h2>
                     <p className="mt-1 text-sm text-slate-600">
-                      Revise as informações da sua empresa e complete apenas o
-                      necessário.
+                      Revise as informações e finalize sua adesão ao serviço.
                     </p>
                   </div>
 
@@ -689,7 +755,7 @@ export default function AtivacaoWizard() {
                       </div>
 
                       <div className="text-right">
-                        <p className="text-xs text-slate-500">Estimativa</p>
+                        <p className="text-xs text-slate-500">Valor estimado</p>
                         <p className="text-lg font-bold text-brand">
                           {(funcionariosParam * 16).toLocaleString("pt-BR", {
                             style: "currency",
@@ -700,17 +766,13 @@ export default function AtivacaoWizard() {
                     </div>
                   </div>
 
-                  {/* PERFIL (MINIMO) */}
+                  {/* PERFIL */}
                   <div className="grid gap-4">
                     <Field label="Nome completo">
                       <input
                         value={nomeCompleto}
                         onChange={(e) => setNomeCompleto(e.target.value)}
                         placeholder="Seu nome completo"
-                        autoCapitalize="words"
-                        autoCorrect="off"
-                        autoComplete="name"
-                        enterKeyHint="next"
                         className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-brand/10"
                       />
                     </Field>
@@ -722,14 +784,10 @@ export default function AtivacaoWizard() {
                           setDocumento(formatCPF(e.target.value))
                         }
                         placeholder="000.000.000-00"
-                        inputMode="numeric"
-                        autoComplete="off"
-                        enterKeyHint="done"
                         className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-brand/10"
                       />
                     </Field>
 
-                    {/* EMAIL (NÃO EDITÁVEL) */}
                     <Field label="E-mail">
                       <input
                         value={email}
@@ -738,31 +796,69 @@ export default function AtivacaoWizard() {
                       />
                     </Field>
 
-                    <label className="flex items-start gap-3">
-                      <input
-                        type="checkbox"
-                        checked={aceitouTermos}
-                        onChange={(e) => setAceitouTermos(e.target.checked)}
-                        className="mt-1"
-                      />
-                      <span className="text-sm text-slate-700">
-                        Aceito os{" "}
+                    {/* ✅ NOVA SEÇÃO DE CONTRATO */}
+                    <div className="rounded-xl border p-4 bg-white space-y-3">
+                      <h3 className="font-semibold text-slate-800">
+                        📜 Contrato e termos
+                      </h3>
+
+                      <p className="text-sm text-slate-600">
+                        Este serviço inclui a geração de relatório técnico
+                        conforme NR‑1, com validade para processos internos e
+                        fiscalização.
+                      </p>
+
+                      <div className="text-sm text-slate-600 space-y-1">
+                        <p>• Avaliação psicossocial conforme NR‑1</p>
+                        <p>• Relatório técnico estruturado</p>
+                        <p>• Responsabilidade da empresa sobre ações</p>
+                        <p className="font-semibold text-slate-700">
+                          • Não há reembolso após início do preenchimento
+                        </p>
+                      </div>
+
+                      {/* LINKS */}
+                      <div className="flex gap-4 text-sm">
                         <button
                           type="button"
                           onClick={() => setShowTerms(true)}
-                          className="font-semibold text-brand underline"
+                          className="text-brand font-semibold underline"
                         >
-                          Termos de Uso
+                          Termos de uso
                         </button>
-                      </span>
-                    </label>
 
+                        <button
+                          type="button"
+                          onClick={() => setShowContrato(true)}
+                          className="text-brand font-semibold underline"
+                        >
+                          Ver contrato completo
+                        </button>
+                      </div>
+
+                      {/* CHECKBOX */}
+                      <label className="flex items-start gap-2">
+                        <input type="checkbox" disabled />
+                        <span className="text-sm">
+                          Leia e aceite o contrato completo para continuar.
+                        </span>
+                      </label>
+
+                      {/* INFO EXTRA */}
+                      <p className="text-xs text-slate-500">
+                        O contrato será gerado automaticamente após o pagamento,
+                        com registro de data, IP e integridade criptográfica.
+                      </p>
+                    </div>
+
+                    {/* ERRO */}
                     {profileError && (
                       <div className="rounded-md bg-red-50 border border-red-200 p-3 text-sm text-red-700">
                         {profileError}
                       </div>
                     )}
 
+                    {/* CTA */}
                     <div className="flex justify-end">
                       <PrimaryButton
                         onClick={saveProfileAndContinue}
@@ -776,8 +872,7 @@ export default function AtivacaoWizard() {
                   </div>
                 </div>
               )}
-
-              {/* Step 5: Pagamento NR‑1 */}
+              {/* Step 6: Pagamento NR‑1 */}
               {step === 6 && userId && (
                 <div className="grid gap-5">
                   {/* HEADER */}
@@ -840,7 +935,6 @@ export default function AtivacaoWizard() {
                   </div>
                 </div>
               )}
-
               {/* Modal termos */}
               {showTerms && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
@@ -856,10 +950,60 @@ export default function AtivacaoWizard() {
                     </div>
 
                     <iframe
-                      src="/termos"
+                      src="/legal/terms.html"
                       title="Termos de Uso"
                       className="w-full h-full border-0"
                     />
+                  </div>
+                </div>
+              )}
+
+              {showContrato && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+                  <div className="bg-white w-full max-w-3xl h-[85vh] rounded-xl flex flex-col">
+                    {/* HEADER */}
+                    <div className="flex justify-between items-center p-4 border-b">
+                      <h2 className="font-bold text-brand">Contrato</h2>
+                      <button onClick={() => setShowContrato(false)}>
+                        Fechar
+                      </button>
+                    </div>
+
+                    {/* IFRAME */}
+                    <div className="flex-1">
+                      <iframe
+                        id="contrato-frame"
+                        src={contratoUrl}
+                        className="w-full h-full border-0"
+                      />
+                    </div>
+
+                    {/* ACEITE */}
+                    <div className="p-4 border-t space-y-3">
+                      <label className="flex items-start gap-2">
+                        <input
+                          type="checkbox"
+                          disabled={!contratoLido}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setAceitouTermos(true);
+                              setShowContrato(false);
+                            }
+                          }}
+                          className="mt-1 w-5 h-5 accent-brand cursor-pointer"
+                        />
+                        <span className="text-md">
+                          Declaro que li integralmente este documento e concordo
+                          com seus termos.
+                        </span>
+                      </label>
+
+                      {!contratoLido && (
+                        <p className="text-xs text-red-500">
+                          Leia o contrato até o final para habilitar o aceite
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}

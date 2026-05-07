@@ -68,20 +68,19 @@ export function generateContratoHTML({
     </div>
 
     <div class="box">
-      <h2>Irretratabilidade e Não Reembolso</h2>
-      <p>
-        Após o início do preenchimento dos questionários, o serviço será considerado iniciado
-        de forma irreversível, não sendo cabível reembolso.
-      </p>
-    </div>
-
-    <div class="box">
       <h2>Responsabilidade</h2>
       <p>
         A empresa é responsável pelas informações fornecidas e pelas ações decorrentes.
       </p>
     </div>
-
+<div class="box" style="background:#fff1f2; border:1px solid #f87171;">
+  <h2>Cláusula Crítica — Irretratabilidade</h2>
+  <p>
+    Após o início do preenchimento dos questionários, o serviço será considerado
+    iniciado de forma irreversível, caracterizando aceitação plena do contrato,
+    não sendo cabível cancelamento ou reembolso.
+  </p>
+</div>
     <div class="box">
       <h2>Registro de Aceite</h2>
       <p>Data: ${contrato.dataAceite}</p>
@@ -93,7 +92,9 @@ export function generateContratoHTML({
       <h2>Hash de Integridade</h2>
       <p>${hash}</p>
     </div>
-
+<p style="margin-top:40px; font-size:12px; color:#6b7280;">
+  Este contrato é celebrado por meio eletrônico e possui validade jurídica nos termos da MP 2.200-2/2001.
+</p>
     <hr />
 
     <h2>Termos de Uso</h2>

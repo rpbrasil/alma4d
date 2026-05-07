@@ -31,7 +31,7 @@ export default function Contato() {
       setSending(true);
 
       const res = await fetch(
-        "https://SEU-PROJETO.supabase.co/functions/v1/contact",
+        "https://ljpiesdyfhukffwlujfy.supabase.co/functions/v1/contact",
         {
           method: "POST",
           headers: {
