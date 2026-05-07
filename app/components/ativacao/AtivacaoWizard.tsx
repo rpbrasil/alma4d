@@ -7,16 +7,14 @@ import { createBrowserClient } from "@supabase/ssr";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import {
-  faShieldHalved,
+  faLightbulb,
   faCircleCheck,
   faUserCheck,
   faCreditCard,
 } from "@fortawesome/free-solid-svg-icons";
 import { NR1PaymentPanel } from "../../ativacao/_components/NR1PaymentPanel";
-import { TERMOS_V1 } from "@/lib/termos";
-import { generateHash } from "@/lib/hash";
 
-type StepId = 3 | 4 | 5 | 6;
+type StepId = 4 | 5 | 6;
 type StepStatus = "done" | "active" | "next";
 type Step = { id: StepId; name: string; desc: string; status: StepStatus };
 
@@ -150,89 +148,75 @@ function StepperCompact({ current }: { current: StepId }) {
   ];
 
   const icons: Record<StepId, IconDefinition> = {
-    3: faShieldHalved,
-    4: faUserCheck,
-    5: faCreditCard,
+    4: faLightbulb,
+    5: faUserCheck,
     6: faCreditCard,
   };
 
-  const activeIndex = Math.max(
-    0,
-    steps.findIndex((s) => s.status === "active"),
-  );
-  const progressPct =
-    steps.length > 1 ? (activeIndex / (steps.length - 1)) * 100 : 0;
+  const activeIndex = steps.findIndex((s) => s.status === "active");
+  const progress = ((activeIndex + 1) / steps.length) * 100;
 
   return (
-    <section className="mt-1">
-      <div className="bg-white/70 backdrop-blur rounded-2xl border border-white shadow-[0_12px_40px_rgba(3,8,112,0.06)] px-4 py-4">
-        <div className="relative">
-          <div className="absolute top-5 left-4 right-4 h-3px rounded-full bg-slate-200" />
+    <section className="mt-2">
+      <div className="bg-white rounded-xl border border-border p-4 shadow-sm">
+        {/* Progress bar */}
+        <div className="relative h-2 bg-slate-200 rounded-full overflow-hidden mb-4">
           <div
-            className="absolute top-5 left-4 h-3px rounded-full bg-brand transition-all duration-500"
-            style={{ width: `calc(${progressPct}% * (100% - 2rem) / 100)` }}
-            aria-hidden="true"
+            className="h-full bg-brand transition-all duration-500"
+            style={{ width: `${progress}%` }}
           />
-
-          <div className="grid grid-cols-5 gap-2 relative">
-            {steps.map((s) => {
-              const isDone = s.status === "done";
-              const isActive = s.status === "active";
-
-              return (
-                <div key={s.id} className="flex flex-col items-center gap-1">
-                  <div
-                    className={cx(
-                      "relative w-10 h-10 rounded-xl grid place-items-center text-sm transition-all",
-                      isDone && "bg-brand text-white",
-                      isActive &&
-                        "bg-brand-secondary text-white scale-[1.06] ring-4 ring-brand/10",
-                      s.status === "next" && "bg-slate-100 text-slate-400",
-                    )}
-                    aria-current={isActive ? "step" : undefined}
-                  >
-                    <FontAwesomeIcon icon={icons[s.id]} />
-                    {isDone && (
-                      <span className="absolute -bottom-1 -right-1 bg-white rounded-full p-2px shadow">
-                        <FontAwesomeIcon
-                          icon={faCircleCheck}
-                          className="text-brand-secondary"
-                        />
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="text-center leading-tight">
-                    <p
-                      className={cx(
-                        "text-[10px] font-semibold",
-                        isActive ? "text-brand" : "text-slate-500",
-                      )}
-                    >
-                      {s.name}
-                    </p>
-                    <p className="text-[9px] uppercase tracking-[0.18em] text-slate-400 font-semibold">
-                      {s.desc}
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
         </div>
 
-        <div className="mt-3 flex items-center justify-between gap-3">
-          <div className="text-xs text-slate-600">
-            <span className="font-semibold text-brand">Etapa:</span>{" "}
-            <span className="font-semibold text-brand-secondary">
-              {steps[activeIndex]?.name}
-            </span>{" "}
-            <span className="text-slate-500">— {steps[activeIndex]?.desc}</span>
-          </div>
-          <div className="hidden sm:flex items-center gap-2 text-[11px] font-semibold text-slate-500">
-            <span className="inline-flex h-2 w-2 rounded-full bg-brand-secondary" />
-            Sincronização segura
-          </div>
+        {/* Steps */}
+        <div className="grid grid-cols-3 gap-2">
+          {steps.map((s) => {
+            const isActive = s.status === "active";
+            const isDone = s.status === "done";
+
+            return (
+              <div
+                key={s.id}
+                className="flex flex-col items-center text-center gap-1"
+              >
+                <div
+                  className={cx(
+                    "w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all",
+                    isDone && "bg-brand text-white",
+                    isActive && "bg-brand-secondary text-white scale-105",
+                    s.status === "next" && "bg-slate-100 text-slate-400",
+                  )}
+                >
+                  {isDone ? (
+                    <FontAwesomeIcon icon={faCircleCheck} />
+                  ) : (
+                    <FontAwesomeIcon icon={icons[s.id]} />
+                  )}
+                </div>
+
+                <div>
+                  <p
+                    className={cx(
+                      "text-xs font-semibold",
+                      isActive ? "text-brand" : "text-slate-500",
+                    )}
+                  >
+                    {s.name}
+                  </p>
+                  <p className="text-[10px] text-slate-400 uppercase">
+                    {s.desc}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Status */}
+        <div className="mt-3 text-center text-xs text-slate-600">
+          Etapa atual:{" "}
+          <span className="font-semibold text-brand">
+            {steps[activeIndex]?.name}
+          </span>
         </div>
       </div>
     </section>
@@ -285,28 +269,50 @@ function PrimaryButton({
   );
 }
 
-function StepConfirmacaoServico({ onNext }: { onNext: () => void }) {
+function StepConfirmacaoServico({
+  onNext,
+  videoUrl = "/videos/video_nr1_demo.mp4",
+}: {
+  onNext: () => void;
+  videoUrl?: string;
+}) {
   const [aceite, setAceite] = useState(false);
+
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-extrabold text-brand">
         Sobre o serviço NR‑1
       </h2>
 
-      {/* ENTREGÁVEL */}
-      <div className="rounded-xl border p-4 bg-surface-muted">
-        <h3 className="font-semibold text-slate-800 mb-2">📄 Entregável</h3>
+      {/* GRID */}
+      <div className="grid md:grid-cols-2 gap-6 items-center">
+        {/* ESQUERDA */}
+        <div className="rounded-xl border p-4 bg-surface-muted">
+          <h3 className="font-semibold text-slate-800 mb-2">📄 Entregável</h3>
 
-        <p className="text-sm text-slate-600">
-          Você receberá um relatório completo em PDF contendo:
-        </p>
+          <p className="text-sm text-slate-600">
+            Você receberá um relatório completo em PDF contendo:
+          </p>
 
-        <ul className="mt-2 text-sm text-slate-600 list-disc pl-5 space-y-1">
-          <li>Mapeamento dos riscos psicossociais</li>
-          <li>Classificação conforme NR‑1</li>
-          <li>Documento pronto para fiscalização</li>
-          <li>Campos para definição das ações corretivas</li>
-        </ul>
+          <ul className="mt-3 text-sm text-slate-600 list-disc pl-5 space-y-2">
+            <li>Mapeamento dos riscos psicossociais</li>
+            <li>Classificação conforme NR‑1</li>
+            <li>Documento pronto para fiscalização</li>
+            <li>Ações corretivas recomendadas</li>
+          </ul>
+        </div>
+
+        {/* DIREITA - VIDEO */}
+        <div className="rounded-xl border overflow-hidden bg-black">
+          <video
+            src={videoUrl}
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="w-full h-full object-cover"
+          />
+        </div>
       </div>
 
       {/* TERMOS */}
@@ -319,10 +325,8 @@ function StepConfirmacaoServico({ onNext }: { onNext: () => void }) {
 
         <ul className="mt-2 text-sm text-slate-600 list-disc pl-5 space-y-1">
           <li>As informações fornecidas são verdadeiras</li>
-          <li>O relatório será utilizado para fins legais e regulatórios</li>
-          <li>
-            A empresa é responsável pelas ações decorrentes do diagnóstico
-          </li>
+          <li>O relatório será utilizado para fins legais</li>
+          <li>A empresa é responsável pelas ações decorrentes</li>
         </ul>
 
         <div className="mt-4 flex items-start gap-2">
@@ -620,33 +624,9 @@ export default function AtivacaoWizard() {
             />
             <div className="relative bg-white rounded-2rem border border-white/60 shadow-[0_25px_70px_rgba(3,8,112,0.10)] p-4 sm:p-6">
               {step === 4 && (
-                <StepConfirmacaoServico
-                  onNext={async () => {
-                    try {
-                      const termosHtml = TERMOS_V1;
-                      const termosHash = await generateHash(termosHtml);
-
-                      await fetch("/api/contrato/aceite", {
-                        method: "POST",
-                        headers: {
-                          "Content-Type": "application/json",
-                        },
-                        body: JSON.stringify({
-                          contratoId,
-                          termos_html: termosHtml,
-                          termos_hash: termosHash,
-                          versao_termos: "v1.0",
-                        }),
-                      });
-
-                      setStep(5);
-                    } catch (err) {
-                      console.error(err);
-                      alert("Erro ao registrar aceite. Tente novamente.");
-                    }
-                  }}
-                />
+                <StepConfirmacaoServico onNext={() => setStep(5)} />
               )}
+
               {/* Step 5: Perfil */}
               {step === 5 && (
                 <div className="grid gap-5">
