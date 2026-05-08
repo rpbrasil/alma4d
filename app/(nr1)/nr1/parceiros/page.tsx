@@ -1,41 +1,41 @@
 "use client";
 
-import { useState } from "react";
+//import { useState } from "react";
 
 import { NR1SubNav } from "../../../(nr1)/nr1/_components/NR1SubNav";
 
-type Modelo = "commission" | "discount";
+//type Modelo = "commission" | "discount";
 
 export default function ParceirosNR1Page() {
   
-  const [form, setForm] = useState({
-    nome: "",
-    email: "",
-    telefone: "",
-    modelo: "" as Modelo | "",
-    percentual: "",
-    aceiteTermos: false,
-  });
+  // const [form, setForm] = useState({
+  //   nome: "",
+  //   email: "",
+  //   telefone: "",
+  //   modelo: "" as Modelo | "",
+  //   percentual: "",
+  //   aceiteTermos: false,
+  // });
 
  
-  function validar(): string | null {
-    if (!form.nome.trim()) return "Informe seu nome completo.";
-    if (!form.email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/))
-      return "Informe um e‑mail válido.";
-    if (!form.telefone.match(/^\+?[0-9()\-\s]{8,}$/))
-      return "Informe um telefone válido.";
-    if (!form.modelo)
-      return "Selecione o modelo de parceria (comissão ou desconto).";
+  // function validar(): string | null {
+  //   if (!form.nome.trim()) return "Informe seu nome completo.";
+  //   if (!form.email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/))
+  //     return "Informe um e‑mail válido.";
+  //   if (!form.telefone.match(/^\+?[0-9()\-\s]{8,}$/))
+  //     return "Informe um telefone válido.";
+  //   if (!form.modelo)
+  //     return "Selecione o modelo de parceria (comissão ou desconto).";
 
-    const percentual = Number(form.percentual);
-    if (isNaN(percentual) || percentual <= 0 || percentual > 50)
-      return "O percentual deve ser entre 1% e 50%.";
+  //   const percentual = Number(form.percentual);
+  //   if (isNaN(percentual) || percentual <= 0 || percentual > 50)
+  //     return "O percentual deve ser entre 1% e 50%.";
 
-    if (!form.aceiteTermos)
-      return "É necessário aceitar os termos para continuar.";
+  //   if (!form.aceiteTermos)
+  //     return "É necessário aceitar os termos para continuar.";
 
-    return null;
-  }
+  //   return null;
+  // }
 
   // async function handleSubmit(e: React.FormEvent) {
   //   e.preventDefault();
