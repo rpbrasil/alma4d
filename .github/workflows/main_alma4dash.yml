@@ -29,14 +29,14 @@ jobs:
 
       - name: Prepare Package
         run: |
-          mkdir out
-          # 1. Copia o core do standalone
-          cp -r .next/standalone/. out/
+          mkdir -p out
+          # Copia o conteúdo de standalone para out
+          cp -a .next/standalone/. out/
           
-          # 2. MOVE as pastas que o standalone não traz por padrão para o local correto
+          # Garante que as pastas estáticas estão no sítio que o server.js espera
           mkdir -p out/.next/static
-          cp -r .next/static/. out/.next/static/
-          cp -r public/. out/public/
+          cp -a .next/static/. out/.next/static/
+          cp -a public/. out/public/
 
       - name: Login Azure
         uses: azure/login@v2
