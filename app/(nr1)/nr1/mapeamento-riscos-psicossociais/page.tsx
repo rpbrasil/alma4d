@@ -10,7 +10,8 @@ import {
   CheckCircle2,
   ArrowRight,
 } from "lucide-react";
-import { NR1SubNav } from "../_components/NR1SubNav";
+import Image from "next/image"
+// import { NR1SubNav } from "../_components/NR1SubNav";
 
 export const metadata: Metadata = {
   title: "NR‑1 | Mapeamento de Riscos Psicossociais para GRO e PGR",
@@ -22,9 +23,20 @@ export default function PaginaNR1() {
   return (
     <main className="bg-background text-foreground">
       {/* ================= HERO ================= */}
-      <NR1SubNav />
-      <section className="px-6 py-14 bg-linear-to-b from-brand to-brand-highlight text-white">
+      {/* <NR1SubNav /> */}
+      <section className="px-6 py-14 bg-linear-to-b from-brand-highlight to-brand text-white">
         <div className="max-w-6xl mx-auto text-center">
+          {/* ✅ LOGO */}
+          <div className="flex justify-center mb-6">
+            <Image
+              src="/images/alma4d_express_nobground.png"
+              alt="alma4D"
+              width={120}
+              height={120}
+              className="animate-express-impact opacity-90"
+              priority
+            />
+          </div>
           <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight">
             Mapeamento de Riscos Psicossociais conforme a NR‑1
           </h1>
@@ -140,13 +152,19 @@ export default function PaginaNR1() {
                 text: "Resultados agregados, sem identificação individual.",
               },
             ].map((item) => {
-              const Icon = item.icon;
+              
               return (
                 <div
                   key={item.title}
                   className="rounded-xl bg-surface border border-border p-6"
                 >
-                  <Icon size={28} className="text-brand-highlight" />
+                  <Image
+                    src="/images/alma4d_express_nobground.png"
+                    alt=""
+                    width={64}
+                    height={64}
+                    className="opacity-80"
+                  />
                   <p className="mt-4 font-bold text-brand">{item.title}</p>
                   <p className="mt-2 text-sm text-slate-600">{item.text}</p>
                 </div>

@@ -64,3 +64,34 @@ body {
   --brand-secondary: #030870;
 }
 
+@keyframes expressImpact {
+  0% {
+    transform: translateX(-120px) scale(0.85);
+    opacity: 0;
+  }
+
+  /* Entrada MUITO rápida */
+  15% {
+    transform: translateX(12px) scale(1.12);
+    opacity: 1;
+  }
+
+  /* Overshoot mais visível */
+  22% {
+    transform: translateX(-6px) scale(0.98);
+  }
+
+  /* Ajuste final */
+  28% {
+    transform: translateX(0) scale(1);
+  }
+
+  /* pausa longa */
+  100% {
+    transform: translateX(0) scale(1);
+  }
+}
+
+.animate-express-impact {
+  animation: expressImpact 6.5s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+}
