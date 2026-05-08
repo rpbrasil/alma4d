@@ -30,18 +30,12 @@ jobs:
       - name: Prepare Package
         run: |
           mkdir -p out
-          
-          # 1. Copia o conteúdo de standalone (incluindo o node_modules que o Next gera)
-          cp -r .next/standalone/. out/
-          
-          # 2. Copia as pastas estáticas (o server.js precisa delas em .next/static)
+          cp -a .next/standalone/. out/
           mkdir -p out/.next/static
-          cp -r .next/static/. out/.next/static/
-          cp -r public/. out/public/
-          
-          # 3. VERIFICAÇÃO (Isso vai aparecer no log do seu GitHub)
-          echo "Verificando se node_modules existe em out:"
-          ls -d out/node_modules || echo "ERRO: node_modules não encontrado em out!"
+          cp -a .next/static/. out/.next/static/
+          cp -a public/. out/public/
+          echo "Listando conteúdo de out/node_modules para conferência:"
+          ls -F out/node_modules | head -n 10
 
       - name: Login Azure
         uses: azure/login@v2
