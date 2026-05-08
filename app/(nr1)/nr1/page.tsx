@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
-import MetodoModal from "../components/MetodoModal";
+import MetodoModal from "../../components/MetodoModal";
 
 export const metadata: Metadata = {
   title: "O Método alma4D — Consciência e Tecnologia Integradas",

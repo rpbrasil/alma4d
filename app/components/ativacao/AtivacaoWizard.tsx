@@ -396,13 +396,6 @@ export function StepConfirmacaoServico({
             Ver minuta de contrato
           </button>
         </div>
-
-        <label className="flex items-start gap-2">
-          <input type="checkbox" />
-          <span className="text-sm">
-            Declaro que li e concordo com o contrato.
-          </span>
-        </label>
       </div>
 
       <button
@@ -418,12 +411,25 @@ export function StepConfirmacaoServico({
 /** ===================== Wizard principal (Step 4+) ===================== */
 
 export default function AtivacaoWizard() {
-  const searchParams = useSearchParams();  
-const razaoSocial = searchParams.get("razaoSocial") ?? "";
-const cnpj = searchParams.get("cnpjDigits") ?? "";
+  // ✅ Supabase browser client (mantém sessão do OTP feito no public)
+  const supabase = useMemo(() => {
+    return createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+          detectSessionInUrl: false,
+        },
+      },
+    );
+  }, []);
+  const searchParams = useSearchParams();
 
   const clienteId = searchParams.get("cliente_id") ?? "";
-  const contratoId = searchParams.get("contrato_id") ?? "";
+  const contratoId = searchParams.get("contrato_Id") ?? "";
+
   const funcionariosParam = Number(searchParams.get("funcionarios") || "0");
   const [aceitouTermos, setAceitouTermos] = useState(false);
   const origem = searchParams.get("origem") ?? "site";
@@ -452,21 +458,6 @@ const cnpj = searchParams.get("cnpjDigits") ?? "";
   const [showContrato, setShowContrato] = useState(false);
   const [isEmancipated] = useState(false);
   const [contratoLido, setContratoLido] = useState(false);
-
-  // ✅ Supabase browser client (mantém sessão do OTP feito no public)
-  const supabase = useMemo(() => {
-    return createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        auth: {
-          persistSession: true,
-          autoRefreshToken: true,
-          detectSessionInUrl: false,
-        },
-      },
-    );
-  }, []);
 
   // ✅ Ao montar, captura usuário autenticado (OTP já validado)
   useEffect(() => {
@@ -681,7 +672,8 @@ const cnpj = searchParams.get("cnpjDigits") ?? "";
       setProfileLoading(false);
     }
   }
-const contratoUrl = `/api/contrato/preview?nome=${encodeURIComponent(nomeCompleto)}&email=${encodeURIComponent(email)}&cpf=${encodeURIComponent(documento)}&empresa=${encodeURIComponent(razaoSocial)}&cnpj=${encodeURIComponent(cnpj)}&funcionarios=${funcionariosParam}`;
+  const contratoUrl = `/api/contrato/preview?contratoId=${contratoId}`;
+  console.log(contratoUrl);
   return (
     <main
       className="min-h-screen bg-[#F0F2F5] overflow-x-hidden"
@@ -837,11 +829,30 @@ const contratoUrl = `/api/contrato/preview?nome=${encodeURIComponent(nomeComplet
                       </div>
 
                       {/* CHECKBOX */}
-                      <label className="flex items-start gap-2">
-                        <input type="checkbox" disabled />
-                        <span className="text-sm">
-                          Leia e aceite o contrato completo para continuar.
+                      <label className="flex items-center justify-between p-4 border rounded-xl cursor-pointer hover:bg-slate-50 transition">
+                        <span className="text-sm text-slate-700">
+                          Declaro que li integralmente o contrato e concordo com
+                          seus termos.
                         </span>
+
+                        {/* TOGGLE */}
+                        <div
+                          onClick={() => {
+                            if (contratoLido) {
+                              setAceitouTermos(true);
+                            }
+                          }}
+                          className={`w-11 h-6 flex items-center rounded-full p-1 transition
+      ${aceitouTermos ? "bg-brand" : "bg-gray-300"}
+      ${!contratoLido ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
+    `}
+                        >
+                          <div
+                            className={`bg-white w-4 h-4 rounded-full shadow-md transform transition
+        ${aceitouTermos ? "translate-x-5" : "translate-x-0"}
+      `}
+                          />
+                        </div>
                       </label>
 
                       {/* INFO EXTRA */}
@@ -963,7 +974,9 @@ const contratoUrl = `/api/contrato/preview?nome=${encodeURIComponent(nomeComplet
                   <div className="bg-white w-full max-w-3xl h-[85vh] rounded-xl flex flex-col">
                     {/* HEADER */}
                     <div className="flex justify-between items-center p-4 border-b">
-                      <h2 className="font-bold text-brand">Contrato</h2>
+                      <h2 className="font-bold text-brand">
+                        Minuta de Contrato
+                      </h2>
                       <button onClick={() => setShowContrato(false)}>
                         Fechar
                       </button>
@@ -984,8 +997,19 @@ const contratoUrl = `/api/contrato/preview?nome=${encodeURIComponent(nomeComplet
                         <input
                           type="checkbox"
                           disabled={!contratoLido}
-                          onChange={(e) => {
+                          onChange={async (e) => {
                             if (e.target.checked) {
+                              await fetch("/api/contrato/aceite", {
+                                method: "POST",
+                                headers: {
+                                  "Content-Type": "application/json",
+                                },
+                                body: JSON.stringify({
+                                  contratoId,
+                                  versaoTermos: 1,
+                                }),
+                              });
+
                               setAceitouTermos(true);
                               setShowContrato(false);
                             }

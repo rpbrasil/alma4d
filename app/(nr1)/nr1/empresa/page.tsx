@@ -1,13 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import {
-  ArrowRight,
-  Building2,
-  Mail,
-  CheckCircle2,
-  ShieldCheck,
-} from "lucide-react";
+import { Mail, CheckCircle2 } from "lucide-react";
 import { createBrowserClient } from "@supabase/ssr";
 import { NR1SubNav } from "../_components/NR1SubNav";
 
@@ -30,6 +24,8 @@ type EmpresaApiResponse = {
   contrato_id?: string;
   error?: string;
 };
+
+type Risco = "baixo" | "medio" | "alto";
 
 function onlyDigits(v: string) {
   return v.replace(/\D/g, "");
@@ -110,6 +106,53 @@ function isValidE164Phone(phone: string) {
   return /^\+\d{10,15}$/.test(phone);
 }
 
+const CNAE_RISCO_MAP: Record<string, Risco> = {
+  // 🔴 ALTO
+  "55": "alto",
+  "56": "alto",
+  "86": "alto",
+  "87": "alto",
+  "84": "alto",
+  "49": "alto",
+  "50": "alto",
+  "51": "alto",
+
+  // 🟡 MÉDIO
+  "62": "medio",
+  "63": "medio",
+  "64": "medio",
+  "65": "medio",
+  "66": "medio",
+  "69": "medio",
+  "70": "medio",
+  "73": "medio",
+  "74": "medio",
+  "47": "medio",
+  "45": "medio",
+  "46": "medio",
+
+  // 🟢 BAIXO
+  "01": "baixo",
+  "02": "baixo",
+  "03": "baixo",
+  "05": "baixo",
+  "06": "baixo",
+  "07": "baixo",
+  "10": "baixo",
+  "11": "baixo",
+  "12": "baixo",
+  "13": "baixo",
+  "14": "baixo",
+  "15": "baixo",
+};
+
+function getRiscoByCNAE(cnae?: string): Risco {
+  if (!cnae) return "medio";
+
+  const prefix = cnae.slice(0, 2);
+  return CNAE_RISCO_MAP[prefix] || "medio";
+}
+
 export default function EmpresaNR1Page() {
   const supabase = useMemo(() => {
     return createBrowserClient(
@@ -128,6 +171,7 @@ export default function EmpresaNR1Page() {
   const [otpLoading, setOtpLoading] = useState(false);
   const [otpError, setOtpError] = useState<string | null>(null);
 
+  const [riscoEmpresa, setRiscoEmpresa] = useState<Risco | null>(null);
   const [form, setForm] = useState<EmpresaForm>({
     razaoSocial: "",
     cnpjDigits: "",
@@ -138,6 +182,56 @@ export default function EmpresaNR1Page() {
     funcionarios: 0,
     aceiteLgpd: false,
   });
+
+  const [cnpjInput, setCnpjInput] = useState("");
+  const [cnpjLoading, setCnpjLoading] = useState(false);
+  const [cnpjLoaded, setCnpjLoaded] = useState(true); //===========>> ATENCAO AQUI PARA API FUNCIONANDO - SETAR EM FALSE
+  const [empresaInativa, setEmpresaInativa] = useState(false);
+  const canShowForm =
+    (state === "idle" || state === "submitting" || state === "error") &&
+    cnpjLoaded &&
+    !empresaInativa;
+
+  async function consultarCNPJ() {
+    setCnpjLoading(true);
+    setErrorMsg(null);
+
+    try {
+      const digits = onlyDigits(cnpjInput);
+
+      if (digits.length !== 14) {
+        throw new Error("CNPJ inválido");
+      }
+
+      const res = await fetch("/api/cnpj/consultar", {
+        method: "POST",
+        body: JSON.stringify({ cnpj: digits }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      
+      const risco = getRiscoByCNAE(data.cnae_principal);
+      setRiscoEmpresa(risco);
+
+      // ✅ preenche seu form atual
+      update("razaoSocial", data.razao_social);
+      update("cnpjDigits", data.cnpj);
+
+      setCnpjLoaded(true);
+
+      if (data.situacao_cadastral?.toLowerCase() !== "ativa") {
+        setEmpresaInativa(true);
+      }
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Erro ao consultar CNPJ";
+
+      setErrorMsg(message);
+    } finally {
+      setCnpjLoading(false);
+    }
+  }
 
   function update<K extends keyof EmpresaForm>(key: K, value: EmpresaForm[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -280,7 +374,6 @@ export default function EmpresaNR1Page() {
         `&funcionarios=${form.funcionarios}` +
         `&nome=${encodeURIComponent(form.responsavel)}` +
         `&email=${encodeURIComponent(form.email)}`;
-
     } catch (err) {
       console.error(err);
       setState("error");
@@ -297,18 +390,92 @@ export default function EmpresaNR1Page() {
       <div className="max-w-3xl mx-auto px-6 py-6">
         <NR1SubNav />
 
-        <div className="text-center">
-          <Building2 size={40} className="mx-auto text-brand" />
-          <h1 className="mt-4 text-3xl font-extrabold text-brand">
-            Riscos Psicossociais — NR‑1
+        {/* HEADER */}
+        <div className="text-center space-y-4">
+          <h1 className="text-3xl sm:text-4xl font-extrabold text-brand tracking-tight">
+            NR‑1 • Avaliação Psicossocial
           </h1>
-          <p className="mt-4 text-slate-600">
-            Preencha os dados da empresa. Em seguida, valide o telefone do
-            responsável via SMS.
+
+          <p className="max-w-xl mx-auto text-sm sm:text-base text-slate-600">
+            Informe o CNPJ para buscar automaticamente os dados da empresa.
           </p>
+
+          <div className="flex justify-center gap-6 text-xs text-slate-500 pt-2">
+            <span>✔ Conformidade NR‑1</span>
+            <span>✔ LGPD</span>
+            <span>✔ Processo seguro</span>
+          </div>
         </div>
 
-        {(state === "idle" || state === "submitting" || state === "error") && (
+        {/* ✅ STEP 1 — CNPJ */}
+        <div className="mt-8 flex gap-3">
+          <input
+            value={formatCNPJ(cnpjInput)}
+            inputMode="numeric"
+            onChange={(e) => setCnpjInput(e.target.value)}
+            placeholder="00.000.000/0000-00"
+            className="flex-1 h-11 rounded-lg border px-3"
+          />
+
+          <button
+            type="button"
+            onClick={consultarCNPJ}
+            disabled={cnpjLoading}
+            className="px-4 bg-brand text-white rounded-lg"
+          >
+            {cnpjLoading ? "Buscando..." : "Buscar"}
+          </button>
+        </div>
+
+        {/* 🚨 EMPRESA INATIVA */}
+        {empresaInativa && (
+          <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-xl text-center">
+            <p className="text-red-600 font-semibold">
+              ⚠️ Empresa com situação cadastral INATIVA
+            </p>
+            <p className="text-sm text-slate-600 mt-1">
+              Não é possível continuar com o cadastro.
+            </p>
+          </div>
+        )}
+        {riscoEmpresa && !empresaInativa && (
+          <div
+            className={`
+      mt-4 p-4 rounded-xl border text-center transition-all
+      ${
+        riscoEmpresa === "alto"
+          ? "bg-red-50 border-red-200"
+          : riscoEmpresa === "medio"
+            ? "bg-yellow-50 border-yellow-200"
+            : "bg-green-50 border-green-200"
+      }
+    `}
+          >
+            <p className="text-xs text-slate-500 uppercase tracking-wide">
+              Classificação automática
+            </p>
+
+            <p className="text-lg font-bold mt-1">
+              {riscoEmpresa === "alto" && "🔴 Alto risco psicossocial"}
+              {riscoEmpresa === "medio" && "🟡 Médio risco psicossocial"}
+              {riscoEmpresa === "baixo" && "🟢 Baixo risco psicossocial"}
+            </p>
+
+            <p className="text-xs text-slate-500 mt-2">
+              Baseado na atividade econômica (CNAE)
+            </p>
+
+            {/* 💡 UX inteligente */}
+            {riscoEmpresa === "alto" && (
+              <p className="text-xs text-red-600 mt-2 font-semibold">
+                Recomendamos atenção especial aos fatores psicossociais desta
+                atividade.
+              </p>
+            )}
+          </div>
+        )}
+        {/* ✅ FORM */}
+        {canShowForm && (
           <form
             onSubmit={handleSubmit}
             className="mt-10 rounded-2xl bg-surface border border-border p-8 space-y-6"
@@ -322,254 +489,139 @@ export default function EmpresaNR1Page() {
                 type="text"
                 value={form.razaoSocial}
                 onChange={(e) => update("razaoSocial", e.target.value)}
-                className="mt-1 w-full h-11 rounded-lg border border-border px-3 text-sm"
+                className="mt-1 w-full h-11 rounded-lg border px-3 text-sm"
                 required
-                autoCapitalize="words"
-                autoCorrect="off"
-                autoComplete="organization"
-                enterKeyHint="next"
               />
             </div>
 
             {/* CNPJ + Funcionários */}
             <div className="grid sm:grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-slate-700">
-                  CNPJ
-                </label>
-                <input
-                  type="text"
-                  value={formatCNPJ(form.cnpjDigits)}
-                  onChange={(e) =>
-                    update(
-                      "cnpjDigits",
-                      onlyDigits(e.target.value).slice(0, 14),
-                    )
-                  }
-                  className="mt-1 w-full h-11 rounded-lg border border-border px-3 text-sm"
-                  required
-                  inputMode="numeric"
-                  maxLength={18}
-                  pattern="\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2}"
-                  autoComplete="off"
-                  enterKeyHint="next"
-                />
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-slate-700">
-                  Nº de funcionários
-                </label>
-                <input
-                  type="number"
-                  min={1}
-                  value={form.funcionarios || ""}
-                  onChange={(e) =>
-                    update("funcionarios", Number(e.target.value))
-                  }
-                  className="mt-1 w-full h-11 rounded-lg border border-border px-3 text-sm"
-                  required
-                  inputMode="numeric"
-                  enterKeyHint="next"
-                />
-              </div>
-            </div>
-
-            {/* Responsável */}
-            <div>
-              <label className="text-sm font-medium text-slate-700">
-                Responsável pelo preenchimento
-              </label>
               <input
-                type="text"
-                value={form.responsavel}
-                onChange={(e) => update("responsavel", e.target.value)}
-                className="mt-1 w-full h-11 rounded-lg border border-border px-3 text-sm"
+                value={formatCNPJ(form.cnpjDigits)}
+                disabled
+                className="h-11 border rounded-lg px-3 bg-gray-100"
+              />
+
+              <input
+                type="number"
+                inputMode="numeric"
+                min={1}
+                value={form.funcionarios || ""}
+                onChange={(e) => update("funcionarios", Number(e.target.value))}
+                className="h-11 border rounded-lg px-3"
+                placeholder="Nº funcionários"
                 required
-                autoCapitalize="words"
-                autoCorrect="off"
-                autoComplete="name"
-                enterKeyHint="next"
               />
             </div>
 
+            {/* Responsável */}
+            <input
+              value={form.responsavel}
+              onChange={(e) => update("responsavel", e.target.value)}
+              placeholder="Responsável"
+              className="h-11 border rounded-lg px-3 w-full"
+              required
+            />
+
             {/* Email */}
-            <div>
-              <label className="text-sm font-medium text-slate-700">
-                E‑mail de contato
-              </label>
-              <div className="relative">
-                <Mail
-                  size={16}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                />
-                <input
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => update("email", e.target.value)}
-                  className="pl-9 mt-1 w-full h-11 rounded-lg border border-border px-3 text-sm"
-                  required
-                  autoComplete="email"
-                  inputMode="email"
-                  enterKeyHint="next"
-                />
-              </div>
+            <div className="relative">
+              <Mail
+                size={16}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+              />
+              <input
+                type="email"
+                value={form.email}
+                onChange={(e) => update("email", e.target.value)}
+                className="pl-9 h-11 border rounded-lg px-3 w-full"
+                placeholder="E-mail"
+                required
+              />
             </div>
 
-            {/* Telefone + OTP */}
-            <div className="rounded-xl border border-border bg-surface-muted p-4 space-y-3">
-              <div className="flex items-center gap-2">
-                <ShieldCheck size={18} className="text-brand-secondary" />
-                <p className="text-sm font-semibold text-slate-800">
-                  Validação do telefone (SMS)
-                </p>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-slate-700">
-                  Telefone do responsável
-                </label>
-                <input
-                  type="tel"
-                  value={formatPhoneBR(form.telefoneRaw)}
-                  onChange={(e) => {
-                    update("telefoneRaw", e.target.value);
-                    update("telefoneE164", ""); // invalida E.164
-                    setOtpVerified(false);
-                    setOtpSent(false);
-                    setOtp("");
-                    setOtpError(null);
-                  }}
-                  className="mt-1 w-full h-11 rounded-lg border border-border px-3 text-sm"
-                  placeholder="(11) 99999-9999"
-                  required
-                  inputMode="tel"
-                  autoComplete="tel"
-                  enterKeyHint="send"
-                />
-                <p className="mt-1 text-xs text-slate-500">
-                  Você receberá um código por SMS. Usamos o formato
-                  internacional automaticamente (+55).
-                </p>
-              </div>
+            {/* TELEFONE / OTP */}
+            <div className="p-4 border rounded-xl space-y-3">
+              <input
+                value={formatPhoneBR(form.telefoneRaw)}
+                onChange={(e) => {
+                  update("telefoneRaw", e.target.value);
+                  update("telefoneE164", "");
+                  setOtpVerified(false);
+                  setOtpSent(false);
+                  setOtp("");
+                }}
+                placeholder="Telefone"
+                className="h-11 border rounded-lg px-3 w-full"
+              />
 
               {!otpSent ? (
                 <button
                   type="button"
                   onClick={sendOtp}
                   disabled={otpLoading}
-                  className="inline-flex items-center justify-center gap-2 h-11 px-4 rounded-xl bg-brand text-white font-semibold hover:bg-brand-highlight transition disabled:opacity-60"
+                  className="h-11 px-4 rounded-xl bg-brand text-white font-semibold"
                 >
-                  {otpLoading ? "Enviando..." : "Enviar código SMS"}
+                  Enviar código
                 </button>
               ) : (
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-sm font-medium text-slate-700">
-                      Código recebido
-                    </label>
-                    <input
-                      value={otp}
-                      onChange={(e) =>
-                        setOtp(onlyDigits(e.target.value).slice(0, 6))
-                      }
-                      className="mt-1 w-full h-11 rounded-lg border border-border px-3 text-sm tracking-widest"
-                      placeholder="000000"
-                      inputMode="numeric"
-                      autoComplete="one-time-code"
-                      enterKeyHint="done"
-                    />
-                  </div>
+                <>
+                  <input
+                    value={otp}
+                    onChange={(e) => setOtp(onlyDigits(e.target.value))}
+                    placeholder="Código"
+                    className="h-11 border rounded-lg px-3 w-full"
+                  />
 
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    <button
-                      type="button"
-                      onClick={verifyOtp}
-                      disabled={otpLoading || otp.length < 4}
-                      className="inline-flex items-center justify-center gap-2 h-11 px-4 rounded-xl bg-brand text-white font-semibold hover:bg-brand-highlight transition disabled:opacity-60"
-                    >
-                      {otpLoading ? "Validando..." : "Validar código"}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={sendOtp}
-                      disabled={otpLoading}
-                      className="inline-flex items-center justify-center gap-2 h-11 px-4 rounded-xl border border-border bg-surface text-slate-700 font-semibold hover:bg-surface-muted transition disabled:opacity-60"
-                    >
-                      Reenviar código
-                    </button>
-                  </div>
-
-                  {otpVerified && (
-                    <div className="rounded-lg bg-brand-secondary/10 text-brand-secondary p-3 text-sm font-semibold">
-                      ✅ Telefone verificado com sucesso.
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {otpError && (
-                <div className="rounded-lg bg-brand-accent/10 text-brand-accent p-3 text-sm">
-                  {otpError}
-                </div>
+                  <button type="button" onClick={verifyOtp}>
+                    Validar
+                  </button>
+                </>
               )}
             </div>
-
+            {otpError && (
+              <div className="bg-red-50 border border-red-200 text-red-600 p-3 text-sm rounded-lg">
+                {otpError}
+              </div>
+            )}
             {/* LGPD */}
-            <div className="flex gap-3 items-start">
+            <label className="flex gap-2 text-sm">
               <input
                 type="checkbox"
                 checked={form.aceiteLgpd}
                 onChange={(e) => update("aceiteLgpd", e.target.checked)}
-                className="mt-1"
               />
-              <p className="text-sm text-slate-600">
-                Declaro que os dados serão utilizados exclusivamente para fins
-                de gestão de riscos ocupacionais, conforme a LGPD.
-              </p>
-            </div>
+              Aceito LGPD
+            </label>
 
+            {/* ERRO */}
             {errorMsg && (
-              <div className="rounded-lg bg-brand-accent/10 text-brand-accent p-3 text-sm">
+              <div className="bg-red-50 border border-red-200 text-red-600 p-3 text-sm rounded-lg">
                 {errorMsg}
               </div>
             )}
 
+            {/* CTA */}
             <button
               type="submit"
               disabled={state === "submitting" || !otpVerified}
-              className="w-full inline-flex items-center justify-center gap-2 h-11 rounded-xl bg-brand text-white font-semibold hover:bg-brand-highlight transition disabled:opacity-60"
+              className="w-full h-11 bg-brand text-white rounded-xl"
             >
-              {state === "submitting" ? (
-                "Enviando..."
-              ) : (
-                <>
-                  Continuar <ArrowRight size={18} />
-                </>
-              )}
+              {state === "submitting" ? "Enviando..." : "Continuar"}
             </button>
-
-            {!otpVerified && (
-              <p className="text-xs text-slate-500 text-center">
-                Para continuar, valide o telefone via SMS.
-              </p>
-            )}
           </form>
         )}
 
+        {/* SUCCESS */}
         {state === "success" && (
-          <div className="mt-10 rounded-2xl bg-surface border border-border p-8 text-center">
-            <CheckCircle2 size={40} className="mx-auto text-brand-secondary" />
-            <h2 className="mt-4 text-2xl font-extrabold text-brand">
-              Cadastro recebido e telefone validado
+          <div className="mt-10 text-center">
+            <CheckCircle2 className="mx-auto text-brand-secondary" size={40} />
+            <h2 className="mt-4 text-xl font-bold text-brand">
+              Cadastro realizado
             </h2>
-            <p className="mt-4 text-slate-600">
-              Próximo passo: contrato e pagamento.
-            </p>
           </div>
         )}
 
+        {/* FOOTER */}
         <div className="mt-10 text-xs text-slate-500 text-center">
           ✔ Metodologia validada • ✔ Conformidade NR‑1 • ✔ LGPD
         </div>
