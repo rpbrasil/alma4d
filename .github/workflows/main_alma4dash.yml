@@ -30,12 +30,13 @@ jobs:
       - name: Prepare Package
         run: |
           mkdir -p out
+          # O uso do 'cp -a' com o ponto garante que arquivos ocultos e subpastas (node_modules) sejam copiados
           cp -a .next/standalone/. out/
+          
+          # Pastas estáticas
           mkdir -p out/.next/static
           cp -a .next/static/. out/.next/static/
           cp -a public/. out/public/
-          echo "Listando conteúdo de out/node_modules para conferência:"
-          ls -F out/node_modules | head -n 10
 
       - name: Login Azure
         uses: azure/login@v2
