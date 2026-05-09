@@ -106,44 +106,52 @@ function isValidE164Phone(phone: string) {
   return /^\+\d{10,15}$/.test(phone);
 }
 
+/**
+ * Mapeamento baseado na NR-4 (Quadro I)
+ * Consideramos:
+ * - BAIXO: Grau de Risco 1 e 2
+ * - MÉDIO: Grau de Risco 3
+ * - ALTO:  Grau de Risco 4
+ */
 const CNAE_RISCO_MAP: Record<string, Risco> = {
-  // 🔴 ALTO
-  "55": "alto",
-  "56": "alto",
-  "86": "alto",
-  "87": "alto",
-  "84": "alto",
-  "49": "alto",
-  "50": "alto",
-  "51": "alto",
+  // 🟢 BAIXO (GR 1 e 2) - Setores Administrativos, Financeiros e Comércio Geral
+  "62": "baixo", // TI e Software
+  "63": "baixo", // Prestação de serviços de informação
+  "64": "baixo", // Atividades financeiras
+  "65": "baixo", // Seguros e Previdência
+  "66": "baixo", // Atividades auxiliares financeiras
+  "69": "baixo", // Jurídico e Contabilidade
+  "70": "baixo", // Sedes de empresas e consultoria
+  "73": "baixo", // Publicidade e Pesquisa de mercado
+  "85": "baixo", // Educação
+  "45": "baixo", // Comércio de veículos (maioria GR 2)
+  "46": "baixo", // Comércio atacadista (maioria GR 2)
+  "47": "baixo", // Comércio varejista (maioria GR 2)
+  "55": "baixo", // Hotéis e Alojamento (GR 2)
+  "56": "baixo", // Restaurantes e Bares (GR 2)
 
-  // 🟡 MÉDIO
-  "62": "medio",
-  "63": "medio",
-  "64": "medio",
-  "65": "medio",
-  "66": "medio",
-  "69": "medio",
-  "70": "medio",
-  "73": "medio",
-  "74": "medio",
-  "47": "medio",
-  "45": "medio",
-  "46": "medio",
+  // 🟡 MÉDIO (GR 3) - Indústria, Saúde e Logística Pesada
+  "01": "medio", // Agricultura (maioria GR 3)
+  "10": "medio", // Fabricação de alimentos
+  "13": "medio", // Têxtil
+  "14": "medio", // Vestuário
+  "15": "medio", // Couro e Calçados
+  "49": "medio", // Transporte Terrestre (Cargas/Passageiros)
+  "50": "medio", // Transporte Aquaviário
+  "51": "medio", // Transporte Aéreo
+  "86": "medio", // Atividades de atenção à saúde humana (Hospitais)
+  "87": "medio", // Assistência social com internação
 
-  // 🟢 BAIXO
-  "01": "baixo",
-  "02": "baixo",
-  "03": "baixo",
-  "05": "baixo",
-  "06": "baixo",
-  "07": "baixo",
-  "10": "baixo",
-  "11": "baixo",
-  "12": "baixo",
-  "13": "baixo",
-  "14": "baixo",
-  "15": "baixo",
+  // 🔴 ALTO (GR 4) - Mineração, Construção Pesada e Indústria Química
+  "05": "alto", // Extração de Carvão
+  "06": "alto", // Extração de Petróleo
+  "07": "alto", // Extração de Minerais Metálicos
+  "08": "alto", // Extração de Minerais não-metálicos
+  "12": "alto", // Fabricação de produtos do fumo
+  "16": "alto", // Madeira (Serrarias costumam ser GR 4)
+  "41": "alto", // Construção de edifícios
+  "42": "alto", // Obras de infraestrutura
+  "43": "alto", // Serviços especializados para construção
 };
 
 function getRiscoByCNAE(cnae?: string): Risco {
@@ -170,6 +178,8 @@ export default function EmpresaNR1Page() {
   const [otp, setOtp] = useState("");
   const [otpLoading, setOtpLoading] = useState(false);
   const [otpError, setOtpError] = useState<string | null>(null);
+  const [otpPhone, setOtpPhone] = useState("");
+  const [resendIn, setResendIn] = useState(0);
 
   const [riscoEmpresa, setRiscoEmpresa] = useState<Risco | null>(null);
   const [form, setForm] = useState<EmpresaForm>({
@@ -202,6 +212,12 @@ export default function EmpresaNR1Page() {
 
     return () => clearTimeout(timer);
   }, [mostrarRisco]);
+
+  useEffect(() => {
+    if (resendIn <= 0) return;
+    const t = setInterval(() => setResendIn((s) => s - 1), 1000);
+    return () => clearInterval(t);
+  }, [resendIn]);
 
   async function consultarCNPJ() {
     setCnpjLoading(true);
@@ -279,20 +295,34 @@ export default function EmpresaNR1Page() {
 
     try {
       const e164 = normalizePhoneBRToE164(form.telefoneRaw);
+
       if (!isValidE164Phone(e164)) {
         throw new Error(
           "Informe um telefone válido com DDD (ex.: 11 99999-9999).",
         );
       }
 
+      // trava o telefone exatamente usado no envio
+      setOtpPhone(e164);
       update("telefoneE164", e164);
 
-      const { error } = await supabase.auth.signInWithOtp({ phone: e164 });
+      // limpa estado de verificação anterior
+      setOtp("");
+      setOtpVerified(false);
+
+      const { error } = await supabase.auth.signInWithOtp({
+        phone: e164,
+        options: { channel: "sms", shouldCreateUser: true },
+      });
+
       if (error) throw new Error(error.message);
 
       setOtpSent(true);
-      setOtpVerified(false);
+
+      // evita reenviar em sequência (reenviar gera novo token e invalida o anterior)
+      setResendIn(60);
     } catch (e: unknown) {
+      setOtpSent(false);
       setOtpError(
         e instanceof Error ? e.message : "Não foi possível enviar o código.",
       );
@@ -306,27 +336,39 @@ export default function EmpresaNR1Page() {
     setOtpLoading(true);
 
     try {
-      const phone = form.telefoneE164;
-      if (!isValidE164Phone(phone)) throw new Error("Telefone inválido.");
-      if (!otp || otp.trim().length < 4)
-        throw new Error("Informe o código recebido.");
+      const phoneLocked = otpPhone || normalizePhoneBRToE164(form.telefoneRaw);
+
+      if (!isValidE164Phone(phoneLocked)) {
+        throw new Error("Telefone inválido.");
+      }
+
+      const token = onlyDigits(otp).trim();
+      if (token.length !== 6) {
+        throw new Error("Informe o código de 6 dígitos.");
+      }
+
+      // compatibilidade: verifyOtp frequentemente normaliza removendo '+'
+      const phoneForVerify = phoneLocked.startsWith("+")
+        ? phoneLocked.slice(1)
+        : phoneLocked;
 
       const { data, error } = await supabase.auth.verifyOtp({
-        phone,
-        token: otp.trim(),
+        phone: phoneForVerify,
+        token,
         type: "sms",
       });
 
       if (error) throw new Error(error.message);
-      if (!data.user?.id)
+      if (!data?.user)
         throw new Error("Não foi possível autenticar o usuário.");
 
       setOtpVerified(true);
+      setOtpError(null);
     } catch (e: unknown) {
+      setOtpVerified(false);
       setOtpError(
         e instanceof Error ? e.message : "Código inválido ou expirado.",
       );
-      setOtpVerified(false);
     } finally {
       setOtpLoading(false);
     }
@@ -496,7 +538,7 @@ export default function EmpresaNR1Page() {
             </p>
 
             <p className="text-xs text-slate-500 mt-2">
-              Previsão baseada na atividade econômica (CNAE)
+              Estimativa baseada na NR-4 | atividade econômica (CNAE)
             </p>
 
             {/* 💡 UX inteligente */}
@@ -572,50 +614,139 @@ export default function EmpresaNR1Page() {
               />
             </div>
 
-            {/* TELEFONE / OTP */}
-            <div className="p-4 border rounded-xl space-y-3">
-              <input
-                value={formatPhoneBR(form.telefoneRaw)}
-                onChange={(e) => {
-                  update("telefoneRaw", e.target.value);
-                  update("telefoneE164", "");
-                  setOtpVerified(false);
-                  setOtpSent(false);
-                  setOtp("");
-                }}
-                placeholder="Telefone"
-                className="h-11 border rounded-lg px-3 w-full"
-              />
+            {/* TELEFONE / OTP — UI alinhada à paleta oficial */}
+            <div className="rounded-2xl border border-border bg-surface p-4 sm:p-5 space-y-4">
+              <div className="space-y-1">
+                <label className="text-sm font-medium text-slate-700">
+                  Telefone
+                </label>
+
+                <input
+                  value={formatPhoneBR(form.telefoneRaw)}
+                  onChange={(e) => {
+                    update("telefoneRaw", e.target.value);
+                    update("telefoneE164", "");
+                    setOtpPhone("");
+                    setOtpVerified(false);
+                    setOtpSent(false);
+                    setOtp("");
+                    setOtpError(null);
+                    setResendIn(0);
+                  }}
+                  placeholder="(11) 99999-9999"
+                  className="h-11 w-full rounded-xl border border-border bg-white px-3 text-sm outline-none
+                 focus:ring-2 focus:ring-brand-highlight/25"
+                />
+
+                <p className="text-xs text-slate-500">
+                  Enviaremos um código por SMS para confirmar o número.
+                </p>
+              </div>
 
               {!otpSent ? (
                 <button
                   type="button"
                   onClick={sendOtp}
                   disabled={otpLoading}
-                  className="h-11 px-4 rounded-xl bg-brand text-white font-semibold"
+                  className="h-11 w-full rounded-xl bg-brand text-white font-semibold
+                 disabled:opacity-60 disabled:cursor-not-allowed
+                 hover:brightness-95 active:brightness-90"
                 >
-                  Enviar código
+                  {otpLoading ? "Enviando..." : "Enviar código"}
                 </button>
               ) : (
-                <>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-medium text-slate-700">
+                      Digite o código SMS
+                    </p>
+
+                    {otpVerified ? (
+                      <span
+                        className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold
+                           border border-brand-secondary/20 bg-brand-secondary/10 text-brand-secondary"
+                      >
+                        <CheckCircle2 size={14} />
+                        Telefone validado
+                      </span>
+                    ) : (
+                      <span className="text-xs text-slate-500 truncate">
+                        {otpPhone
+                          ? `Enviado para ${otpPhone}`
+                          : "Código enviado"}
+                      </span>
+                    )}
+                  </div>
+
                   <input
                     value={otp}
-                    onChange={(e) => setOtp(onlyDigits(e.target.value))}
-                    placeholder="Código"
-                    className="h-11 border rounded-lg px-3 w-full"
+                    onChange={(e) =>
+                      setOtp(onlyDigits(e.target.value).slice(0, 6))
+                    }
+                    placeholder="000000"
+                    inputMode="numeric"
+                    className="h-11 w-full rounded-xl border border-border bg-white px-3 text-sm tracking-widest text-center
+                   outline-none focus:ring-2 focus:ring-brand-highlight/25"
                   />
 
-                  <button type="button" onClick={verifyOtp}>
-                    Validar
+                  <div className="grid grid-cols-2 gap-3">
+                    {/* Validar (primário) */}
+                    <button
+                      type="button"
+                      onClick={verifyOtp}
+                      disabled={otpLoading || otpVerified}
+                      className="h-11 rounded-xl bg-brand text-white font-semibold
+                     disabled:opacity-60 disabled:cursor-not-allowed
+                     hover:brightness-95 active:brightness-90"
+                    >
+                      {otpLoading
+                        ? "Validando..."
+                        : otpVerified
+                          ? "Validado"
+                          : "Validar"}
+                    </button>
+
+                    {/* Reenviar (secundário) */}
+                    <button
+                      type="button"
+                      onClick={sendOtp}
+                      disabled={otpLoading || resendIn > 0}
+                      className="h-11 rounded-xl border border-border bg-white font-semibold text-brand
+                     disabled:opacity-60 disabled:cursor-not-allowed
+                     hover:bg-surface-muted active:bg-surface-muted/70"
+                    >
+                      {resendIn > 0 ? `Reenviar em ${resendIn}s` : "Reenviar"}
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOtpSent(false);
+                      setOtp("");
+                      setOtpError(null);
+                      setOtpVerified(false);
+                      setResendIn(0);
+                      setOtpPhone("");
+                    }}
+                    className="w-full text-xs text-slate-500 hover:text-brand"
+                  >
+                    Trocar número
                   </button>
-                </>
+                </div>
+              )}
+
+              {otpError && (
+                <div className="rounded-xl border border-brand-accent/25 bg-brand-accent/10 p-3 text-sm text-brand-accent">
+                  {otpError}
+                  <div className="mt-1 text-xs text-brand-accent/90">
+                    Se você clicou em “Reenviar”, use sempre o último código
+                    recebido.
+                  </div>
+                </div>
               )}
             </div>
-            {otpError && (
-              <div className="bg-red-50 border border-red-200 text-red-600 p-3 text-sm rounded-lg">
-                {otpError}
-              </div>
-            )}
+
             {/* LGPD */}
             <label className="flex gap-2 text-sm">
               <input
@@ -637,9 +768,19 @@ export default function EmpresaNR1Page() {
             <button
               type="submit"
               disabled={state === "submitting" || !otpVerified}
-              className="w-full h-11 bg-brand text-white rounded-xl"
+              className={`
+    w-full h-11 rounded-xl font-semibold transition-all
+    ${
+      state === "submitting"
+                ? "bg-brand text-white opacity-70 cursor-wait" : otpVerified ? "bg-brand text-white hover:brightness-95 active:brightness-90" : "bg-border text-slate-400 cursor-not-allowed"
+                }
+            `}
             >
-              {state === "submitting" ? "Enviando..." : "Continuar"}
+              {state === "submitting"
+                ? "Enviando..."
+                : !otpVerified
+                  ? "Valide o telefone para continuar"
+                  : "Continuar"}
             </button>
           </form>
         )}

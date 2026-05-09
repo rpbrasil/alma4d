@@ -81,7 +81,9 @@ export function NR1PaymentPanel(props: {
   userId: string;
   clienteId: string;
   contratoId: string;
-  funcionariosInitial: number;
+
+  funcionarios: number;
+  onFuncionariosChange: (v: number) => void;
 
   nomeCompleto: string;
   email: string;
@@ -94,18 +96,17 @@ export function NR1PaymentPanel(props: {
     userId,
     clienteId,
     contratoId,
-    funcionariosInitial,
     nomeCompleto,
     email,
     documento,
     origem,
     campanha,
+    funcionarios, // ✅ AQUI
+    onFuncionariosChange, // ✅ AQUI
   } = props;
 
   const [method, setMethod] = useState<PaymentMethod>("pix");
-  const [funcionarios, setFuncionarios] = useState<number>(
-    funcionariosInitial || 1,
-  );
+
   const [cupom, setCupom] = useState<string>("");
 
   const [loading, setLoading] = useState(false);
@@ -298,7 +299,7 @@ export function NR1PaymentPanel(props: {
             type="number"
             min={1}
             value={funcionarios}
-            onChange={(e) => setFuncionarios(Number(e.target.value))}
+            onChange={(e) => onFuncionariosChange(Number(e.target.value))}
             className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-brand/10"
             inputMode="numeric"
           />
