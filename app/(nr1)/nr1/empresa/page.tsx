@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { Mail, CheckCircle2 } from "lucide-react";
 import { createBrowserClient } from "@supabase/ssr";
 import { NR1SubNav } from "../_components/NR1SubNav";
@@ -185,12 +185,23 @@ export default function EmpresaNR1Page() {
 
   const [cnpjInput, setCnpjInput] = useState("");
   const [cnpjLoading, setCnpjLoading] = useState(false);
-  const [cnpjLoaded, setCnpjLoaded] = useState(true); //===========>> ATENCAO AQUI PARA API FUNCIONANDO - SETAR EM FALSE
   const [empresaInativa, setEmpresaInativa] = useState(false);
+  const [mostrarRisco, setMostrarRisco] = useState(false);
+  const [cnpjSucesso, setCnpjSucesso] = useState(false);
   const canShowForm =
     (state === "idle" || state === "submitting" || state === "error") &&
-    cnpjLoaded &&
+    cnpjSucesso &&
     !empresaInativa;
+
+  useEffect(() => {
+    if (!mostrarRisco) return;
+
+    const timer = setTimeout(() => {
+      setMostrarRisco(false);
+    }, 6000);
+
+    return () => clearTimeout(timer);
+  }, [mostrarRisco]);
 
   async function consultarCNPJ() {
     setCnpjLoading(true);
@@ -210,20 +221,22 @@ export default function EmpresaNR1Page() {
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      
+
       const risco = getRiscoByCNAE(data.cnae_principal);
       setRiscoEmpresa(risco);
+      setMostrarRisco(true);
 
       // ✅ preenche seu form atual
       update("razaoSocial", data.razao_social);
       update("cnpjDigits", data.cnpj);
-
-      setCnpjLoaded(true);
+      setCnpjSucesso(true);
 
       if (data.situacao_cadastral?.toLowerCase() !== "ativa") {
         setEmpresaInativa(true);
+        setCnpjSucesso(false);
       }
     } catch (err: unknown) {
+      setCnpjSucesso(false);
       const message =
         err instanceof Error ? err.message : "Erro ao consultar CNPJ";
 
@@ -395,10 +408,11 @@ export default function EmpresaNR1Page() {
           <h1 className="text-3xl sm:text-4xl font-extrabold text-brand tracking-tight">
             NR‑1 • Avaliação Psicossocial
           </h1>
-
-          <p className="max-w-xl mx-auto text-sm sm:text-base text-slate-600">
-            Informe o CNPJ para buscar automaticamente os dados da empresa.
-          </p>
+          {!cnpjSucesso && (
+            <p className="max-w-xl mx-auto text-sm sm:text-base text-slate-600">
+              Informe o CNPJ para buscar automaticamente os dados da empresa.
+            </p>
+          )}
 
           <div className="flex justify-center gap-6 text-xs text-slate-500 pt-2">
             <span>✔ Conformidade NR‑1</span>
@@ -408,23 +422,46 @@ export default function EmpresaNR1Page() {
         </div>
 
         {/* ✅ STEP 1 — CNPJ */}
-        <div className="mt-8 flex gap-3">
-          <input
-            value={formatCNPJ(cnpjInput)}
-            inputMode="numeric"
-            onChange={(e) => setCnpjInput(e.target.value)}
-            placeholder="00.000.000/0000-00"
-            className="flex-1 h-11 rounded-lg border px-3"
-          />
+        <div className="mt-8 flex flex-col lg:flex-row items-start gap-4">
+          {/* 🔹 CNPJ + BOTÃO */}
+          <div className="flex gap-3 w-full lg:w-auto flex-1">
+            <input
+              value={formatCNPJ(cnpjInput)}
+              inputMode="numeric"
+              onChange={(e) => setCnpjInput(e.target.value)}
+              placeholder="00.000.000/0000-00"
+              className="flex-1 h-11 rounded-lg border px-3"
+            />
 
-          <button
-            type="button"
-            onClick={consultarCNPJ}
-            disabled={cnpjLoading}
-            className="px-4 bg-brand text-white rounded-lg"
-          >
-            {cnpjLoading ? "Buscando..." : "Buscar"}
-          </button>
+            <button
+              type="button"
+              onClick={consultarCNPJ}
+              disabled={cnpjLoading}
+              className="h-11 px-4 bg-brand text-white rounded-lg"
+            >
+              {cnpjLoading ? "Buscando..." : "Buscar"}
+            </button>
+          </div>
+
+          {/* 🔹 RISCO AO LADO */}
+          {riscoEmpresa && !empresaInativa && (
+            <div
+              className={`
+        flex items-center h-11 px-4 rounded-lg border text-sm whitespace-nowrap
+        ${
+          riscoEmpresa === "alto"
+            ? "bg-red-50 border-red-200 text-red-600"
+            : riscoEmpresa === "medio"
+              ? "bg-yellow-50 border-yellow-200 text-yellow-700"
+              : "bg-green-50 border-green-200 text-green-700"
+        }
+      `}
+            >
+              {riscoEmpresa === "alto" && "🔴 Alto risco"}
+              {riscoEmpresa === "medio" && "🟡 Médio risco"}
+              {riscoEmpresa === "baixo" && "🟢 Baixo risco"}
+            </div>
+          )}
         </div>
 
         {/* 🚨 EMPRESA INATIVA */}
@@ -438,18 +475,15 @@ export default function EmpresaNR1Page() {
             </p>
           </div>
         )}
-        {riscoEmpresa && !empresaInativa && (
+        {mostrarRisco && riscoEmpresa && !empresaInativa && (
           <div
-            className={`
-      mt-4 p-4 rounded-xl border text-center transition-all
-      ${
-        riscoEmpresa === "alto"
-          ? "bg-red-50 border-red-200"
-          : riscoEmpresa === "medio"
-            ? "bg-yellow-50 border-yellow-200"
-            : "bg-green-50 border-green-200"
-      }
-    `}
+            className={`mt-4 p-4 rounded-xl border text-center transition-all duration-500 ${mostrarRisco ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2"}  ${
+              riscoEmpresa === "alto"
+                ? "bg-red-50 border-red-200"
+                : riscoEmpresa === "medio"
+                  ? "bg-yellow-50 border-yellow-200"
+                  : "bg-green-50 border-green-200"
+            }`}
           >
             <p className="text-xs text-slate-500 uppercase tracking-wide">
               Classificação automática
@@ -462,7 +496,7 @@ export default function EmpresaNR1Page() {
             </p>
 
             <p className="text-xs text-slate-500 mt-2">
-              Baseado na atividade econômica (CNAE)
+              Previsão baseada na atividade econômica (CNAE)
             </p>
 
             {/* 💡 UX inteligente */}
@@ -488,9 +522,8 @@ export default function EmpresaNR1Page() {
               <input
                 type="text"
                 value={form.razaoSocial}
-                onChange={(e) => update("razaoSocial", e.target.value)}
-                className="mt-1 w-full h-11 rounded-lg border px-3 text-sm"
-                required
+                className="mt-1 w-full h-11 rounded-lg border px-3 text-sm bg-gray-100 cursor-not-allowed"
+                disabled
               />
             </div>
 
@@ -499,7 +532,7 @@ export default function EmpresaNR1Page() {
               <input
                 value={formatCNPJ(form.cnpjDigits)}
                 disabled
-                className="h-11 border rounded-lg px-3 bg-gray-100"
+                className="h-11 border rounded-lg px-3 cursor-not-allowed bg-gray-100"
               />
 
               <input

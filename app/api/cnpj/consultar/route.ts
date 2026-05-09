@@ -4,21 +4,23 @@ import { createClient } from "@supabase/supabase-js";
 export async function POST(req: Request) {
   try {
     const { cnpj } = await req.json();
-
-    if (!cnpj || cnpj.length !== 14) {
+    const digits = cnpj?.replace(/\D/g, "");    
+    if (!digits || digits.length !== 14) {
       return NextResponse.json({ error: "CNPJ inválido" }, { status: 400 });
     }
-
     // 🔐 AUTH BASIC (token = username)
     const token = process.env.FOCUS_NFE_TOKEN!;
-    const auth = Buffer.from(`${token}:`).toString("base64");
-
+    const auth = btoa(`${token}:`);
+    //const auth = Buffer.from(`${token}:`).toString("base64");
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(), 5000);
     const response = await fetch(
-      `https://api.focusnfe.com.br/v2/cnpjs/${cnpj}`,
+      `https://api.focusnfe.com.br/v2/cnpjs/${digits}`,
       {
         headers: {
           Authorization: `Basic ${auth}`,
         },
+        signal: controller.signal,
       },
     );
 
@@ -28,13 +30,19 @@ export async function POST(req: Request) {
         { status: 404 },
       );
     }
-
     const data = await response.json();
+
+    if (!response.ok) {
+      return NextResponse.json(
+        { error: data?.mensagem || "CNPJ não encontrado" },
+        { status: response.status },
+      );
+    }
 
     // ✅ salvar snapshot
     const supabase = createClient(
-      process.env.SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY!,
     );
 
     await supabase.from("cnpj_consultas").insert({
@@ -58,7 +66,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json(data);
   } catch (err) {
-    console.error(err);
+    console.error("Erro consultar CNPJ:", err);
 
     return NextResponse.json(
       { error: "Erro ao consultar CNPJ" },
