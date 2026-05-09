@@ -754,7 +754,7 @@ export default function EmpresaNR1Page() {
                 checked={form.aceiteLgpd}
                 onChange={(e) => update("aceiteLgpd", e.target.checked)}
               />
-              Aceito LGPD
+              Aceito todas as clausulas da LGPD
             </label>
 
             {/* ERRO */}

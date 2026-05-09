@@ -113,7 +113,7 @@ export function NR1PaymentPanel(props: {
   const [err, setErr] = useState<string | null>(null);
 
   const [result, setResult] = useState<CreatePaymentResponse | null>(null);
-
+  
   const [copied, setCopied] = useState(false);
 
   // countdown
@@ -132,7 +132,7 @@ export function NR1PaymentPanel(props: {
   const charge = order?.charges?.[0];
   const tx = charge?.last_transaction;
 
-  const orderId = result?.order_id ?? order?.id ?? null;
+  const orderId = result?.order_id ?? result?.order?.id ?? null;
 
   const isPaid = order?.status === "paid";
   const isFailed = order?.status === "failed";
@@ -265,12 +265,11 @@ export function NR1PaymentPanel(props: {
   return (
     <div className="grid gap-5">
       <div>
-        <h3 className="text-lg font-extrabold text-brand">Pagamento</h3>
+        <h2 className="text-lg font-extrabold text-brand">Pagamento</h2>
         <p className="text-sm text-slate-600">
           Escolha Pix ou Boleto e finalize.
         </p>
       </div>
-
       {/* Resumo */}
       <div className="rounded-xl border border-border bg-surface-muted p-4">
         <div className="flex items-start justify-between gap-4">
@@ -288,7 +287,6 @@ export function NR1PaymentPanel(props: {
           </div>
         </div>
       </div>
-
       {/* Configuração */}
       <div className="grid sm:grid-cols-2 gap-3">
         <label className="grid gap-1">
@@ -312,12 +310,11 @@ export function NR1PaymentPanel(props: {
           <input
             value={cupom}
             onChange={(e) => setCupom(e.target.value)}
-            placeholder="EX: PARCEIRO10"
+            placeholder="n.Cupom"
             className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-brand/10"
           />
         </label>
       </div>
-
       {/* Métodos + CTA */}
       <div className="rounded-xl border border-border bg-white p-4">
         <p className="text-sm font-semibold text-slate-700 mb-3">
@@ -363,7 +360,20 @@ export function NR1PaymentPanel(props: {
                 ? "Gerar Boleto"
                 : "Gerar Pix"}
           </button>
-
+          {orderId && (
+            <a
+              href={`/contrato/${contratoId}?order_id=${orderId}`}
+              className="inline-flex flex-col items-start justify-center rounded-xl border border-border bg-white p-4 font-semibold text-brand hover:bg-surface-muted shadow-sm transition-all"
+            >
+              <span className="mb-1 text-[10px] uppercase tracking-wider text-slate-500">
+                Status do Pedido
+              </span>
+              <span className="text-sm">Acompanhar contrato e pagamento</span>
+              <p className="mt-2 text-xs font-normal text-slate-400">
+                Clique aqui para acessar o PDF e o status do Pagar.me
+              </p>
+            </a>
+          )}
           {/* Gerar novo QR (Pix) */}
           {method === "pix" && orderId && (
             <button
@@ -382,7 +392,6 @@ export function NR1PaymentPanel(props: {
           </div>
         )}
       </div>
-
       {/* Resultado */}
       {order && charge && tx && (
         <div className="rounded-xl border border-border bg-white p-4 grid gap-3">

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import crypto from "crypto";
+import * as crypto from "node:crypto";
 
 type PagarmeWebhook = {
   id?: string;
@@ -109,14 +109,30 @@ export async function POST(req: Request) {
   );
 
   // ✅ EXTRAIR ORDER
-  const rawObject = (evt as { data?: { object?: unknown } })?.data?.object;
+
+  const rawObject = (evt as { data?: { object?: unknown } })?.data?.object as {
+    id?: string;
+    status?: string;
+    order?: PagarmeOrder;
+    metadata?: { contrato_id?: string };
+    payment_method?: string;
+    charges?: Array<{
+      payment_method?: string;
+      status?: string;
+    }>;
+  };
+  const pagarmeOrderId = rawObject?.id ?? null;
+  const paymentMethod =
+    rawObject?.charges?.[0]?.payment_method ??
+    rawObject?.payment_method ?? null;
 
   const order: PagarmeOrder | null =
     (rawObject as { order?: PagarmeOrder })?.order ||
     (rawObject as PagarmeOrder) ||
     null;
 
-  const contratoId = order?.metadata?.contrato_id;
+  const contratoId =
+    order?.metadata?.contrato_id ?? rawObject?.metadata?.contrato_id;
 
   if (!isPaidEvent) {
     return NextResponse.json({ ok: true });
@@ -128,13 +144,13 @@ export async function POST(req: Request) {
   }
 
   // ✅ CONTRATO
-  const { data: contrato } = await supabase
+  const { data: contrato, error } = await supabase
     .from("contratos")
     .select("*")
     .eq("id", contratoId)
     .single();
 
-  if (!contrato) {
+  if (error || !contrato) {
     console.error("Contrato não encontrado");
     return NextResponse.json({ ok: true });
   }
@@ -148,6 +164,8 @@ export async function POST(req: Request) {
     .from("contratos")
     .update({
       status: "ativo",
+      forma_pagamento: paymentMethod,
+      pagarme_order_id: pagarmeOrderId,
       atualizado_em: nowISO(),
     })
     .eq("id", contratoId);

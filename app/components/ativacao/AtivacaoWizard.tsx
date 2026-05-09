@@ -625,14 +625,14 @@ function Step3Pagamento({
 }): React.ReactElement {
   return (
     <div className="space-y-6">
-      <div>
+      {/* <div>
         <h2 className="text-xl sm:text-2xl font-extrabold text-brand">
           Pagamento
         </h2>
         <p className="mt-1 text-sm text-slate-600">
           Escolha o meio de pagamento:
         </p>
-      </div>
+      </div> */}
 
       <div className="rounded-2xl border border-border bg-surface p-4">
         <NR1PaymentPanel
@@ -950,7 +950,7 @@ export default function AtivacaoWizard() {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
             <div className="bg-white w-full max-w-3xl h-[85vh] rounded-2xl flex flex-col overflow-hidden">
               <div className="flex justify-between items-center p-4 border-b">
-                <h2 className="font-extrabold text-brand">Contrato</h2>
+                <h2 className="font-extrabold text-brand">Minuta de Contrato</h2>
                 <button
                   type="button"
                   onClick={() => setShowContrato(false)}
