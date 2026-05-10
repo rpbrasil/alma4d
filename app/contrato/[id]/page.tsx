@@ -14,15 +14,10 @@ type PageProps = {
   };
 };
 
-export default function Page({ params, searchParams }: PageProps) {
-  const contratoId = params.id;
+export default async function Page({ params }: PageProps) {
+  const resolvedParams = await params;
 
-  // ✅ pode vir vazio (boleto / acesso direto)
-  const orderId = searchParams?.order_id ?? "";
-
-  return (
-    <main className="min-h-screen bg-surface-muted">
-      <ContratoStatusClient contratoId={contratoId} orderId={orderId} />
-    </main>
-  );
+  const contratoId = resolvedParams.id;
+if (!contratoId) return null;
+  return <ContratoStatusClient contratoId={contratoId} />;
 }

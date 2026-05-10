@@ -38,8 +38,8 @@ export async function POST(req: Request) {
 
     // ✅ 5. SUPABASE
     const supabase = createClient(
-      process.env.SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY!,
     );
 
     const fileName = `contratos/${contrato.numero}-v${contrato.versao}.pdf`;

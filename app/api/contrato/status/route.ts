@@ -1,37 +1,21 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-type PagarmeStatusResponse = {
-  order?: {
-    id?: string;
-    status?: string;
-    amount?: number;
-    charges?: Array<{
-      payment_method?: string;
-    }>;
-  };
-  error?: string;
-};
-
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const contratoId = searchParams.get("contratoId") || "";
-  const orderId = searchParams.get("orderId") || ""; // opcional
 
-  if (!contratoId) {
-    return NextResponse.json(
-      { error: "contratoId é obrigatório" },
-      { status: 400 },
-    );
+  // validação forte p/ uuid (evita /contrato/status etc.)
+  if (!contratoId || contratoId.length !== 36) {
+    return NextResponse.json({ error: "contratoId inválido" }, { status: 400 });
   }
 
   const supabase = createClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY!,
     { auth: { persistSession: false } },
   );
 
-  // ✅ busca contrato com colunas do seu schema
   const { data: contrato, error } = await supabase
     .from("contratos")
     .select(
@@ -51,7 +35,9 @@ export async function GET(req: Request) {
       aceite_termos_em,
       aceite_ip,
       versao_termos,
-      aceite_user_agent
+      aceite_user_agent,
+      pagarme_order_id,
+      pagarme_payment_status
     `,
     )
     .eq("id", contratoId)
@@ -67,41 +53,15 @@ export async function GET(req: Request) {
     );
   }
 
-  // ✅ complemento opcional: status do pagamento via seu endpoint existente
-  // só funciona se vier orderId na URL
-  let pagamento: {
-    order_id: string;
-    status?: string | null;
-    amount?: number | null;
-    method?: string | null;
-  } | null = null;
-
-  if (orderId) {
-    const origin = new URL(req.url).origin;
-    const r = await fetch(
-      `${origin}/api/nr1/pagamento/status?order_id=${encodeURIComponent(orderId)}`,
-      {
-        cache: "no-store",
-      },
-    ).catch(() => null);
-
-    if (r && r.ok) {
-      const j = (await r.json().catch(() => ({}))) as PagarmeStatusResponse;
-      pagamento = {
-        order_id: orderId,
-        status: j?.order?.status ?? null,
-        amount: j?.order?.amount ?? null,
-        method: j?.order?.charges?.[0]?.payment_method ?? null,
-      };
-    } else {
-      pagamento = {
-        order_id: orderId,
-        status: "unknown",
-        amount: null,
-        method: null,
-      };
-    }
-  }
+  // ✅ pagamento vem do banco (sem fetch externo)
+  const pagamento = contrato.pagarme_order_id
+    ? {
+        order_id: contrato.pagarme_order_id,
+        status: contrato.pagarme_payment_status ?? "unknown",
+        amount: null, // se quiser, pode salvar depois no contrato_eventos ou em coluna própria
+        method: contrato.forma_pagamento ?? null,
+      }
+    : null;
 
   return NextResponse.json({ contrato, pagamento });
 }

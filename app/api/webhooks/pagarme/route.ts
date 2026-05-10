@@ -103,8 +103,8 @@ export async function POST(req: Request) {
   }
 
   const supabase = createClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY!,
     { auth: { persistSession: false } },
   );
 
@@ -124,7 +124,11 @@ export async function POST(req: Request) {
   const pagarmeOrderId = rawObject?.id ?? null;
   const paymentMethod =
     rawObject?.charges?.[0]?.payment_method ??
-    rawObject?.payment_method ?? null;
+    rawObject?.payment_method ??
+    null;
+
+  const pagarmePaymentStatus =
+    rawObject?.charges?.[0]?.status ?? rawObject?.status ?? null;
 
   const order: PagarmeOrder | null =
     (rawObject as { order?: PagarmeOrder })?.order ||
@@ -166,10 +170,24 @@ export async function POST(req: Request) {
       status: "ativo",
       forma_pagamento: paymentMethod,
       pagarme_order_id: pagarmeOrderId,
+      pagarme_payment_status: pagarmePaymentStatus ?? "paid",
       atualizado_em: nowISO(),
     })
     .eq("id", contratoId);
 
+  await supabase.from("contrato_eventos").insert({
+    contrato_id: contratoId,
+    tipo: "pagamento_confirmado",
+    descricao: "Pagamento confirmado via webhook Pagar.me",
+    dados: {
+      pagarme_order_id: pagarmeOrderId,
+      pagarme_payment_status: pagarmePaymentStatus ?? "paid",
+      forma_pagamento: paymentMethod,
+      event_type: eventType,
+    },
+  });
+
+  
   // ✅ CLIENTE
   const { data: cliente } = await supabase
     .from("clientes")

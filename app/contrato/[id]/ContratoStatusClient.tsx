@@ -38,6 +38,13 @@ type StatusPayload = {
   error?: string;
 };
 
+type ContratoEvento = {
+  id: string;
+  tipo: string;
+  dados: Record<string, unknown> | null;
+  created_at: string;
+};
+
 function Badge({
   tone,
   children,
@@ -71,6 +78,20 @@ function fmtBRLFromCents(cents?: number | null) {
   });
 }
 
+function humanizeEvento(tipo: string) {
+  switch (tipo) {
+    case "webhook_recebido":
+      return "Webhook recebido";
+    case "pagamento_confirmado":
+      return "Pagamento confirmado";
+    case "contrato_ativado":
+      return "Contrato ativado";
+    case "pdf_gerado":
+      return "PDF do contrato gerado";
+    default:
+      return tipo.replaceAll("_", " ");
+  }
+}
 export default function ContratoStatusClient({
   contratoId,
   orderId,
@@ -83,11 +104,31 @@ export default function ContratoStatusClient({
   const [err, setErr] = useState<string | null>(null);
 
   const pollMs = useMemo(() => 5000, []);
+  const [eventos, setEventos] = useState<ContratoEvento[]>([]);
+  const [eventosLoading, setEventosLoading] = useState(false);
 
-  /**
-   * ✅ load com AbortController para evitar setState após unmount
-   * ✅ useCallback para estabilizar referência e facilitar deps do useEffect
-   */
+  const loadEventos = useCallback(
+    async (signal?: AbortSignal) => {
+      try {
+        setEventosLoading(true);
+        const r = await fetch(
+          `/api/contrato/eventos?contratoId=${encodeURIComponent(contratoId)}`,
+          {
+            cache: "no-store",
+            signal,
+          },
+        );
+        const j = (await r.json().catch(() => null)) as {
+          eventos?: ContratoEvento[];
+        } | null;
+        if (!r.ok || !j?.eventos) return;
+        setEventos(j.eventos);
+      } finally {
+        setEventosLoading(false);
+      }
+    },
+    [contratoId],
+  );
   const load = useCallback(
     async (signal?: AbortSignal) => {
       try {
@@ -117,12 +158,25 @@ export default function ContratoStatusClient({
     },
     [contratoId, orderId],
   );
+  const firstKey = `contrato:first:${contratoId}`;
+  const [isFirstVisit, setIsFirstVisit] = useState(false);
 
-  /**
-   * ✅ FIX do lint react-hooks/set-state-in-effect:
-   * Não chamamos load() direto no corpo do effect.
-   * Agendamos a chamada inicial com setTimeout (0ms) e o polling via setInterval.
-   */
+  useEffect(() => {
+    try {
+      const seen = localStorage.getItem(firstKey);
+
+      if (!seen) {
+        window.setTimeout(() => {
+          setIsFirstVisit(true);
+        }, 0);
+
+        localStorage.setItem(firstKey, "1");
+      }
+    } catch {
+      // ignore
+    }
+  }, [firstKey]);
+
   useEffect(() => {
     let mounted = true;
     const ac = new AbortController();
@@ -131,6 +185,7 @@ export default function ContratoStatusClient({
     const first = window.setTimeout(() => {
       if (!mounted) return;
       void load(ac.signal);
+      void loadEventos(ac.signal);
     }, 0);
 
     const interval = window.setInterval(() => {
@@ -138,7 +193,7 @@ export default function ContratoStatusClient({
 
       // opcional: evitar polling quando aba está escondida
       if (document.visibilityState === "hidden") return;
-
+      void loadEventos(ac.signal);
       void load(ac.signal);
     }, pollMs);
 
@@ -148,20 +203,49 @@ export default function ContratoStatusClient({
       window.clearInterval(interval);
       ac.abort();
     };
-  }, [load, pollMs]);
+  }, [load, loadEventos, pollMs]);
 
   const contrato = data?.contrato ?? null;
   const pagamento = data?.pagamento ?? null;
 
-  const paymentStatus = pagamento?.status ?? (orderId ? "unknown" : null);
+  const paymentStatus =
+    pagamento?.status ?? (contrato?.status === "ativo" ? "paid" : "unknown");
   const paid = paymentStatus === "paid";
   const failed = paymentStatus === "failed" || paymentStatus === "canceled";
   const pending =
     !failed &&
     !paid &&
     (paymentStatus === "pending" || paymentStatus === "unknown" || !!orderId);
-
   const contratoPdf = contrato?.pdf_assinado_url ?? contrato?.pdf_url ?? null;
+  const steps = [
+    {
+      id: "pago",
+      title: "Confirmar pagamento",
+      done: paid || contrato?.status === "ativo",
+      cta: !paid ? "Atualizar status" : null,
+      onClick: () => void load(),
+    },
+    {
+      id: "pdf",
+      title: "Baixar contrato (PDF)",
+      done: Boolean(contratoPdf),
+      cta: contratoPdf ? "Baixar PDF" : "Aguardando PDF",
+      href: contratoPdf ?? undefined,
+    },
+    {
+      id: "app",
+      title: "Acessar sistema e ver relatórios",
+      done: contrato?.status === "ativo",
+      cta:
+        contrato?.status === "ativo"
+          ? "Entrar no sistema"
+          : "Liberado após ativação",
+      href: contrato?.status === "ativo" ? "/dashboard" : undefined,
+    },
+  ];
+
+  const doneCount = steps.filter((s) => s.done).length;
+  const progressPct = Math.round((doneCount / steps.length) * 100);
 
   return (
     <main className="min-h-screen bg-surface-muted">
@@ -180,7 +264,7 @@ export default function ContratoStatusClient({
 
             <p className="mt-2 text-sm sm:text-base text-slate-600">
               Guarde esta página: ela mostra o status do pagamento e libera o
-              PDF final do contrato assim que estiver pronto.
+              contrato e seu acesso ao aplicativo.
             </p>
           </div>
 
@@ -195,7 +279,15 @@ export default function ContratoStatusClient({
             />
           </div>
         </header>
-
+        {isFirstVisit && (
+          <div className="rounded-xl border border-brand-secondary/20 bg-brand-secondary/10 p-4 text-sm text-slate-700">
+            <p className="font-semibold text-slate-800">Bem‑vindo(a)! 👋</p>
+            <p className="mt-1">
+              Esta é sua central do contrato. Aqui você confirma o pagamento,
+              baixa o PDF e entra no sistema para acessar relatórios.
+            </p>
+          </div>
+        )}
         {/* Conteúdo */}
         <section className="mt-6 grid gap-4 lg:grid-cols-[1fr_360px]">
           {/* Card principal */}
@@ -206,33 +298,14 @@ export default function ContratoStatusClient({
                   Status do pagamento
                 </p>
 
-                {!orderId && (
-                  <p className="mt-1 text-sm text-slate-600">
-                    Não recebemos o{" "}
-                    <span className="font-semibold">order_id</span> nesta URL.
-                    Se você veio do Pix/Boleto, volte e clique em “Acompanhar
-                    contrato e pagamento”.
-                  </p>
-                )}
-
-                {orderId && (
-                  <p className="mt-1 text-sm text-slate-600">
-                    {paid && "Pagamento confirmado."}
-                    {pending && "Aguardando confirmação do pagamento."}
-                    {failed &&
-                      "Pagamento não confirmado (falhou ou foi cancelado)."}
-                  </p>
-                )}
-              </div>
-
-              {!orderId && <Badge tone="info">Sem order_id</Badge>}
-              {orderId && paid && <Badge tone="ok">Pago</Badge>}
-              {orderId && pending && <Badge tone="warn">Pendente</Badge>}
-              {orderId && failed && <Badge tone="err">Não confirmado</Badge>}
+                {paid && <Badge tone="ok">Pago</Badge>}
+                {pending && <Badge tone="warn">Pendente</Badge>}
+                {failed && <Badge tone="err">Não confirmado</Badge>}
+              </div>{" "}
             </div>
 
             {/* Dicas práticas Pix vs boleto */}
-            {orderId && (
+            {pending && (
               <div className="mt-4 rounded-xl bg-surface-muted p-4 text-sm text-slate-600">
                 <p className="font-semibold text-slate-800">E agora?</p>
                 <ul className="mt-2 list-disc pl-5 space-y-1">
@@ -300,6 +373,14 @@ export default function ContratoStatusClient({
                   Contrato PDF (aguardando)
                 </button>
               )}
+              {contrato?.status === "ativo" && (
+                <a
+                  href="/dashboard"
+                  className="inline-flex items-center justify-center rounded-xl bg-brand px-4 py-2 font-semibold text-white hover:bg-brand/90"
+                >
+                  Acessar sistema
+                </a>
+              )}
             </div>
 
             {/* Detalhes do pagamento */}
@@ -321,6 +402,13 @@ export default function ContratoStatusClient({
                       {pagamento.status ?? "—"}
                     </span>
                   </div>
+                  {contrato?.status === "ativo" && (
+                    <div className="mt-4 rounded-xl bg-green-50 p-4 text-sm text-green-800">
+                      Seu contrato está ativo ✅
+                      <br />
+                      Você já pode acessar o sistema e iniciar o uso.
+                    </div>
+                  )}
                   <div className="flex items-center justify-between">
                     <span>Método</span>
                     <span className="font-semibold text-slate-800">
@@ -350,10 +438,116 @@ export default function ContratoStatusClient({
 
           {/* Sidebar contrato */}
           <aside className="rounded-2xl border border-border bg-surface p-5">
+            <div className="rounded-xl border border-border bg-white p-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold text-slate-800">
+                  Primeiros passos
+                </p>
+                <span className="text-xs font-semibold text-slate-500">
+                  {doneCount}/{steps.length}
+                </span>
+              </div>
+
+              <div className="mt-3 h-2 rounded-full bg-slate-200 overflow-hidden">
+                <div
+                  className="h-full bg-brand transition-all"
+                  style={{ width: `${progressPct}%` }}
+                />
+              </div>
+
+              <ol className="mt-4 space-y-3">
+                {steps.map((s, idx) => (
+                  <li key={s.id} className="flex gap-3">
+                    <span
+                      className={`mt-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-extrabold ${
+                        s.done
+                          ? "bg-brand-secondary text-white"
+                          : "bg-slate-100 text-slate-600"
+                      }`}
+                    >
+                      {idx + 1}
+                    </span>
+
+                    <div className="min-w-0 flex-1">
+                      <p
+                        className={`text-sm font-semibold ${s.done ? "text-slate-800" : "text-slate-700"}`}
+                      >
+                        {s.title}
+                      </p>
+
+                      {/* CTA */}
+                      {s.href ? (
+                        <a
+                          href={s.href}
+                          target={
+                            s.href.startsWith("http") ? "_blank" : undefined
+                          }
+                          rel={
+                            s.href.startsWith("http") ? "noreferrer" : undefined
+                          }
+                          className={`mt-2 inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-xs font-semibold ${
+                            s.done
+                              ? "bg-brand text-white hover:bg-brand/90"
+                              : "bg-slate-200 text-slate-400 cursor-not-allowed"
+                          }`}
+                          {...(!s.done
+                            ? { onClick: (e) => e.preventDefault() }
+                            : {})}
+                        >
+                          {s.cta}
+                        </a>
+                      ) : s.onClick && s.cta ? (
+                        <button
+                          type="button"
+                          onClick={s.onClick}
+                          className="mt-2 inline-flex items-center justify-center rounded-lg border border-border bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-surface-muted"
+                        >
+                          {s.cta}
+                        </button>
+                      ) : null}
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </div>
+
             <p className="text-sm font-semibold text-slate-800">
               Detalhes do contrato
             </p>
+            <div className="mt-6 rounded-xl border border-border bg-white p-4">
+              <p className="text-sm font-semibold text-slate-800">
+                Linha do tempo
+              </p>
 
+              {eventosLoading && (
+                <p className="mt-2 text-xs text-slate-500">
+                  Carregando eventos…
+                </p>
+              )}
+
+              {!eventosLoading && eventos.length === 0 && (
+                <p className="mt-2 text-xs text-slate-500">
+                  Sem eventos ainda. Assim que o pagamento/geração avançar, eles
+                  aparecem aqui.
+                </p>
+              )}
+
+              <ol className="mt-3 space-y-3">
+                {eventos.map((ev) => (
+                  <li key={ev.id} className="flex gap-3">
+                    <span className="mt-1 h-2 w-2 rounded-full bg-brand-secondary shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-slate-700">
+                        {humanizeEvento(ev.tipo)}
+                      </p>
+                      <p className="text-[11px] text-slate-500">
+                        {new Date(ev.created_at).toLocaleString("pt-BR")}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </div>
             {contrato ? (
               <div className="mt-3 grid gap-2 text-xs text-slate-500">
                 <div className="flex items-center justify-between">
