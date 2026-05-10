@@ -41,7 +41,7 @@ export async function POST(req: Request) {
       process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY!,
     );
 
-    const fileName = `contratos/${contrato.numero}-v${contrato.versao}.pdf`;
+    const fileName = `clientes/${contrato.cliente_id}/contratos/${contrato.id}/v${contrato.versao}/contrato-gerado.pdf`;
 
     const { error: uploadError } = await supabase.storage
       .from("contratos")

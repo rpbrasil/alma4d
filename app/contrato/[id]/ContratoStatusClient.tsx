@@ -216,7 +216,7 @@ export default function ContratoStatusClient({
     normalizedStatus === "failed" || normalizedStatus === "canceled";
 
   const pending = !paid && !failed;
-  const contratoPdf = contrato?.pdf_assinado_url ?? contrato?.pdf_url ?? null;
+  const hasPdf = Boolean(contrato?.pdf_assinado_url || contrato?.pdf_url);
   const steps = [
     {
       id: "pago",
@@ -228,9 +228,9 @@ export default function ContratoStatusClient({
     {
       id: "pdf",
       title: "Baixar contrato (PDF)",
-      done: Boolean(contratoPdf),
-      cta: contratoPdf ? "Baixar PDF" : "Aguardando PDF",
-      href: contratoPdf ?? undefined,
+      done: Boolean(hasPdf),
+      cta: hasPdf ? "Baixar PDF" : "Aguardando PDF",
+      onClick: hasPdf ? () => void downloadPdf() : undefined,
     },
     {
       id: "app",
@@ -396,7 +396,7 @@ export default function ContratoStatusClient({
                 Ver minuta (prévia)
               </a>
 
-              {contratoPdf ? (
+              {hasPdf ? (
                 <>
                   <button
                     type="button"
@@ -531,10 +531,16 @@ export default function ContratoStatusClient({
                         <a
                           href={s.href}
                           target={
-                            s.href.startsWith("http") ? "_blank" : undefined
+                            typeof s.href === "string" &&
+                            s.href.startsWith("http")
+                              ? "_blank"
+                              : undefined
                           }
                           rel={
-                            s.href.startsWith("http") ? "noreferrer" : undefined
+                            typeof s.href === "string" &&
+                            s.href.startsWith("http")
+                              ? "noreferrer"
+                              : undefined
                           }
                           className={`mt-2 inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-xs font-semibold ${
                             s.done
