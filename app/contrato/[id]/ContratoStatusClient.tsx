@@ -94,10 +94,8 @@ function humanizeEvento(tipo: string) {
 }
 export default function ContratoStatusClient({
   contratoId,
-  orderId,
 }: {
   contratoId: string;
-  orderId?: string;
 }) {
   const [data, setData] = useState<StatusPayload | null>(null);
   const [loading, setLoading] = useState(true);
@@ -134,7 +132,6 @@ export default function ContratoStatusClient({
       try {
         const qs = new URLSearchParams();
         qs.set("contratoId", contratoId);
-        if (orderId) qs.set("orderId", orderId);
 
         const r = await fetch(`/api/contrato/status?${qs.toString()}`, {
           cache: "no-store",
@@ -156,7 +153,7 @@ export default function ContratoStatusClient({
         setLoading(false);
       }
     },
-    [contratoId, orderId],
+    [contratoId],
   );
   const firstKey = `contrato:first:${contratoId}`;
   const [isFirstVisit, setIsFirstVisit] = useState(false);
@@ -208,14 +205,17 @@ export default function ContratoStatusClient({
   const contrato = data?.contrato ?? null;
   const pagamento = data?.pagamento ?? null;
 
-  const paymentStatus =
-    pagamento?.status ?? (contrato?.status === "ativo" ? "paid" : "unknown");
-  const paid = paymentStatus === "paid";
-  const failed = paymentStatus === "failed" || paymentStatus === "canceled";
-  const pending =
-    !failed &&
-    !paid &&
-    (paymentStatus === "pending" || paymentStatus === "unknown" || !!orderId);
+  const normalizedStatus = (pagamento?.status || "")
+    .toString()
+    .trim()
+    .toLowerCase();
+
+  const paid = normalizedStatus === "paid" || contrato?.status === "ativo";
+
+  const failed =
+    normalizedStatus === "failed" || normalizedStatus === "canceled";
+
+  const pending = !paid && !failed;
   const contratoPdf = contrato?.pdf_assinado_url ?? contrato?.pdf_url ?? null;
   const steps = [
     {
@@ -246,6 +246,56 @@ export default function ContratoStatusClient({
 
   const doneCount = steps.filter((s) => s.done).length;
   const progressPct = Math.round((doneCount / steps.length) * 100);
+  const openPdf = async () => {
+    try {
+      const r = await fetch(
+        `/api/contrato/pdf-url?contratoId=${encodeURIComponent(contratoId)}`,
+        {
+          cache: "no-store",
+        },
+      );
+      const j = (await r.json().catch(() => null)) as {
+        url?: string;
+        error?: string;
+      } | null;
+
+      if (!r.ok || !j?.url) {
+        throw new Error(j?.error || "Não foi possível obter o link do PDF.");
+      }
+
+      window.open(j.url, "_blank", "noopener,noreferrer");
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Erro ao abrir PDF.");
+    }
+  };
+
+  const downloadPdf = async () => {
+    try {
+      const r = await fetch(
+        `/api/contrato/pdf-url?contratoId=${encodeURIComponent(contratoId)}`,
+        {
+          cache: "no-store",
+        },
+      );
+      const j = (await r.json().catch(() => null)) as {
+        url?: string;
+        error?: string;
+      } | null;
+
+      if (!r.ok || !j?.url) {
+        throw new Error(j?.error || "Não foi possível obter o link do PDF.");
+      }
+
+      const a = document.createElement("a");
+      a.href = j.url;
+      a.download = `contrato-${contratoId}.pdf`; // nome sugerido
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Erro ao baixar PDF.");
+    }
+  };
 
   return (
     <main className="min-h-screen bg-surface-muted">
@@ -348,21 +398,21 @@ export default function ContratoStatusClient({
 
               {contratoPdf ? (
                 <>
-                  <a
-                    href={contratoPdf}
-                    target="_blank"
-                    rel="noreferrer"
+                  <button
+                    type="button"
+                    onClick={() => void openPdf()}
                     className="inline-flex items-center justify-center rounded-xl bg-brand px-4 py-2 font-semibold text-white hover:bg-brand/90"
                   >
                     Abrir contrato (PDF)
-                  </a>
-                  <a
-                    href={contratoPdf}
-                    download
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => void downloadPdf()}
                     className="inline-flex items-center justify-center rounded-xl border border-border bg-white px-4 py-2 font-semibold text-slate-700 hover:bg-surface-muted"
                   >
                     Baixar PDF
-                  </a>
+                  </button>
                 </>
               ) : (
                 <button
@@ -373,6 +423,7 @@ export default function ContratoStatusClient({
                   Contrato PDF (aguardando)
                 </button>
               )}
+
               {contrato?.status === "ativo" && (
                 <a
                   href="/dashboard"

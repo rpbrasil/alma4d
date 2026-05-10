@@ -17,9 +17,8 @@ export async function POST(req: Request) {
   }
 
   // ✅ 2. GERAR QR CODE FORA DO TRY
-  const qrCode = await QRCode.toDataURL(
-    `${process.env.BASE_URL}/contrato/${contratoId}`,
-  );
+  const verifyUrl = `${process.env.BASE_URL}/contrato/${contratoId}`;
+  const qrCode = await QRCode.toDataURL(verifyUrl);
 
   // ✅ 3. CRIAR JSX FORA DO TRY (ESSA É A CHAVE 🔥)
   const pdfElement = (
@@ -53,24 +52,25 @@ export async function POST(req: Request) {
 
     if (uploadError) throw uploadError;
 
-    const { data, error: signedUrlError } = await supabase.storage
-      .from("contratos")
-      .createSignedUrl(fileName, 60 * 60 * 24 * 30);
-
-    if (signedUrlError) throw signedUrlError;
-
     const { error: updateError } = await supabase
       .from("contratos")
       .update({
-        pdf_url: data?.signedUrl,
+        pdf_url: fileName,
       })
       .eq("id", contratoId);
 
     if (updateError) throw updateError;
 
+    await supabase.from("contrato_eventos").insert({
+      contrato_id: contratoId,
+      tipo: "pdf_gerado",
+      descricao: "PDF do contrato gerado e armazenado",
+      dados: { fileName },
+    });
+
     return NextResponse.json({
       ok: true,
-      pdf_url: data?.signedUrl,
+      pdf_url: fileName,
     });
   } catch (err) {
     console.error("Erro geral contrato:", err);
