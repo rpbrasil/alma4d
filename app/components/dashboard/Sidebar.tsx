@@ -113,18 +113,6 @@ export default function Sidebar() {
 
   return (
     <div suppressHydrationWarning>
-      {/* Mobile toggle */}
-      <button
-        type="button"
-        aria-label={isOpen ? "Fechar menu" : "Abrir menu"}
-        onClick={() => setIsOpen((v) => !v)}
-        className="fixed top-4 left-4 z-50 md:hidden h-10 w-10
-                   rounded-xl border border-border bg-white shadow-sm
-                   flex items-center justify-center"
-      >
-        {isOpen ? <X size={18} /> : <Menu size={18} />}
-      </button>
-
       {/* Sidebar */}
       <aside
         className={[

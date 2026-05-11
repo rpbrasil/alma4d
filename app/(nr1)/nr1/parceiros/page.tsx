@@ -1,13 +1,13 @@
 "use client";
 
-//import { useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
 
-import { NR1SubNav } from "../../../(nr1)/nr1/_components/NR1SubNav";
+//import { useState } from "react";
 
 //type Modelo = "commission" | "discount";
 
 export default function ParceirosNR1Page() {
-  
   // const [form, setForm] = useState({
   //   nome: "",
   //   email: "",
@@ -17,7 +17,6 @@ export default function ParceirosNR1Page() {
   //   aceiteTermos: false,
   // });
 
- 
   // function validar(): string | null {
   //   if (!form.nome.trim()) return "Informe seu nome completo.";
   //   if (!form.email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/))
@@ -63,7 +62,22 @@ export default function ParceirosNR1Page() {
   return (
     <main className="min-h-screen bg-surface-muted">
       <div className="max-w-3xl mx-auto px-6 py-6">
-        <NR1SubNav />
+        <div className="mb-6">
+          <Link
+            href="/nr1/mapeamento-riscos-psicossociais"
+            className="inline-flex items-center gap-3 text-sm text-slate-500 hover:text-brand transition"
+          >
+            <Image
+              src="/images/alma4d_express_nobground.png"
+              alt="alma4D"
+              width={48}
+              height={48}
+              className="opacity-90"
+              priority
+            />
+            ← Voltar para NR‑1 Home
+          </Link>
+        </div>
         {/* ================= HEADER ================= */}
         <div className="text-center">
           <h1 className="mt-4 text-3xl font-extrabold text-brand">
@@ -91,9 +105,7 @@ export default function ParceirosNR1Page() {
 
           {/* BENEFÍCIO */}
           <div className="text-sm text-slate-600 space-y-2">
-            <p>
-              ✔ Indicado para associações, consultores, corretores...
-            </p>
+            <p>✔ Indicado para associações, consultores, corretores...</p>
             <p>✔ Processo simples, sem burocracia</p>
           </div>
 

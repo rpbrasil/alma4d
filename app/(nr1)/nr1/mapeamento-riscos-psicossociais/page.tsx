@@ -10,8 +10,7 @@ import {
   CheckCircle2,
   ArrowRight,
 } from "lucide-react";
-import Image from "next/image"
-// import { NR1SubNav } from "../_components/NR1SubNav";
+import Image from "next/image";
 
 export const metadata: Metadata = {
   title: "NR‑1 | Mapeamento de Riscos Psicossociais para GRO e PGR",
@@ -23,7 +22,6 @@ export default function PaginaNR1() {
   return (
     <main className="bg-background text-foreground">
       {/* ================= HERO ================= */}
-      {/* <NR1SubNav /> */}
       <section className="px-6 py-14 bg-linear-to-b from-brand-highlight to-brand text-white">
         <div className="max-w-6xl mx-auto text-center">
           {/* ✅ LOGO */}
@@ -152,7 +150,6 @@ export default function PaginaNR1() {
                 text: "Resultados agregados, sem identificação individual.",
               },
             ].map((item) => {
-              
               return (
                 <div
                   key={item.title}

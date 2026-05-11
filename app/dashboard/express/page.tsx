@@ -439,7 +439,7 @@ export default function DashboardExpress() {
         <div className="flex items-start justify-between gap-4">
           <div>
             <h1 className="text-2xl font-extrabold text-brand tracking-tight">
-              Dashboard Express — Primeiros passos
+              Inclusão de usuários
             </h1>
             <p className="mt-2 text-sm text-slate-600">
               Cadastre sua equipe rapidamente (2 usuários ou 500+) e libere

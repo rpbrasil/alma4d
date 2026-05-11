@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useMemo, useState, useEffect } from "react";
+import Image from "next/image";
+import Link from "next/link";
 import { Mail, CheckCircle2 } from "lucide-react";
 import { createBrowserClient } from "@supabase/ssr";
-import { NR1SubNav } from "../_components/NR1SubNav";
 
 type FormState = "idle" | "submitting" | "success" | "error";
 
@@ -443,12 +444,26 @@ export default function EmpresaNR1Page() {
   return (
     <main className="min-h-screen bg-surface-muted">
       <div className="max-w-3xl mx-auto px-6 py-6">
-        <NR1SubNav />
-
+        <div className="mb-6">
+          <Link
+            href="/nr1/mapeamento-riscos-psicossociais"
+            className="inline-flex items-center gap-3 text-sm text-slate-500 hover:text-brand transition"
+          >
+            <Image
+              src="/images/alma4d_express_nobground.png"
+              alt="alma4D"
+              width={48}
+              height={48}
+              className="opacity-90"
+              priority
+            />
+            ← Voltar para NR‑1 Home
+          </Link>
+        </div>
         {/* HEADER */}
         <div className="text-center space-y-4">
           <h1 className="text-3xl sm:text-4xl font-extrabold text-brand tracking-tight">
-            NR‑1 • Avaliação Psicossocial
+            NR‑1 • Empresas
           </h1>
           {!cnpjSucesso && (
             <p className="max-w-xl mx-auto text-sm sm:text-base text-slate-600">
@@ -772,8 +787,11 @@ export default function EmpresaNR1Page() {
     w-full h-11 rounded-xl font-semibold transition-all
     ${
       state === "submitting"
-                ? "bg-brand text-white opacity-70 cursor-wait" : otpVerified ? "bg-brand text-white hover:brightness-95 active:brightness-90" : "bg-border text-slate-400 cursor-not-allowed"
-                }
+        ? "bg-brand text-white opacity-70 cursor-wait"
+        : otpVerified
+          ? "bg-brand text-white hover:brightness-95 active:brightness-90"
+          : "bg-border text-slate-400 cursor-not-allowed"
+    }
             `}
             >
               {state === "submitting"
