@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Menu } from "lucide-react";
 
@@ -13,12 +13,23 @@ const EXPRESS_TITLE_MAP: Record<string, string> = {
   "/dashboard/express/login": "Acesso de usuários",
 };
 
+const DEFAULT_EXPRESS_IMAGE = "/images/alma4d_express_nobground.png";
+
 export default function ExpressHeader({
   onMenuOpen,
+  userImage,
+  clientImage,
 }: {
   onMenuOpen: () => void;
+  userImage?: string;
+  clientImage?: string;
 }) {
   const pathname = usePathname();
+  const [avatarFailed, setAvatarFailed] = useState(false);
+  const avatarSrc =
+    avatarFailed || (!userImage && !clientImage)
+      ? DEFAULT_EXPRESS_IMAGE
+      : (userImage ?? clientImage ?? DEFAULT_EXPRESS_IMAGE);
 
   const title = useMemo(() => {
     return EXPRESS_TITLE_MAP[pathname] ?? "Dashboard Express";
@@ -40,10 +51,11 @@ export default function ExpressHeader({
 
             <div className="relative h-14 w-14 rounded-2xl overflow-hidden bg-slate-100">
               <Image
-                src="/images/alma4d_express_nobground.png"
+                src={avatarSrc}
                 alt="Express"
                 fill
                 className="object-contain"
+                onError={() => setAvatarFailed(true)}
                 priority
               />
             </div>

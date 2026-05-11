@@ -1,6 +1,25 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
+function normalizePdfReference(value: string | null): string | null {
+  if (!value) return null;
+
+  try {
+    const parsed = new URL(value);
+    const pathSegments = parsed.pathname.split("/");
+    const signIndex = pathSegments.findIndex((segment) => segment === "sign");
+
+    if (signIndex >= 0 && pathSegments.length > signIndex + 2) {
+      const objectPath = pathSegments.slice(signIndex + 2).join("/");
+      return decodeURIComponent(objectPath);
+    }
+
+    return value;
+  } catch {
+    return value;
+  }
+}
+
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
@@ -50,6 +69,12 @@ export async function GET(req: Request) {
       });
     }
 
+    const contratoSanitizado = {
+      ...contrato,
+      pdf_url: normalizePdfReference(contrato.pdf_url),
+      pdf_assinado_url: normalizePdfReference(contrato.pdf_assinado_url),
+    };
+
     const pagamento = contrato.pagarme_order_id
       ? {
           order_id: contrato.pagarme_order_id,
@@ -59,7 +84,7 @@ export async function GET(req: Request) {
         }
       : null;
 
-    return NextResponse.json({ contrato, pagamento });
+    return NextResponse.json({ contrato: contratoSanitizado, pagamento });
   } catch (err) {
     console.error("Erro geral:", err);
 

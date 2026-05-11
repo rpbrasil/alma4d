@@ -1,6 +1,8 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
+import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { FileText, ClipboardList, QrCode, Home, X } from "lucide-react";
 
@@ -32,14 +34,25 @@ const EXPRESS_NAV = [
   },
 ];
 
+const DEFAULT_EXPRESS_IMAGE = "/images/alma4d_express_nobground.png";
+
 export default function ExpressSidebar({
   open,
   onClose,
+  userImage,
+  clientImage,
 }: {
   open: boolean;
   onClose: () => void;
+  userImage?: string;
+  clientImage?: string;
 }) {
   const pathname = usePathname();
+  const [logoFailed, setLogoFailed] = useState(false);
+  const logoSrc =
+    logoFailed || (!userImage && !clientImage)
+      ? DEFAULT_EXPRESS_IMAGE
+      : (userImage ?? clientImage ?? DEFAULT_EXPRESS_IMAGE);
 
   return (
     <aside
@@ -53,8 +66,15 @@ export default function ExpressSidebar({
         <div className="px-5 py-4 border-b border-white/10">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="h-12 w-12 rounded-full bg-white/10 flex items-center justify-center">
-                <FileText size={24} />
+              <div className="relative h-12 w-12 overflow-hidden rounded-full border border-white/10 bg-white/10">
+                <Image
+                  src={logoSrc}
+                  alt="Express"
+                  fill
+                  className="object-cover"
+                  onError={() => setLogoFailed(true)}
+                  priority
+                />
               </div>
               <div>
                 <p className="text-sm font-semibold">Dashboard Express</p>

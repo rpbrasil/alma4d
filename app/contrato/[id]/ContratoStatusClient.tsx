@@ -240,7 +240,7 @@ export default function ContratoStatusClient({
         contrato?.status === "ativo"
           ? "Entrar no sistema"
           : "Liberado após ativação",
-      href: contrato?.status === "ativo" ? "/dashboard" : undefined,
+      href: contrato?.status === "ativo" ? "/dashboard/express" : undefined,
     },
   ];
 
@@ -257,10 +257,14 @@ export default function ContratoStatusClient({
       const j = (await r.json().catch(() => null)) as {
         url?: string;
         error?: string;
+        debug?: Record<string, unknown>;
       } | null;
 
       if (!r.ok || !j?.url) {
-        throw new Error(j?.error || "Não foi possível obter o link do PDF.");
+        const debugMsg = j?.debug ? JSON.stringify(j.debug) : "";
+        throw new Error(
+          j?.error || `Erro ao abrir PDF. Status: ${r.status}. ${debugMsg}`,
+        );
       }
 
       window.open(j.url, "_blank", "noopener,noreferrer");
@@ -280,10 +284,14 @@ export default function ContratoStatusClient({
       const j = (await r.json().catch(() => null)) as {
         url?: string;
         error?: string;
+        debug?: Record<string, unknown>;
       } | null;
 
       if (!r.ok || !j?.url) {
-        throw new Error(j?.error || "Não foi possível obter o link do PDF.");
+        const debugMsg = j?.debug ? JSON.stringify(j.debug) : "";
+        throw new Error(
+          j?.error || `Erro ao baixar PDF. Status: ${r.status}. ${debugMsg}`,
+        );
       }
 
       const a = document.createElement("a");
@@ -426,7 +434,7 @@ export default function ContratoStatusClient({
 
               {contrato?.status === "ativo" && (
                 <a
-                  href="/dashboard"
+                  href="/dashboard/express"
                   className="inline-flex items-center justify-center rounded-xl bg-brand px-4 py-2 font-semibold text-white hover:bg-brand/90"
                 >
                   Acessar sistema
