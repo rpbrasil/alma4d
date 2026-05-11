@@ -1,8 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
-import Image from "next/image"
 
 type JobStatus = {
   id: string;
@@ -23,7 +22,6 @@ type CsvRegistro = {
   role: "usuario";
 };
 
-
 type BulkLineError = {
   linha: number;
   error: string | null;
@@ -37,6 +35,38 @@ const supabase = createClient(
 
 function onlyDigits(v: string) {
   return (v ?? "").replace(/\D/g, "");
+}
+
+function isValidCPF(cpf: string) {
+  if (!cpf || cpf.length !== 11) return false;
+
+  // bloqueia CPF fake tipo 11111111111
+  if (/^(\d)\1+$/.test(cpf)) return false;
+
+  let sum = 0;
+  for (let i = 0; i < 9; i++) {
+    sum += Number(cpf[i]) * (10 - i);
+  }
+
+  let rest = (sum * 10) % 11;
+  if (rest === 10) rest = 0;
+  if (rest !== Number(cpf[9])) return false;
+
+  sum = 0;
+  for (let i = 0; i < 10; i++) {
+    sum += Number(cpf[i]) * (11 - i);
+  }
+
+  rest = (sum * 10) % 11;
+  if (rest === 10) rest = 0;
+
+  return rest === Number(cpf[10]);
+}
+function isValidPhone(phone: string) {
+  return /^\+55\d{10,11}$/.test(phone);
+}
+function normalizeName(name: string) {
+  return name.trim().replace(/\s+/g, " ");
 }
 
 function normalizePhoneBR(v: string) {
@@ -72,12 +102,25 @@ function parsePaste(text: string): CsvRegistro[] {
     };
   });
 
-  return regs.filter(
-    (r) =>
-      r.nome_completo &&
-      r.documento.length === 11 &&
-      r.telefone.startsWith("+"),
-  );
+  const seenCpf = new Set<string>();
+  const seenPhone = new Set<string>();
+
+  return regs.filter((r) => {
+    if (normalizeName(r.nome_completo).length < 3) return false;
+    if (!isValidCPF(r.documento)) return false;
+    if (!isValidPhone(r.telefone)) return false;
+    if (!r.telefone.startsWith("+")) return false;
+
+    // 🚫 CPF duplicado
+    if (seenCpf.has(r.documento)) return false;
+    seenCpf.add(r.documento);
+
+    // 🚫 Telefone duplicado
+    if (seenPhone.has(r.telefone)) return false;
+    seenPhone.add(r.telefone);
+
+    return true;
+  });
 }
 
 async function getAccessToken() {
@@ -90,6 +133,9 @@ export default function DashboardExpress() {
   const [nome, setNome] = useState("");
   const [cpf, setCpf] = useState("");
   const [tel, setTel] = useState("");
+
+  const [limiteUsuarios, setLimiteUsuarios] = useState<number | null>(null);
+  const [usuariosAtuais, setUsuariosAtuais] = useState<number>(0);
 
   // bulk
   const [paste, setPaste] = useState("");
@@ -105,6 +151,37 @@ export default function DashboardExpress() {
 
   const enqueueUrl = process.env.NEXT_PUBLIC_FN_IMPORT_ENQUEUE_URL!;
   const workerUrl = process.env.NEXT_PUBLIC_FN_IMPORT_WORKER_URL!;
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const token = await getAccessToken();
+        const r = await fetch("/api/entitlements", {
+          method: "GET",
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          cache: "no-store",
+        });
+
+        const j = (await r.json().catch(() => null)) as {
+          limite_usuarios: number | null;
+          usuarios_ativos: number;
+        } | null;
+
+        if (!cancelled && r.ok && j) {
+          setLimiteUsuarios(j.limite_usuarios);
+          setUsuariosAtuais(j.usuarios_ativos);
+        }
+      } catch {
+        // não derruba a página
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const progress = useMemo(() => {
     if (!job) return 0;
@@ -163,22 +240,87 @@ export default function DashboardExpress() {
       const token = await getAccessToken();
       if (!token) throw new Error("Sessão expirada. Faça login novamente.");
 
-      
+      if (limiteUsuarios !== null && usuariosAtuais >= limiteUsuarios) {
+        setMsg("Limite de usuários do seu plano atingido.");
+        return;
+      }
 
-      // usa sua edge "gerenciarusuarios" (não incluí a URL aqui — se quiser, faço também)
-      // Para ficar consistente com seu stack atual, recomendo cadastrar 1 a 1 usando gerenciarusuarios.
-      // Se você preferir, também posso adaptar para usar o mesmo pipeline de job.
+      const nomeNorm = normalizeName(nome);
+      const cpfNorm = onlyDigits(cpf);
+      const phoneNorm = normalizePhoneBR(tel);
 
-      // Exemplo: fetch("/functions/v1/gerenciarusuarios", ...)
+      // ✅ nome
+      if (nomeNorm.length < 3) {
+        setMsg("Digite um nome válido.");
+        return;
+      }
 
-      setMsg("Usuário cadastrado. Ele já pode entrar com OTP no celular.");
+      // ✅ CPF real
+      if (!isValidCPF(cpfNorm)) {
+        setMsg("CPF inválido.");
+        return;
+      }
+
+      // ✅ telefone
+      if (!isValidPhone(phoneNorm)) {
+        setMsg("Telefone inválido. Use DDD + número.");
+        return;
+      }
+
+
+      if (onlyDigits(cpf).length !== 11) {
+        setMsg("CPF inválido");
+        return;
+      }
+
+      if (!normalizePhoneBR(tel)) {
+        setMsg("Telefone inválido");
+        return;
+      }
+      const payload = {
+        nome_completo: nomeNorm,
+        documento: onlyDigits(cpf),
+        telefone: normalizePhoneBR(tel),
+        role: "usuario",
+      };
+
+      if (bulkPreview.some((u) => u.documento === cpfNorm)) {
+        setMsg("CPF já adicionado na lista.");
+        return;
+      }
+
+      if (bulkPreview.some((u) => u.telefone === phoneNorm)) {
+        setMsg("Telefone já adicionado.");
+        return;
+      }
+      // 🚀 chamada da sua edge
+      const r = await fetch(
+        "https://ljpiesdyfhukffwlujfy.supabase.co/functions/v1/gerenciarusuarios",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        },
+      );
+
+      const j = await r.json().catch(() => ({}));
+
+      if (!r.ok) {
+        throw new Error(j.error ?? "Erro ao criar usuário.");
+      }
+
+      setMsg("Usuário cadastrado.");
+      setUsuariosAtuais((prev) => prev + 1);
+      await refreshEntitlements();
       setNome("");
       setCpf("");
       setTel("");
-    }
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    catch (e: any) {
-      setMsg(e?.message ?? "Erro ao cadastrar usuário.");
+    } catch (e: unknown) {
+      if (e instanceof Error) setMsg(e.message);
+      else setMsg("Erro inesperado");
     } finally {
       setBusy(false);
     }
@@ -186,7 +328,14 @@ export default function DashboardExpress() {
 
   async function onBuildPreview() {
     setBulkError(null);
+    const total = paste.split(/\r?\n/).filter(Boolean).length;
     const regs = parsePaste(paste);
+
+    if (regs.length < total) {
+      setBulkError(
+        `${total - regs.length} linhas ignoradas por erro ou duplicidade.`,
+      );
+    }
     if (!regs.length) {
       setBulkError("Nenhuma linha válida. Use: nome;cpf;telefone");
       setBulkPreview([]);
@@ -202,7 +351,15 @@ export default function DashboardExpress() {
     try {
       const regs = parsePaste(paste);
       if (!regs.length) throw new Error("Nenhuma linha válida para importar.");
-
+      if (
+        limiteUsuarios !== null &&
+        usuariosAtuais + regs.length > limiteUsuarios
+      ) {
+        const restante = limiteUsuarios - usuariosAtuais;
+        throw new Error(
+          `Você pode adicionar no máximo ${restante} usuários no seu plano.`,
+        );
+      }
       const token = await getAccessToken();
       if (!token) throw new Error("Sessão expirada. Faça login novamente.");
 
@@ -223,10 +380,10 @@ export default function DashboardExpress() {
       // roda worker 1x imediatamente para dar sensação de velocidade
       await runWorkerOnce(j.job_id);
       await refreshJob(j.job_id);
-    }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    catch (e: any) {
-      setMsg(e?.message ?? "Erro ao importar.");
+      await refreshEntitlements();
+    } catch (e: unknown) {
+      if (e instanceof Error) setMsg(e.message);
+      else setMsg("Erro inesperado");
     } finally {
       setBusy(false);
     }
@@ -238,14 +395,42 @@ export default function DashboardExpress() {
     try {
       await runWorkerOnce(jobId);
       await refreshJob(jobId);
-    }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    catch (e: any) {
-      setMsg(e?.message ?? "Erro ao processar job.");
+    } catch (e: unknown) {
+      if (e instanceof Error) setMsg(e.message);
+      else setMsg("Erro inesperado");
     } finally {
       setBusy(false);
+      await refreshEntitlements();
     }
   }
+
+  async function refreshEntitlements() {
+    try {
+      const token = await getAccessToken();
+
+      const r = await fetch("/api/entitlements", {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        cache: "no-store",
+      });
+
+      const j = await r.json();
+
+      if (r.ok && j) {
+        setLimiteUsuarios(j.limite_usuarios ?? null);
+        setUsuariosAtuais(j.usuarios_ativos ?? 0);
+      }
+    } catch {
+      // silencioso
+    }
+  }
+// auto-polling
+  // useEffect(() => {
+  //   const interval = setInterval(() => {
+  //     refreshEntitlements();
+  //   }, 5000); // 5s
+
+  //   return () => clearInterval(interval);
+  // }, []);
 
   return (
     <div className="space-y-6">
@@ -258,17 +443,18 @@ export default function DashboardExpress() {
             </h1>
             <p className="mt-2 text-sm text-slate-600">
               Cadastre sua equipe rapidamente (2 usuários ou 500+) e libere
-              acesso via OTP no celular.
+              acesso via link / qrCode.
             </p>
           </div>
-          <Image
-            src="/images/alma4d_express_nobground.png"
-            alt="alma4D"
-            width={72}
-            height={72}
-            className="opacity-90"
-            priority
-          />
+          <div className="mt-2 text-md text-slate-600">
+            Usuários cadastrados: <strong>{usuariosAtuais}</strong>
+            {limiteUsuarios !== null && (
+              <>
+                {" "}
+                / <strong>{limiteUsuarios}</strong>
+              </>
+            )}
+          </div>
         </div>
 
         {msg && (
@@ -284,7 +470,7 @@ export default function DashboardExpress() {
           Adicionar usuário (rápido)
         </h2>
         <p className="mt-1 text-sm text-slate-600">
-          Ideal para poucos usuários. O colaborador entra usando OTP no celular.
+          Ideal para poucos usuários.
         </p>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
@@ -296,13 +482,13 @@ export default function DashboardExpress() {
           />
           <input
             value={cpf}
-            onChange={(e) => setCpf(e.target.value)}
+            onChange={(e) => setCpf(onlyDigits(e.target.value))}
             placeholder="CPF (somente números)"
             className="rounded-xl border border-border bg-white px-3 py-2 text-sm"
           />
           <input
             value={tel}
-            onChange={(e) => setTel(e.target.value)}
+            onChange={(e) => setTel(onlyDigits(e.target.value))}
             placeholder="Celular com DDD (ex: 11999999999)"
             className="rounded-xl border border-border bg-white px-3 py-2 text-sm"
           />
@@ -310,7 +496,10 @@ export default function DashboardExpress() {
 
         <div className="mt-4">
           <button
-            disabled={busy}
+            disabled={
+              busy ||
+              (limiteUsuarios !== null && usuariosAtuais >= limiteUsuarios)
+            }
             onClick={onQuickAdd}
             className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand/90 disabled:opacity-60"
           >
