@@ -1,23 +1,213 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
+/**
+ * Normaliza referências de PDF para extrair o caminho correto do Supabase Storage.
+ * Suporta:
+ * 1. URLs assinadas do Supabase (com /sign/)
+ * 2. Caminhos relativos simples (clientes/xxx/contratos/yyy/v1/arquivo.pdf)
+ * 3. Caminhos corrompidos (remove UUIDs no início se não corresponder ao padrão esperado)
+ */
 function normalizePdfReference(value: string | null): string | null {
   if (!value) return null;
 
-  try {
-    const parsed = new URL(value);
-    const pathSegments = parsed.pathname.split("/");
-    const signIndex = pathSegments.findIndex((segment) => segment === "sign");
+  const value_trimmed = value.trim();
 
-    if (signIndex >= 0 && pathSegments.length > signIndex + 2) {
-      const objectPath = pathSegments.slice(signIndex + 2).join("/");
-      return decodeURIComponent(objectPath);
+  // Se for URL completa (começa com http), tentar extrair o caminho
+  if (value_trimmed.startsWith("http")) {
+    try {
+      const parsed = new URL(value_trimmed);
+      const pathSegments = parsed.pathname.split("/");
+
+      // Procura por /sign/ que indica URL assinada Supabase
+      const signIndex = pathSegments.findIndex((segment) => segment === "sign");
+      if (signIndex >= 0 && pathSegments.length > signIndex + 2) {
+        // Remove "storage/v1/sign/contratos/" e extrai o caminho do arquivo
+        const objectPath = pathSegments.slice(signIndex + 2).join("/");
+        return decodeURIComponent(objectPath);
+      }
+
+      // Se não tiver /sign/, tenta extrair de forma genérica
+      // Procura por onde começa "contratos/"
+      const contratoIndex = pathSegments.findIndex((p) => p === "contratos");
+      if (contratoIndex > 0) {
+        return pathSegments.slice(contratoIndex).join("/");
+      }
+
+      return value_trimmed;
+    } catch (e) {
+      console.error("[normalizePdfReference] Erro ao parsear URL:", {
+        value: value_trimmed,
+        error: e instanceof Error ? e.message : String(e),
+      });
+      return value_trimmed;
+    }
+  }
+
+  // Se for caminho relativo e começar com UUID corrompido, tentar recuperar
+  const uuidPattern =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+  if (uuidPattern.test(value_trimmed)) {
+    console.warn("[normalizePdfReference] Caminho com UUID detectado:", {
+      original: value_trimmed,
+      msg: "Caminho pode estar corrompido. Esperado: clientes/{id}/contratos/...",
+    });
+
+    const parts = value_trimmed.split("/");
+    const contratoIndex = parts.findIndex((p) => p === "contratos");
+    if (contratoIndex > 0) {
+      const recovered = [
+        "clientes",
+        parts[0],
+        ...parts.slice(contratoIndex),
+      ].join("/");
+      console.warn("[normalizePdfReference] Caminho recuperado:", {
+        recovered,
+      });
+      return recovered;
+    }
+  }
+
+  // Se for caminho relativo normal, apenas retorna
+  // Formato esperado: clientes/{cliente_id}/contratos/{contrato_id}/v{versao}/arquivo.pdf
+  if (value_trimmed.includes("contratos/")) {
+    return value_trimmed;
+  }
+
+  return value_trimmed;
+}
+
+function buildExpectedPdfPath(contrato: {
+  cliente_id: string;
+  id: string;
+  versao: number;
+}): string {
+  return `clientes/${contrato.cliente_id}/contratos/${contrato.id}/v${contrato.versao}/contrato-gerado.pdf`;
+}
+
+function buildContractPrefix(contrato: {
+  cliente_id: string;
+  id: string;
+}): string {
+  return `clientes/${contrato.cliente_id}/contratos/${contrato.id}`;
+}
+
+async function findGeneratedPdfInContractVersions(
+  supabase: any,
+  bucket: string,
+  contractPrefix: string,
+) {
+  try {
+    const { data: entries, error: listError } = await supabase.storage
+      .from(bucket)
+      .list(contractPrefix, { limit: 100 });
+
+    if (listError || !entries) {
+      return { candidatePath: null as string | null, error: listError ?? null };
     }
 
-    return value;
-  } catch {
-    return value;
+    for (const entry of entries) {
+      if (!entry.name.startsWith("v")) {
+        continue;
+      }
+
+      const candidatePath = `${contractPrefix}/${entry.name}/contrato-gerado.pdf`;
+      const { data: metadata, error: metadataError } = await supabase.storage
+        .from(bucket)
+        .getMetadata(candidatePath);
+
+      if (!metadataError && metadata?.metadata?.size != null) {
+        return { candidatePath, error: null as null };
+      }
+    }
+  } catch (err) {
+    return { candidatePath: null as string | null, error: err as Error };
   }
+
+  return { candidatePath: null as string | null, error: null };
+}
+
+async function createSignedUrlWithFallback(
+  supabase: any,
+  pdfPath: string,
+  expectedPath: string | null,
+  contractPrefix: string | null,
+) {
+  const firstAttempt = await supabase.storage
+    .from("contratos")
+    .createSignedUrl(pdfPath, 3600);
+
+  if (!firstAttempt.error) {
+    return { path: pdfPath, data: firstAttempt.data, error: null as null };
+  }
+
+  if (
+    expectedPath &&
+    expectedPath !== pdfPath &&
+    (firstAttempt.error.status === 404 ||
+      firstAttempt.error.message?.toLowerCase().includes("not found"))
+  ) {
+    console.warn("[PDF-URL] Fallback para caminho esperado:", {
+      originalPath: pdfPath,
+      expectedPath,
+    });
+    const fallbackAttempt = await supabase.storage
+      .from("contratos")
+      .createSignedUrl(expectedPath, 3600);
+
+    if (!fallbackAttempt.error) {
+      return {
+        path: expectedPath,
+        data: fallbackAttempt.data,
+        error: null as null,
+        fallback: true,
+      };
+    }
+
+    if (contractPrefix) {
+      console.warn("[PDF-URL] Tentando buscar PDF em versões existentes:", {
+        contractPrefix,
+      });
+      const { candidatePath, error: searchError } =
+        await findGeneratedPdfInContractVersions(
+          supabase,
+          "contratos",
+          contractPrefix,
+        );
+
+      if (candidatePath) {
+        const candidateAttempt = await supabase.storage
+          .from("contratos")
+          .createSignedUrl(candidatePath, 3600);
+
+        return {
+          path: candidatePath,
+          data: candidateAttempt.data,
+          error: candidateAttempt.error,
+          fallback: true,
+          candidatePath,
+          searchError: searchError?.message ?? null,
+        };
+      }
+
+      return {
+        path: expectedPath,
+        data: null,
+        error: fallbackAttempt.error,
+        fallback: true,
+        searchError: searchError?.message ?? null,
+      };
+    }
+
+    return {
+      path: expectedPath,
+      data: null,
+      error: fallbackAttempt.error,
+      fallback: true,
+    };
+  }
+
+  return { path: pdfPath, data: null, error: firstAttempt.error };
 }
 
 export async function GET(req: Request) {
@@ -34,13 +224,15 @@ export async function GET(req: Request) {
 
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
     );
 
     // Buscar contrato com todos os campos relevantes
     const { data: contrato, error } = await supabase
       .from("contratos")
-      .select("id, numero_contrato, pdf_url, pdf_assinado_url, status")
+      .select(
+        "id, cliente_id, versao, numero_contrato, pdf_url, pdf_assinado_url, status",
+      )
       .eq("id", contratoId)
       .single();
 
@@ -61,6 +253,12 @@ export async function GET(req: Request) {
     // Verificar qual campo tem o PDF
     const rawPdfPath = contrato.pdf_assinado_url || contrato.pdf_url || null;
     const pdfPath = normalizePdfReference(rawPdfPath);
+    const expectedPdfPath = contrato.cliente_id
+      ? buildExpectedPdfPath(contrato)
+      : null;
+    const contractPrefix = contrato.cliente_id
+      ? buildContractPrefix(contrato)
+      : null;
 
     console.log("[PDF-URL] Debug info:", {
       contratoId,
@@ -68,9 +266,11 @@ export async function GET(req: Request) {
       status: contrato.status,
       has_pdf_assinado: !!contrato.pdf_assinado_url,
       has_pdf_url: !!contrato.pdf_url,
-      rawPdfPath,
-      pdfPath,
-      will_use: pdfPath ? "✓" : "✗",
+      rawPdfPath: rawPdfPath?.substring(0, 80),
+      normalizedPath: pdfPath?.substring(0, 80),
+      expectedPdfPath: expectedPdfPath?.substring(0, 80),
+      contractPrefix,
+      will_process: pdfPath ? "✓" : "✗",
     });
 
     if (!pdfPath) {
@@ -90,22 +290,64 @@ export async function GET(req: Request) {
 
     // Tentar gerar signed URL
     try {
-      const { data, error: urlError } = await supabase.storage
-        .from("contratos")
-        .createSignedUrl(pdfPath, 3600); // 1 hora em vez de 60 segundos
+      console.log("[PDF-URL] Gerando signed URL para:", {
+        pdfPath: pdfPath.substring(0, 80),
+        expectedPdfPath: expectedPdfPath?.substring(0, 80),
+        bucketName: "contratos",
+      });
+
+      const signedUrlResult = await createSignedUrlWithFallback(
+        supabase,
+        pdfPath,
+        expectedPdfPath,
+        contractPrefix,
+      );
+
+      const {
+        data,
+        error: urlError,
+        path: finalPath,
+        fallback,
+        candidatePath,
+        searchError,
+      } = signedUrlResult;
 
       if (urlError) {
         console.error("[PDF-URL] createSignedUrl error:", {
-          pdfPath,
-          error: urlError.message,
-          status: urlError.status,
+          pdfPath: pdfPath.substring(0, 80),
+          finalPath: finalPath.substring(0, 80),
+          fallback,
+          errorMessage: urlError.message,
+          errorStatus: urlError.status,
         });
+
+        if (
+          urlError.status === 404 ||
+          urlError.message?.includes("not found")
+        ) {
+          return NextResponse.json(
+            {
+              error: "Arquivo PDF não encontrado no armazenamento",
+              debug: {
+                pdfPath,
+                finalPath,
+                expectedPdfPath,
+                candidatePath,
+                searchError,
+                msg: "O arquivo foi deletado ou o caminho está inválido",
+              },
+            },
+            { status: 404 },
+          );
+        }
 
         return NextResponse.json(
           {
             error: "Erro ao gerar URL assinada do PDF",
             debug: {
               pdfPath,
+              finalPath,
+              expectedPdfPath,
               storageError: urlError.message,
             },
           },
@@ -114,20 +356,28 @@ export async function GET(req: Request) {
       }
 
       if (!data?.signedUrl) {
-        console.error("[PDF-URL] signedUrl vazia:", { pdfPath, data });
+        console.error("[PDF-URL] signedUrl vazia:", {
+          pdfPath,
+          finalPath,
+          data,
+        });
         return NextResponse.json(
           {
             error: "URL assinada não foi gerada corretamente",
-            debug: { pdfPath },
+            debug: { pdfPath, finalPath, expectedPdfPath },
           },
           { status: 500 },
         );
       }
 
-      console.log("[PDF-URL] Success:", {
+      console.log("[PDF-URL] ✓ Success:", {
         contratoId,
-        pdfPath: pdfPath.substring(0, 50) + "...",
+        numero_contrato: contrato.numero_contrato,
+        pdfPath: finalPath.substring(0, 50) + "...",
+        signedUrlLength: data.signedUrl.length,
+        fallback,
       });
+
       return NextResponse.json({
         url: data.signedUrl,
       });
@@ -136,6 +386,7 @@ export async function GET(req: Request) {
         error:
           storageErr instanceof Error ? storageErr.message : String(storageErr),
         pdfPath,
+        stack: storageErr instanceof Error ? storageErr.stack : undefined,
       });
 
       return NextResponse.json(

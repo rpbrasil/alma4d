@@ -24,7 +24,7 @@ const EXPRESS_NAV = [
   },
   {
     href: "/dashboard/express/copsoq",
-    label: "Relatório COPSOQ",
+    label: "Mapeamento de Riscos",
     icon: ClipboardList,
   },
   {

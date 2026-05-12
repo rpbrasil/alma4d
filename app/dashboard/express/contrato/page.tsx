@@ -93,6 +93,7 @@ export default function DashboardExpressContratoPage() {
         const { data } = await supabase.auth.getSession();
         if (!data.session?.user?.id) {
           setError("Usuário não autenticado.");
+          setLoading(false);
           return;
         }
 
@@ -104,6 +105,7 @@ export default function DashboardExpressContratoPage() {
 
         if (userError || !usuario?.cliente_id) {
           setError("Cliente não associado.");
+          setLoading(false);
           return;
         }
 

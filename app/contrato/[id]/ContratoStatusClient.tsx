@@ -227,10 +227,10 @@ export default function ContratoStatusClient({
     },
     {
       id: "pdf",
-      title: "Baixar contrato (PDF)",
+      title: "Abrir contrato (PDF)",
       done: Boolean(hasPdf),
-      cta: hasPdf ? "Baixar PDF" : "Aguardando PDF",
-      onClick: hasPdf ? () => void downloadPdf() : undefined,
+      cta: hasPdf ? "Abrir PDF" : "Aguardando PDF",
+      onClick: hasPdf ? () => void openPdf() : undefined,
     },
     {
       id: "app",
@@ -262,46 +262,21 @@ export default function ContratoStatusClient({
 
       if (!r.ok || !j?.url) {
         const debugMsg = j?.debug ? JSON.stringify(j.debug) : "";
-        throw new Error(
-          j?.error || `Erro ao abrir PDF. Status: ${r.status}. ${debugMsg}`,
-        );
+        const errorMsg = j?.error || `Erro ao abrir PDF. Status: ${r.status}`;
+        console.error("[ContratoStatusClient] Erro ao abrir PDF:", {
+          contratoId,
+          status: r.status,
+          error: j?.error,
+          debug: j?.debug,
+        });
+        throw new Error(`${errorMsg}. ${debugMsg}`);
       }
 
       window.open(j.url, "_blank", "noopener,noreferrer");
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Erro ao abrir PDF.");
-    }
-  };
-
-  const downloadPdf = async () => {
-    try {
-      const r = await fetch(
-        `/api/contrato/pdf-url?contratoId=${encodeURIComponent(contratoId)}`,
-        {
-          cache: "no-store",
-        },
-      );
-      const j = (await r.json().catch(() => null)) as {
-        url?: string;
-        error?: string;
-        debug?: Record<string, unknown>;
-      } | null;
-
-      if (!r.ok || !j?.url) {
-        const debugMsg = j?.debug ? JSON.stringify(j.debug) : "";
-        throw new Error(
-          j?.error || `Erro ao baixar PDF. Status: ${r.status}. ${debugMsg}`,
-        );
-      }
-
-      const a = document.createElement("a");
-      a.href = j.url;
-      a.download = `contrato-${contratoId}.pdf`; // nome sugerido
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "Erro ao baixar PDF.");
+      const msg = e instanceof Error ? e.message : "Erro ao abrir PDF.";
+      console.error("[ContratoStatusClient] Exception ao abrir PDF:", e);
+      setErr(msg);
     }
   };
 
@@ -413,14 +388,6 @@ export default function ContratoStatusClient({
                   >
                     Abrir contrato (PDF)
                   </button>
-
-                  <button
-                    type="button"
-                    onClick={() => void downloadPdf()}
-                    className="inline-flex items-center justify-center rounded-xl border border-border bg-white px-4 py-2 font-semibold text-slate-700 hover:bg-surface-muted"
-                  >
-                    Baixar PDF
-                  </button>
                 </>
               ) : (
                 <button
@@ -486,7 +453,33 @@ export default function ContratoStatusClient({
 
             {err && (
               <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                {err}
+                <p className="font-semibold">Erro:</p>
+                <p className="mt-1">{err}</p>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      const r = await fetch(
+                        `/api/contrato/diagnostico?contratoId=${encodeURIComponent(contratoId)}`,
+                        { cache: "no-store" },
+                      );
+                      const diagnostico = await r.json();
+                      console.log(
+                        "[ContratoStatusClient] Diagnóstico:",
+                        diagnostico,
+                      );
+                      alert(
+                        `Diagnóstico:\n\n${JSON.stringify(diagnostico, null, 2)}\n\nVer console para mais detalhes.`,
+                      );
+                    } catch (e) {
+                      console.error("Erro ao executar diagnóstico:", e);
+                      alert("Erro ao executar diagnóstico");
+                    }
+                  }}
+                  className="mt-3 inline-flex items-center justify-center rounded-lg bg-red-100 px-2 py-1 text-xs font-semibold text-red-700 hover:bg-red-200"
+                >
+                  🔍 Diagnosticar
+                </button>
               </div>
             )}
 

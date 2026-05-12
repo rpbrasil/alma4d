@@ -4,7 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 export async function POST(req: Request) {
   try {
     const { cnpj } = await req.json();
-    const digits = cnpj?.replace(/\D/g, "");    
+    const digits = cnpj?.replace(/\D/g, "");
     if (!digits || digits.length !== 14) {
       return NextResponse.json({ error: "CNPJ inválido" }, { status: 400 });
     }
@@ -42,7 +42,7 @@ export async function POST(req: Request) {
     // ✅ salvar snapshot
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
     );
 
     await supabase.from("cnpj_consultas").insert({

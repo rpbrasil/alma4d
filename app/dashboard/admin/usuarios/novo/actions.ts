@@ -40,7 +40,7 @@ function friendlyDbError(err: unknown) {
 
 function createAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const serviceKey = process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY!;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
   if (!url || !serviceKey)
     throw new Error("Env ausente: SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY.");
   return createClient(url, serviceKey, {
