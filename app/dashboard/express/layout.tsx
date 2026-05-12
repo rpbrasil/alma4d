@@ -8,9 +8,9 @@ const SidebarExpress = dynamic(() => import("./ExpressSidebar"), {
   ssr: false,
 });
 
-const ExpressHeader = dynamic(() => import("./ExpressHeader"), {
-  ssr: false,
-});
+// const ExpressHeader = dynamic(() => import("./ExpressHeader"), {
+//   ssr: false,
+// });
 
 export default function DashboardExpressLayout({
   children,
@@ -28,9 +28,9 @@ export default function DashboardExpressLayout({
         />
 
         <div className="flex-1 flex flex-col md:ml-64">
-          <ExpressHeader onMenuOpen={() => setSidebarOpen(true)} />
+          {/* <ExpressHeader onMenuOpen={() => setSidebarOpen(true)} /> */}
 
-          <main className="flex-1 p-4 sm:p-6 overflow-y-auto">
+          <main className="flex-1 p-4 sm:p-6">
             <div className="max-w-7xl mx-auto">{children}</div>
           </main>
         </div>

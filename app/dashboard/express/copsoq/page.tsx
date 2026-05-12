@@ -92,6 +92,9 @@ export default function DashboardExpressCopsoqPage() {
   const [creating, setCreating] = useState(false);
   const [linkInfo, setLinkInfo] = useState<LinkInfo | null>(null);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [phase, setPhase] = useState<
+    "init" | "session" | "usuario" | "cliente" | "contratos" | "done"
+  >("init");
 
   const [toast, setToast] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -109,18 +112,48 @@ export default function DashboardExpressCopsoqPage() {
 
   // 1) carregar contratos elegíveis (somente o necessário)
   useEffect(() => {
+    let cancelled = false;
+
+    // Se algo travar, a página sai do loading e mostra erro útil
+    const watchdog = window.setTimeout(() => {
+      if (!cancelled) {
+        setError(
+          `Tempo excedido ao carregar (etapa: ${phase}). Verifique conexão com Supabase.`,
+        );
+        setLoading(false);
+      }
+    }, 8000);
+
+    type GetSessionResult = Awaited<
+      ReturnType<typeof supabase.auth.getSession>
+    >;
+
+    async function getSessionSafe(): Promise<GetSessionResult> {
+      return await Promise.race<GetSessionResult>([
+        supabase.auth.getSession(),
+        new Promise<GetSessionResult>((_, reject) => {
+          window.setTimeout(() => reject(new Error("timeout session")), 3000);
+        }),
+      ]);
+    }
+
     (async () => {
       try {
         setLoading(true);
         setError(null);
 
-        const { data: sessionData } = await supabase.auth.getSession();
+        setPhase("session");
+        const { data: sessionData, error: sessionErr } =
+          await getSessionSafe();
+        if (sessionErr) throw sessionErr;
+
         const userId = sessionData.session?.user?.id;
         if (!userId) {
           setError("Usuário não autenticado.");
           return;
         }
 
+        setPhase("usuario");
         const { data: usuario, error: userError } = await supabase
           .from("usuarios")
           .select("cliente_id")
@@ -132,9 +165,10 @@ export default function DashboardExpressCopsoqPage() {
           return;
         }
 
+        setPhase("cliente");
         const { data: cliente, error: clienteError } = await supabase
           .from("clientes")
-          .select("ativo, nome")
+          .select("ativo, nome") // <-- se você já adicionou nome
           .eq("id", usuario.cliente_id)
           .single();
 
@@ -143,13 +177,15 @@ export default function DashboardExpressCopsoqPage() {
           return;
         }
 
-        setClienteNome(cliente?.nome || null);
+        // se estiver usando clienteNome, set aqui
+        setClienteNome(cliente?.nome ?? null);
 
         if (cliente?.ativo === false) {
           setError("Cliente inativo. Acesso bloqueado.");
           return;
         }
 
+        setPhase("contratos");
         const { data: contratosData, error: contratosError } = await supabase
           .from("contratos")
           .select("id,numero_contrato,status,limite_usuarios")
@@ -166,15 +202,23 @@ export default function DashboardExpressCopsoqPage() {
         );
 
         setContratos(elegiveis);
-        if (!contratoId && elegiveis.length === 1) {
+        if (!contratoId && elegiveis.length === 1)
           setContratoId(elegiveis[0].id);
-        }
+
+        setPhase("done");
       } catch (err) {
         setError(err instanceof Error ? err.message : "Erro ao carregar.");
       } finally {
-        setLoading(false);
+        window.clearTimeout(watchdog);
+        if (!cancelled) setLoading(false);
       }
     })();
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(watchdog);
+    };
+    // ⚠️ phase fica fora do deps para não resetar o watchdog; supabase já é estável pelo useMemo
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supabase]);
 
@@ -216,10 +260,10 @@ export default function DashboardExpressCopsoqPage() {
       ? Math.max(0, Number(limite) - Number(respondidos))
       : null;
 
-  async function criarOuAtualizarLink() {
+  async function gerarLink() {
     if (!contratoId) {
       setToast("Selecione um contrato para gerar o link.");
-      window.setTimeout(() => setToast(null), 2200);
+      setTimeout(() => setToast(null), 2000);
       return;
     }
 
@@ -258,16 +302,69 @@ export default function DashboardExpressCopsoqPage() {
       });
 
       setToast(
-        `Atualizado • Respondidos: ${data.usadas} / ${data.maxRespostas}`,
+        `Link gerado • Respondidos: ${data.usadas} / ${data.maxRespostas}`,
       );
-      window.setTimeout(() => setToast(null), 2500);
-
-      // UX: leva o usuário para a área do QR (sem mudar a ordem da página)
-      window.setTimeout(() => {
-        qrRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-      }, 200);
+      setTimeout(() => setToast(null), 2500);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Falha ao gerar link.");
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  async function atualizarContagem() {
+    // Só permite atualizar depois de gerar
+    if (!contratoId || !linkInfo?.linkId) return;
+
+    try {
+      setCreating(true);
+      setError(null);
+
+      // chama o mesmo endpoint, mas NÃO altera o link local
+      const response = await fetch("/api/copsoq/create-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+        body: JSON.stringify({ contratoId }),
+      });
+
+      const data = (await response
+        .json()
+        .catch(() => ({}))) as CreateLinkResponse;
+
+      if (!response.ok || !("ok" in data) || data.ok !== true) {
+        const msg =
+          "error" in data
+            ? data.error
+            : `Erro ao atualizar (${response.status})`;
+        throw new Error(msg);
+      }
+
+      // mantém url / linkId do estado atual (não muda campanha nem link)
+      setLinkInfo((prev) =>
+        prev
+          ? {
+              ...prev,
+              maxRespostas: Number(data.maxRespostas ?? prev.maxRespostas ?? 0),
+              usadas: Number(data.usadas ?? prev.usadas ?? 0),
+            }
+          : {
+              contratoId: data.contratoId,
+              linkId: data.linkId,
+              url: data.url,
+              maxRespostas: Number(data.maxRespostas ?? 0),
+              usadas: Number(data.usadas ?? 0),
+            },
+      );
+
+      setToast(
+        `Atualizado • Respondidos: ${data.usadas} / ${data.maxRespostas}`,
+      );
+      setTimeout(() => setToast(null), 2200);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Falha ao atualizar contagem.",
+      );
     } finally {
       setCreating(false);
     }
@@ -319,7 +416,23 @@ export default function DashboardExpressCopsoqPage() {
       <section className="rounded-3xl border border-border bg-white p-8 shadow-sm">
         <div className="flex items-center gap-3">
           <div className="h-4 w-4 animate-spin rounded-full border-2 border-brand border-t-transparent" />
-          <p className="text-slate-600">Carregando dados...</p>
+          {/* <p className="text-slate-600">Carregando dados...</p> */}
+          <p className="text-slate-600">
+            Carregando dados…{" "}
+            <span className="text-xs text-slate-500">
+              (
+              {phase === "session"
+                ? "sessão"
+                : phase === "usuario"
+                  ? "usuário"
+                  : phase === "cliente"
+                    ? "cliente"
+                    : phase === "contratos"
+                      ? "contratos"
+                      : "iniciando"}
+              )
+            </span>
+          </p>
         </div>
       </section>
     );
@@ -398,14 +511,13 @@ export default function DashboardExpressCopsoqPage() {
               Respostas do Questionário
             </h1>
             <p className="mt-1 text-slate-600">
-              Acompanhe o limite e o total respondido, e gere o link/QR para
+              Acompanhe o limite e o total respondido. Gere o link/QR para
               divulgação.
             </p>
           </div>
           <QrCode className="h-12 w-12 text-brand/20" />
         </div>
-
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="mt-4 min-h-4">
           {toast ? (
             <span className="inline-flex items-center rounded-lg bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700">
               {toast}
@@ -414,7 +526,6 @@ export default function DashboardExpressCopsoqPage() {
             <span className="text-xs text-slate-500"> </span>
           )}
         </div>
-
         <div className="mt-6 grid gap-3 md:grid-cols-3">
           <div className="rounded-2xl border border-border bg-slate-50 p-4">
             <div className="flex items-center gap-2 text-slate-700">
@@ -424,7 +535,9 @@ export default function DashboardExpressCopsoqPage() {
             <p className="mt-2 text-2xl font-semibold text-slate-900">
               {limite ?? "—"}
             </p>
-            <p className="mt-1 text-xs text-slate-500">Total de respostas</p>
+            <p className="mt-1 text-xs text-slate-500">
+              Total de respostas permitidas
+            </p>
           </div>
 
           <div className="rounded-2xl border border-border bg-slate-50 p-4">
@@ -451,18 +564,36 @@ export default function DashboardExpressCopsoqPage() {
             <p className="mt-1 text-xs text-slate-500">limite − respondidos</p>
           </div>
         </div>
+        {/* BOTÃO ATUALIZAR (REFRESH DOS NÚMEROS) */}
+        <div className="mt-4 flex justify-end">
+          <button
+            type="button"
+            onClick={atualizarContagem}
+            disabled={creating || !contratoId || !linkInfo?.linkId}
+            className="inline-flex items-center gap-2 rounded-lg border border-border bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-surface-muted transition disabled:opacity-60"
+            title={
+              !linkInfo?.linkId
+                ? "Gere o link primeiro."
+                : "Atualiza os números de respostas."
+            }
+          >
+            <RefreshCw size={16} />
+            Atualizar respostas
+          </button>
+        </div>
       </section>
 
       {/* 2) GERAÇÃO DO LINK (ANTES DO QR) */}
       <section className="rounded-3xl border border-border bg-white p-8 shadow-sm no-print">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="text-lg font-semibold text-slate-900">
-              Gerar / atualizar link
+              Gerar link da campanha
             </h2>
             <p className="mt-1 text-sm text-slate-600">
-              Selecione o contrato e gere o link para compartilhar. (O QR e o
-              link aparecem abaixo.)
+              Clique em <strong>Gerar</strong> para habilitar o QR Code e as
+              opções de compartilhamento. Clique em <strong>Atualizar</strong>{" "}
+              para atualizar apenas os números.
             </p>
           </div>
         </div>
@@ -476,7 +607,9 @@ export default function DashboardExpressCopsoqPage() {
               value={contratoId}
               onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
                 setContratoId(e.target.value);
+                // importante: trocar contrato “zera” o link gerado
                 setLinkInfo(null);
+                setQrDataUrl(null);
               }}
               className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-brand/30"
             >
@@ -509,26 +642,28 @@ export default function DashboardExpressCopsoqPage() {
               className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-brand/30"
             />
             <p className="text-xs text-slate-500">
-              Se preenchido, entra como ?c=... no link.
+              Se preenchido, entra como{" "}
+              <span className="font-mono">?c=...</span> no link.
             </p>
           </div>
         </div>
 
+        {/* botões (sem div duplicado) */}
         <div className="mt-6 flex flex-wrap items-center gap-2">
+          {/* 1) GERAR */}
           <button
             type="button"
-            onClick={criarOuAtualizarLink}
+            onClick={gerarLink}
             disabled={creating || !contratoId}
             className="inline-flex items-center gap-2 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand/90 transition disabled:opacity-60"
           >
             <RefreshCw size={16} />
-            {creating ? "Gerando..." : "Gerar / Atualizar"}
+            {creating ? "Processando..." : "Gerar"}
           </button>
-
           {linkInfo?.url ? (
             <span className="inline-flex items-center gap-2 rounded-lg bg-green-50 px-3 py-2 text-sm font-semibold text-green-700">
               <CheckCircle2 className="h-4 w-4" />
-              Link ativo pronto para compartilhar
+              Link gerado
             </span>
           ) : (
             <span className="text-xs text-slate-500"> </span>
@@ -549,119 +684,125 @@ export default function DashboardExpressCopsoqPage() {
             Escaneie para abrir o questionário no celular (login necessário).
           </p>
 
-          {/* QR menor para melhor visualização */}
-          <div className="mt-6 flex justify-center">
-            <div className="rounded-2xl border border-border bg-white p-4">
-              {qrDataUrl ? (
-                <Image
-                  src={qrDataUrl}
-                  alt="QR Code COPSOQ"
-                  width={180}
-                  height={180}
-                  unoptimized
-                  className="h-45 w-45"
-                />
-              ) : (
-                <div className="h-45 w-45 rounded-xl bg-slate-100" />
-              )}
-              <p className="mt-3 text-xs text-slate-500">
-                Use o celular para escanear.
+          {/* Só mostra QR + ações depois de GERAR */}
+          {!linkInfo?.url ? (
+            <div className="mt-6 rounded-2xl border border-border bg-slate-50 p-6 text-sm text-slate-700">
+              <p className="font-semibold">Ainda não há link gerado.</p>
+              <p className="mt-1 text-slate-600">
+                Use o botão <strong>Gerar</strong> acima para habilitar o QR
+                Code e as opções de compartilhamento.
               </p>
             </div>
-          </div>
-
-          {/* Link abaixo do QR */}
-          <div className="mt-6 rounded-2xl border border-border bg-white p-5 text-left">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-xs font-semibold text-slate-700">Link</p>
-                <p className="mt-1 break-all text-sm text-slate-800">
-                  {linkInfo?.url
-                    ? linkInfo.url
-                    : "Gere/atualize o link acima para exibir aqui."}
-                </p>
+          ) : (
+            <>
+              {/* QR menor */}
+              <div className="mt-6 flex justify-center">
+                <div className="rounded-2xl border border-border bg-white p-4">
+                  {qrDataUrl ? (
+                    <Image
+                      src={qrDataUrl}
+                      alt="QR Code COPSOQ"
+                      width={180}
+                      height={180}
+                      unoptimized
+                      className="h-45 w-45"
+                    />
+                  ) : (
+                    <div className="h-45 w-45 rounded-xl bg-slate-100" />
+                  )}
+                  <p className="mt-3 text-xs text-slate-500">
+                    Use o celular para escanear.
+                  </p>
+                </div>
               </div>
-              <LinkIcon className="h-5 w-5 text-slate-400 shrink-0 mt-0.5" />
-            </div>
 
-            <div className="mt-4 flex flex-wrap gap-2 no-print">
-              <button
-                type="button"
-                onClick={copiar}
-                disabled={!linkInfo?.url}
-                className="inline-flex items-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-surface-muted transition disabled:opacity-60"
-              >
-                {copied ? <CheckCircle2 size={16} /> : <Copy size={16} />}
-                {copied ? "Copiado" : "Copiar"}
-              </button>
+              {/* Link abaixo */}
+              <div className="mt-6 rounded-2xl border border-border bg-white p-5 text-left">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold text-slate-700">Link</p>
+                    <p className="mt-1 break-all text-sm text-slate-800">
+                      {linkInfo.url}
+                    </p>
+                  </div>
+                  <LinkIcon className="h-5 w-5 text-slate-400 shrink-0 mt-0.5" />
+                </div>
 
-              <button
-                type="button"
-                onClick={compartilhar}
-                disabled={!linkInfo?.url}
-                className="inline-flex items-center gap-2 rounded-lg bg-brand px-3 py-2 text-sm font-semibold text-white hover:bg-brand/90 transition disabled:opacity-60"
-              >
-                <Share2 size={16} />
-                Compartilhar
-              </button>
+                <div className="mt-4 flex flex-wrap gap-2 no-print">
+                  <button
+                    type="button"
+                    onClick={copiar}
+                    className="inline-flex items-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-surface-muted transition"
+                  >
+                    {copied ? <CheckCircle2 size={16} /> : <Copy size={16} />}
+                    {copied ? "Copiado" : "Copiar"}
+                  </button>
 
-              <a
-                href={linkInfo?.url ? waLink(linkInfo.url) : "#"}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`inline-flex items-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-surface-muted transition ${
-                  linkInfo?.url ? "" : "pointer-events-none opacity-60"
-                }`}
-              >
-                <ExternalLink size={16} />
-                WhatsApp
-              </a>
+                  <button
+                    type="button"
+                    onClick={compartilhar}
+                    className="inline-flex items-center gap-2 rounded-lg bg-brand px-3 py-2 text-sm font-semibold text-white hover:bg-brand/90 transition"
+                  >
+                    <Share2 size={16} />
+                    Compartilhar
+                  </button>
 
-              <a
-                href={linkInfo?.url ? mailtoLink(linkInfo.url) : "#"}
-                className={`inline-flex items-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-surface-muted transition ${
-                  linkInfo?.url ? "" : "pointer-events-none opacity-60"
-                }`}
-              >
-                <Mail size={16} />
-                E-mail
-              </a>
+                  <a
+                    href={waLink(linkInfo.url)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-surface-muted transition"
+                  >
+                    <ExternalLink size={16} />
+                    WhatsApp
+                  </a>
 
-              <a
-                href={linkInfo?.url ?? "#"}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`inline-flex items-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-surface-muted transition ${
-                  linkInfo?.url ? "" : "pointer-events-none opacity-60"
-                }`}
-              >
-                <ExternalLink size={16} />
-                Abrir
-              </a>
+                  <a
+                    href={mailtoLink(linkInfo.url)}
+                    className="inline-flex items-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-surface-muted transition"
+                  >
+                    <Mail size={16} />
+                    E-mail
+                  </a>
 
-              <button
-                type="button"
-                onClick={imprimir}
-                disabled={!qrDataUrl}
-                className="inline-flex items-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-surface-muted transition disabled:opacity-60"
-              >
-                <Printer size={16} />
-                Imprimir campanha
-              </button>
-            </div>
-          </div>
+                  <a
+                    href={linkInfo.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-surface-muted transition"
+                  >
+                    <ExternalLink size={16} />
+                    Abrir
+                  </a>
+
+                  <button
+                    type="button"
+                    onClick={imprimir}
+                    disabled={!qrDataUrl}
+                    className="inline-flex items-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-surface-muted transition disabled:opacity-60"
+                  >
+                    <Printer size={16} />
+                    Imprimir campanha
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
-        {/* 5) Impressão tipo “campanha” (mural) */}
+        {/* 5) Impressão tipo campanha (mural) */}
         <div className="print-campaign" style={{ display: "none" }}>
           <div className="p-10">
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-3xl font-semibold">
-                  {clienteNome ?? "QUESTIONÁRIO COPSOQ"}
+                  {clienteNome
+                    ? `${clienteNome} — QUESTIONÁRIO COPSOQ`
+                    : "QUESTIONÁRIO COPSOQ"}
                 </h1>
                 <p className="mt-2 text-base text-slate-700">
-                  Mapeamento de fatores de riscos psicossociais relacionados ao trabalho (NR‑1 / GRO / PGR).
+                  Mapeamento de fatores de riscos psicossociais relacionados ao
+                  trabalho (NR‑1 / GRO / PGR).
                 </p>
               </div>
               <QrCode className="h-12 w-12 text-slate-300" />

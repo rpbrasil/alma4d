@@ -9,7 +9,7 @@ import { FileText, ClipboardList, QrCode, Home, X } from "lucide-react";
 const EXPRESS_NAV = [
   {
     href: "/dashboard/express",
-    label: "Visão geral",
+    label: "Inclusão de usuários",
     icon: Home,
   },
   {
@@ -28,7 +28,7 @@ const EXPRESS_NAV = [
     icon: QrCode,
   },
   {
-    href: "/dashboard/express/login",
+    href: "/dashboard/express/relatorio-copsoq",
     label: "Relatório NR-1 | Psicossocial",
     icon: ClipboardList,
   },
