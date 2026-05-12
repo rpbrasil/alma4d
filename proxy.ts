@@ -1,10 +1,11 @@
+// proxy.ts
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const res = NextResponse.next();
-  const { pathname } = req.nextUrl;
+  const { pathname, search } = req.nextUrl;
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -12,8 +13,9 @@ export async function middleware(req: NextRequest) {
     {
       cookies: {
         getAll: () => req.cookies.getAll(),
-        setAll: (cookies) =>
-          cookies.forEach((c) => res.cookies.set(c.name, c.value, c.options)),
+        setAll: (cookies) => {
+          cookies.forEach((c) => res.cookies.set(c.name, c.value, c.options));
+        },
       },
     },
   );
@@ -22,17 +24,15 @@ export async function middleware(req: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  /* =====================================================
-     🔒 BLOQUEIO DE ROTAS PROTEGIDAS
-  ===================================================== */
+  const needsAuth =
+    pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/express/copsoq") ||
+    pathname.startsWith("/api/copsoq");
 
-  if (!user && pathname.startsWith("/dashboard")) {
-    return NextResponse.redirect(new URL("/login", req.url));
+  if (!user && needsAuth) {
+    const redirectTo = `/login?redirect=${encodeURIComponent(pathname + search)}`;
+    return NextResponse.redirect(new URL(redirectTo, req.url));
   }
-
-  /* =====================================================
-     🔒 USUÁRIO INATIVO (checagem real no banco)
-  ===================================================== */
 
   if (user) {
     const { data: profile } = await supabase
@@ -43,11 +43,8 @@ export async function middleware(req: NextRequest) {
 
     if (profile?.ativo === false) {
       const redirect = NextResponse.redirect(new URL("/login", req.url));
-
-      // limpa sessão manualmente
       redirect.cookies.delete("sb-access-token");
       redirect.cookies.delete("sb-refresh-token");
-
       return redirect;
     }
   }
@@ -56,5 +53,9 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*"],
+  matcher: [
+    "/dashboard/:path*",
+    "/express/copsoq/:path*",
+    "/api/copsoq/:path*",
+  ],
 };

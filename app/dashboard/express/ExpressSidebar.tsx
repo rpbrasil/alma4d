@@ -24,13 +24,13 @@ const EXPRESS_NAV = [
   },
   {
     href: "/dashboard/express/copsoq",
-    label: "Mapeamento de Riscos",
-    icon: ClipboardList,
+    label: "Acesso de usuários",
+    icon: QrCode,
   },
   {
     href: "/dashboard/express/login",
-    label: "Acesso de usuários",
-    icon: QrCode,
+    label: "Relatório NR-1 | Psicossocial",
+    icon: ClipboardList,
   },
 ];
 
