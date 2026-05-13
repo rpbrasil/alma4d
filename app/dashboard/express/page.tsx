@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
-import { createClient } from "@supabase/supabase-js";
+import { supabaseBrowser as supabase } from "@/lib/supabase/browser";
 
 type JobStatus = {
   id: string;
@@ -15,11 +15,18 @@ type JobStatus = {
   updated_at?: string;
 };
 
+type Departamento = {
+  id: string;
+  nome: string;
+  ativo: boolean;
+};
+
 type CsvRegistro = {
   nome_completo: string;
   documento: string;
   telefone: string;
   role: "usuario";
+  departamento_id?: string | null; // NOVO
 };
 
 type BulkLineError = {
@@ -27,11 +34,6 @@ type BulkLineError = {
   error: string | null;
   payload: Record<string, unknown>;
 };
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-);
 
 function onlyDigits(v: string) {
   return (v ?? "").replace(/\D/g, "");
@@ -128,6 +130,35 @@ async function getAccessToken() {
   return data.session?.access_token ?? null;
 }
 
+async function loadDepartamentos(): Promise<Departamento[]> {
+  const clienteId = await getClienteIdFromSession();
+  if (!clienteId) return [];
+
+  const { data, error } = await supabase
+    .from("departamentos")
+    .select("id,nome,ativo")
+    .eq("cliente_id", clienteId)
+    .eq("ativo", true)
+    .order("nome", { ascending: true });
+
+  if (error) return [];
+  return (data ?? []) as Departamento[];
+}
+
+async function getClienteIdFromSession(): Promise<string | null> {
+  const { data } = await supabase.auth.getSession();
+  const userId = data.session?.user?.id;
+  if (!userId) return null;
+
+  const { data: usuario } = await supabase
+    .from("usuarios")
+    .select("cliente_id")
+    .eq("id", userId)
+    .single();
+
+  return usuario?.cliente_id ?? null;
+}
+
 export default function DashboardExpress() {
   // cadastro rápido
   const [nome, setNome] = useState("");
@@ -142,6 +173,24 @@ export default function DashboardExpress() {
   const [bulkPreview, setBulkPreview] = useState<CsvRegistro[]>([]);
   const [bulkError, setBulkError] = useState<string | null>(null);
 
+  //departamento
+  // departamentos (opcional)
+  const [deptEnabled, setDeptEnabled] = useState(false);
+  const [departamentos, setDepartamentos] = useState<Departamento[]>([]);
+  const [departamentoId, setDepartamentoId] = useState<string>("");
+
+  // modal de responsabilidade (mostra ao abrir)
+  const [showDeptModal, setShowDeptModal] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+
+    try {
+      return sessionStorage.getItem("copsoq_dept_notice_ack") !== "1";
+    } catch {
+      return false;
+    }
+  });
+  const [deptAcknowledge, setDeptAcknowledge] = useState(false);
+  
   // job
   const [jobId, setJobId] = useState<string | null>(null);
   const [job, setJob] = useState<JobStatus | null>(null);
@@ -267,7 +316,6 @@ export default function DashboardExpress() {
         return;
       }
 
-
       if (onlyDigits(cpf).length !== 11) {
         setMsg("CPF inválido");
         return;
@@ -282,6 +330,7 @@ export default function DashboardExpress() {
         documento: onlyDigits(cpf),
         telefone: normalizePhoneBR(tel),
         role: "usuario",
+        departamento_id: deptEnabled && departamentoId ? departamentoId : null,
       };
 
       if (bulkPreview.some((u) => u.documento === cpfNorm)) {
@@ -363,13 +412,17 @@ export default function DashboardExpress() {
       const token = await getAccessToken();
       if (!token) throw new Error("Sessão expirada. Faça login novamente.");
 
+      const regsWithDept: CsvRegistro[] = regs.map((r) => ({
+        ...r,
+        departamento_id: deptEnabled && departamentoId ? departamentoId : null,
+      }));
       const r = await fetch(enqueueUrl, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ registros: regs }),
+        body: JSON.stringify({ registros: regsWithDept }),
       });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j.error || "Falha ao enfileirar importação.");
@@ -423,17 +476,83 @@ export default function DashboardExpress() {
       // silencioso
     }
   }
-// auto-polling
-  // useEffect(() => {
-  //   const interval = setInterval(() => {
-  //     refreshEntitlements();
-  //   }, 5000); // 5s
 
-  //   return () => clearInterval(interval);
-  // }, []);
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      if (!deptEnabled) {
+        setDepartamentos([]);
+        setDepartamentoId("");
+        return;
+      }
+      const list = await loadDepartamentos();
+      if (!cancelled) setDepartamentos(list);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [deptEnabled]);
+
+  function closeDeptModal() {
+    if (!deptAcknowledge) return;
+    sessionStorage.setItem("copsoq_dept_notice_ack", "1");
+    setShowDeptModal(false);
+  }
+  
 
   return (
     <div className="space-y-6">
+      {showDeptModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-lg">
+            <h3 className="text-lg font-bold text-slate-900">
+              ATENÇÃO: SIGILO E DADOS AGREGADOS
+            </h3>
+
+            <p className="mt-3 text-sm text-slate-700 leading-relaxed">
+              O COPSOQ deve ser aplicado garantindo <strong>anonimato</strong> e
+              <strong> confidencialidade</strong>. Informações como{" "}
+              <strong>Departamento</strong> podem permitir identificação
+              indireta em grupos pequenos. Use essa segmentação apenas se você
+              conseguir manter relatórios <strong>sempre agregados</strong> e
+              sem divulgação de resultados em grupos com poucos respondentes.
+            </p>
+
+            <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+              Ao continuar, você declara estar ciente e assume a
+              responsabilidade pelo uso adequado desses dados (políticas
+              internas/LGPD) e pela garantia de relatórios agregados.
+            </div>
+
+            <div className="mt-4 space-y-3">
+              <label className="flex items-start gap-2 text-sm text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={deptAcknowledge}
+                  onChange={(e) => setDeptAcknowledge(e.target.checked)}
+                  className="mt-1 h-4 w-4"
+                />
+                <span>
+                  Entendi e assumo a responsabilidade de manter os resultados{" "}
+                  <strong> agregados </strong>e preservar a confidencialidade.
+                </span>
+              </label>
+            </div>
+
+            <div className="mt-6 flex justify-end">
+              <button
+                disabled={!deptAcknowledge}
+                onClick={closeDeptModal}
+                className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+              >
+                Continuar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Header / onboarding */}
       <div className="rounded-2xl border border-border bg-surface p-6">
         <div className="flex items-start justify-between gap-4">
@@ -456,6 +575,28 @@ export default function DashboardExpress() {
             )}
           </div>
         </div>
+        <div className="mt-4 flex items-center gap-3">
+          <input
+            id="deptEnabled"
+            type="checkbox"
+            checked={deptEnabled}
+            onChange={(e) => setDeptEnabled(e.target.checked)}
+            className="h-4 w-4"
+          />
+          <label htmlFor="deptEnabled" className="text-sm text-slate-700">
+            Habilitar campo <strong>Departamento</strong> (opcional)
+          </label>
+        </div>
+        {deptEnabled && (
+          <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+            <strong>Atenção (Departamento habilitado):</strong> o uso de
+            Departamento pode aumentar o risco de identificação indireta em
+            grupos pequenos. Garanta que os relatórios COPSOQ sejam sempre{" "}
+            <strong>agregados</strong> e que não haja divulgação por grupos com
+            poucos respondentes. A responsabilidade pelo uso e pelas regras
+            internas/LGPD é da organização.
+          </div>
+        )}
 
         {msg && (
           <div className="mt-4 rounded-xl border border-border bg-white p-3 text-sm text-slate-700">
@@ -492,6 +633,28 @@ export default function DashboardExpress() {
             placeholder="Celular com DDD (ex: 11999999999)"
             className="rounded-xl border border-border bg-white px-3 py-2 text-sm"
           />
+          {deptEnabled && (
+            <div className="sm:col-span-3">
+              <select
+                value={departamentoId}
+                onChange={(e) => setDepartamentoId(e.target.value)}
+                className="w-full rounded-xl border border-border bg-white px-3 py-2 text-sm"
+              >
+                <option value="">
+                  (Opcional) Selecione um departamento...
+                </option>
+                {departamentos.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.nome}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-slate-500">
+                Recomendação: use apenas se o relatório continuar{" "}
+                <strong>agregado</strong> e sem exposição de grupos pequenos.
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="mt-4">
@@ -517,7 +680,25 @@ export default function DashboardExpress() {
           Para 20, 200 ou 500+ usuários. Cole linhas no formato:{" "}
           <code>nome;cpf;telefone</code>.
         </p>
-
+        {deptEnabled && (
+          <div className="mt-4">
+            <label className="text-sm text-slate-600">
+              Departamento (opcional)
+            </label>
+            <select
+              value={departamentoId}
+              onChange={(e) => setDepartamentoId(e.target.value)}
+              className="mt-2 w-full rounded-xl border border-border bg-white px-3 py-2 text-sm"
+            >
+              <option value="">(Opcional) Selecione um departamento...</option>
+              {departamentos.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.nome}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         <textarea
           value={paste}
           onChange={(e) => setPaste(e.target.value)}
