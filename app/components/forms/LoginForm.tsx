@@ -4,6 +4,29 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser as supabase } from "@/lib/supabase/browser";
 
+type UserWithRole = {
+  app_metadata?: {
+    role?: string;
+    claims?: { role?: string };
+  };
+  user_metadata?: {
+    role?: string;
+  };
+};
+
+function getUserRole(user: unknown): string | null {
+  if (!user || typeof user !== "object") return null;
+
+  const u = user as UserWithRole;
+
+  return (
+    u.app_metadata?.claims?.role ||
+    u.app_metadata?.role ||
+    u.user_metadata?.role ||
+    null
+  );
+}
+
 function formatPhoneBR(value: string): string {
   const digits = value.replace(/\D/g, "");
   if (digits.length <= 2) return `(${digits}`;
@@ -38,6 +61,7 @@ export function LoginForm() {
 
   const fullPhone = `${country}${extractDigits(phoneFormatted)}`;
   const isPhoneValid = extractDigits(phoneFormatted).length >= 10;
+
 
   const handlePhoneChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -104,32 +128,69 @@ export function LoginForm() {
       }
 
       const user = data?.user;
+      if (!user?.id) {
+        setError("Usuário inválido.");
+        return;
+      }
 
-      // ✅ pega role do JWT
-      const role =
-        user?.app_metadata?.claims?.role ||
-        user?.app_metadata?.role ||
-        user?.user_metadata?.role;
+      // ✅ role tipada
+      const role = getUserRole(user);
 
-      // ✅ pega redirect da URL
+      // ✅ admin entra sempre
+      if (role === "admin") {
+        router.replace("/dashboard/express");
+        router.refresh();
+        return;
+      }
+
+      // ✅ params
       const params = new URLSearchParams(window.location.search);
       const redirect = params.get("redirect");
 
+      // ✅ busca perfil
+      const { data: perfil } = await supabase
+        .from("usuarios")
+        .select("ativo, tipo_plano, cliente_id")
+        .eq("id", user.id)
+        .single();
+
+      if (!perfil || perfil.ativo === false) {
+        setError("Usuário inativo.");
+        return;
+      }
+
+      if (perfil.tipo_plano !== "express") {
+        setError("Plano não é Express.");
+        return;
+      }
+
+      const { data: cliente } = await supabase
+        .from("clientes")
+        .select("ativo")
+        .eq("id", perfil.cliente_id)
+        .single();
+
+      if (!cliente || cliente.ativo === false) {
+        setError("Cliente inativo.");
+        return;
+      }
+
+      // ✅ resolve rota final
       let finalRedirect: string;
 
-      if (redirect) {
-        // ✅ PRIORIDADE TOTAL
+      if (redirect && redirect.startsWith("/")) {
         finalRedirect = redirect;
       } else {
-        // ✅ fallback baseado em role
         if (role === "usuario" || role === "gestor") {
-          const linkId = params.get("linkId"); // 👈 vem da URL se existir
+          const linkId = params.get("linkId");
 
-          finalRedirect = linkId
-            ? `/dashboard/express/copsoq?linkId=${linkId}`
-            : "/dashboard/express"; // fallback seguro
+          if (!linkId) {
+            setError("Link de aplicação ausente.");
+            return;
+          }
+
+          finalRedirect = `/dashboard/express/copsoq?linkId=${linkId}`;
         } else {
-          // cliente
           finalRedirect = "/dashboard/express";
         }
       }
@@ -140,10 +201,8 @@ export function LoginForm() {
 
       router.replace(finalRedirect);
       router.refresh();
-    } catch (err: unknown) {
-      setError(
-        err instanceof Error ? err.message : "Erro ao verificar código.",
-      );
+    } catch (err) {
+      setError("Erro ao verificar código. "+ (err instanceof Error ? err.message : ""));
     } finally {
       setLoading(false);
     }
