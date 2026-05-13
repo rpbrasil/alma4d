@@ -15,9 +15,8 @@ type PageProps = {
 };
 
 export default async function Page({ params }: PageProps) {
-  const resolvedParams = await params;
-
-  const contratoId = resolvedParams.id;
+  
+  const contratoId = params.id;
 if (!contratoId) return null;
   return <ContratoStatusClient contratoId={contratoId} />;
 }

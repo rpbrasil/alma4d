@@ -14,6 +14,7 @@ import {
 } from "@/lib/copsoqData";
 import { trackConsent } from "@/lib/trackConsent";
 import Image from "next/image";
+import { Suspense } from "react";
 
 type LinkInfo = {
   id: string;
@@ -25,7 +26,24 @@ type LinkInfo = {
 
 type Answers = Record<string, string | null>;
 
+
 export default function ExpressCopsoqQuizPage() {
+  return (
+    <Suspense
+      fallback={
+        <section className="rounded-3xl border border-border bg-white p-8 shadow-sm">
+          <div className="flex items-center gap-3 text-slate-600">
+            <RefreshCw className="h-5 w-5 animate-spin" />
+            <span>Carregando questionário...</span>
+          </div>
+        </section>
+      }
+    >
+      <CopsoqPageContent />
+    </Suspense>
+  );
+}
+function CopsoqPageContent() {
   const searchParams = useSearchParams();
   const rawLinkId = searchParams.get("linkId");
   const linkId = rawLinkId && rawLinkId !== "null" ? rawLinkId : null;
@@ -209,7 +227,10 @@ export default function ExpressCopsoqQuizPage() {
   }, [linkId]);
 
   async function handleSubmit() {
-    if (!linkId) return;
+    if (!linkId) {
+      setError("Link inválido.");
+      return;
+    }
     if (existsCompleted) return;
 
     if (!allAnswered) {
@@ -289,15 +310,20 @@ export default function ExpressCopsoqQuizPage() {
   async function handleIntroAccept() {
     if (!introAccepted) return;
 
-    await trackConsent({
-      type: "copsoq_participante",
-      version: "v1.0",
-      page: "copsoq_quiz",
-      metadata: {
-        link_id: linkId,
-        contrato: contratoNumero,
-      },
-    });
+   try {
+     await trackConsent({
+       type: "copsoq_participante",
+       version: "v1.0",
+       page: "copsoq_quiz",
+       metadata: {
+         link_id: linkId,
+         contrato: contratoNumero,
+       },
+     });
+   } catch (err) {
+     console.error("Erro ao registrar consentimento", err);
+   }
+
 
     sessionStorage.setItem("copsoq_intro_ack", "1");
     setShowIntroModal(false);
@@ -448,7 +474,8 @@ export default function ExpressCopsoqQuizPage() {
             <p className="font-semibold text-slate-900">Instruções</p>
             <p className="mt-2">
               <b>SUA IDENTIDADE NAO SERÁ REVELADA</b> - Responda todas as{" "}
-              {COPSOQ_QUESTIONS.length} questões. As respostas são confidenciais e serão usadas apenas para análise agregada de risco.
+              {COPSOQ_QUESTIONS.length} questões. As respostas são confidenciais
+              e serão usadas apenas para análise agregada de risco.
             </p>
             <p className="mt-3 text-xs italic text-slate-600">
               As questões estão agrupadas por temas (escalas). Os resultados

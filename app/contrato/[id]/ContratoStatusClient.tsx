@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 
 type ContratoRow = {
@@ -101,7 +101,7 @@ export default function ContratoStatusClient({
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
-  const pollMs = useMemo(() => 5000, []);
+  const pollMs = 10000;
   const [eventos, setEventos] = useState<ContratoEvento[]>([]);
   const [eventosLoading, setEventosLoading] = useState(false);
 
@@ -217,6 +217,38 @@ export default function ContratoStatusClient({
 
   const pending = !paid && !failed;
   const hasPdf = Boolean(contrato?.pdf_assinado_url || contrato?.pdf_url);
+  const openPdf = async () => {
+    try {
+      const r = await fetch(
+        `/api/contrato/pdf-url?contratoId=${encodeURIComponent(contratoId)}`,
+        { cache: "no-store" },
+      );
+      const j = (await r.json().catch(() => null)) as {
+        url?: string;
+        error?: string;
+        debug?: Record<string, unknown>;
+      } | null;
+
+      if (!r.ok || !j?.url) {
+        const debugMsg = j?.debug ? JSON.stringify(j.debug) : "";
+        const errorMsg = j?.error || `Erro ao abrir PDF. Status: ${r.status}`;
+        console.error("[ContratoStatusClient] Erro ao abrir PDF:", {
+          contratoId,
+          status: r.status,
+          error: j?.error,
+          debug: j?.debug,
+        });
+        throw new Error(`${errorMsg}. ${debugMsg}`);
+      }
+
+      window.open(j.url, "_blank", "noopener,noreferrer");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Erro ao abrir PDF.";
+      console.error("[ContratoStatusClient] Exception ao abrir PDF:", e);
+      setErr(msg);
+    }
+  };
+
   const steps = [
     {
       id: "pago",
@@ -246,40 +278,7 @@ export default function ContratoStatusClient({
 
   const doneCount = steps.filter((s) => s.done).length;
   const progressPct = Math.round((doneCount / steps.length) * 100);
-  const openPdf = async () => {
-    try {
-      const r = await fetch(
-        `/api/contrato/pdf-url?contratoId=${encodeURIComponent(contratoId)}`,
-        {
-          cache: "no-store",
-        },
-      );
-      const j = (await r.json().catch(() => null)) as {
-        url?: string;
-        error?: string;
-        debug?: Record<string, unknown>;
-      } | null;
-
-      if (!r.ok || !j?.url) {
-        const debugMsg = j?.debug ? JSON.stringify(j.debug) : "";
-        const errorMsg = j?.error || `Erro ao abrir PDF. Status: ${r.status}`;
-        console.error("[ContratoStatusClient] Erro ao abrir PDF:", {
-          contratoId,
-          status: r.status,
-          error: j?.error,
-          debug: j?.debug,
-        });
-        throw new Error(`${errorMsg}. ${debugMsg}`);
-      }
-
-      window.open(j.url, "_blank", "noopener,noreferrer");
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "Erro ao abrir PDF.";
-      console.error("[ContratoStatusClient] Exception ao abrir PDF:", e);
-      setErr(msg);
-    }
-  };
-
+  
   return (
     <main className="min-h-screen bg-surface-muted">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">

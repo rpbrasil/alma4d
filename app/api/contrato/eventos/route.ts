@@ -3,7 +3,14 @@ import { createClient } from "@supabase/supabase-js";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
-  const contratoId = searchParams.get("contratoId") || "";
+  const contratoId = searchParams.get("contratoId");
+
+  if (!contratoId) {
+    return NextResponse.json(
+      { error: "contratoId obrigatório" },
+      { status: 400 },
+    );
+  }
 
   if (!contratoId) {
     return NextResponse.json(

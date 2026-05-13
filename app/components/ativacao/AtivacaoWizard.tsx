@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabaseBrowser as supabase } from "@/lib/supabase/browser";
 
@@ -15,7 +15,7 @@ import {
   faShieldHalved,
 } from "@fortawesome/free-solid-svg-icons";
 import { NR1PaymentPanel } from "../../ativacao/_components/NR1PaymentPanel";
-import Image from "next/image"
+import Image from "next/image";
 
 /** -------------------- Utils -------------------- */
 type StepId = 1 | 2 | 3;
@@ -657,9 +657,26 @@ function Step3Pagamento({
   );
 }
 
-
 /** -------------------- Wizard Principal -------------------- */
 export default function AtivacaoWizard() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen bg-surface-muted overflow-x-hidden">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-10">
+            <div className="rounded-2xl border border-border bg-surface p-6 text-slate-600">
+              Carregando ativação...
+            </div>
+          </div>
+        </main>
+      }
+    >
+      <AtivacaoWizardContent />
+    </Suspense>
+  );
+}
+
+function AtivacaoWizardContent() {
   const searchParams = useSearchParams();
 
   const clienteId = searchParams.get("cliente_id") ?? "";
@@ -676,7 +693,7 @@ export default function AtivacaoWizard() {
 
   // Sessão Supabase (OTP já ocorreu antes)
   const [userId, setUserId] = useState<string | null>(null);
-  
+
   // Step 1: termos/contrato
   const [aceitouTermos, setAceitouTermos] = useState(false);
   const [contratoLido, setContratoLido] = useState(false);
@@ -708,7 +725,7 @@ export default function AtivacaoWizard() {
       if (!mounted) return;
 
       if (error || !data.user?.id) {
-        setUserId(null);        
+        setUserId(null);
         return;
       }
 
@@ -937,7 +954,9 @@ export default function AtivacaoWizard() {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
             <div className="bg-white w-full max-w-3xl h-[85vh] rounded-2xl flex flex-col overflow-hidden">
               <div className="flex justify-between items-center p-4 border-b">
-                <h2 className="font-extrabold text-brand">Minuta de Contrato</h2>
+                <h2 className="font-extrabold text-brand">
+                  Minuta de Contrato
+                </h2>
                 <button
                   type="button"
                   onClick={() => setShowContrato(false)}
@@ -966,7 +985,7 @@ export default function AtivacaoWizard() {
                       setAceitouTermos(e.target.checked);
                       if (e.target.checked) setShowContrato(false);
                     }}
-                    className="mt-1 w-5 h-5 accent-(--brand)]"
+                    className="mt-1 w-5 h-5 accent-brand)"
                   />
                   <span className="text-sm text-slate-700">
                     Declaro que li integralmente este documento e concordo com
