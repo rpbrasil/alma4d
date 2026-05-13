@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { createBrowserClient } from "@supabase/ssr";
+import { useEffect, useState } from "react";
+import { supabaseBrowser as supabase } from "@/lib/supabase/browser";
+
 import Link from "next/link";
 import { Download, Eye, Calendar, FileText, AlertCircle } from "lucide-react";
 
@@ -77,15 +78,6 @@ export default function DashboardExpressContratoPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const supabase = useMemo(
-    () =>
-      createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      ),
-    [],
-  );
-
   useEffect(() => {
     (async () => {
       try {
@@ -128,7 +120,7 @@ export default function DashboardExpressContratoPage() {
         setLoading(false);
       }
     })();
-  }, [supabase]);
+  }, []);
 
   if (loading) {
     return (

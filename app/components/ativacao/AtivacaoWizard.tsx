@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { createBrowserClient } from "@supabase/ssr";
+import { supabaseBrowser as supabase } from "@/lib/supabase/browser";
+
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import {
@@ -659,20 +660,6 @@ function Step3Pagamento({
 
 /** -------------------- Wizard Principal -------------------- */
 export default function AtivacaoWizard() {
-  const supabase = useMemo(() => {
-    return createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        auth: {
-          persistSession: true,
-          autoRefreshToken: true,
-          detectSessionInUrl: false,
-        },
-      },
-    );
-  }, []);
-
   const searchParams = useSearchParams();
 
   const clienteId = searchParams.get("cliente_id") ?? "";
@@ -731,7 +718,7 @@ export default function AtivacaoWizard() {
     return () => {
       mounted = false;
     };
-  }, [supabase]);
+  }, []);
 
   /** Tracking de “leu o contrato” (mesma origem: /api/contrato/preview) */
   useEffect(() => {

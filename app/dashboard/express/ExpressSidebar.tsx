@@ -70,7 +70,8 @@ export default function ExpressSidebar({
                 <Image
                   src={logoSrc}
                   alt="Express"
-                  fill
+                  width={48}
+                  height={48}
                   className="object-cover"
                   onError={() => setLogoFailed(true)}
                   priority

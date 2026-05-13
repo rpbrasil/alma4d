@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Mail, CheckCircle2 } from "lucide-react";
-import { createBrowserClient } from "@supabase/ssr";
+import { supabaseBrowser as supabase } from "@/lib/supabase/browser";
+
 
 type FormState = "idle" | "submitting" | "success" | "error";
 
@@ -163,13 +164,6 @@ function getRiscoByCNAE(cnae?: string): Risco {
 }
 
 export default function EmpresaNR1Page() {
-  const supabase = useMemo(() => {
-    return createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    );
-  }, []);
-
   const [state, setState] = useState<FormState>("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 

@@ -4,6 +4,14 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 import { AlertCircle, CheckCircle2, Lock, Send, RefreshCw } from "lucide-react";
+import {
+  COPSOQ_QUESTIONS,
+  RESPONSE_SETS,
+  calculateAllScales,
+  type ResponseSet,
+  type Question,
+  type ResponseOption,
+} from "@/lib/copsoqData";
 
 type LinkInfo = {
   id: string;
@@ -13,47 +21,7 @@ type LinkInfo = {
   ativo: boolean;
 };
 
-type Question = {
-  id: string;
-  label: string;
-};
-
-type Answers = Record<string, string>;
-
-const QUESTIONS: Question[] = [
-  {
-    id: "q1",
-    label:
-      "No meu trabalho, tenho tempo suficiente para realizar minhas tarefas no ritmo esperado.",
-  },
-  {
-    id: "q2",
-    label:
-      "Sinto que posso influenciar decisões importantes relacionadas ao meu trabalho.",
-  },
-  {
-    id: "q3",
-    label:
-      "Recebo apoio suficiente do meu chefe para lidar com as demandas diárias.",
-  },
-  {
-    id: "q4",
-    label:
-      "Consigo equilibrar as exigências do trabalho com minha vida pessoal.",
-  },
-  {
-    id: "q5",
-    label: "Minha carga de trabalho é distribuída de forma justa e razoável.",
-  },
-];
-
-const OPTIONS = [
-  { value: "1", label: "Nunca" },
-  { value: "2", label: "Raramente" },
-  { value: "3", label: "Às vezes" },
-  { value: "4", label: "Frequentemente" },
-  { value: "5", label: "Sempre" },
-];
+type Answers = Record<string, string | null>;
 
 export default function ExpressCopsoqQuizPage() {
   const searchParams = useSearchParams();
@@ -70,8 +38,12 @@ export default function ExpressCopsoqQuizPage() {
   const [contratoNumero, setContratoNumero] = useState<string | null>(null);
   const [answers, setAnswers] = useState<Answers>({});
   const [existsCompleted, setExistsCompleted] = useState(false);
+
   const allAnswered = useMemo(
-    () => QUESTIONS.every((question) => Boolean(answers[question.id])),
+    () =>
+      COPSOQ_QUESTIONS.every((question: Question) =>
+        Boolean(answers[question.id]),
+      ),
     [answers],
   );
 
@@ -90,6 +62,13 @@ export default function ExpressCopsoqQuizPage() {
       try {
         setError(null);
         setLoading(true);
+
+        // Inicializar estado de respostas
+        const initialAnswers: Answers = {};
+        for (const q of COPSOQ_QUESTIONS) {
+          initialAnswers[q.id] = null;
+        }
+        setAnswers(initialAnswers);
 
         const { data: sessionData, error: sessionError } =
           await supabase.auth.getSession();
@@ -231,10 +210,17 @@ export default function ExpressCopsoqQuizPage() {
       setError(null);
       setSubmitting(true);
 
+      // Calcular pontuações das escalas
+      const scores = calculateAllScales(answers);
+
       const response = await fetch("/api/copsoq/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ linkId, answers }),
+        body: JSON.stringify({
+          linkId,
+          answers,
+          scaleScores: scores,
+        }),
       });
 
       type SubmitResponse = {
@@ -311,7 +297,7 @@ export default function ExpressCopsoqQuizPage() {
 
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm">
-            <p className="text-slate-500">Cliente</p>
+            <p className="text-slate-500">Empresa</p>
             <p className="mt-1 font-semibold text-slate-900">
               {clienteNome ?? "—"}
             </p>
@@ -346,20 +332,15 @@ export default function ExpressCopsoqQuizPage() {
           <div className="rounded-3xl border border-slate-200 bg-slate-50 p-6 text-sm text-slate-700">
             <p className="font-semibold text-slate-900">Instruções</p>
             <p className="mt-2">
-              Responda todas as questões usando a escala abaixo. As respostas
-              são confidenciais e serão usadas apenas para análise agregada de
-              risco.
+              <b>SUA IDENTIDADE NAO SERÁ REVELADA</b> - Responda todas as{" "}
+              {COPSOQ_QUESTIONS.length} questões usando as escalas abaixo. As
+              respostas são confidenciais e serão usadas apenas para análise
+              agregada de risco.
             </p>
-            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
-              {OPTIONS.map((option) => (
-                <div
-                  key={option.value}
-                  className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-center text-xs font-semibold text-slate-700"
-                >
-                  {option.label}
-                </div>
-              ))}
-            </div>
+            <p className="mt-3 text-xs italic text-slate-600">
+              As questões estão agrupadas por temas (escalas). Os resultados
+              serão compilados por grupo, não individualmente.
+            </p>
           </div>
 
           <form
@@ -369,50 +350,66 @@ export default function ExpressCopsoqQuizPage() {
               handleSubmit();
             }}
           >
-            {QUESTIONS.map((question, index) => (
-              <div
-                key={question.id}
-                className="rounded-3xl border border-slate-200 p-5"
-              >
-                <p className="text-sm font-semibold text-slate-900">
-                  {index + 1}. {question.label}
-                </p>
+            {COPSOQ_QUESTIONS.map((question: Question, index: number) => {
+              const responseSet =
+                RESPONSE_SETS[question.responseSet as ResponseSet];
+              if (!responseSet) return null;
 
-                <div className="mt-4 grid gap-2 sm:grid-cols-5">
-                  {OPTIONS.map((option) => (
-                    <label
-                      key={option.value}
-                      className={`flex cursor-pointer flex-col rounded-2xl border p-3 text-center text-sm transition ${
-                        answers[question.id] === option.value
-                          ? "border-brand bg-brand/10 text-brand"
-                          : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
-                      }`}
-                    >
-                      <span className="font-semibold">{option.value}</span>
-                      <span className="mt-2 text-xs">{option.label}</span>
-                      <input
-                        type="radio"
-                        name={question.id}
-                        value={option.value}
-                        checked={answers[question.id] === option.value}
-                        onChange={() =>
-                          setAnswers((prev) => ({
-                            ...prev,
-                            [question.id]: option.value,
-                          }))
-                        }
-                        className="sr-only"
-                      />
-                    </label>
-                  ))}
+              return (
+                <div
+                  key={question.id}
+                  className="rounded-3xl border border-slate-200 p-5"
+                >
+                  <div className="mb-2 flex items-start justify-between">
+                    <p className="text-sm font-semibold text-slate-900">
+                      {index + 1}. {question.text}
+                    </p>
+                    <span className="ml-2 whitespace-nowrap rounded-full bg-slate-200 px-2 py-1 text-xs text-slate-700">
+                      {question.scale}
+                    </span>
+                  </div>
+
+                  <div
+                    className={`mt-4 grid gap-2 ${
+                      responseSet.options.length <= 4
+                        ? "sm:grid-cols-4"
+                        : "sm:grid-cols-5"
+                    }`}
+                  >
+                    {responseSet.options.map((option: ResponseOption) => (
+                      <label
+                        key={option.value}
+                        className={`flex cursor-pointer flex-col rounded-2xl border p-3 text-center text-sm transition ${
+                          answers[question.id] === option.value
+                            ? "border-brand bg-brand/10 text-brand"
+                            : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
+                        }`}
+                      >
+                        <span className="font-semibold">{option.label}</span>
+                        <input
+                          type="radio"
+                          name={question.id}
+                          value={option.value}
+                          checked={answers[question.id] === option.value}
+                          onChange={() =>
+                            setAnswers((prev) => ({
+                              ...prev,
+                              [question.id]: option.value,
+                            }))
+                          }
+                          className="sr-only"
+                        />
+                      </label>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm text-slate-500">
                 {allAnswered
-                  ? "Todas as questões foram respondidas."
+                  ? `Todas as ${COPSOQ_QUESTIONS.length} questões foram respondidas.`
                   : "Responda todos os itens antes de enviar."}
               </p>
               <button

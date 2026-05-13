@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { createBrowserClient } from "@supabase/ssr";
+import { supabaseBrowser as supabase } from "@/lib/supabase/browser";
 import Image from "next/image";
 import {
   AlertCircle,
@@ -100,15 +100,6 @@ export default function DashboardExpressCopsoqPage() {
   const [copied, setCopied] = useState(false);
   const [clienteNome, setClienteNome] = useState<string | null>(null);
   const qrRef = useRef<HTMLDivElement | null>(null);
-
-  const supabase = useMemo(
-    () =>
-      createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      ),
-    [],
-  );
 
   // 1) carregar contratos elegíveis (somente o necessário)
   useEffect(() => {
