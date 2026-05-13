@@ -62,7 +62,7 @@ function waLink(url: string) {
 
 function mailtoLink(url: string) {
   const subject =
-    "Convite obrigatório — Questionário COPSOQ (Riscos Psicossociais)";
+    "Convite — Questionário COPSOQ (Riscos Psicossociais)";
 
   const body =
     `Prezada(o),\n\n` +
@@ -70,7 +70,7 @@ function mailtoLink(url: string) {
     `utilizado para o mapeamento de riscos psicossociais relacionados ao trabalho.\n\n` +
     `Este levantamento integra o Gerenciamento de Riscos Ocupacionais (GRO) e o Programa de Gerenciamento de Riscos (PGR), ` +
     `em alinhamento às diretrizes da NR-1.\n\n` +
-    `A participação é obrigatória para os colaboradores elegíveis, conforme comunicação interna da organização.\n\n` +
+    `A participação é muito importante e no total interesse dos colaboradores elegíveis, conforme comunicação interna da organização.\n\n` +
     `Sigilo e respeito à individualidade: as respostas serão tratadas com confidencialidade e analisadas de forma agregada, ` +
     `com foco em prevenção e melhoria nas condições de trabalho. Este instrumento não possui finalidade clínica individual.\n\n` +
     `Acesse pelo link (login com seu celular necessário):\n${url}\n\n` +

@@ -12,6 +12,8 @@ import {
   type Question,
   type ResponseOption,
 } from "@/lib/copsoqData";
+import { trackConsent } from "@/lib/trackConsent";
+import Image from "next/image";
 
 type LinkInfo = {
   id: string;
@@ -35,9 +37,17 @@ export default function ExpressCopsoqQuizPage() {
   const [success, setSuccess] = useState<string | null>(null);
   const [linkInfo, setLinkInfo] = useState<LinkInfo | null>(null);
   const [clienteNome, setClienteNome] = useState<string | null>(null);
+  const [clienteCnpj, setClienteCnpj] = useState<string | null>(null);
   const [contratoNumero, setContratoNumero] = useState<string | null>(null);
   const [answers, setAnswers] = useState<Answers>({});
   const [existsCompleted, setExistsCompleted] = useState(false);
+
+  const [showIntroModal, setShowIntroModal] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return sessionStorage.getItem("copsoq_intro_ack") !== "1";
+  });
+
+  const [introAccepted, setIntroAccepted] = useState(false);
 
   const allAnswered = useMemo(
     () =>
@@ -140,7 +150,7 @@ export default function ExpressCopsoqQuizPage() {
 
         const { data: cliente, error: clienteError } = await supabase
           .from("clientes")
-          .select("nome, ativo")
+          .select("nome, ativo, documento")
           .eq("id", usuario.cliente_id)
           .maybeSingle();
 
@@ -177,6 +187,7 @@ export default function ExpressCopsoqQuizPage() {
         if (active) {
           setLinkInfo(link as LinkInfo);
           setClienteNome(cliente.nome ?? null);
+          setClienteCnpj(cliente.documento ?? null);
           setContratoNumero(contrato.numero_contrato ?? null);
         }
       } catch (err) {
@@ -275,10 +286,98 @@ export default function ExpressCopsoqQuizPage() {
     );
   }
 
+  async function handleIntroAccept() {
+    if (!introAccepted) return;
+
+    await trackConsent({
+      type: "copsoq_participante",
+      version: "v1.0",
+      page: "copsoq_quiz",
+      metadata: {
+        link_id: linkId,
+        contrato: contratoNumero,
+      },
+    });
+
+    sessionStorage.setItem("copsoq_intro_ack", "1");
+    setShowIntroModal(false);
+  }
+
   return (
     <section className="space-y-6 rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+      {showIntroModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl space-y-4">
+            <h3 className="text-base font-bold text-slate-900">
+              Antes de começar
+            </h3>
+
+            <div className="text-sm text-slate-700 space-y-3 leading-relaxed">
+              <p>
+                Este questionário segue a metodologia <strong>COPSOQ</strong> e
+                atende à <strong>NR‑1</strong> para avaliação de riscos
+                psicossociais no trabalho.
+              </p>
+
+              <div>
+                <p className="font-semibold text-slate-900">Sua participação</p>
+                <p>
+                  Sua colaboração ajuda a melhorar o ambiente de trabalho. O
+                  preenchimento é <strong>voluntário</strong>, mas importante
+                  para a qualidade da análise.
+                </p>
+              </div>
+
+              <div>
+                <p className="font-semibold text-slate-900">
+                  Confidencialidade
+                </p>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li>Suas respostas são anônimas e confidenciais</li>
+                  <li>Nenhum resultado individual será divulgado</li>
+                  <li>Os dados serão analisados apenas de forma agregada</li>
+                </ul>
+              </div>
+
+              <div>
+                <p className="font-semibold text-slate-900">Finalidade</p>
+                <p>
+                  Os dados serão usados exclusivamente para identificar e
+                  prevenir riscos no trabalho. Este questionário{" "}
+                  <strong>não é diagnóstico individual</strong>.
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+              Ao continuar, você declara estar ciente dessas condições.
+            </div>
+
+            <label className="flex items-start gap-2 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                checked={introAccepted}
+                onChange={(e) => setIntroAccepted(e.target.checked)}
+                className="mt-1 h-4 w-4"
+              />
+              <span>Li e estou ciente das informações acima.</span>
+            </label>
+
+            <div className="flex justify-end">
+              <button
+                disabled={!introAccepted}
+                onClick={handleIntroAccept}
+                className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+              >
+                Iniciar questionário
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <header className="space-y-3">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          {/* ESQUERDA - título */}
           <div>
             <p className="text-sm text-slate-500 uppercase tracking-[0.2em]">
               COPSOQ II BR • Preenchimento
@@ -287,11 +386,25 @@ export default function ExpressCopsoqQuizPage() {
               Questionário COPSOQ
             </h1>
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-            <p className="font-semibold text-slate-900">Acesso protegido</p>
-            <p className="mt-1 flex items-center gap-2">
-              <Lock size={16} /> Autenticação por telefone (OTP)
-            </p>
+
+          {/* DIREITA - container com card + logo */}
+          <div className="flex items-center gap-4">
+            {/* card acesso */}
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+              <p className="font-semibold text-slate-900">Acesso protegido</p>
+              <p className="mt-1 flex items-center gap-2">
+                <Lock size={16} /> Autenticação por celular (OTP)
+              </p>
+            </div>
+
+            {/* LOGO */}
+            <Image
+              src="/images/alma4d_express_nobground.png" // ajuste o path
+              alt="Logo"
+              width={92}
+              height={92}
+              className="h-20 w-auto"
+            />
           </div>
         </div>
 
@@ -301,7 +414,9 @@ export default function ExpressCopsoqQuizPage() {
             <p className="mt-1 font-semibold text-slate-900">
               {clienteNome ?? "—"}
             </p>
+            <p className="text-xs text-slate-500">CNPJ: {clienteCnpj ?? "—"}</p>
           </div>
+
           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm">
             <p className="text-slate-500">Contrato</p>
             <p className="mt-1 font-semibold text-slate-900">
@@ -333,9 +448,7 @@ export default function ExpressCopsoqQuizPage() {
             <p className="font-semibold text-slate-900">Instruções</p>
             <p className="mt-2">
               <b>SUA IDENTIDADE NAO SERÁ REVELADA</b> - Responda todas as{" "}
-              {COPSOQ_QUESTIONS.length} questões usando as escalas abaixo. As
-              respostas são confidenciais e serão usadas apenas para análise
-              agregada de risco.
+              {COPSOQ_QUESTIONS.length} questões. As respostas são confidenciais e serão usadas apenas para análise agregada de risco.
             </p>
             <p className="mt-3 text-xs italic text-slate-600">
               As questões estão agrupadas por temas (escalas). Os resultados
@@ -360,11 +473,12 @@ export default function ExpressCopsoqQuizPage() {
                   key={question.id}
                   className="rounded-3xl border border-slate-200 p-5"
                 >
-                  <div className="mb-2 flex items-start justify-between">
+                  <div className="mb-2 flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
                     <p className="text-sm font-semibold text-slate-900">
                       {index + 1}. {question.text}
                     </p>
-                    <span className="ml-2 whitespace-nowrap rounded-full bg-slate-200 px-2 py-1 text-xs text-slate-700">
+
+                    <span className="ml-2 hidden sm:inline whitespace-nowrap rounded-full bg-slate-200 px-2 py-1 text-xs text-slate-700">
                       {question.scale}
                     </span>
                   </div>

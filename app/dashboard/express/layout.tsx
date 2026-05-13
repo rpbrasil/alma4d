@@ -27,11 +27,11 @@ export default function DashboardExpressLayout({
           onClose={() => setSidebarOpen(false)}
         />
 
-        <div className="flex-1 flex flex-col md:ml-64">
+        <div className="flex-1 flex flex-col ">
           {/* <ExpressHeader onMenuOpen={() => setSidebarOpen(true)} /> */}
 
           <main className="flex-1 p-4 sm:p-6">
-            <div className="max-w-7xl mx-auto">{children}</div>
+            <div className="max-w-7xl w-full mx-auto">{children}</div>
           </main>
         </div>
 

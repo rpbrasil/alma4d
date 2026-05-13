@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { supabaseBrowser as supabase } from "@/lib/supabase/browser";
+import { trackConsent } from "@/lib/trackConsent";
 
 type JobStatus = {
   id: string;
@@ -179,25 +180,15 @@ export default function DashboardExpress() {
   const [departamentos, setDepartamentos] = useState<Departamento[]>([]);
   const [departamentoId, setDepartamentoId] = useState<string>("");
 
-  // modal de responsabilidade (mostra ao abrir)
-  const [showDeptModal, setShowDeptModal] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
-
-    try {
-      return sessionStorage.getItem("copsoq_dept_notice_ack") !== "1";
-    } catch {
-      return false;
-    }
-  });
   const [deptAcknowledge, setDeptAcknowledge] = useState(false);
-  
+
   // job
   const [jobId, setJobId] = useState<string | null>(null);
   const [job, setJob] = useState<JobStatus | null>(null);
   const [jobErrors, setJobErrors] = useState<BulkLineError[]>([]);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
-
+  const [showDeptModal, setShowDeptModal] = useState(true);
   const enqueueUrl = process.env.NEXT_PUBLIC_FN_IMPORT_ENQUEUE_URL!;
   const workerUrl = process.env.NEXT_PUBLIC_FN_IMPORT_WORKER_URL!;
 
@@ -495,64 +486,67 @@ export default function DashboardExpress() {
     };
   }, [deptEnabled]);
 
-  function closeDeptModal() {
+  async function closeDeptModal() {
     if (!deptAcknowledge) return;
-    sessionStorage.setItem("copsoq_dept_notice_ack", "1");
+    await trackConsent({
+      type: "copsoq_departamento",
+      version: "v1.0",
+      page: "dashboard_express",
+      metadata: {
+        feature: "departamento_toggle",
+      },
+    });
     setShowDeptModal(false);
   }
-  
 
   return (
     <div className="space-y-6">
-      {showDeptModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-lg">
-            <h3 className="text-lg font-bold text-slate-900">
-              ATENÇÃO: SIGILO E DADOS AGREGADOS
-            </h3>
+      {showDeptModal && (<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+        <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-lg">
+          <h3 className="text-lg font-bold text-slate-900">
+            ATENÇÃO: SIGILO E DADOS AGREGADOS
+          </h3>
+          <p className="mt-3 text-sm text-slate-700 leading-relaxed">
+            O COPSOQ deve ser aplicado garantindo <strong>anonimato</strong> e
+            <strong> confidencialidade</strong>. Informações como{" "}
+            <strong>Departamento</strong> podem permitir identificação indireta
+            em grupos pequenos. Use essa segmentação apenas se você conseguir
+            manter relatórios <strong>sempre agregados</strong> e sem divulgação
+            de resultados em grupos com poucos respondentes.
+          </p>
 
-            <p className="mt-3 text-sm text-slate-700 leading-relaxed">
-              O COPSOQ deve ser aplicado garantindo <strong>anonimato</strong> e
-              <strong> confidencialidade</strong>. Informações como{" "}
-              <strong>Departamento</strong> podem permitir identificação
-              indireta em grupos pequenos. Use essa segmentação apenas se você
-              conseguir manter relatórios <strong>sempre agregados</strong> e
-              sem divulgação de resultados em grupos com poucos respondentes.
-            </p>
+          <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+            Ao continuar, você declara estar ciente e assume a responsabilidade
+            pelo uso adequado desses dados (políticas internas/LGPD) e pela
+            garantia de relatórios agregados.
+          </div>
 
-            <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-              Ao continuar, você declara estar ciente e assume a
-              responsabilidade pelo uso adequado desses dados (políticas
-              internas/LGPD) e pela garantia de relatórios agregados.
-            </div>
+          <div className="mt-4 space-y-3">
+            <label className="flex items-start gap-2 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                checked={deptAcknowledge}
+                onChange={(e) => setDeptAcknowledge(e.target.checked)}
+                className="mt-1 h-4 w-4"
+              />
+              <span>
+                Entendi e assumo a responsabilidade de manter os resultados{" "}
+                <strong> agregados </strong>e preservar a confidencialidade.
+              </span>
+            </label>
+          </div>
 
-            <div className="mt-4 space-y-3">
-              <label className="flex items-start gap-2 text-sm text-slate-700">
-                <input
-                  type="checkbox"
-                  checked={deptAcknowledge}
-                  onChange={(e) => setDeptAcknowledge(e.target.checked)}
-                  className="mt-1 h-4 w-4"
-                />
-                <span>
-                  Entendi e assumo a responsabilidade de manter os resultados{" "}
-                  <strong> agregados </strong>e preservar a confidencialidade.
-                </span>
-              </label>
-            </div>
-
-            <div className="mt-6 flex justify-end">
-              <button
-                disabled={!deptAcknowledge}
-                onClick={closeDeptModal}
-                className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-              >
-                Continuar
-              </button>
-            </div>
+          <div className="mt-6 flex justify-end">
+            <button
+              disabled={!deptAcknowledge}
+              onClick={closeDeptModal}
+              className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+            >
+              Continuar
+            </button>
           </div>
         </div>
-      )}
+      </div>)}
       {/* Header / onboarding */}
       <div className="rounded-2xl border border-border bg-surface p-6">
         <div className="flex items-start justify-between gap-4">
