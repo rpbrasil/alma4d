@@ -2,12 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-);
+import { supabaseBrowser as supabase } from "@/lib/supabase/browser";
 
 function formatPhoneBR(value: string): string {
   const digits = value.replace(/\D/g, "");
@@ -87,28 +82,64 @@ export function LoginForm() {
   async function verifyOtp() {
     setError(null);
     setSuccess(null);
+
     if (otp.length < 6) {
       setError("Digite o código de 6 dígitos.");
       return;
     }
+
     if (loading) return;
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.verifyOtp({
+      const { data, error } = await supabase.auth.verifyOtp({
         phone: fullPhone,
         token: otp.trim(),
         type: "sms",
       });
-      
+
       if (error) {
         setError(error.message || "Código inválido ou expirado.");
         return;
       }
 
+      const user = data?.user;
+
+      // ✅ pega role do JWT
+      const role =
+        user?.app_metadata?.claims?.role ||
+        user?.app_metadata?.role ||
+        user?.user_metadata?.role;
+
+      // ✅ pega redirect da URL
+      const params = new URLSearchParams(window.location.search);
+      const redirect = params.get("redirect");
+
+      let finalRedirect: string;
+
+      if (redirect) {
+        // ✅ PRIORIDADE TOTAL
+        finalRedirect = redirect;
+      } else {
+        // ✅ fallback baseado em role
+        if (role === "usuario" || role === "gestor") {
+          const linkId = params.get("linkId"); // 👈 vem da URL se existir
+
+          finalRedirect = linkId
+            ? `/dashboard/express/copsoq?linkId=${linkId}`
+            : "/dashboard/express"; // fallback seguro
+        } else {
+          // cliente
+          finalRedirect = "/dashboard/express";
+        }
+      }
+
       setSuccess("Acesso confirmado. Redirecionando…");
-      await new Promise((r) => setTimeout(r, 450));
-      router.push("/dashboard");
+
+      await new Promise((r) => setTimeout(r, 200));
+
+      router.replace(finalRedirect);
+      router.refresh();
     } catch (err: unknown) {
       setError(
         err instanceof Error ? err.message : "Erro ao verificar código.",

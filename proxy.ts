@@ -29,8 +29,16 @@ export async function proxy(req: NextRequest) {
     pathname.startsWith("/express/copsoq") ||
     pathname.startsWith("/api/copsoq");
 
+  // ✅ construção clara do redirect
+  const fullPath = pathname + search;
+
+  // ✅ validação simples (evita open redirect)
+  const safeRedirect = fullPath.startsWith("/dashboard")
+    ? fullPath
+    : "/dashboard";
+
   if (!user && needsAuth) {
-    const redirectTo = `/login?redirect=${encodeURIComponent(pathname + search)}`;
+    const redirectTo = `/login?redirect=${encodeURIComponent(safeRedirect)}`;
     return NextResponse.redirect(new URL(redirectTo, req.url));
   }
 

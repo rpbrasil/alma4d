@@ -22,7 +22,23 @@ export default function PhoneOtpForm() {
       type: "sms",
     });
 
-    if (!error) router.push("/dashboard");
+    if (error) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const redirect = params.get("redirect");
+
+    let finalRedirect = "/dashboard";
+
+    if (redirect) {
+      // ✅ respeita sempre
+      finalRedirect = redirect;
+    } else {
+      // ✅ premium default
+      finalRedirect = "/dashboard";
+    }
+
+    router.replace(finalRedirect);
+    router.refresh();
   }
 
   return sent ? (
