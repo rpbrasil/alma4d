@@ -722,20 +722,63 @@ function AtivacaoWizardContent() {
 
     (async () => {
       const { data, error } = await supabase.auth.getUser();
+
       if (!mounted) return;
 
       if (error || !data.user?.id) {
-        setUserId(null);
+        window.location.href = `/login?redirect=${encodeURIComponent(
+          window.location.pathname + window.location.search,
+        )}`;
         return;
       }
 
-      setUserId(data.user.id);
+      const user = data.user;
+
+      // ✅ busca perfil
+      const { data: perfil } = await supabase
+        .from("usuarios")
+        .select("ativo, tipo_plano, cliente_id, role")
+        .eq("id", user.id)
+        .single();
+
+      if (!perfil || perfil.ativo === false) {
+        window.location.href = "/login";
+        return;
+      }
+
+      // ✅ admin pode seguir sempre
+      if (perfil.role === "admin") {
+        setUserId(user.id);
+        return;
+      }
+
+      // ✅ precisa ser plano express
+      if (perfil.tipo_plano !== "express") {
+        window.location.href = "/dashboard";
+        return;
+      }
+
+      // ✅ valida cliente
+      const { data: cliente } = await supabase
+        .from("clientes")
+        .select("ativo")
+        .eq("id", perfil.cliente_id)
+        .single();
+
+      if (!cliente || cliente.ativo === false) {
+        window.location.href = "/login";
+        return;
+      }
+
+      // ✅ permitido
+      setUserId(user.id);
     })();
 
     return () => {
       mounted = false;
     };
   }, []);
+
 
   /** Tracking de “leu o contrato” (mesma origem: /api/contrato/preview) */
   useEffect(() => {
@@ -808,8 +851,8 @@ function AtivacaoWizardContent() {
         aceitou_termos: true,
         premium_origem: "pagarme" as const,
         // mantém plano/role se já existirem (não forço aqui pra não criar regressão)
-        role: existingUser?.role ?? "usuario",
-        tipo_plano: existingUser?.tipo_plano ?? "trial",
+        role: existingUser?.role ?? "cliente",
+        tipo_plano: existingUser?.tipo_plano || "express",
         data_inicio_plano:
           existingUser?.data_inicio_plano ?? new Date().toISOString(),
         data_expiracao_plano:
