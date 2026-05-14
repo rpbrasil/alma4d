@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Mail, CheckCircle2 } from "lucide-react";
 import { supabaseBrowser as supabase } from "@/lib/supabase/browser";
 import { calcularPrecificacao } from "../_components/ModeloPrecificacaoExpress";
+import { getPrecificacaoConfig, PrecificacaoConfig } from "@/lib/precificacao/getConfig";
 
 type FormState = "idle" | "submitting" | "success" | "error";
 
@@ -197,20 +198,14 @@ export default function EmpresaNR1Page() {
     (state === "idle" || state === "submitting" || state === "error") &&
     cnpjSucesso &&
     !empresaInativa;
+  const [config, setConfig] = useState<PrecificacaoConfig | null>(null);
+  const [loadingConfig, setLoadingConfig] = useState(false);
+ 
+  const quote = useMemo(() => {
+   if (!config || !riscoEmpresa || form.funcionarios < 1) return null;
 
-  const quote = React.useMemo(() => {
-    if (!riscoEmpresa) return null;
-    const f = Number(form.funcionarios || 0);
-    if (!Number.isFinite(f) || f <= 0) return null;
-    return calcularPrecificacao(f, riscoEmpresa, {
-      k_base: 18,
-      decaimento: 0.15,
-      multiplicador_baixo: 1.0,
-      multiplicador_medio: 1.3,
-      multiplicador_alto: 1.4,
-      minimo_usuarios: 2
-    });
-  }, [form.funcionarios, riscoEmpresa]);
+   return calcularPrecificacao(form.funcionarios, riscoEmpresa, config);
+ }, [form.funcionarios, riscoEmpresa, config]);
 
   useEffect(() => {
     if (!mostrarRisco) return;
@@ -227,6 +222,23 @@ export default function EmpresaNR1Page() {
     const t = setInterval(() => setResendIn((s) => s - 1), 1000);
     return () => clearInterval(t);
   }, [resendIn]);
+
+// Carrega configuração de precificação ao montar a página
+useEffect(() => {
+  async function loadConfig() {
+    try {
+      setLoadingConfig(true);
+      const cfg = await getPrecificacaoConfig();
+      setConfig(cfg);
+    } catch (e) {
+      console.error("Erro config", e);
+    } finally {
+      setLoadingConfig(false);
+    }
+  }
+
+  loadConfig();
+}, []);
 
   async function consultarCNPJ() {
     setCnpjLoading(true);
@@ -287,7 +299,6 @@ export default function EmpresaNR1Page() {
     if (!Number.isInteger(f.funcionarios) || f.funcionarios < 2) {
       return "É necessário no mínimo 2 funcionários para contratar.";
     }
-
 
     if (!f.aceiteLgpd) return "É obrigatório aceitar a LGPD.";
 
@@ -592,7 +603,11 @@ export default function EmpresaNR1Page() {
                 disabled
               />
             </div>
-
+            {!quote && riscoEmpresa && (
+              <p className="text-xs text-slate-400 mt-2">
+                Informe o número de funcionários para calcular o valor
+              </p>
+            )}
             {/* CNPJ + Funcionários */}
             <div className="grid sm:grid-cols-2 gap-4">
               <input
@@ -600,7 +615,6 @@ export default function EmpresaNR1Page() {
                 disabled
                 className="h-11 border rounded-lg px-3 cursor-not-allowed bg-gray-100"
               />
-
               <input
                 type="number"
                 inputMode="numeric"
@@ -612,16 +626,25 @@ export default function EmpresaNR1Page() {
                 required
               />
               {quote && (
-                <div className="rounded-xl border border-border bg-surface-muted p-4">
+                <div className="mt-4 rounded-xl border border-border bg-white p-4 shadow-sm">
                   <p className="text-xs text-slate-500 uppercase tracking-wide">
-                    Calculo de Precos conforme risco CNAE e nº de funcionários
+                    Calculo do Preço
                   </p>
 
-                  <div className="mt-2 flex items-center justify-between">
+                  <div className="mt-3 flex items-center justify-between">
                     <span className="text-sm text-slate-600">
-                      Preço por colaborador
+                      {quote.n} colaboradores
                     </span>
-                    <span className="text-sm font-semibold text-slate-800">
+                    <span className="text-xs text-slate-400 capitalize">
+                      risco {quote.risco}
+                    </span>
+                  </div>
+
+                  <div className="mt-3 flex justify-between">
+                    <span className="text-sm text-slate-600">
+                      Valor por colaborador
+                    </span>
+                    <span className="font-semibold text-slate-800">
                       {quote.precoPorUsuarioBRL.toLocaleString("pt-BR", {
                         style: "currency",
                         currency: "BRL",
@@ -629,9 +652,9 @@ export default function EmpresaNR1Page() {
                     </span>
                   </div>
 
-                  <div className="mt-1 flex items-center justify-between">
-                    <span className="text-sm text-slate-600">Total a pagar</span>
-                    <span className="text-lg font-extrabold text-brand">
+                  <div className="mt-1 flex justify-between items-center">
+                    <span className="text-sm text-slate-600">Valor Total</span>
+                    <span className="text-xl font-extrabold text-brand">
                       {quote.totalMensalBRL.toLocaleString("pt-BR", {
                         style: "currency",
                         currency: "BRL",
@@ -639,18 +662,17 @@ export default function EmpresaNR1Page() {
                     </span>
                   </div>
 
-                  <div className="mt-2 text-xs text-slate-500">
-                    Risco: <strong>{quote.risco}</strong> • Colaboradores
-                    considerados: <strong>{quote.n}</strong>
-                  </div>
-
                   {quote.minimoAplicado && (
-                    <div className="mt-2 text-xs text-amber-700">
-                      ⚠️ Mínimo aplicado: o plano exige pelo menos 2
-                      colaboradores.
+                    <div className="mt-3 text-xs text-amber-600">
+                      ⚠️ Mínimo de 2 colaboradores aplicado
                     </div>
                   )}
                 </div>
+              )}
+              {loadingConfig && (
+                <p className="text-xs text-slate-500">
+                  Carregando base de preço...
+                </p>
               )}
             </div>
 

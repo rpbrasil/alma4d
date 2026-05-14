@@ -56,7 +56,7 @@ export default function AutoraPage() {
             },
             {
               title: "Pesquisa contínua",
-              text: "Após sua graduação, mantem estudos em Neurociência e, para complementar sua proposta integrativa, desenvolve estudos independentes em alimentação natural e estilos de vida saudável.",
+              text: "Após sua graduação, mantem estudos em Neurociência e, para complementar sua proposta integrativa, desenvolve pesquisa independente em alimentação natural e estilos de vida saudável.",
             },
           ].map((item) => (
             <div key={item.title} className="rounded-xl bg-surface-muted p-6">
