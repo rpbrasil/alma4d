@@ -57,9 +57,9 @@ export async function POST(req: Request) {
         { error: "contrato_id ausente" },
         { status: 400 },
       );
-    if (!Number.isInteger(funcionarios) || funcionarios <= 0) {
+    if (!Number.isInteger(funcionarios) || funcionarios <= 2) {
       return NextResponse.json(
-        { error: "funcionarios inválido" },
+        { error: "É necessário no mínimo 2 funcionários para contratar." },
         { status: 400 },
       );
     }

@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Mail, CheckCircle2 } from "lucide-react";
 import { supabaseBrowser as supabase } from "@/lib/supabase/browser";
-
+import { calcularPrecificacao } from "../_components/ModeloPrecificacaoExpress";
 
 type FormState = "idle" | "submitting" | "success" | "error";
 
@@ -198,6 +198,20 @@ export default function EmpresaNR1Page() {
     cnpjSucesso &&
     !empresaInativa;
 
+  const quote = React.useMemo(() => {
+    if (!riscoEmpresa) return null;
+    const f = Number(form.funcionarios || 0);
+    if (!Number.isFinite(f) || f <= 0) return null;
+    return calcularPrecificacao(f, riscoEmpresa, {
+      k_base: 18,
+      decaimento: 0.15,
+      multiplicador_baixo: 1.0,
+      multiplicador_medio: 1.3,
+      multiplicador_alto: 1.4,
+      minimo_usuarios: 2
+    });
+  }, [form.funcionarios, riscoEmpresa]);
+
   useEffect(() => {
     if (!mostrarRisco) return;
 
@@ -270,9 +284,10 @@ export default function EmpresaNR1Page() {
     if (!isValidNameLoose(f.responsavel))
       return "Informe um responsável válido.";
 
-    if (!Number.isInteger(f.funcionarios) || f.funcionarios <= 0) {
-      return "Número de funcionários inválido.";
+    if (!Number.isInteger(f.funcionarios) || f.funcionarios < 2) {
+      return "É necessário no mínimo 2 funcionários para contratar.";
     }
+
 
     if (!f.aceiteLgpd) return "É obrigatório aceitar a LGPD.";
 
@@ -589,13 +604,54 @@ export default function EmpresaNR1Page() {
               <input
                 type="number"
                 inputMode="numeric"
-                min={1}
+                min={2}
                 value={form.funcionarios || ""}
                 onChange={(e) => update("funcionarios", Number(e.target.value))}
                 className="h-11 border rounded-lg px-3"
                 placeholder="Nº funcionários"
                 required
               />
+              {quote && (
+                <div className="rounded-xl border border-border bg-surface-muted p-4">
+                  <p className="text-xs text-slate-500 uppercase tracking-wide">
+                    Calculo de Precos conforme risco CNAE e nº de funcionários
+                  </p>
+
+                  <div className="mt-2 flex items-center justify-between">
+                    <span className="text-sm text-slate-600">
+                      Preço por colaborador
+                    </span>
+                    <span className="text-sm font-semibold text-slate-800">
+                      {quote.precoPorUsuarioBRL.toLocaleString("pt-BR", {
+                        style: "currency",
+                        currency: "BRL",
+                      })}
+                    </span>
+                  </div>
+
+                  <div className="mt-1 flex items-center justify-between">
+                    <span className="text-sm text-slate-600">Total a pagar</span>
+                    <span className="text-lg font-extrabold text-brand">
+                      {quote.totalMensalBRL.toLocaleString("pt-BR", {
+                        style: "currency",
+                        currency: "BRL",
+                      })}
+                    </span>
+                  </div>
+
+                  <div className="mt-2 text-xs text-slate-500">
+                    Risco: <strong>{quote.risco}</strong> • Colaboradores
+                    considerados: <strong>{quote.n}</strong>
+                  </div>
+
+                  {quote.minimoAplicado && (
+                    <div className="mt-2 text-xs text-amber-700">
+                      ⚠️ Mínimo aplicado: o plano exige pelo menos 2
+                      colaboradores.
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Responsável */}
