@@ -3,6 +3,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { supabaseBrowser as supabase } from "@/lib/supabase/browser";
 import { trackConsent } from "@/lib/trackConsent";
+import { useAccessGuard } from "@/hooks/useAccessGuard";
 
 type JobStatus = {
   id: string;
@@ -16,18 +17,12 @@ type JobStatus = {
   updated_at?: string;
 };
 
-type Departamento = {
-  id: string;
-  nome: string;
-  ativo: boolean;
-};
-
 type CsvRegistro = {
   nome_completo: string;
   documento: string;
   telefone: string;
   role: "usuario";
-  departamento_id?: string | null; // NOVO
+  departamento_nome?: string | null; // ✅ agora é texto
 };
 
 type BulkLineError = {
@@ -79,8 +74,11 @@ function normalizePhoneBR(v: string) {
   return `+55${d}`;
 }
 
+function normalizeDeptName(v: string) {
+  return v.trim().replace(/\s+/g, " ");
+}
+
 function parsePaste(text: string): CsvRegistro[] {
-  // aceita "nome;cpf;telefone" ou "nome,cpf,telefone" ou com tabs
   const lines = text
     .split(/\r?\n/)
     .map((l) => l.trim())
@@ -96,12 +94,14 @@ function parsePaste(text: string): CsvRegistro[] {
     const nome = (parts[0] ?? "").trim();
     const cpf = onlyDigits(parts[1] ?? "");
     const tel = normalizePhoneBR(parts[2] ?? "");
+    const dept = (parts[3] ?? "").trim();
 
     return {
       nome_completo: nome,
       documento: cpf,
       telefone: tel,
-      role: "usuario" as const, // hardcoded via express
+      role: "usuario" as const,
+      departamento_nome: dept ? normalizeDeptName(dept) : null,
     };
   });
 
@@ -114,11 +114,9 @@ function parsePaste(text: string): CsvRegistro[] {
     if (!isValidPhone(r.telefone)) return false;
     if (!r.telefone.startsWith("+")) return false;
 
-    // 🚫 CPF duplicado
     if (seenCpf.has(r.documento)) return false;
     seenCpf.add(r.documento);
 
-    // 🚫 Telefone duplicado
     if (seenPhone.has(r.telefone)) return false;
     seenPhone.add(r.telefone);
 
@@ -129,35 +127,6 @@ function parsePaste(text: string): CsvRegistro[] {
 async function getAccessToken() {
   const { data } = await supabase.auth.getSession();
   return data.session?.access_token ?? null;
-}
-
-async function loadDepartamentos(): Promise<Departamento[]> {
-  const clienteId = await getClienteIdFromSession();
-  if (!clienteId) return [];
-
-  const { data, error } = await supabase
-    .from("departamentos")
-    .select("id,nome,ativo")
-    .eq("cliente_id", clienteId)
-    .eq("ativo", true)
-    .order("nome", { ascending: true });
-
-  if (error) return [];
-  return (data ?? []) as Departamento[];
-}
-
-async function getClienteIdFromSession(): Promise<string | null> {
-  const { data } = await supabase.auth.getSession();
-  const userId = data.session?.user?.id;
-  if (!userId) return null;
-
-  const { data: usuario } = await supabase
-    .from("usuarios")
-    .select("cliente_id")
-    .eq("id", userId)
-    .single();
-
-  return usuario?.cliente_id ?? null;
 }
 
 export default function DashboardExpress() {
@@ -174,12 +143,9 @@ export default function DashboardExpress() {
   const [bulkPreview, setBulkPreview] = useState<CsvRegistro[]>([]);
   const [bulkError, setBulkError] = useState<string | null>(null);
 
-  //departamento
   // departamentos (opcional)
   const [deptEnabled, setDeptEnabled] = useState(false);
-  const [departamentos, setDepartamentos] = useState<Departamento[]>([]);
-  const [departamentoId, setDepartamentoId] = useState<string>("");
-
+  const [departamentoNomePadrao, setDepartamentoNomePadrao] = useState("");
   const [deptAcknowledge, setDeptAcknowledge] = useState(false);
 
   // job
@@ -191,6 +157,11 @@ export default function DashboardExpress() {
   const [showDeptModal, setShowDeptModal] = useState(true);
   const enqueueUrl = process.env.NEXT_PUBLIC_FN_IMPORT_ENQUEUE_URL!;
   const workerUrl = process.env.NEXT_PUBLIC_FN_IMPORT_WORKER_URL!;
+  const { loading } = useAccessGuard({
+    requirePlano: "express",
+    allowAdmin: true,
+    redirectIfFail: "/ativacao",
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -316,12 +287,13 @@ export default function DashboardExpress() {
         setMsg("Telefone inválido");
         return;
       }
+      const deptNome = deptEnabled ? normalizeDeptName(departamentoNomePadrao) : "";
       const payload = {
         nome_completo: nomeNorm,
         documento: onlyDigits(cpf),
         telefone: normalizePhoneBR(tel),
         role: "usuario",
-        departamento_id: deptEnabled && departamentoId ? departamentoId : null,
+        departamento_nome: deptNome || null,
       };
 
       if (bulkPreview.some((u) => u.documento === cpfNorm)) {
@@ -388,25 +360,44 @@ export default function DashboardExpress() {
   async function onEnqueueBulk() {
     setMsg(null);
     setBusy(true);
+
     try {
       const regs = parsePaste(paste);
-      if (!regs.length) throw new Error("Nenhuma linha válida para importar.");
+
+      if (!regs.length) {
+        throw new Error("Nenhuma linha válida para importar.");
+      }
+
       if (
         limiteUsuarios !== null &&
         usuariosAtuais + regs.length > limiteUsuarios
       ) {
         const restante = limiteUsuarios - usuariosAtuais;
+
         throw new Error(
           `Você pode adicionar no máximo ${restante} usuários no seu plano.`,
         );
       }
-      const token = await getAccessToken();
-      if (!token) throw new Error("Sessão expirada. Faça login novamente.");
 
+      const token = await getAccessToken();
+      if (!token) {
+        throw new Error("Sessão expirada. Faça login novamente.");
+      }
+
+      // ✅ normaliza dept padrão (se houver)
+      const deptPadrao = deptEnabled
+        ? normalizeDeptName(departamentoNomePadrao)
+        : "";
+
+      // ✅ regra correta: linha > padrão
       const regsWithDept: CsvRegistro[] = regs.map((r) => ({
         ...r,
-        departamento_id: deptEnabled && departamentoId ? departamentoId : null,
+        departamento_nome:
+          r.departamento_nome && r.departamento_nome.trim().length > 0
+            ? normalizeDeptName(r.departamento_nome)
+            : deptPadrao || null,
       }));
+
       const r = await fetch(enqueueUrl, {
         method: "POST",
         headers: {
@@ -415,13 +406,16 @@ export default function DashboardExpress() {
         },
         body: JSON.stringify({ registros: regsWithDept }),
       });
+
       const j = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(j.error || "Falha ao enfileirar importação.");
+
+      if (!r.ok) {
+        throw new Error(j.error || "Falha ao enfileirar importação.");
+      }
 
       setJobId(j.job_id);
       setMsg(`Importação enfileirada (job ${j.job_id}). Processando...`);
 
-      // roda worker 1x imediatamente para dar sensação de velocidade
       await runWorkerOnce(j.job_id);
       await refreshJob(j.job_id);
       await refreshEntitlements();
@@ -468,24 +462,6 @@ export default function DashboardExpress() {
     }
   }
 
-  useEffect(() => {
-    let cancelled = false;
-
-    (async () => {
-      if (!deptEnabled) {
-        setDepartamentos([]);
-        setDepartamentoId("");
-        return;
-      }
-      const list = await loadDepartamentos();
-      if (!cancelled) setDepartamentos(list);
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [deptEnabled]);
-
   async function closeDeptModal() {
     if (!deptAcknowledge) return;
     await trackConsent({
@@ -499,54 +475,78 @@ export default function DashboardExpress() {
     setShowDeptModal(false);
   }
 
+  if (loading) {
+    return (
+      <div className="p-6 text-sm text-slate-500">Validando acesso...</div>
+    );
+  }
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      setPaste(text);
+
+      setMsg(`Arquivo carregado (${file.name})`);
+    } catch {
+      setMsg("Erro ao ler arquivo.");
+    }
+  }
+  
+  const bulkPlaceholder = deptEnabled
+    ? `Ex (com departamento):\nJoão Silva;12345678901;11999999999;Produção\nMaria Lima;98765432100;11988887777;RH\n\nFormato: nome;cpf;telefone;departamento\n(Se não informar na linha, usamos o Departamento padrão acima — se preenchido)`: `Ex:\nJoão Silva;12345678901;11999999999\nMaria Lima;98765432100;11988887777\n\nFormato: nome;cpf;telefone`;
+  
   return (
     <div className="space-y-6">
-      {showDeptModal && (<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-        <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-lg">
-          <h3 className="text-lg font-bold text-slate-900">
-            ATENÇÃO: SIGILO E DADOS AGREGADOS
-          </h3>
-          <p className="mt-3 text-sm text-slate-700 leading-relaxed">
-            O COPSOQ deve ser aplicado garantindo <strong>anonimato</strong> e
-            <strong> confidencialidade</strong>. Informações como{" "}
-            <strong>Departamento</strong> podem permitir identificação indireta
-            em grupos pequenos. Use essa segmentação apenas se você conseguir
-            manter relatórios <strong>sempre agregados</strong> e sem divulgação
-            de resultados em grupos com poucos respondentes.
-          </p>
+      {showDeptModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-lg">
+            <h3 className="text-lg font-bold text-slate-900">
+              ATENÇÃO: SIGILO E DADOS AGREGADOS
+            </h3>
+            <p className="mt-3 text-sm text-slate-700 leading-relaxed">
+              O COPSOQ deve ser aplicado garantindo <strong>anonimato</strong> e
+              <strong> confidencialidade</strong>. Informações como{" "}
+              <strong>Departamento</strong> podem permitir identificação
+              indireta em grupos pequenos. Use essa segmentação apenas se você
+              conseguir manter relatórios <strong>sempre agregados</strong> e
+              sem divulgação de resultados em grupos com poucos respondentes.
+            </p>
 
-          <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-            Ao continuar, você declara estar ciente e assume a responsabilidade
-            pelo uso adequado desses dados (políticas internas/LGPD) e pela
-            garantia de relatórios agregados.
-          </div>
+            <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+              Ao continuar, você declara estar ciente e assume a
+              responsabilidade pelo uso adequado desses dados (políticas
+              internas/LGPD) e pela garantia de relatórios agregados.
+            </div>
 
-          <div className="mt-4 space-y-3">
-            <label className="flex items-start gap-2 text-sm text-slate-700">
-              <input
-                type="checkbox"
-                checked={deptAcknowledge}
-                onChange={(e) => setDeptAcknowledge(e.target.checked)}
-                className="mt-1 h-4 w-4"
-              />
-              <span>
-                Entendi e assumo a responsabilidade de manter os resultados{" "}
-                <strong> agregados </strong>e preservar a confidencialidade.
-              </span>
-            </label>
-          </div>
+            <div className="mt-4 space-y-3">
+              <label className="flex items-start gap-2 text-sm text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={deptAcknowledge}
+                  onChange={(e) => setDeptAcknowledge(e.target.checked)}
+                  className="mt-1 h-4 w-4"
+                />
+                <span>
+                  Entendi e assumo a responsabilidade de manter os resultados{" "}
+                  <strong> agregados </strong>e preservar a confidencialidade.
+                </span>
+              </label>
+            </div>
 
-          <div className="mt-6 flex justify-end">
-            <button
-              disabled={!deptAcknowledge}
-              onClick={closeDeptModal}
-              className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-            >
-              Continuar
-            </button>
+            <div className="mt-6 flex justify-end">
+              <button
+                disabled={!deptAcknowledge}
+                onClick={closeDeptModal}
+                className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+              >
+                Continuar
+              </button>
+            </div>
           </div>
         </div>
-      </div>)}
+      )}
       {/* Header / onboarding */}
       <div className="rounded-2xl border border-border bg-surface p-6">
         <div className="flex items-start justify-between gap-4">
@@ -581,14 +581,23 @@ export default function DashboardExpress() {
             Habilitar campo <strong>Departamento</strong> (opcional)
           </label>
         </div>
+
         {deptEnabled && (
-          <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-            <strong>Atenção (Departamento habilitado):</strong> o uso de
-            Departamento pode aumentar o risco de identificação indireta em
-            grupos pequenos. Garanta que os relatórios COPSOQ sejam sempre{" "}
-            <strong>agregados</strong> e que não haja divulgação por grupos com
-            poucos respondentes. A responsabilidade pelo uso e pelas regras
-            internas/LGPD é da organização.
+          <div className="mt-4">
+            <label className="text-sm text-slate-600">
+              Departamento (opcional)
+            </label>
+            <input
+              value={departamentoNomePadrao}
+              onChange={(e) => setDepartamentoNomePadrao(e.target.value)}
+              placeholder="Ex: Produção, RH, Comercial..."
+              className="mt-2 w-full rounded-xl border border-border bg-white px-3 py-2 text-sm"
+            />
+            <p className="mt-1 text-xs text-slate-500">
+              Se preencher aqui, este departamento será aplicado como padrão aos
+              usuários importados (a menos que a linha traga um departamento
+              específico).
+            </p>
           </div>
         )}
 
@@ -628,21 +637,21 @@ export default function DashboardExpress() {
             className="rounded-xl border border-border bg-white px-3 py-2 text-sm"
           />
           {deptEnabled && (
+            <div className="mt-4">
+              <label className="text-sm text-slate-600">
+                Departamento (opcional)
+              </label>
+
+              <input
+                value={departamentoNomePadrao}
+                onChange={(e) => setDepartamentoNomePadrao(e.target.value)}
+                placeholder="Ex: Produção, RH, Comercial..."
+                className="mt-2 w-full rounded-xl border border-border bg-white px-3 py-2 text-sm"
+              />
+            </div>
+          )}
+          {deptEnabled && (
             <div className="sm:col-span-3">
-              <select
-                value={departamentoId}
-                onChange={(e) => setDepartamentoId(e.target.value)}
-                className="w-full rounded-xl border border-border bg-white px-3 py-2 text-sm"
-              >
-                <option value="">
-                  (Opcional) Selecione um departamento...
-                </option>
-                {departamentos.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.nome}
-                  </option>
-                ))}
-              </select>
               <p className="mt-1 text-xs text-slate-500">
                 Recomendação: use apenas se o relatório continuar{" "}
                 <strong>agregado</strong> e sem exposição de grupos pequenos.
@@ -670,36 +679,54 @@ export default function DashboardExpress() {
         <h2 className="text-sm font-semibold text-slate-800">
           Adicionar em massa (colar ou CSV)
         </h2>
-        <p className="mt-1 text-sm text-slate-600">
-          Para 20, 200 ou 500+ usuários. Cole linhas no formato:{" "}
-          <code>nome;cpf;telefone</code>.
+
+        <p className="mt-1 text-sm text-slate-600 flex flex-wrap items-center gap-2">
+          Para 20, 200 ou 500+ usuários. Cole linhas no formato{" "}
+          <code>nome;cpf;telefone</code>. Para escolher um arquivo, clique:
+          <input
+            type="file"
+            accept=".csv,.txt"
+            onChange={handleFile}
+            className="hidden"
+            id="fileUpload"
+          />
+          <label
+            htmlFor="fileUpload"
+            className="inline-flex items-center rounded-lg border border-border bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-surface-muted cursor-pointer"
+          >
+            Buscar arquivo
+          </label>
         </p>
+
         {deptEnabled && (
           <div className="mt-4">
             <label className="text-sm text-slate-600">
               Departamento (opcional)
             </label>
-            <select
-              value={departamentoId}
-              onChange={(e) => setDepartamentoId(e.target.value)}
-              className="mt-2 w-full rounded-xl border border-border bg-white px-3 py-2 text-sm"
-            >
-              <option value="">(Opcional) Selecione um departamento...</option>
-              {departamentos.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.nome}
-                </option>
-              ))}
-            </select>
           </div>
         )}
+
         <textarea
           value={paste}
           onChange={(e) => setPaste(e.target.value)}
-          placeholder={`Ex:\nJoão Silva;12345678901;11999999999\nMaria Lima;98765432100;11988887777`}
+          placeholder={bulkPlaceholder}
           className="mt-4 min-h-35 w-full rounded-xl border border-border bg-white p-3 text-sm"
         />
+        {job && (
+          <div className="mt-5 rounded-xl border border-border bg-white p-4">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold">Importação</p>
+              <span className="text-xs">{job.status}</span>
+            </div>
 
+            <div className="mt-3 h-2 rounded-full bg-slate-200 overflow-hidden">
+              <div
+                className="h-full bg-brand"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          </div>
+        )}
         {bulkError && <p className="mt-2 text-sm text-red-600">{bulkError}</p>}
 
         <div className="mt-4 flex flex-wrap gap-2">
@@ -740,77 +767,22 @@ export default function DashboardExpress() {
               Atualizar status do job
             </button>
           )}
+          {!!jobErrors.length && (
+            <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4">
+              <p className="text-sm font-semibold text-red-800">
+                Erros (amostra)
+              </p>
+
+              <ul className="mt-2 space-y-1 text-xs text-red-700">
+                {jobErrors.slice(0, 10).map((e, i) => (
+                  <li key={i}>
+                    Linha {e.linha}: {e.error}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
-
-        {!!bulkPreview.length && (
-          <div className="mt-5 rounded-xl border border-border bg-white p-4">
-            <p className="text-sm font-semibold text-slate-800">
-              Prévia (primeiras linhas)
-            </p>
-            <ul className="mt-2 space-y-1 text-sm text-slate-600">
-              {bulkPreview.map((r, i) => (
-                <li key={i}>
-                  {r.nome_completo} — {r.documento} — {r.telefone}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {/* progresso do job */}
-        {job && (
-          <div className="mt-5 rounded-xl border border-border bg-white p-4">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold text-slate-800">Importação</p>
-              <span className="text-xs font-semibold text-slate-500">
-                {job.status}
-              </span>
-            </div>
-
-            <div className="mt-3 h-2 rounded-full bg-slate-200 overflow-hidden">
-              <div
-                className="h-full bg-brand"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-
-            <div className="mt-3 grid gap-2 text-xs text-slate-600 sm:grid-cols-4">
-              <div>
-                Total: <strong>{job.total}</strong>
-              </div>
-              <div>
-                Processado: <strong>{job.processed}</strong>
-              </div>
-              <div>
-                Sucesso: <strong>{job.success}</strong>
-              </div>
-              <div>
-                Erros: <strong>{job.errors}</strong>
-              </div>
-            </div>
-
-            {job.last_error && (
-              <div className="mt-3 text-xs text-red-600">
-                Último erro: {job.last_error}
-              </div>
-            )}
-          </div>
-        )}
-
-        {!!jobErrors.length && (
-          <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4">
-            <p className="text-sm font-semibold text-red-800">
-              Erros (amostra)
-            </p>
-            <ul className="mt-2 space-y-1 text-xs text-red-700">
-              {jobErrors.slice(0, 10).map((e, i) => (
-                <li key={i}>
-                  Linha {e.linha}: {e.error}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
       </div>
     </div>
   );

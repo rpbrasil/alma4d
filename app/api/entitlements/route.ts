@@ -23,50 +23,62 @@ export async function GET(req: Request) {
 
   const callerId = userWrap.user.id;
 
-  const { data: perfil, error: perfilErr } = await supabase
-    .from("usuarios")
-    .select("id, role, cliente_id, ativo")
-    .eq("id", callerId)
-    .maybeSingle();
+ const { data: perfil, error: perfilErr } = await supabase
+   .from("usuarios")
+   .select("id, role, cliente_id, ativo, tipo_plano")
+   .eq("id", callerId)
+   .maybeSingle();
 
-  if (perfilErr || !perfil || !perfil.ativo) {
-    return NextResponse.json({ error: "Sem permissão" }, { status: 403 });
-  }
+ if (perfilErr || !perfil || !perfil.ativo || perfil.tipo_plano !== "express") {
+   return NextResponse.json({ error: "Plano inválido" }, { status: 403 });
+ }
 
-  // tenant: se tiver cliente_id, usa ele; se não tiver (trial), usa o próprio user.id como “tenant”
-  const tenantId = perfil.cliente_id ?? perfil.id;
-  console.log("Tenant ID:", tenantId);
-  // limite: se existir contrato ativo para cliente_id, usa limite_usuarios. Se for trial, defina um limite padrão.
-  let limite_usuarios: number | null = null;
+ // ⚠️ IMPORTANTE: express é fluxo pago → precisa ter cliente
+ if (!perfil.cliente_id) {
+   return NextResponse.json(
+     { error: "Sem cliente vinculado" },
+     { status: 403 },
+   );
+ }
 
-  if (perfil.cliente_id) {
-    const { data: contratoAtivo } = await supabase
-      .from("contratos")
-      .select("limite_usuarios")
-      //.eq("role", "usuario")
-      //.eq("ativo", true)
-      //.or(`cliente_id.eq.${tenantId},gestor_id.eq.${perfil.id}`)
-      .eq("status", "ativo")
-      .order("criado_em", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+ // ✅ valida cliente ativo
+ const { data: cliente } = await supabase
+   .from("clientes")
+   .select("ativo")
+   .eq("id", perfil.cliente_id)
+   .single();
 
-    limite_usuarios = contratoAtivo?.limite_usuarios ?? null;
-  } else {
-    // trial (ajuste conforme sua regra)
-    limite_usuarios = 3;
-  }
+ if (!cliente?.ativo) {
+   return NextResponse.json({ error: "Cliente inativo" }, { status: 403 });
+ }
 
-  // uso atual
-  const { count } = await supabase
-    .from("usuarios")
-    .select("id", { count: "exact", head: true })
-    .eq("cliente_id", tenantId)
-    .eq("role", "usuario")
-    .eq("ativo", true);
+ // ✅ tenant correto (agora sempre cliente_id)
+ const tenantId = perfil.cliente_id;
 
-  return NextResponse.json({
-    limite_usuarios,
-    usuarios_ativos: count ?? 0,
-  });
+ // ✅ limite baseado no contrato ativo
+ let limite_usuarios: number | null = null;
+
+ const { data: contratoAtivo } = await supabase
+   .from("contratos")
+   .select("limite_usuarios")
+   .eq("cliente_id", tenantId)
+   .eq("status", "ativo")
+   .order("criado_em", { ascending: false })
+   .limit(1)
+   .maybeSingle();
+
+ limite_usuarios = contratoAtivo?.limite_usuarios ?? null;
+
+ // ✅ uso atual
+ const { count } = await supabase
+   .from("usuarios")
+   .select("id", { count: "exact", head: true })
+   .eq("cliente_id", tenantId)
+   .eq("role", "usuario")
+   .eq("ativo", true);
+
+ return NextResponse.json({
+   limite_usuarios,
+   usuarios_ativos: count ?? 0,
+ });
 }

@@ -4,13 +4,17 @@ import { createClient } from "@supabase/supabase-js";
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const jobId = searchParams.get("job_id");
-  if (!jobId)
+
+  if (!jobId) {
     return NextResponse.json({ error: "job_id obrigatório" }, { status: 400 });
+  }
 
   const authHeader = req.headers.get("authorization");
+
   if (!authHeader?.startsWith("Bearer ")) {
     return NextResponse.json({ error: "Token ausente" }, { status: 401 });
   }
+
   const token = authHeader.split(" ")[1];
 
   const supabaseAdmin = createClient(
@@ -18,17 +22,20 @@ export async function GET(req: Request) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
   );
 
+  // ✅ valida sessão
   const { data: userWrap, error: authError } =
     await supabaseAdmin.auth.getUser(token);
+
   if (authError || !userWrap?.user) {
     return NextResponse.json({ error: "Token inválido" }, { status: 401 });
   }
 
   const callerId = userWrap.user.id;
 
+  // ✅ busca perfil completo
   const { data: caller } = await supabaseAdmin
     .from("usuarios")
-    .select("id, role, cliente_id, ativo")
+    .select("id, role, cliente_id, ativo, tipo_plano")
     .eq("id", callerId)
     .maybeSingle();
 
@@ -36,15 +43,39 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Sem permissão" }, { status: 403 });
   }
 
+  // ✅ valida plano
+  if (
+    caller.role !== "admin" &&
+    !["express", "premium"].includes(String(caller.tipo_plano))
+  ) {
+    return NextResponse.json({ error: "Plano inválido" }, { status: 403 });
+  }
+
+  // ✅ valida cliente ativo
+  if (caller.role !== "admin") {
+    const { data: cliente } = await supabaseAdmin
+      .from("clientes")
+      .select("ativo")
+      .eq("id", caller.cliente_id)
+      .maybeSingle();
+
+    if (!cliente?.ativo) {
+      return NextResponse.json({ error: "Cliente inativo" }, { status: 403 });
+    }
+  }
+
+  // ✅ busca job
   const { data: job } = await supabaseAdmin
     .from("importacao_usuarios_jobs")
     .select("id, caller_cliente_id")
     .eq("id", jobId)
     .maybeSingle();
 
-  if (!job)
+  if (!job) {
     return NextResponse.json({ error: "Job não encontrado" }, { status: 404 });
+  }
 
+  // ✅ proteção multi-tenant
   if (
     caller.role !== "admin" &&
     String(job.caller_cliente_id) !== String(caller.cliente_id)
@@ -52,6 +83,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Job de outro tenant" }, { status: 403 });
   }
 
+  // ✅ busca erros
   const { data: rows } = await supabaseAdmin
     .from("importacao_usuarios_linhas")
     .select("linha, error, payload")
@@ -60,5 +92,7 @@ export async function GET(req: Request) {
     .order("linha", { ascending: true })
     .limit(50);
 
-  return NextResponse.json({ errors: rows ?? [] });
+  return NextResponse.json({
+    errors: rows ?? [],
+  });
 }

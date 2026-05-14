@@ -208,13 +208,19 @@ export async function POST(req: Request) {
 
   await supabase
     .from("usuarios")
-    .update({ ativo: true })
-    .eq("cliente_id", contrato.cliente_id);
+    .update({
+      ativo: true,
+      plano: "express",
+      data_inicio_plano: nowISO(),
+      data_expiracao_plano: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
+
+    })
+    .eq("id", contrato.criado_por);
 
   // ✅ DADOS PDF
   const empresa = {
-    razaoSocial: cliente?.razao_social ?? "",
-    cnpj: cliente?.cnpj ?? "",
+    razaoSocial: cliente?.nome ?? "",
+    cnpj: cliente?.documento ?? "",
   };
 
   const user = {
@@ -248,7 +254,32 @@ export async function POST(req: Request) {
   } catch (err) {
     console.error("Erro PDF:", err);
   }
+  if (isFailEvent || isCancelEvent) {
+    await supabase
+      .from("contratos")
+      .update({
+        pagarme_order_id: pagarmeOrderId,
+        pagarme_payment_status:
+          pagarmePaymentStatus ?? (isFailEvent ? "failed" : "canceled"),
+        forma_pagamento: paymentMethod,
+        atualizado_em: nowISO(),
+      })
+      .eq("id", contratoId);
 
+    await supabase.from("contrato_eventos").insert({
+      contrato_id: contratoId,
+      tipo: isFailEvent ? "pagamento_falhou" : "pagamento_cancelado",
+      descricao: "Atualização via webhook Pagar.me",
+      dados: {
+        pagarme_order_id: pagarmeOrderId,
+        pagarme_payment_status: pagarmePaymentStatus,
+        forma_pagamento: paymentMethod,
+        event_type: eventType,
+      },
+    });
+
+    return NextResponse.json({ ok: true, updated: true });
+  }
   return NextResponse.json({
     ok: true,
     activated: true,

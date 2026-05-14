@@ -48,15 +48,15 @@ export default function AutoraPage() {
           {[
             {
               title: "Formação",
-              text: "Formada em Arquitetura e Urbanismo, Fran ampliou seu campo de estudo para as questões humanas nas suas interfaces, do autoconhecimento aos relacionamentos sociais.",
+              text: "Formada em Arquitetura e Urbanismo, Fran ampliou seu campo de estudo para as questões humanas nas suas interfaces: Formação Internacional em Health & Wellness Coaching e Certificação do HeartMath Certified Mentor.",
             },
             {
               title: "Experiência",
-              text: "Atuou em Recursos Humanos na área da saúde e por 18 anos como Terapeuta Antroposófica.",
+              text: "Atuou como Terapeuta Antroposófica acompanhando processos de transformação individual por 18 anos e, posteriormente, aplicou seus conhecimentos em empresas para o desenvolvimento profissional.",
             },
             {
               title: "Pesquisa contínua",
-              text: "Após sua graduação, mantem estudos e projetos em Neurociência, Neuropsicologia, Health and Wellness e Mentoria do HeartMath.",
+              text: "Após sua graduação, mantem estudos em Neurociência e, para complementar sua proposta integrativa, desenvolve estudos independentes em alimentação natural e estilos de vida saudável.",
             },
           ].map((item) => (
             <div key={item.title} className="rounded-xl bg-surface-muted p-6">

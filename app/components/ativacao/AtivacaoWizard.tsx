@@ -851,7 +851,10 @@ function AtivacaoWizardContent() {
         aceitou_termos: true,
         premium_origem: "pagarme" as const,
         // mantém plano/role se já existirem (não forço aqui pra não criar regressão)
-        role: existingUser?.role ?? "cliente",
+        role:
+          existingUser?.role === "admin"
+            ? "admin" // mantém coringa
+            : "cliente",
         tipo_plano: existingUser?.tipo_plano || "express",
         data_inicio_plano:
           existingUser?.data_inicio_plano ?? new Date().toISOString(),
