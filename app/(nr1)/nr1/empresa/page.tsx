@@ -5,8 +5,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { Mail, CheckCircle2 } from "lucide-react";
 import { supabaseBrowser as supabase } from "@/lib/supabase/browser";
+import {
+  getPrecificacaoConfig,
+  PrecificacaoConfig,
+} from "@/lib/precificacao/getConfig";
 import { calcularPrecificacao } from "../_components/ModeloPrecificacaoExpress";
-import { getPrecificacaoConfig, PrecificacaoConfig } from "@/lib/precificacao/getConfig";
+import { validarCupom } from "../../../lib/cupons/validarcupom";
+
 
 type FormState = "idle" | "submitting" | "success" | "error";
 
@@ -200,12 +205,36 @@ export default function EmpresaNR1Page() {
     !empresaInativa;
   const [config, setConfig] = useState<PrecificacaoConfig | null>(null);
   const [loadingConfig, setLoadingConfig] = useState(false);
- 
-  const quote = useMemo(() => {
-   if (!config || !riscoEmpresa || form.funcionarios < 1) return null;
 
-   return calcularPrecificacao(form.funcionarios, riscoEmpresa, config);
- }, [form.funcionarios, riscoEmpresa, config]);
+  const [cupom, setCupom] = useState("");
+  const [cupomValido, setCupomValido] = useState<string | null>(null);
+  const [cupomError, setCupomError] = useState<string | null>(null);
+  const [loadingCupom, setLoadingCupom] = useState(false);
+  
+  const [descontoCents, setDescontoCents] = useState(0);
+  const [totalComDescontoCents, setTotalComDescontoCents] = useState<number | null>(null);
+const [msgCupomSugestao, setMsgCupomSugestao] = useState<string | null>(null);
+  const quote = useMemo(() => {
+    if (!config || !riscoEmpresa || !form.funcionarios) return null;
+
+    return calcularPrecificacao(form.funcionarios, riscoEmpresa, config);
+  }, [form.funcionarios, riscoEmpresa, config]);
+
+  const quoteComDesconto = useMemo(() => {
+    if (!quote) return null;
+
+    const totalFinalCents = totalComDescontoCents ?? quote.totalMensalCents;
+
+    return {
+      ...quote,
+      totalFinalCents,
+      totalFinalBRL: totalFinalCents / 100,
+    };
+  }, [quote, totalComDescontoCents]);
+
+const totalFinalCents =
+  totalComDescontoCents ?? quote?.totalMensalCents ?? 0;
+
 
   useEffect(() => {
     if (!mostrarRisco) return;
@@ -223,22 +252,22 @@ export default function EmpresaNR1Page() {
     return () => clearInterval(t);
   }, [resendIn]);
 
-// Carrega configuração de precificação ao montar a página
-useEffect(() => {
-  async function loadConfig() {
-    try {
-      setLoadingConfig(true);
-      const cfg = await getPrecificacaoConfig();
-      setConfig(cfg);
-    } catch (e) {
-      console.error("Erro config", e);
-    } finally {
-      setLoadingConfig(false);
+  // Carrega configuração de precificação ao montar a página
+  useEffect(() => {
+    async function loadConfig() {
+      try {
+        setLoadingConfig(true);
+        const cfg = await getPrecificacaoConfig();
+        setConfig(cfg);
+      } catch (e) {
+        console.error("Erro config", e);
+      } finally {
+        setLoadingConfig(false);
+      }
     }
-  }
 
-  loadConfig();
-}, []);
+    loadConfig();
+  }, []);
 
   async function consultarCNPJ() {
     setCnpjLoading(true);
@@ -267,6 +296,30 @@ useEffect(() => {
       update("razaoSocial", data.razao_social);
       update("cnpjDigits", data.cnpj);
       setCnpjSucesso(true);
+
+try {
+  const r = await fetch("/api/cupom/auto", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ cnpj: digits, plano: "express" }),
+  });
+
+  const j = await r.json().catch(() => null);
+
+  if (r.ok && j?.hasCoupon && j?.cupom_codigo) {
+    // pré-preenche o campo cupom e mostra msg
+    setCupom(j.cupom_codigo);
+    setCupomError(null);
+    setCupomValido(null);
+    // opcional: você pode até chamar aplicarCupom automaticamente,
+    // mas eu recomendo só sugerir e deixar o clique do usuário.
+    setMsgCupomSugestao(`Cupom disponível para seu CNPJ: ${j.cupom_codigo}`);
+  } else {
+    setMsgCupomSugestao(null);
+  }
+} catch {
+  // silencioso
+}
 
       if (data.situacao_cadastral?.toLowerCase() !== "ativa") {
         setEmpresaInativa(true);
@@ -461,6 +514,33 @@ useEffect(() => {
     }
   }
 
+  async function aplicarCupom() {
+  setLoadingCupom(true);
+  setCupomError(null);
+
+  try {
+    if (!quote) throw new Error("Calcule o valor antes de aplicar cupom.");
+
+    const applied = await validarCupom({
+      codigo: cupom,
+      totalMensalCents: quote.totalMensalCents,
+      plano: "express",
+    });
+
+    setCupomValido(applied.codigo);
+    setDescontoCents(applied.descontoCents);
+    setTotalComDescontoCents(applied.totalComDescontoCents);
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : "Erro no cupom";
+    setCupomValido(null);
+    setDescontoCents(0);
+    setTotalComDescontoCents(null);
+    setCupomError(message);
+  } finally {
+    setLoadingCupom(false);
+  }
+}
+
   return (
     <main className="min-h-screen bg-surface-muted">
       <div className="max-w-3xl mx-auto px-6 py-6">
@@ -603,7 +683,7 @@ useEffect(() => {
                 disabled
               />
             </div>
-            {!quote && riscoEmpresa && (
+            {!quoteComDesconto && riscoEmpresa && (
               <p className="text-xs text-slate-400 mt-2">
                 Informe o número de funcionários para calcular o valor
               </p>
@@ -625,7 +705,7 @@ useEffect(() => {
                 placeholder="Nº funcionários"
                 required
               />
-              {quote && (
+              {quoteComDesconto && (
                 <div className="mt-4 rounded-xl border border-border bg-white p-4 shadow-sm">
                   <p className="text-xs text-slate-500 uppercase tracking-wide">
                     Calculo do Preço
@@ -633,10 +713,10 @@ useEffect(() => {
 
                   <div className="mt-3 flex items-center justify-between">
                     <span className="text-sm text-slate-600">
-                      {quote.n} colaboradores
+                      {quoteComDesconto.n} colaboradores
                     </span>
                     <span className="text-xs text-slate-400 capitalize">
-                      risco {quote.risco}
+                      risco {quoteComDesconto.risco}
                     </span>
                   </div>
 
@@ -645,24 +725,41 @@ useEffect(() => {
                       Valor por colaborador
                     </span>
                     <span className="font-semibold text-slate-800">
-                      {quote.precoPorUsuarioBRL.toLocaleString("pt-BR", {
-                        style: "currency",
-                        currency: "BRL",
-                      })}
+                      {quoteComDesconto.precoPorUsuarioBRL.toLocaleString(
+                        "pt-BR",
+                        {
+                          style: "currency",
+                          currency: "BRL",
+                        },
+                      )}
                     </span>
                   </div>
 
                   <div className="mt-1 flex justify-between items-center">
                     <span className="text-sm text-slate-600">Valor Total</span>
                     <span className="text-xl font-extrabold text-brand">
-                      {quote.totalMensalBRL.toLocaleString("pt-BR", {
+                      {quoteComDesconto.totalMensalBRL.toLocaleString("pt-BR", {
                         style: "currency",
                         currency: "BRL",
                       })}
                     </span>
                   </div>
-
-                  {quote.minimoAplicado && (
+                  <span className="text-xl font-extrabold text-brand">
+                    {(totalFinalCents / 100).toLocaleString("pt-BR", {
+                      style: "currency",
+                      currency: "BRL",
+                    })}
+                  </span>
+                  {descontoCents > 0 && (
+                    <p className="text-xs text-green-600 mt-1">
+                      💸 Desconto:{" "}
+                      {(descontoCents / 100).toLocaleString("pt-BR", {
+                        style: "currency",
+                        currency: "BRL",
+                      })}
+                    </p>
+                  )}
+                  {quoteComDesconto.minimoAplicado && (
                     <div className="mt-3 text-xs text-amber-600">
                       ⚠️ Mínimo de 2 colaboradores aplicado
                     </div>
@@ -675,7 +772,49 @@ useEffect(() => {
                 </p>
               )}
             </div>
+            {msgCupomSugestao && (
+              <p className="text-xs text-green-600">{msgCupomSugestao}</p>
+            )}
 
+            <div className="mt-4 space-y-2">
+              <label className="text-xs text-slate-500 uppercase tracking-wide">
+                Cupom de desconto
+              </label>
+
+              <div className="flex gap-2">
+                <input
+                  value={cupom}
+                  onChange={(e) => {
+                    setCupom(e.target.value.toUpperCase());
+                    setCupomValido(null);
+                    setDescontoCents(0);
+                    setTotalComDescontoCents(null);
+                    setCupomError(null);
+                  }}
+                  placeholder="Ex: ALMA10"
+                  className="flex-1 h-11 border rounded-lg px-3 text-sm"
+                />
+
+                <button
+                  type="button"
+                  onClick={aplicarCupom}
+                  disabled={loadingCupom || !cupom}
+                  className="px-4 h-11 rounded-lg bg-brand text-white text-sm font-semibold disabled:opacity-50"
+                >
+                  {loadingCupom ? "Aplicando..." : "Aplicar"}
+                </button>
+              </div>
+
+              {cupomError && (
+                <p className="text-xs text-red-500">{cupomError}</p>
+              )}
+
+              {cupomValido && (
+                <p className="text-xs text-green-600">
+                  ✅ Cupom aplicado: {cupomValido}
+                </p>
+              )}
+            </div>
             {/* Responsável */}
             <input
               value={form.responsavel}
@@ -854,7 +993,9 @@ useEffect(() => {
             {/* CTA */}
             <button
               type="submit"
-              disabled={state === "submitting" || !otpVerified}
+              disabled={
+                state === "submitting" || !otpVerified || !quoteComDesconto
+              }
               className={`
     w-full h-11 rounded-xl font-semibold transition-all
     ${

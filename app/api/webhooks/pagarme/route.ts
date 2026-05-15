@@ -12,6 +12,7 @@ type PagarmeWebhook = {
 type PagarmeOrder = {
   metadata?: {
     contrato_id?: string;
+    cupom_codigo?: string;
   };
 };
 
@@ -78,7 +79,6 @@ export async function POST(req: Request) {
   }
 
   let evt: PagarmeWebhook;
-
   try {
     evt = JSON.parse(rawBody);
   } catch {
@@ -90,11 +90,9 @@ export async function POST(req: Request) {
     .trim();
 
   const isPaidEvent = eventType === "order.paid" || eventType === "charge.paid";
-
   const isFailEvent =
     eventType === "order.payment_failed" ||
     eventType === "charge.payment_failed";
-
   const isCancelEvent =
     eventType === "order.canceled" || eventType === "checkout.canceled";
 
@@ -108,19 +106,16 @@ export async function POST(req: Request) {
     { auth: { persistSession: false } },
   );
 
-  // ✅ EXTRAIR ORDER
-
+  // ✅ EXTRAIR ORDER/CHARGE
   const rawObject = (evt as { data?: { object?: unknown } })?.data?.object as {
     id?: string;
     status?: string;
     order?: PagarmeOrder;
-    metadata?: { contrato_id?: string };
+    metadata?: { contrato_id?: string; cupom_codigo?: string };
     payment_method?: string;
-    charges?: Array<{
-      payment_method?: string;
-      status?: string;
-    }>;
+    charges?: Array<{ payment_method?: string; status?: string }>;
   };
+
   const pagarmeOrderId = rawObject?.id ?? null;
   const paymentMethod =
     rawObject?.charges?.[0]?.payment_method ??
@@ -138,29 +133,85 @@ export async function POST(req: Request) {
   const contratoId =
     order?.metadata?.contrato_id ?? rawObject?.metadata?.contrato_id;
 
-  if (!isPaidEvent) {
-    return NextResponse.json({ ok: true });
-  }
+  // opcional: se você mandar cupom_codigo no metadata do Pagarme
+  const cupomFromGateway =
+    order?.metadata?.cupom_codigo ?? rawObject?.metadata?.cupom_codigo ?? null;
 
   if (!contratoId) {
     console.error("contratoId não encontrado");
     return NextResponse.json({ ok: true });
   }
 
-  // ✅ CONTRATO
-  const { data: contrato, error } = await supabase
+  // ✅ CONTRATO (puxar só o que precisamos)
+  const { data: contrato, error: contratoErr } = await supabase
     .from("contratos")
-    .select("*")
+    .select(
+      "id, cliente_id, criado_por, status, cupom_codigo, numero_contrato, versao, criado_em",
+    )
     .eq("id", contratoId)
     .single();
 
-  if (error || !contrato) {
+  if (contratoErr || !contrato) {
     console.error("Contrato não encontrado");
     return NextResponse.json({ ok: true });
   }
 
+  // ✅ FAIL/CANCEL: atualiza contrato + evento + cancela reserva de cupom
+  if (isFailEvent || isCancelEvent) {
+    await supabase
+      .from("contratos")
+      .update({
+        pagarme_order_id: pagarmeOrderId,
+        pagarme_payment_status:
+          pagarmePaymentStatus ?? (isFailEvent ? "failed" : "canceled"),
+        forma_pagamento: paymentMethod,
+        atualizado_em: nowISO(),
+      })
+      .eq("id", contratoId);
+
+    await supabase.from("contrato_eventos").insert({
+      contrato_id: contratoId,
+      tipo: isFailEvent ? "pagamento_falhou" : "pagamento_cancelado",
+      descricao: "Atualização via webhook Pagar.me",
+      dados: {
+        pagarme_order_id: pagarmeOrderId,
+        pagarme_payment_status: pagarmePaymentStatus,
+        forma_pagamento: paymentMethod,
+        event_type: eventType,
+      },
+    });
+
+    // 🔓 libera o cupom (reserva -> cancelado), se houver cupom no contrato
+    if (contrato.cupom_codigo) {
+      await supabase
+        .from("cupom_reservas")
+        .update({ status: "cancelado" })
+        .eq("contrato_id", contratoId)
+        .eq("status", "reservado");
+    }
+
+    return NextResponse.json({ ok: true, updated: true });
+  }
+
+  // ✅ PAID daqui pra baixo
   if (contrato.status === "ativo") {
+    // idempotência: se já ativo, ainda assim garanta consumir a reserva, se estiver reservada
+    if (contrato.cupom_codigo) {
+      await supabase
+        .from("cupom_reservas")
+        .update({ status: "consumido" })
+        .eq("contrato_id", contratoId)
+        .eq("status", "reservado");
+    }
     return NextResponse.json({ ok: true, already_active: true });
+  }
+
+  // ✅ se gateway trouxe cupom e contrato ainda não tem, persistir no contrato
+  if (cupomFromGateway && !contrato.cupom_codigo) {
+    await supabase
+      .from("contratos")
+      .update({ cupom_codigo: String(cupomFromGateway).trim().toUpperCase() })
+      .eq("id", contratoId);
   }
 
   // ✅ ATIVAR CONTRATO
@@ -187,17 +238,39 @@ export async function POST(req: Request) {
     },
   });
 
+  // ✅ CONSUMIR RESERVA DO CUPOM (antifraude final)
+  // Se existir cupom_codigo no contrato, marca a reserva como consumido
+  const cupomCodigoFinal = cupomFromGateway
+    ? String(cupomFromGateway).trim().toUpperCase()
+    : contrato.cupom_codigo
+      ? String(contrato.cupom_codigo).trim().toUpperCase()
+      : null;
+
+  if (cupomCodigoFinal) {
+    // garante que contrato tenha cupom_codigo persistido
+    await supabase
+      .from("contratos")
+      .update({ cupom_codigo: cupomCodigoFinal })
+      .eq("id", contratoId);
+
+    await supabase
+      .from("cupom_reservas")
+      .update({ status: "consumido" })
+      .eq("contrato_id", contratoId)
+      .eq("status", "reservado");
+  }
+
   // ✅ CLIENTE
   const { data: cliente } = await supabase
     .from("clientes")
-    .select("*")
+    .select("id, nome, documento, ativo")
     .eq("id", contrato.cliente_id)
     .single();
 
-  // ✅ USUÁRIO
+  // ✅ USUÁRIO (comprador)
   const { data: usuario } = await supabase
     .from("usuarios")
-    .select("*")
+    .select("id, nome_completo, email, documento")
     .eq("id", contrato.criado_por)
     .single();
 
@@ -210,10 +283,12 @@ export async function POST(req: Request) {
     .from("usuarios")
     .update({
       ativo: true,
-      plano: "express",
+      tipo_plano: "express", // ✅ corrige (não 'plano')
+      role: "cliente", // ✅ garante role
       data_inicio_plano: nowISO(),
-      data_expiracao_plano: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
-
+      data_expiracao_plano: new Date(
+        Date.now() + 365 * 24 * 60 * 60 * 1000,
+      ).toISOString(),
     })
     .eq("id", contrato.criado_por);
 
@@ -234,9 +309,7 @@ export async function POST(req: Request) {
   try {
     await fetch(`${process.env.BASE_URL}/api/contrato/gerar-pdf`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contratoId,
         empresa,
@@ -254,32 +327,7 @@ export async function POST(req: Request) {
   } catch (err) {
     console.error("Erro PDF:", err);
   }
-  if (isFailEvent || isCancelEvent) {
-    await supabase
-      .from("contratos")
-      .update({
-        pagarme_order_id: pagarmeOrderId,
-        pagarme_payment_status:
-          pagarmePaymentStatus ?? (isFailEvent ? "failed" : "canceled"),
-        forma_pagamento: paymentMethod,
-        atualizado_em: nowISO(),
-      })
-      .eq("id", contratoId);
 
-    await supabase.from("contrato_eventos").insert({
-      contrato_id: contratoId,
-      tipo: isFailEvent ? "pagamento_falhou" : "pagamento_cancelado",
-      descricao: "Atualização via webhook Pagar.me",
-      dados: {
-        pagarme_order_id: pagarmeOrderId,
-        pagarme_payment_status: pagarmePaymentStatus,
-        forma_pagamento: paymentMethod,
-        event_type: eventType,
-      },
-    });
-
-    return NextResponse.json({ ok: true, updated: true });
-  }
   return NextResponse.json({
     ok: true,
     activated: true,
