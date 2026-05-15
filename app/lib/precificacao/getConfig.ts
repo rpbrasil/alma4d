@@ -7,6 +7,11 @@ export type PrecificacaoConfig = {
   multiplicador_medio: number;
   multiplicador_alto: number;
   minimo_usuarios: number;
+  fator_sudeste: number;
+  fator_sul: number;
+  fator_centro_oeste: number;
+  fator_nordeste: number;
+  fator_norte: number;
 };
 
 let cachedConfig: PrecificacaoConfig | null = null;
@@ -22,7 +27,13 @@ export async function getPrecificacaoConfig() {
       multiplicador_baixo,
       multiplicador_medio,
       multiplicador_alto,
-      minimo_usuarios
+      minimo_usuarios,
+      fator_sudeste,
+      fator_sul,
+    fator_centro_oeste,
+    fator_nordeste,
+    fator_norte
+
     `,
     )
     .eq("plano", "express")

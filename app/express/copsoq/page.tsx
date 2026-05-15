@@ -330,7 +330,7 @@ function CopsoqPageContent() {
   }
 
   return (
-    <section className="space-y-6 rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+    <section className="mx-auto w-full max-w-4xl space-y-6 rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm">
       {showIntroModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl space-y-4">
@@ -459,6 +459,7 @@ function CopsoqPageContent() {
       </header>
 
       {submitted || existsCompleted ? (
+        
         <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-6 text-slate-900">
           <div className="flex items-start gap-3">
             <CheckCircle2 className="text-emerald-600" size={24} />

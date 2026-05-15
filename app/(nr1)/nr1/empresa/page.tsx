@@ -12,7 +12,6 @@ import {
 import { calcularPrecificacao } from "../_components/ModeloPrecificacaoExpress";
 import { validarCupom } from "../../../lib/cupons/validarcupom";
 
-
 type FormState = "idle" | "submitting" | "success" | "error";
 
 type EmpresaForm = {
@@ -199,6 +198,7 @@ export default function EmpresaNR1Page() {
   const [empresaInativa, setEmpresaInativa] = useState(false);
   const [mostrarRisco, setMostrarRisco] = useState(false);
   const [cnpjSucesso, setCnpjSucesso] = useState(false);
+  const [ufEmpresa, setUfEmpresa] = useState<string | null>(null);
   const canShowForm =
     (state === "idle" || state === "submitting" || state === "error") &&
     cnpjSucesso &&
@@ -210,15 +210,17 @@ export default function EmpresaNR1Page() {
   const [cupomValido, setCupomValido] = useState<string | null>(null);
   const [cupomError, setCupomError] = useState<string | null>(null);
   const [loadingCupom, setLoadingCupom] = useState(false);
-  
+
   const [descontoCents, setDescontoCents] = useState(0);
-  const [totalComDescontoCents, setTotalComDescontoCents] = useState<number | null>(null);
-const [msgCupomSugestao, setMsgCupomSugestao] = useState<string | null>(null);
+  const [totalComDescontoCents, setTotalComDescontoCents] = useState<
+    number | null
+  >(null);
+  const [msgCupomSugestao, setMsgCupomSugestao] = useState<string | null>(null);
   const quote = useMemo(() => {
     if (!config || !riscoEmpresa || !form.funcionarios) return null;
 
-    return calcularPrecificacao(form.funcionarios, riscoEmpresa, config);
-  }, [form.funcionarios, riscoEmpresa, config]);
+    return calcularPrecificacao(form.funcionarios, riscoEmpresa, config, ufEmpresa);
+  }, [form.funcionarios, riscoEmpresa, config, ufEmpresa]);
 
   const quoteComDesconto = useMemo(() => {
     if (!quote) return null;
@@ -231,10 +233,6 @@ const [msgCupomSugestao, setMsgCupomSugestao] = useState<string | null>(null);
       totalFinalBRL: totalFinalCents / 100,
     };
   }, [quote, totalComDescontoCents]);
-
-const totalFinalCents =
-  totalComDescontoCents ?? quote?.totalMensalCents ?? 0;
-
 
   useEffect(() => {
     if (!mostrarRisco) return;
@@ -291,35 +289,37 @@ const totalFinalCents =
       const risco = getRiscoByCNAE(data.cnae_principal);
       setRiscoEmpresa(risco);
       setMostrarRisco(true);
-
+      setUfEmpresa(data?.endereco?.uf ?? null);
       // ✅ preenche seu form atual
       update("razaoSocial", data.razao_social);
       update("cnpjDigits", data.cnpj);
       setCnpjSucesso(true);
 
-try {
-  const r = await fetch("/api/cupom/auto", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ cnpj: digits, plano: "express" }),
-  });
+      try {
+        const r = await fetch("/api/cupom/auto", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ cnpj: digits, plano: "express" }),
+        });
 
-  const j = await r.json().catch(() => null);
+        const j = await r.json().catch(() => null);
 
-  if (r.ok && j?.hasCoupon && j?.cupom_codigo) {
-    // pré-preenche o campo cupom e mostra msg
-    setCupom(j.cupom_codigo);
-    setCupomError(null);
-    setCupomValido(null);
-    // opcional: você pode até chamar aplicarCupom automaticamente,
-    // mas eu recomendo só sugerir e deixar o clique do usuário.
-    setMsgCupomSugestao(`Cupom disponível para seu CNPJ: ${j.cupom_codigo}`);
-  } else {
-    setMsgCupomSugestao(null);
-  }
-} catch {
-  // silencioso
-}
+        if (r.ok && j?.hasCoupon && j?.cupom_codigo) {
+          // pré-preenche o campo cupom e mostra msg
+          setCupom(j.cupom_codigo);
+          setCupomError(null);
+          setCupomValido(null);
+          // opcional: você pode até chamar aplicarCupom automaticamente,
+          // mas eu recomendo só sugerir e deixar o clique do usuário.
+          setMsgCupomSugestao(
+            `Cupom disponível para seu CNPJ: ${j.cupom_codigo}`,
+          );
+        } else {
+          setMsgCupomSugestao(null);
+        }
+      } catch {
+        // silencioso
+      }
 
       if (data.situacao_cadastral?.toLowerCase() !== "ativa") {
         setEmpresaInativa(true);
@@ -515,31 +515,31 @@ try {
   }
 
   async function aplicarCupom() {
-  setLoadingCupom(true);
-  setCupomError(null);
+    setLoadingCupom(true);
+    setCupomError(null);
 
-  try {
-    if (!quote) throw new Error("Calcule o valor antes de aplicar cupom.");
+    try {
+      if (!quote) throw new Error("Calcule o valor antes de aplicar cupom.");
 
-    const applied = await validarCupom({
-      codigo: cupom,
-      totalMensalCents: quote.totalMensalCents,
-      plano: "express",
-    });
+      const applied = await validarCupom({
+        codigo: cupom,
+        totalMensalCents: quote.totalMensalCents,
+        plano: "express",
+      });
 
-    setCupomValido(applied.codigo);
-    setDescontoCents(applied.descontoCents);
-    setTotalComDescontoCents(applied.totalComDescontoCents);
-  } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : "Erro no cupom";
-    setCupomValido(null);
-    setDescontoCents(0);
-    setTotalComDescontoCents(null);
-    setCupomError(message);
-  } finally {
-    setLoadingCupom(false);
+      setCupomValido(applied.codigo);
+      setDescontoCents(applied.descontoCents);
+      setTotalComDescontoCents(applied.totalComDescontoCents);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "Erro no cupom";
+      setCupomValido(null);
+      setDescontoCents(0);
+      setTotalComDescontoCents(null);
+      setCupomError(message);
+    } finally {
+      setLoadingCupom(false);
+    }
   }
-}
 
   return (
     <main className="min-h-screen bg-surface-muted">
@@ -744,12 +744,7 @@ try {
                       })}
                     </span>
                   </div>
-                  <span className="text-xl font-extrabold text-brand">
-                    {(totalFinalCents / 100).toLocaleString("pt-BR", {
-                      style: "currency",
-                      currency: "BRL",
-                    })}
-                  </span>
+                  
                   {descontoCents > 0 && (
                     <p className="text-xs text-green-600 mt-1">
                       💸 Desconto:{" "}

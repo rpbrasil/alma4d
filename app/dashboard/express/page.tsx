@@ -31,6 +31,8 @@ type BulkLineError = {
   payload: Record<string, unknown>;
 };
 
+type TabKey = "single" | "bulk";
+
 function onlyDigits(v: string) {
   return (v ?? "").replace(/\D/g, "");
 }
@@ -147,6 +149,8 @@ export default function DashboardExpress() {
   const [deptEnabled, setDeptEnabled] = useState(false);
   const [departamentoNomePadrao, setDepartamentoNomePadrao] = useState("");
   const [deptAcknowledge, setDeptAcknowledge] = useState(false);
+  // abas
+  const [activeTab, setActiveTab] = useState<"single" | "bulk">("single");
 
   // job
   const [jobId, setJobId] = useState<string | null>(null);
@@ -193,6 +197,19 @@ export default function DashboardExpress() {
       cancelled = true;
     };
   }, []);
+
+
+useEffect(() => {
+  if (showDeptModal) {
+    document.body.style.overflow = "hidden";
+  } else {
+    document.body.style.overflow = "auto";
+  }
+
+  return () => {
+    document.body.style.overflow = "auto";
+  };
+}, [showDeptModal]);
 
   const progress = useMemo(() => {
     if (!job) return 0;
@@ -287,7 +304,9 @@ export default function DashboardExpress() {
         setMsg("Telefone inválido");
         return;
       }
-      const deptNome = deptEnabled ? normalizeDeptName(departamentoNomePadrao) : "";
+      const deptNome = deptEnabled
+        ? normalizeDeptName(departamentoNomePadrao)
+        : "";
       const payload = {
         nome_completo: nomeNorm,
         documento: onlyDigits(cpf),
@@ -493,53 +512,47 @@ export default function DashboardExpress() {
       setMsg("Erro ao ler arquivo.");
     }
   }
-  
+
   const bulkPlaceholder = deptEnabled
-    ? `Ex (com departamento):\nJoão Silva;12345678901;11999999999;Produção\nMaria Lima;98765432100;11988887777;RH\n\nFormato: nome;cpf;telefone;departamento\n(Se não informar na linha, usamos o Departamento padrão acima — se preenchido)`: `Ex:\nJoão Silva;12345678901;11999999999\nMaria Lima;98765432100;11988887777\n\nFormato: nome;cpf;telefone`;
-  
+    ? `Ex (com departamento):\nJoão Silva;12345678901;11999999999;Produção\nMaria Lima;98765432100;11988887777;RH\n\nFormato: nome;cpf;telefone;departamento\n(Se não informar na linha, usamos o Departamento padrão acima — se preenchido)`
+    : `Ex:\nJoão Silva;12345678901;11999999999\nMaria Lima;98765432100;11988887777\n\nFormato: nome;cpf;telefone`;
+
   return (
     <div className="space-y-6">
+      {/* MODAL */}
       {showDeptModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+        <div className="fixed inset-0 z-9999 bg-black/50 flex items-center justify-center px-4">
           <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-lg">
-            <h3 className="text-lg font-bold text-slate-900">
-              ATENÇÃO: SIGILO E DADOS AGREGADOS
+            <h3 className="text-lg font-semibold text-slate-900">
+              Sigilo e dados agregados
             </h3>
-            <p className="mt-3 text-sm text-slate-700 leading-relaxed">
-              O COPSOQ deve ser aplicado garantindo <strong>anonimato</strong> e
-              <strong> confidencialidade</strong>. Informações como{" "}
-              <strong>Departamento</strong> podem permitir identificação
-              indireta em grupos pequenos. Use essa segmentação apenas se você
-              conseguir manter relatórios <strong>sempre agregados</strong> e
-              sem divulgação de resultados em grupos com poucos respondentes.
+
+            <p className="mt-3 text-sm text-slate-600 leading-relaxed">
+              O COPSOQ deve garantir <strong>anonimato</strong> e{" "}
+              <strong>confidencialidade</strong>. Evite identificação indireta
+              em grupos pequenos.
             </p>
 
-            <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-              Ao continuar, você declara estar ciente e assume a
-              responsabilidade pelo uso adequado desses dados (políticas
-              internas/LGPD) e pela garantia de relatórios agregados.
+            <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+              Ao continuar, você declara ciência e responsabilidade sobre o uso
+              adequado.
             </div>
 
-            <div className="mt-4 space-y-3">
-              <label className="flex items-start gap-2 text-sm text-slate-700">
-                <input
-                  type="checkbox"
-                  checked={deptAcknowledge}
-                  onChange={(e) => setDeptAcknowledge(e.target.checked)}
-                  className="mt-1 h-4 w-4"
-                />
-                <span>
-                  Entendi e assumo a responsabilidade de manter os resultados{" "}
-                  <strong> agregados </strong>e preservar a confidencialidade.
-                </span>
-              </label>
-            </div>
+            <label className="mt-4 flex items-start gap-2 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                checked={deptAcknowledge}
+                onChange={(e) => setDeptAcknowledge(e.target.checked)}
+                className="mt-1"
+              />
+              Entendi e assumo a responsabilidade
+            </label>
 
             <div className="mt-6 flex justify-end">
               <button
                 disabled={!deptAcknowledge}
                 onClick={closeDeptModal}
-                className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand/90 disabled:opacity-50"
               >
                 Continuar
               </button>
@@ -547,242 +560,199 @@ export default function DashboardExpress() {
           </div>
         </div>
       )}
-      {/* Header / onboarding */}
-      <div className="rounded-2xl border border-border bg-surface p-6">
-        <div className="flex items-start justify-between gap-4">
+
+      {/* HEADER */}
+      <div className="rounded-lg border border-slate-200 bg-white p-5">
+        <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-extrabold text-brand tracking-tight">
+            <h1 className="text-lg font-semibold text-slate-900">
               Inclusão de usuários
             </h1>
-            <p className="mt-2 text-sm text-slate-600">
-              Cadastre sua equipe rapidamente (2 usuários ou 500+) e libere
-              acesso via link / qrCode.
+            <p className="text-sm text-slate-500 mt-1">
+              Cadastre rapidamente sua equipe
             </p>
           </div>
-          <div className="mt-2 text-md text-slate-600">
-            Usuários cadastrados: <strong>{usuariosAtuais}</strong>
-            {limiteUsuarios !== null && (
-              <>
-                {" "}
-                / <strong>{limiteUsuarios}</strong>
-              </>
-            )}
+
+          <div className="text-sm text-slate-600">
+            Usuários: <strong>{usuariosAtuais}</strong>
+            {limiteUsuarios !== null && <> / {limiteUsuarios}</>}
           </div>
         </div>
+
         <div className="mt-4 flex items-center gap-3">
           <input
-            id="deptEnabled"
             type="checkbox"
             checked={deptEnabled}
             onChange={(e) => setDeptEnabled(e.target.checked)}
-            className="h-4 w-4"
           />
-          <label htmlFor="deptEnabled" className="text-sm text-slate-700">
-            Habilitar campo <strong>Departamento</strong> (opcional)
-          </label>
+          <span className="text-sm text-slate-700">
+            Habilitar campo Departamento
+          </span>
         </div>
 
-        {deptEnabled && (
-          <div className="mt-4">
-            <label className="text-sm text-slate-600">
-              Departamento (opcional)
-            </label>
-            <input
-              value={departamentoNomePadrao}
-              onChange={(e) => setDepartamentoNomePadrao(e.target.value)}
-              placeholder="Ex: Produção, RH, Comercial..."
-              className="mt-2 w-full rounded-xl border border-border bg-white px-3 py-2 text-sm"
-            />
-            <p className="mt-1 text-xs text-slate-500">
-              Se preencher aqui, este departamento será aplicado como padrão aos
-              usuários importados (a menos que a linha traga um departamento
-              específico).
-            </p>
-          </div>
-        )}
-
         {msg && (
-          <div className="mt-4 rounded-xl border border-border bg-white p-3 text-sm text-slate-700">
+          <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
             {msg}
           </div>
         )}
       </div>
 
-      {/* Cadastro rápido */}
-      <div className="rounded-2xl border border-border bg-surface p-6">
-        <h2 className="text-sm font-semibold text-slate-800">
-          Adicionar usuário (rápido)
-        </h2>
-        <p className="mt-1 text-sm text-slate-600">
-          Ideal para poucos usuários.
-        </p>
+      {/* TABS */}
+      <div className="rounded-lg border border-slate-200 bg-white p-5">
+        <div className="flex gap-2 border-b border-slate-200 mb-4">
+          {[
+            { key: "single", label: "Adicionar usuário" },
+            { key: "bulk", label: "Importação em massa" },
+          ].map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key as TabKey)}
+              className={`px-4 py-2 text-sm font-semibold rounded-t-lg ${
+                activeTab === tab.key
+                  ? "bg-white border border-slate-200 border-b-white text-slate-900"
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-3">
-          <input
-            value={nome}
-            onChange={(e) => setNome(e.target.value)}
-            placeholder="Nome completo"
-            className="rounded-xl border border-border bg-white px-3 py-2 text-sm"
-          />
-          <input
-            value={cpf}
-            onChange={(e) => setCpf(onlyDigits(e.target.value))}
-            placeholder="CPF (somente números)"
-            className="rounded-xl border border-border bg-white px-3 py-2 text-sm"
-          />
-          <input
-            value={tel}
-            onChange={(e) => setTel(onlyDigits(e.target.value))}
-            placeholder="Celular com DDD (ex: 11999999999)"
-            className="rounded-xl border border-border bg-white px-3 py-2 text-sm"
-          />
-          {deptEnabled && (
-            <div className="mt-4">
-              <label className="text-sm text-slate-600">
-                Departamento (opcional)
-              </label>
+        {/* SINGLE */}
+        {activeTab === "single" && (
+          <>
+            <p className="text-sm text-slate-500">Ideal para poucos usuários</p>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              <input
+                value={nome}
+                onChange={(e) => setNome(e.target.value)}
+                placeholder="Nome completo"
+                className="h-10 rounded-lg border border-slate-200 px-3 text-sm bg-white"
+              />
 
               <input
-                value={departamentoNomePadrao}
-                onChange={(e) => setDepartamentoNomePadrao(e.target.value)}
-                placeholder="Ex: Produção, RH, Comercial..."
-                className="mt-2 w-full rounded-xl border border-border bg-white px-3 py-2 text-sm"
+                value={cpf}
+                onChange={(e) => setCpf(onlyDigits(e.target.value))}
+                placeholder="CPF"
+                className="h-10 rounded-lg border border-slate-200 px-3 text-sm bg-white"
               />
+
+              <input
+                value={tel}
+                onChange={(e) => setTel(onlyDigits(e.target.value))}
+                placeholder="Telefone"
+                className="h-10 rounded-lg border border-slate-200 px-3 text-sm bg-white"
+              />
+
+              {deptEnabled && (
+                <div className="sm:col-span-3">
+                  <input
+                    value={departamentoNomePadrao}
+                    onChange={(e) => setDepartamentoNomePadrao(e.target.value)}
+                    placeholder="Departamento"
+                    className="mt-2 w-full h-10 rounded-lg border border-slate-200 px-3 text-sm bg-white"
+                  />
+                </div>
+              )}
             </div>
-          )}
-          {deptEnabled && (
-            <div className="sm:col-span-3">
-              <p className="mt-1 text-xs text-slate-500">
-                Recomendação: use apenas se o relatório continuar{" "}
-                <strong>agregado</strong> e sem exposição de grupos pequenos.
-              </p>
+
+            <div className="mt-4">
+              <button
+                onClick={onQuickAdd}
+                disabled={
+                  busy ||
+                  (limiteUsuarios !== null && usuariosAtuais >= limiteUsuarios)
+                }
+                className="inline-flex items-center justify-center rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand/90 disabled:opacity-60"
+              >
+                Adicionar usuário
+              </button>
             </div>
-          )}
-        </div>
-
-        <div className="mt-4">
-          <button
-            disabled={
-              busy ||
-              (limiteUsuarios !== null && usuariosAtuais >= limiteUsuarios)
-            }
-            onClick={onQuickAdd}
-            className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand/90 disabled:opacity-60"
-          >
-            Adicionar usuário
-          </button>
-        </div>
-      </div>
-
-      {/* Importação em massa */}
-      <div className="rounded-2xl border border-border bg-surface p-6">
-        <h2 className="text-sm font-semibold text-slate-800">
-          Adicionar em massa (colar ou CSV)
-        </h2>
-
-        <p className="mt-1 text-sm text-slate-600 flex flex-wrap items-center gap-2">
-          Para 20, 200 ou 500+ usuários. Cole linhas no formato{" "}
-          <code>nome;cpf;telefone</code>. Para escolher um arquivo, clique:
-          <input
-            type="file"
-            accept=".csv,.txt"
-            onChange={handleFile}
-            className="hidden"
-            id="fileUpload"
-          />
-          <label
-            htmlFor="fileUpload"
-            className="inline-flex items-center rounded-lg border border-border bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-surface-muted cursor-pointer"
-          >
-            Buscar arquivo
-          </label>
-        </p>
-
-        {deptEnabled && (
-          <div className="mt-4">
-            <label className="text-sm text-slate-600">
-              Departamento (opcional)
-            </label>
-          </div>
+          </>
         )}
 
-        <textarea
-          value={paste}
-          onChange={(e) => setPaste(e.target.value)}
-          placeholder={bulkPlaceholder}
-          className="mt-4 min-h-35 w-full rounded-xl border border-border bg-white p-3 text-sm"
-        />
-        {job && (
-          <div className="mt-5 rounded-xl border border-border bg-white p-4">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold">Importação</p>
-              <span className="text-xs">{job.status}</span>
-            </div>
+        {/* BULK */}
+        {activeTab === "bulk" && (
+          <>
+            <p className="text-sm text-slate-500">
+              Para grandes volumes de usuários
+            </p>
 
-            <div className="mt-3 h-2 rounded-full bg-slate-200 overflow-hidden">
-              <div
-                className="h-full bg-brand"
-                style={{ width: `${progress}%` }}
+            <div className="mt-4">
+              <input
+                type="file"
+                onChange={handleFile}
+                className="hidden"
+                id="upload"
               />
+
+              <label
+                htmlFor="upload"
+                className="inline-flex items-center rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
+              >
+                Buscar arquivo
+              </label>
             </div>
-          </div>
-        )}
-        {bulkError && <p className="mt-2 text-sm text-red-600">{bulkError}</p>}
 
-        <div className="mt-4 flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={onBuildPreview}
-            className="rounded-xl border border-border bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-surface-muted"
-          >
-            Gerar prévia
-          </button>
+            <textarea
+              value={paste}
+              onChange={(e) => setPaste(e.target.value)}
+              placeholder={bulkPlaceholder}
+              className="mt-4 min-h-35 w-full rounded-lg border border-slate-200 p-3 text-sm bg-white"
+            />
 
-          <button
-            disabled={busy}
-            type="button"
-            onClick={onEnqueueBulk}
-            className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand/90 disabled:opacity-60"
-          >
-            Enfileirar importação
-          </button>
+            {job && (
+              <div className="mt-4">
+                <div className="h-2 rounded-full bg-slate-200 overflow-hidden">
+                  <div
+                    className="h-full bg-brand"
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
+              </div>
+            )}
 
-          {jobId && (
-            <button
-              disabled={busy}
-              type="button"
-              onClick={onContinueProcessing}
-              className="rounded-xl border border-border bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-surface-muted disabled:opacity-60"
-            >
-              Processar mais (worker)
-            </button>
-          )}
+            {bulkError && (
+              <p className="mt-2 text-sm text-red-600">{bulkError}</p>
+            )}
 
-          {jobId && (
-            <button
-              type="button"
-              onClick={() => refreshJob(jobId)}
-              className="rounded-xl border border-border bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-surface-muted"
-            >
-              Atualizar status do job
-            </button>
-          )}
-          {!!jobErrors.length && (
-            <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4">
-              <p className="text-sm font-semibold text-red-800">
-                Erros (amostra)
-              </p>
-
-              <ul className="mt-2 space-y-1 text-xs text-red-700">
-                {jobErrors.slice(0, 10).map((e, i) => (
-                  <li key={i}>
+            {!!jobErrors.length && (
+              <div className="mt-4 text-xs text-red-600">
+                {jobErrors.slice(0, 5).map((e, i) => (
+                  <div key={i}>
                     Linha {e.linha}: {e.error}
-                  </li>
+                  </div>
                 ))}
-              </ul>
+              </div>
+            )}
+
+            <div className="mt-4 flex gap-2">
+              <button
+                onClick={onBuildPreview}
+                className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                Gerar prévia
+              </button>
+
+              <button
+                onClick={onEnqueueBulk}
+                className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand/90"
+              >
+                Importar
+              </button>
+
+              {jobId && (
+                <button
+                  onClick={onContinueProcessing}
+                  className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  Processar mais
+                </button>
+              )}
             </div>
-          )}
-        </div>
+          </>
+        )}
       </div>
     </div>
   );
