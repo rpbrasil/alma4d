@@ -63,7 +63,7 @@ export default function PaginaNR1() {
               className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl
                          bg-white text-brand font-semibold hover:bg-white/90 transition"
             >
-              Iniciar aplicação do questionário
+              Iniciar implantação do questionário
               <ArrowRight size={18} />
             </Link>
 
@@ -114,7 +114,7 @@ export default function PaginaNR1() {
                 size={18}
                 className="text-brand-secondary shrink-0"
               />
-              Resultados devem constar no Inventário e Plano de Ação.
+              Resultados devem incluir Inventário e Plano de Ação.
             </li>
           </ul>
         </div>
@@ -124,7 +124,7 @@ export default function PaginaNR1() {
       <section className="px-6 py-16 bg-surface-muted">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-2xl font-extrabold text-brand">
-            Como a alma4D atende à NR‑1
+            Como alma4D atende à NR‑1
           </h2>
 
           <div className="mt-10 grid md:grid-cols-4 gap-6">
@@ -132,7 +132,7 @@ export default function PaginaNR1() {
               {
                 icon: ClipboardList,
                 title: "COPSOQ II BR",
-                text: "Instrumento validado cientificamente para avaliação de fatores psicossociais.",
+                text: "Instrumento validado cientificamente para mapeamento de riscos psicossociais.",
               },
               {
                 icon: Users,
@@ -225,11 +225,11 @@ export default function PaginaNR1() {
               <ul className="mt-4 space-y-2 text-sm text-slate-700">
                 <li className="flex gap-2">
                   <CheckCircle2 size={16} className="text-brand-secondary" />
-                  Comissão ou desconto
+                  Desconto de associado
                 </li>
                 <li className="flex gap-2">
                   <CheckCircle2 size={16} className="text-brand-secondary" />
-                  Split automático
+                  Jornada de onboarding exclusiva
                 </li>
                 <li className="flex gap-2">
                   <CheckCircle2 size={16} className="text-brand-secondary" />
@@ -253,7 +253,7 @@ export default function PaginaNR1() {
         <h2 className="text-3xl font-extrabold">Pronto para atender à NR‑1?</h2>
 
         <p className="mt-4 text-white/90">
-          Leva menos de 5 minutos para iniciar a aplicação do questionário.
+          Leva menos de 5 minutos para iniciar a implantação do questionário.
         </p>
 
         <Link
