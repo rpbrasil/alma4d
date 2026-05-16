@@ -3,8 +3,7 @@ export const PAGE_TITLES: Record<string, string> = {
 
   // 👇 EXPRESS
   "/dashboard/express": "Inclusão de usuários",
-  "/dashboard/express/contrato": "Contrato",
-  "/dashboard/express/nota-fiscal": "Nota fiscal",
+  "/dashboard/express/documentos": "Documentos",
   "/dashboard/express/copsoq": "Acesso de usuários",
   "/dashboard/express/relatorio-copsoq": "Relatório NR-1 | Psicossocial",
 

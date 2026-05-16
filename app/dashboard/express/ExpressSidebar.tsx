@@ -13,13 +13,8 @@ const EXPRESS_NAV = [
     icon: Home,
   },
   {
-    href: "/dashboard/express/contrato",
-    label: "Contrato",
-    icon: FileText,
-  },
-  {
-    href: "/dashboard/express/nota-fiscal",
-    label: "Nota fiscal",
+    href: "/dashboard/express/documentos",
+    label: "Documentos",
     icon: FileText,
   },
   {

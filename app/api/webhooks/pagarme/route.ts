@@ -226,6 +226,12 @@ export async function POST(req: Request) {
     })
     .eq("id", contratoId);
 
+  await fetch(`${process.env.BASE_URL}/api/nfse/emitir`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ contrato_id: contratoId }),
+  });
+
   await supabase.from("contrato_eventos").insert({
     contrato_id: contratoId,
     tipo: "pagamento_confirmado",
