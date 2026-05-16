@@ -207,7 +207,7 @@ export default function PaginaNR1() {
                 href="/nr1/empresa"
                 className="mt-6 inline-flex items-center gap-2 text-brand font-semibold hover:underline"
               >
-                Começar aplicação <ArrowRight size={16} />
+                Começar implantação <ArrowRight size={16} />
               </Link>
             </div>
 
@@ -218,7 +218,7 @@ export default function PaginaNR1() {
                 Parceiros alma4D
               </h3>
               <p className="mt-2 text-slate-600">
-                Para consultorias e profissionais que indicam empresas usando
+                Para associações de empresas, consultorias e profissionais que indicam empresas usando
                 cupom próprio.
               </p>
 

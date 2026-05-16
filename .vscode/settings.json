@@ -3,5 +3,6 @@
   "deno.importMap": "./supabase/functions/import_map.json",
   "files.exclude": {
     "**/BEQVapp-ref": true
-  }
+  },
+  "cSpell.language": "en,pt-BR"
 }
