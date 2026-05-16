@@ -22,7 +22,7 @@ export default function PaginaNR1() {
   return (
     <main className="bg-background text-foreground">
       {/* ================= HERO ================= */}
-      <section className="px-6 py-14 bg-linear-to-b from-brand-highlight to-brand text-white">
+      <section className="px-6 py-14 bg-linear-to-b from-brand-highlight/50 to-brand text-white">
         <div className="max-w-6xl mx-auto text-center">
           {/* ✅ LOGO */}
           <div className="flex justify-center mb-6">
@@ -72,7 +72,7 @@ export default function PaginaNR1() {
               className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl
                          border border-white/40 text-white hover:bg-white/10 transition"
             >
-              Sou parceiro alma4D
+              Quero ser parceiro alma4D
               <Handshake size={18} />
             </Link>
           </div>
@@ -142,7 +142,7 @@ export default function PaginaNR1() {
               {
                 icon: FileText,
                 title: "Relatórios técnicos",
-                text: "Inventário de riscos e Plano de Ação prontos para o PGR.",
+                text: "Inventário de riscos e Plano de Ação prontos para o Plano de Gestão de Riscos.",
               },
               {
                 icon: ShieldCheck,
@@ -199,7 +199,7 @@ export default function PaginaNR1() {
                 </li>
                 <li className="flex gap-2">
                   <CheckCircle2 size={16} className="text-brand-secondary" />
-                  Evidência para PGR
+                  Evidência para Programa de Gestão de Riscos
                 </li>
               </ul>
 
@@ -218,8 +218,8 @@ export default function PaginaNR1() {
                 Parceiros alma4D
               </h3>
               <p className="mt-2 text-slate-600">
-                Para associações de empresas, consultorias e profissionais que indicam empresas usando
-                cupom próprio.
+                Para associações de empresas, consultorias e profissionais que
+                indicam empresas usando cupom próprio.
               </p>
 
               <ul className="mt-4 space-y-2 text-sm text-slate-700">
