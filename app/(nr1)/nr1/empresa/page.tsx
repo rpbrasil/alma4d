@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Mail, CheckCircle2 } from "lucide-react";
@@ -11,6 +11,29 @@ import {
 } from "@/lib/precificacao/getConfig";
 import { calcularPrecificacao } from "../_components/ModeloPrecificacaoExpress";
 import { validarCupom } from "../../../lib/cupons/validarcupom";
+
+declare global {
+  interface Turnstile {
+    render: (
+      container: string | HTMLElement,
+      options: {
+        sitekey: string;
+        callback?: (token: string) => void;
+        "error-callback"?: (errorCode: string | number) => unknown;
+        "timeout-callback"?: () => void;
+        execution?: "execute";
+        appearance?: "execute" | "always";
+      },
+    ) => string;
+
+    reset: (widgetId?: string) => void;
+    execute: (widgetId?: string) => void;
+  }
+
+  interface Window {
+    turnstile?: Turnstile;
+  }
+}
 
 type FormState = "idle" | "submitting" | "success" | "error";
 
@@ -30,6 +53,22 @@ type EmpresaApiResponse = {
   cliente_id?: string;
   contrato_id?: string;
   error?: string;
+
+  cnae_principal?: string;
+  razao_social?: string;
+  cnpj?: string;
+  situacao_cadastral?: string;
+
+  endereco?: {
+    // ✅ ADICIONE ISSO
+    uf?: string;
+    logradouro?: string;
+    numero?: string;
+    complemento?: string;
+    bairro?: string;
+    cep?: string;
+    nome_municipio?: string;
+  };
 };
 
 type Risco = "baixo" | "medio" | "alto";
@@ -216,10 +255,16 @@ export default function EmpresaNR1Page() {
     number | null
   >(null);
   const [msgCupomSugestao, setMsgCupomSugestao] = useState<string | null>(null);
+
   const quote = useMemo(() => {
     if (!config || !riscoEmpresa || !form.funcionarios) return null;
 
-    return calcularPrecificacao(form.funcionarios, riscoEmpresa, config, ufEmpresa);
+    return calcularPrecificacao(
+      form.funcionarios,
+      riscoEmpresa,
+      config,
+      ufEmpresa,
+    );
   }, [form.funcionarios, riscoEmpresa, config, ufEmpresa]);
 
   const quoteComDesconto = useMemo(() => {
@@ -233,7 +278,11 @@ export default function EmpresaNR1Page() {
       totalFinalBRL: totalFinalCents / 100,
     };
   }, [quote, totalComDescontoCents]);
+  const [captchaReady, setCaptchaReady] = useState(false);
 
+  const hasExecutedRef = React.useRef(false);
+  const pendingCnpjRef = React.useRef<string>("");
+  // Esconde o aviso de risco após alguns segundos
   useEffect(() => {
     if (!mostrarRisco) return;
 
@@ -244,6 +293,7 @@ export default function EmpresaNR1Page() {
     return () => clearTimeout(timer);
   }, [mostrarRisco]);
 
+  // Contador de reenvio OTP
   useEffect(() => {
     if (resendIn <= 0) return;
     const t = setInterval(() => setResendIn((s) => s - 1), 1000);
@@ -267,12 +317,34 @@ export default function EmpresaNR1Page() {
     loadConfig();
   }, []);
 
-  async function consultarCNPJ() {
-    setCnpjLoading(true);
-    setErrorMsg(null);
+  // Carrega configuração de precificação ao montar a página
+  const widgetIdRef = React.useRef<string | null>(null);
 
+  // Carrega script do Cloudflare Turnstile e marca quando estiver pronto
+  useEffect(() => {
+    const id = "cf-turnstile";
+
+    if (document.getElementById(id)) {
+      return; // ✅ não faz setState aqui
+    }
+
+    const script = document.createElement("script");
+    script.id = id;
+    script.src =
+      "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+    script.async = true;
+    script.defer = true;
+
+    script.onload = () => {
+      setCaptchaReady(true); // ✅ aqui é permitido
+    };
+
+    document.body.appendChild(script);
+  }, []);
+
+  const consultarCNPJComToken = useCallback(async (token: string) => {
     try {
-      const digits = onlyDigits(cnpjInput);
+      const digits = pendingCnpjRef.current;
 
       if (digits.length !== 14) {
         throw new Error("CNPJ inválido");
@@ -280,60 +352,120 @@ export default function EmpresaNR1Page() {
 
       const res = await fetch("/api/cnpj/consultar", {
         method: "POST",
-        body: JSON.stringify({ cnpj: digits }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ cnpj: digits, token }),
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      const data = await res.json().catch(() => ({}));
+
+      console.log("✅ RESPOSTA:", data);
+
+      if (!res.ok) {
+        throw new Error(data?.error || "Erro ao consultar CNPJ");
+      }
 
       const risco = getRiscoByCNAE(data.cnae_principal);
+
       setRiscoEmpresa(risco);
       setMostrarRisco(true);
-      setUfEmpresa(data?.endereco?.uf ?? null);
-      // ✅ preenche seu form atual
+
       update("razaoSocial", data.razao_social);
       update("cnpjDigits", data.cnpj);
-      setCnpjSucesso(true);
 
-      try {
-        const r = await fetch("/api/cupom/auto", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ cnpj: digits, plano: "express" }),
-        });
+      // Armazena UF retornada na consulta CNPJ para influenciar o cálculo imediato
+      setUfEmpresa(data.endereco?.uf ?? null);
 
-        const j = await r.json().catch(() => null);
+      const ativa =
+        String(data?.situacao_cadastral ?? "").toLowerCase() === "ativa";
 
-        if (r.ok && j?.hasCoupon && j?.cupom_codigo) {
-          // pré-preenche o campo cupom e mostra msg
-          setCupom(j.cupom_codigo);
-          setCupomError(null);
-          setCupomValido(null);
-          // opcional: você pode até chamar aplicarCupom automaticamente,
-          // mas eu recomendo só sugerir e deixar o clique do usuário.
-          setMsgCupomSugestao(
-            `Cupom disponível para seu CNPJ: ${j.cupom_codigo}`,
-          );
-        } else {
-          setMsgCupomSugestao(null);
-        }
-      } catch {
-        // silencioso
-      }
-
-      if (data.situacao_cadastral?.toLowerCase() !== "ativa") {
-        setEmpresaInativa(true);
-        setCnpjSucesso(false);
-      }
+      setEmpresaInativa(!ativa);
+      setCnpjSucesso(ativa);
     } catch (err: unknown) {
-      setCnpjSucesso(false);
-      const message =
-        err instanceof Error ? err.message : "Erro ao consultar CNPJ";
+      const msg = err instanceof Error ? err.message : "Erro ao consultar";
 
-      setErrorMsg(message);
+      setErrorMsg(msg);
+      setCnpjSucesso(false);
     } finally {
       setCnpjLoading(false);
+
+      if (window.turnstile && widgetIdRef.current) {
+        try {
+          window.turnstile.reset(widgetIdRef.current);
+        } catch {}
+      }
     }
+  }, []);
+
+  // Inicializa o widget do Turnstile quando o script estiver pronto
+  useEffect(() => {
+    if (!captchaReady || !window.turnstile || widgetIdRef.current) return;
+    if (widgetIdRef.current) return;
+    widgetIdRef.current = window.turnstile.render("#turnstile-container", {
+      sitekey: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!,
+      execution: "execute",
+      appearance: "execute",
+
+      callback: (token: string) => {
+        if (hasExecutedRef.current) {
+          console.warn("🚫 Token ignorado (já executado)");
+          return;
+        }
+
+        hasExecutedRef.current = true;
+
+        console.log("TOKEN ✅", token);
+
+        consultarCNPJComToken(token).finally(() => {
+          setTimeout(() => {
+            hasExecutedRef.current = false;
+          }, 1000); // 🔥 importante
+        });
+      },
+
+      "error-callback": (code) => {
+        console.error("Turnstile error:", code);
+        setCnpjLoading(false);
+        setErrorMsg("Falha ao validar o captcha. Tente novamente.");
+        return true;
+      },
+
+      "timeout-callback": () => {
+        setCnpjLoading(false);
+        setErrorMsg("Captcha expirou/timeout. Tente novamente.");
+      },
+    });
+  }, [captchaReady, consultarCNPJComToken]);
+
+  async function consultarCNPJ() {
+    const digits = onlyDigits(cnpjInput);
+
+    console.log("👉 CNPJ digitado (digits):", digits, "len:", digits.length);
+
+    if (digits.length !== 14) {
+      setErrorMsg("Digite um CNPJ válido com 14 números.");
+      return;
+    }
+
+    // opcional (recomendado): valida DV local
+    if (!isValidCNPJ(digits)) {
+      setErrorMsg("CNPJ inválido (dígitos verificadores).");
+      return;
+    }
+
+    if (!window.turnstile || !widgetIdRef.current) {
+      setErrorMsg("Captcha não carregou. Recarregue a página.");
+      return;
+    }
+
+    // ✅ trava o CNPJ que será consultado
+    pendingCnpjRef.current = digits;
+
+    setCnpjLoading(true);
+    setErrorMsg(null);
+
+    window.turnstile.execute(widgetIdRef.current);
   }
 
   function update<K extends keyof EmpresaForm>(key: K, value: EmpresaForm[K]) {
@@ -484,6 +616,7 @@ export default function EmpresaNR1Page() {
       });
 
       const data = (await res.json().catch(() => ({}))) as EmpresaApiResponse;
+      console.log("Resposta API:", data);
 
       if (!res.ok) {
         console.error("Erro /api/nr1/empresa:", data);
@@ -493,6 +626,7 @@ export default function EmpresaNR1Page() {
       if (!data.cliente_id || !data.contrato_id) {
         throw new Error("Resposta inválida da API.");
       }
+      setUfEmpresa(data.endereco?.uf ?? null);
 
       setState("success");
 
@@ -585,20 +719,24 @@ export default function EmpresaNR1Page() {
             <input
               value={formatCNPJ(cnpjInput)}
               inputMode="numeric"
-              onChange={(e) => setCnpjInput(e.target.value)}
+              onChange={(e) => {
+                const digits = onlyDigits(e.target.value).slice(0, 14);
+                setCnpjInput(digits); // ✅ state sempre em dígitos
+              }}
               placeholder="00.000.000/0000-00"
               className="flex-1 h-11 rounded-lg border px-3"
             />
-
             <button
               type="button"
               onClick={consultarCNPJ}
-              disabled={cnpjLoading}
-              className="h-11 px-4 bg-brand text-white rounded-lg"
+              disabled={cnpjLoading || !captchaReady}
+              className="h-11 px-4 bg-brand text-white rounded-lg disabled:opacity-60"
             >
               {cnpjLoading ? "Buscando..." : "Buscar"}
             </button>
           </div>
+
+          <div id="turnstile-container" />
 
           {/* 🔹 RISCO AO LADO */}
           {riscoEmpresa && !empresaInativa && (
@@ -625,7 +763,7 @@ export default function EmpresaNR1Page() {
         {empresaInativa && (
           <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-xl text-center">
             <p className="text-red-600 font-semibold">
-              ⚠️ Empresa com situação cadastral INATIVA
+              ⚠️ Empresa com situação cadastral INAPTA, INATIVA ou BAIXADA.
             </p>
             <p className="text-sm text-slate-600 mt-1">
               Não é possível continuar com o cadastro.
@@ -663,6 +801,11 @@ export default function EmpresaNR1Page() {
                 atividade.
               </p>
             )}
+          </div>
+        )}
+        {errorMsg && (
+          <div className="mt-3 bg-red-50 border border-red-200 text-red-600 p-3 text-sm rounded-lg">
+            {errorMsg}
           </div>
         )}
         {/* ✅ FORM */}
@@ -744,7 +887,7 @@ export default function EmpresaNR1Page() {
                       })}
                     </span>
                   </div>
-                  
+
                   {descontoCents > 0 && (
                     <p className="text-xs text-green-600 mt-1">
                       💸 Desconto:{" "}

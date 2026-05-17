@@ -15,10 +15,11 @@ export type PrecificacaoConfig = {
 };
 
 let cachedConfig: PrecificacaoConfig | null = null;
-export async function getPrecificacaoConfig() {
+
+export async function getPrecificacaoConfig(): Promise<PrecificacaoConfig | null> {
   if (cachedConfig) return cachedConfig;
 
-  const { data, error } = await supabaseBrowser
+  const { data, error, status, statusText } = await supabaseBrowser
     .from("precificacao_config")
     .select(
       `
@@ -30,19 +31,32 @@ export async function getPrecificacaoConfig() {
       minimo_usuarios,
       fator_sudeste,
       fator_sul,
-    fator_centro_oeste,
-    fator_nordeste,
-    fator_norte
-
+      fator_centro_oeste,
+      fator_nordeste,
+      fator_norte
     `,
     )
     .eq("plano", "express")
     .eq("ativo", true)
-    .single();
+    .order("id", { ascending: false }) 
+    .limit(1)
+    .maybeSingle();
 
-  if (error || !data) {
-    throw new Error("Erro ao carregar configuração de preço");
+  if (error) {
+    console.error("Erro Supabase (detalhado):", {
+      status,
+      statusText,
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+    });
+    
+    throw new Error(error.message);
   }
+
+  // ✅ se não há config ainda, NÃO derrube a página
+  if (!data) return null;
 
   cachedConfig = data;
   return data;
