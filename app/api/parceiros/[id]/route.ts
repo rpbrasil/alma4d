@@ -1,6 +1,23 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
+// Tipagem para os campos que podem ser atualizados
+interface ParceiroUpdate {
+  nome?: string;
+  documento?: string;
+  email?: string;
+  telefone?: string;
+  aprovado?: boolean;
+}
+
+// Helper para criar o cliente Admin
+const getSupabaseAdmin = () =>
+  createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false } },
+  );
+
 export async function PATCH(
   req: Request,
   { params }: { params: { id: string } },
@@ -12,12 +29,7 @@ export async function PATCH(
     }
 
     const token = auth.split(" ")[1];
-
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { persistSession: false } },
-    );
+    const supabaseAdmin = getSupabaseAdmin();
 
     const { data: userWrap, error: authErr } =
       await supabaseAdmin.auth.getUser(token);
@@ -37,7 +49,9 @@ export async function PATCH(
     }
 
     const body = await req.json();
-    const updates: any = {};
+
+    // CORREÇÃO ESLINT: Usando a interface em vez de 'any'
+    const updates: ParceiroUpdate = {};
     if (body.nome !== undefined) updates.nome = body.nome;
     if (body.documento !== undefined) updates.documento = body.documento;
     if (body.email !== undefined) updates.email = body.email;
@@ -50,6 +64,7 @@ export async function PATCH(
       .eq("id", params.id)
       .select()
       .maybeSingle();
+
     if (error)
       return NextResponse.json(
         { ok: false, error: error.message },
@@ -74,12 +89,7 @@ export async function DELETE(
     }
 
     const token = auth.split(" ")[1];
-
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { persistSession: false } },
-    );
+    const supabaseAdmin = getSupabaseAdmin();
 
     const { data: userWrap, error: authErr } =
       await supabaseAdmin.auth.getUser(token);
@@ -102,6 +112,7 @@ export async function DELETE(
       .from("parceiros")
       .delete()
       .eq("id", params.id);
+
     if (error)
       return NextResponse.json(
         { ok: false, error: error.message },

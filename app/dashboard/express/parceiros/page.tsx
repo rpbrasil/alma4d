@@ -8,10 +8,14 @@ import { useRouter } from "next/navigation";
 type Parceiro = {
   id: string;
   nome: string;
+  aprovado: boolean;
+  tipo: string;
   documento: string | null;
   email: string | null;
   telefone: string | null;
-  aprovado: boolean;
+  pagarme_recipient_id: string | null;
+  created_at: string;
+  updated_at: string;
 };
 
 type Cupom = {
@@ -23,7 +27,7 @@ type Cupom = {
   comissao_percentual: number | null;
 };
 
-type CupomDB = Cupom & { parceiro_id: string };
+type CupomDB = Cupom & { parceiro_id?: string | null };
 
 type Empresa = {
   id: string;
@@ -77,14 +81,23 @@ export default function DashboardExpressParceirosPage() {
     const { data } = await supabase.auth.getSession();
     return data.session?.access_token ?? null;
   }, []);
+
+  const isRefreshingRef = React.useRef(false);
+
   const refreshAll = useCallback(async () => {
+    if (isRefreshingRef.current) return;
+
+    isRefreshingRef.current = true;
     setBusy(true);
 
     try {
       console.log("🔄 refresh start");
 
-      const { data: p } = await supabase.from("parceiros").select("*");
-      setParceiros(p ?? []);
+      const { data: p, error } = await supabase.from("parceiros").select("*");
+
+      if (error) throw new Error(error.message);
+
+      setParceiros((p ?? []) as Parceiro[]);
 
       const { data: c } = await supabase.from("cupons").select("*");
 
@@ -102,7 +115,9 @@ export default function DashboardExpressParceirosPage() {
       const res = await fetch("/api/parceiros/empresas", {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
-
+      if (!res.ok) {
+        throw new Error("Erro ao buscar empresas");
+      }
       const j = await res.json().catch(() => null);
 
       const empresas: Empresa[] = res.ok && j?.empresas ? j.empresas : [];
@@ -120,6 +135,7 @@ export default function DashboardExpressParceirosPage() {
     } catch (e) {
       console.error("❌ erro refresh:", e);
     } finally {
+      isRefreshingRef.current = false;
       setBusy(false);
     }
   }, [getAccessToken]);
@@ -308,22 +324,31 @@ export default function DashboardExpressParceirosPage() {
 
   async function createParceiro() {
     if (!novoNome.trim()) return alert("Informe o nome do parceiro");
+    if (!novoEmail && !novoTelefone) {
+      return alert("Informe email ou telefone");
+    }
+
     setBusy(true);
+
     try {
-      const { error } = await supabase.from("parceiros").insert([
-        {
-          nome: novoNome.trim(),
-          documento: novoDocumento || null,
-          email: novoEmail || null,
-          telefone: novoTelefone || null,
-          aprovado: true,
-        },
-      ]);
+      const payload = {
+        nome: novoNome.trim(),
+        documento: novoDocumento || null,
+        email: novoEmail || null,
+        telefone: novoTelefone || null,
+        aprovado: true,
+        tipo: "pj",
+      };
+
+      const { error } = await supabase.from("parceiros").insert([payload]);
+
       if (error) throw error;
+
       setNovoNome("");
       setNovoDocumento("");
       setNovoEmail("");
       setNovoTelefone("");
+
       await refreshAll();
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : String(e));
@@ -406,7 +431,7 @@ export default function DashboardExpressParceirosPage() {
 
         <div className="mt-4">
           <button
-            onClick={() => refreshAll()}
+            onClick={refreshAll}
             disabled={busy}
             className="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-60"
           >
@@ -419,6 +444,7 @@ export default function DashboardExpressParceirosPage() {
       <div className="rounded-lg border border-slate-200 bg-white p-5">
         <h2 className="text-sm font-semibold text-slate-900">Parceiros</h2>
 
+        {/* FORM */}
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
           <input
             value={novoNome}
@@ -434,26 +460,70 @@ export default function DashboardExpressParceirosPage() {
             className="h-10 rounded-lg border border-slate-200 px-3 text-sm"
           />
 
-          <button
-            onClick={createParceiro}
-            disabled={busy}
-            className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand/90 disabled:opacity-60"
-          >
-            Criar parceiro
-          </button>
+          <input
+            value={novoDocumento}
+            onChange={(e) => setNovoDocumento(e.target.value)}
+            placeholder="Documento (CPF/CNPJ)"
+            className="h-10 rounded-lg border border-slate-200 px-3 text-sm"
+          />
+
+          <div className="sm:col-span-3">
+            <button
+              onClick={createParceiro}
+              disabled={busy}
+              className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand/90 disabled:opacity-60"
+            >
+              Criar parceiro
+            </button>
+          </div>
         </div>
 
-        <div className="mt-4 space-y-2">
+        {/* LISTA */}
+        <div className="mt-6 space-y-3">
+          {parceiros.length === 0 && (
+            <p className="text-sm text-slate-500">Nenhum parceiro cadastrado</p>
+          )}
+
           {parceiros.map((p) => (
             <div
               key={p.id}
-              className="flex justify-between rounded-lg border border-slate-200 p-2 text-sm"
+              className="rounded-lg border border-slate-200 p-3 text-sm space-y-2"
             >
-              <span>{p.nome}</span>
+              {/* HEADER */}
+              <div className="flex justify-between items-start">
+                <div>
+                  <div className="font-semibold text-slate-800">{p.nome}</div>
 
-              <button onClick={() => toggleParceiroAtivo(p.id, p.aprovado)}>
-                {p.aprovado ? "Desativar" : "Ativar"}
-              </button>
+                  <div className="text-xs text-slate-500">
+                    {p.tipo} • {p.documento ?? "sem documento"}
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => toggleParceiroAtivo(p.id, p.aprovado)}
+                  className="text-xs text-slate-700 hover:text-slate-900"
+                >
+                  {p.aprovado ? "Desativar" : "Ativar"}
+                </button>
+              </div>
+
+              {/* CONTATO */}
+              <div className="text-xs text-slate-500 space-y-1">
+                {p.email && <div>📧 {p.email}</div>}
+                {p.telefone && <div>📞 {p.telefone}</div>}
+              </div>
+
+              {/* FINANCEIRO */}
+              {p.pagarme_recipient_id && (
+                <div className="text-xs text-slate-500">
+                  💳 recipient: {p.pagarme_recipient_id}
+                </div>
+              )}
+
+              {/* META */}
+              <div className="text-xs text-slate-400">
+                criado em {new Date(p.created_at).toLocaleDateString("pt-BR")}
+              </div>
             </div>
           ))}
         </div>
