@@ -25,22 +25,39 @@ export async function POST(req: Request) {
     );
 
     // 1) Descobre se o CNPJ é elegível (quais parceiros)
+    // busca empresas elegíveis - tabela renomeada para parceiros_empresas_elegiveis
     const { data: elegiveis, error: eErr } = await supabaseAdmin
-      .from("empresas_elegiveis")
+      .from("parceiros_empresas_elegiveis")
       .select("parceiro_id")
       .eq("cnpj", cnpj)
       .eq("ativo", true);
 
-    if (eErr) {
-      return NextResponse.json(
-        { ok: false, error: eErr.message },
-        { status: 500 },
-      );
-    }
+    // compatibilidade: se não existir dados, tenta tabela antiga
+    let parceiroIds: string[] = [];
 
-    const parceiroIds = (elegiveis ?? [])
-      .map((x) => x.parceiro_id)
-      .filter(Boolean);
+    if (eErr) {
+      // tenta tabela antiga como fallback
+      const { data: oldData, error: oldErr } = await supabaseAdmin
+        .from("empresas_elegiveis")
+        .select("parceiro_id")
+        .eq("cnpj", cnpj)
+        .eq("ativo", true);
+
+      if (oldErr) {
+        return NextResponse.json(
+          { ok: false, error: eErr.message },
+          { status: 500 },
+        );
+      }
+
+      parceiroIds = (oldData ?? [])
+        .map((x: any) => x.parceiro_id)
+        .filter(Boolean);
+    } else {
+      parceiroIds = (elegiveis ?? [])
+        .map((x: any) => x.parceiro_id)
+        .filter(Boolean);
+    }
 
     if (!parceiroIds.length) {
       // não revela detalhes; só diz que não há cupom disponível

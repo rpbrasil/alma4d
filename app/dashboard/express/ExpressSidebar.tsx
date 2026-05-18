@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
-import { FileText, ClipboardList, QrCode, Home, X } from "lucide-react";
+import { FileText, ClipboardList, QrCode, Home, X, Users } from "lucide-react";
 
 const EXPRESS_NAV = [
   {
@@ -21,6 +21,11 @@ const EXPRESS_NAV = [
     href: "/dashboard/express/copsoq",
     label: "Acesso de usuários",
     icon: QrCode,
+  },
+  {
+    href: "/dashboard/express/parceiros",
+    label: "Parceiros",
+    icon: Users,
   },
   {
     href: "/dashboard/express/relatorio-copsoq",

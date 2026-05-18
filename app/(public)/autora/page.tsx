@@ -48,7 +48,7 @@ export default function AutoraPage() {
           {[
             {
               title: "Formação",
-              text: "Formada em Arquitetura e Urbanismo, Fran ampliou seu campo de estudo para as questões humanas nas suas interfaces: Certificações Internacionais do Health & Wellness Coaching e do HeartMath Certified Mentor.",
+              text: "Formada em Arquitetura e Urbanismo e Terapia Artistica Antroposofica, Fran ampliou seu campo de estudo para as questões humanas quando obteve Certificações Internacionais do Health & Wellness Coaching e do HeartMath Certified Mentor.",
             },
             {
               title: "Experiência",
@@ -56,7 +56,7 @@ export default function AutoraPage() {
             },
             {
               title: "Pesquisa contínua",
-              text: "Após sua graduação, mantem pesquisas em Neurociência desde 2005 e, para complementar sua proposta integrativa, desenvolve estudo independente em alimentação natural e estilos de vida saudável.",
+              text: "Após sua graduação, mantem pesquisas em Neurociência desde 2009 e, para complementar sua proposta integrativa, desenvolve estudos independentes em alimentação natural e estilos de vida saudável.",
             },
           ].map((item) => (
             <div key={item.title} className="rounded-xl bg-surface-muted p-6">

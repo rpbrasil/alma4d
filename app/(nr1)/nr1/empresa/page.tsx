@@ -747,13 +747,14 @@ export default function EmpresaNR1Page() {
   ]);
 
   useEffect(() => {
-    if (!quote) {
+    const currentTotal = quote?.totalMensalCents;
+
+    if (!currentTotal) {
       prevQuoteTotalCentsRef.current = null;
       return;
     }
 
     const prevTotal = prevQuoteTotalCentsRef.current;
-    const currentTotal = quote.totalMensalCents;
 
     if (
       prevTotal !== null &&
@@ -767,6 +768,7 @@ export default function EmpresaNR1Page() {
 
     prevQuoteTotalCentsRef.current = currentTotal;
   }, [quote?.totalMensalCents, cupom, cupomValido, loadingCupom, aplicarCupom]);
+
 
   return (
     <main className="min-h-screen bg-surface-muted">
