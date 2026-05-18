@@ -23,6 +23,9 @@ export const PAGE_TITLES: Record<string, string> = {
 
   "/dashboard/admin/contratos": "Contratos",
 
+  "/dashboard/express/parceiros": "Parceiros & Associados",
+  "/dashboard/express/parceiros/novo": "Novo parceiro",
+
   // 👇 CONFIGURAÇÕES
   "/dashboard/configuracoes": "Configurações",
 
