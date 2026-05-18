@@ -249,6 +249,9 @@ export default function EmpresaNR1Page() {
   const [cupomValido, setCupomValido] = useState<string | null>(null);
   const [cupomError, setCupomError] = useState<string | null>(null);
   const [loadingCupom, setLoadingCupom] = useState(false);
+  const [autoCupomSugerido, setAutoCupomSugerido] = useState<string | null>(
+    null,
+  );
 
   const [descontoCents, setDescontoCents] = useState(0);
   const [totalComDescontoCents, setTotalComDescontoCents] = useState<
@@ -276,6 +279,7 @@ export default function EmpresaNR1Page() {
       ...quote,
       totalFinalCents,
       totalFinalBRL: totalFinalCents / 100,
+      precoPorUsuarioComDescontoBRL: totalFinalCents / quote.n / 100,
     };
   }, [quote, totalComDescontoCents]);
   const [captchaReady, setCaptchaReady] = useState(false);
@@ -377,6 +381,18 @@ export default function EmpresaNR1Page() {
       // Armazena UF retornada na consulta CNPJ para influenciar o cálculo imediato
       setUfEmpresa(data.endereco?.uf ?? null);
 
+      const suggestedCupom = await buscarCupomAutomatica(digits);
+      if (suggestedCupom) {
+        setCupom(suggestedCupom);
+        setAutoCupomSugerido(suggestedCupom);
+        setMsgCupomSugestao(
+          `Cupom automático encontrado para este CNPJ: ${suggestedCupom}`,
+        );
+      } else {
+        setMsgCupomSugestao(null);
+        setAutoCupomSugerido(null);
+      }
+
       const ativa =
         String(data?.situacao_cadastral ?? "").toLowerCase() === "ativa";
 
@@ -437,6 +453,25 @@ export default function EmpresaNR1Page() {
       },
     });
   }, [captchaReady, consultarCNPJComToken]);
+
+  async function buscarCupomAutomatica(cnpj: string) {
+    try {
+      const res = await fetch("/api/cupom/auto", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cnpj, plano: "express" }),
+      });
+
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.ok || !json?.hasCoupon || !json?.cupom_codigo)
+        return null;
+
+      return String(json.cupom_codigo).trim().toUpperCase();
+    } catch (error) {
+      console.error("Erro ao buscar cupom automático:", error);
+      return null;
+    }
+  }
 
   async function consultarCNPJ() {
     const digits = onlyDigits(cnpjInput);
@@ -648,32 +683,90 @@ export default function EmpresaNR1Page() {
     }
   }
 
-  async function aplicarCupom() {
-    setLoadingCupom(true);
-    setCupomError(null);
+  const aplicarCupom = useCallback(
+    async (codigoParam?: string) => {
+      setLoadingCupom(true);
+      setCupomError(null);
 
-    try {
-      if (!quote) throw new Error("Calcule o valor antes de aplicar cupom.");
+      try {
+        if (!quote) throw new Error("Calcule o valor antes de aplicar cupom.");
 
-      const applied = await validarCupom({
-        codigo: cupom,
-        totalMensalCents: quote.totalMensalCents,
-        plano: "express",
-      });
+        const codigo = String(codigoParam ?? cupom)
+          .trim()
+          .toUpperCase();
+        if (!codigo) throw new Error("Informe um cupom.");
 
-      setCupomValido(applied.codigo);
-      setDescontoCents(applied.descontoCents);
-      setTotalComDescontoCents(applied.totalComDescontoCents);
-    } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : "Erro no cupom";
-      setCupomValido(null);
-      setDescontoCents(0);
-      setTotalComDescontoCents(null);
-      setCupomError(message);
-    } finally {
-      setLoadingCupom(false);
+        setCupom(codigo);
+
+        const applied = await validarCupom({
+          codigo,
+          totalMensalCents: quote.totalMensalCents,
+          plano: "express",
+        });
+
+        setCupomValido(applied.codigo);
+        setDescontoCents(applied.descontoCents);
+        setTotalComDescontoCents(applied.totalComDescontoCents);
+      } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : "Erro no cupom";
+        setCupomValido(null);
+        setDescontoCents(0);
+        setTotalComDescontoCents(null);
+        setCupomError(message);
+      } finally {
+        setLoadingCupom(false);
+      }
+    },
+    [quote, cupom],
+  );
+
+  const prevQuoteTotalCentsRef = React.useRef<number | null>(null);
+
+  useEffect(() => {
+    if (
+      autoCupomSugerido &&
+      quote &&
+      cupom === autoCupomSugerido &&
+      !cupomValido &&
+      !loadingCupom
+    ) {
+      const timer = window.setTimeout(() => {
+        void aplicarCupom(autoCupomSugerido);
+      }, 0);
+      return () => window.clearTimeout(timer);
     }
-  }
+
+    return undefined;
+  }, [
+    autoCupomSugerido,
+    quote,
+    cupom,
+    cupomValido,
+    loadingCupom,
+    aplicarCupom,
+  ]);
+
+  useEffect(() => {
+    if (!quote) {
+      prevQuoteTotalCentsRef.current = null;
+      return;
+    }
+
+    const prevTotal = prevQuoteTotalCentsRef.current;
+    const currentTotal = quote.totalMensalCents;
+
+    if (
+      prevTotal !== null &&
+      currentTotal !== prevTotal &&
+      cupomValido &&
+      cupom &&
+      !loadingCupom
+    ) {
+      void aplicarCupom(cupom);
+    }
+
+    prevQuoteTotalCentsRef.current = currentTotal;
+  }, [quote?.totalMensalCents, cupom, cupomValido, loadingCupom, aplicarCupom]);
 
   return (
     <main className="min-h-screen bg-surface-muted">
@@ -868,7 +961,7 @@ export default function EmpresaNR1Page() {
                       Valor por colaborador
                     </span>
                     <span className="font-semibold text-slate-800">
-                      {quoteComDesconto.precoPorUsuarioBRL.toLocaleString(
+                      {quoteComDesconto.precoPorUsuarioComDescontoBRL.toLocaleString(
                         "pt-BR",
                         {
                           style: "currency",
@@ -879,24 +972,42 @@ export default function EmpresaNR1Page() {
                   </div>
 
                   <div className="mt-1 flex justify-between items-center">
-                    <span className="text-sm text-slate-600">Valor Total</span>
+                    <span className="text-sm text-slate-600">
+                      Valor Total{descontoCents > 0 ? " antes do desconto" : ""}
+                    </span>
                     <span className="text-xl font-extrabold text-brand">
-                      {quoteComDesconto.totalMensalBRL.toLocaleString("pt-BR", {
+                      {(quote?.totalMensalBRL ?? 0).toLocaleString("pt-BR", {
                         style: "currency",
                         currency: "BRL",
                       })}
                     </span>
                   </div>
 
-                  {descontoCents > 0 && (
-                    <p className="text-xs text-green-600 mt-1">
-                      💸 Desconto:{" "}
-                      {(descontoCents / 100).toLocaleString("pt-BR", {
-                        style: "currency",
-                        currency: "BRL",
-                      })}
-                    </p>
-                  )}
+                  {descontoCents > 0 ? (
+                    <>
+                      <div className="mt-1 flex justify-between items-center">
+                        <span className="text-sm text-slate-600">
+                          Total com desconto
+                        </span>
+                        <span className="text-xl font-extrabold text-brand">
+                          {quoteComDesconto.totalFinalBRL.toLocaleString(
+                            "pt-BR",
+                            {
+                              style: "currency",
+                              currency: "BRL",
+                            },
+                          )}
+                        </span>
+                      </div>
+                      <p className="text-xs text-green-600 mt-1">
+                        💸 Desconto:{" "}
+                        {(descontoCents / 100).toLocaleString("pt-BR", {
+                          style: "currency",
+                          currency: "BRL",
+                        })}
+                      </p>
+                    </>
+                  ) : null}
                   {quoteComDesconto.minimoAplicado && (
                     <div className="mt-3 text-xs text-amber-600">
                       ⚠️ Mínimo de 2 colaboradores aplicado
@@ -928,6 +1039,8 @@ export default function EmpresaNR1Page() {
                     setDescontoCents(0);
                     setTotalComDescontoCents(null);
                     setCupomError(null);
+                    setMsgCupomSugestao(null);
+                    setAutoCupomSugerido(null);
                   }}
                   placeholder="Ex: ALMA10"
                   className="flex-1 h-11 border rounded-lg px-3 text-sm"
@@ -935,7 +1048,7 @@ export default function EmpresaNR1Page() {
 
                 <button
                   type="button"
-                  onClick={aplicarCupom}
+                  onClick={() => aplicarCupom()}
                   disabled={loadingCupom || !cupom}
                   className="px-4 h-11 rounded-lg bg-brand text-white text-sm font-semibold disabled:opacity-50"
                 >

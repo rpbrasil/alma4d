@@ -63,7 +63,7 @@ export async function POST(req: Request) {
 
     type CupomRow = {
       codigo: string;
-      tipo: "percentual" | "fixo";
+      tipo: "percentual" | "fixo" | "desconto" | "comissao";
       valor: number;
       plano: string | null;
       valido_de: string | null;

@@ -1,7 +1,7 @@
 import { supabaseBrowser as supabase } from "@/lib/supabase/browser";
 
 type Plano = "express" | "premium";
-type TipoCupom = "percentual" | "fixo";
+type TipoCupom = "percentual" | "fixo" | "desconto" | "comissao";
 
 export type CupomAplicado = {
   codigo: string;
@@ -89,10 +89,12 @@ export async function validarCupom(params: {
   // ✅ cálculo do desconto
   let descontoBRL = 0;
 
-  if (cupom.tipo === "percentual") {
+  if (cupom.tipo === "percentual" || cupom.tipo === "desconto") {
     descontoBRL = totalBRL * (Number(cupom.valor) / 100);
-  } else {
+  } else if (cupom.tipo === "fixo") {
     descontoBRL = Number(cupom.valor);
+  } else {
+    descontoBRL = 0;
   }
 
   // ✅ teto de desconto (se existir)
