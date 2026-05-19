@@ -62,7 +62,6 @@ export function LoginForm() {
   const fullPhone = `${country}${extractDigits(phoneFormatted)}`;
   const isPhoneValid = extractDigits(phoneFormatted).length >= 10;
 
-
   const handlePhoneChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       setPhoneFormatted(formatPhoneBR(e.target.value));
@@ -84,7 +83,7 @@ export function LoginForm() {
     try {
       const { error } = await supabase.auth.signInWithOtp({
         phone: fullPhone,
-        options: { shouldCreateUser: true },
+        options: { shouldCreateUser: false }, //neste cenário, o usuário deve existir previamente no Supabase Auth para receber o OTP
       });
       if (error) {
         setError(error.message || "Não foi possível enviar o código.");
@@ -133,76 +132,101 @@ export function LoginForm() {
         return;
       }
 
-      // ✅ role tipada
-      const role = getUserRole(user);
-
-      // ✅ admin entra sempre
-      if (role === "admin") {
-        router.replace("/dashboard/express");
-        router.refresh();
-        return;
-      }
+      // ✅ role vem do token (app_metadata/user_metadata)
+      const role = getUserRole(user)?.toLowerCase() ?? null;
 
       // ✅ params
       const params = new URLSearchParams(window.location.search);
-      const redirect = params.get("redirect");
+      const redirectParam = params.get("redirect");
+      const linkId = params.get("linkId");
 
-      // ✅ busca perfil
-      const { data: perfil } = await supabase
+      // ✅ perfil (agora suporta premium/express)
+      const { data: perfil, error: perfilErr } = await supabase
         .from("usuarios")
         .select("ativo, tipo_plano, cliente_id")
         .eq("id", user.id)
-        .single();
+        .maybeSingle();
 
-      if (!perfil || perfil.ativo === false) {
+      // 🧱 Cenário 1: desconhecido (não cadastrado no seu domínio)
+      if (!perfil || perfilErr) {
+        await supabase.auth.signOut();
+        setError("Usuário não cadastrado. Solicite acesso ao administrador.");
+        return;
+      }
+
+      if (perfil.ativo === false) {
+        await supabase.auth.signOut();
         setError("Usuário inativo.");
         return;
       }
 
-      if (perfil.tipo_plano !== "express") {
-        setError("Plano não é Express.");
+      const plano = (perfil.tipo_plano ?? "").toString().toLowerCase();
+      const basePath =
+        plano === "express"
+          ? "/dashboard/express"
+          : plano === "premium"
+            ? "/dashboard/premium"
+            : null;
+
+      if (!basePath) {
+        await supabase.auth.signOut();
+        setError("Plano não configurado para este usuário.");
         return;
       }
 
+      // ✅ valida cliente
       const { data: cliente } = await supabase
         .from("clientes")
         .select("ativo")
         .eq("id", perfil.cliente_id)
-        .single();
+        .maybeSingle();
 
       if (!cliente || cliente.ativo === false) {
+        await supabase.auth.signOut();
         setError("Cliente inativo.");
         return;
       }
 
-      // ✅ resolve rota final
+      // ✅ Admin: pode ir para área admin (ou mantenha express se quiser)
+      if (role === "admin") {
+        setSuccess("Acesso confirmado. Redirecionando…");
+        await new Promise((r) => setTimeout(r, 200));
+        router.replace("/dashboard/admin/clientes");
+        router.refresh();
+        return;
+      }
+
+      // ✅ redirect seguro: só aceita se estiver dentro do produto do usuário
+      const requested =
+        redirectParam && redirectParam.startsWith("/") ? redirectParam : null;
+
       let finalRedirect: string;
 
-      if (redirect && redirect.startsWith("/")) {
-        finalRedirect = redirect;
+      if (requested && requested.startsWith(basePath)) {
+        finalRedirect = requested;
       } else {
-        if (role === "usuario" || role === "gestor") {
-          const linkId = params.get("linkId");
-
+        // ✅ fallback por plano
+        if (plano === "express" && (role === "usuario" || role === "gestor")) {
           if (!linkId) {
             setError("Link de aplicação ausente.");
             return;
           }
-
-          finalRedirect = `/dashboard/express/copsoq?linkId=${linkId}`;
+          finalRedirect = `${basePath}/copsoq?linkId=${encodeURIComponent(linkId)}`;
         } else {
-          finalRedirect = "/dashboard/express";
+          finalRedirect = basePath;
         }
       }
 
       setSuccess("Acesso confirmado. Redirecionando…");
-
       await new Promise((r) => setTimeout(r, 200));
 
       router.replace(finalRedirect);
       router.refresh();
     } catch (err) {
-      setError("Erro ao verificar código. "+ (err instanceof Error ? err.message : ""));
+      setError(
+        "Erro ao verificar código. " +
+          (err instanceof Error ? err.message : ""),
+      );
     } finally {
       setLoading(false);
     }

@@ -5,78 +5,108 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
-  Users,
-  Menu,
-  X,
   BarChart3,
   Settings,
   User,
-  LogOut,
+  LogOut,LucideIcon,FileText, ClipboardList, QrCode, Home, Users
 } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
 import { useAuth } from "@/context/auth";
-import type { LucideIcon } from "lucide-react";
+
 
 type NavItem = {
   href: string;
   label: string;
   icon: LucideIcon;
-  roles: string[];
+  roles?: string[];
 };
 
-const NAV_ITEMS: NavItem[] = [
-  {
-    href: "/dashboard",
-    label: "Visão geral",
-    icon: LayoutDashboard,
-    roles: ["admin", "cliente", "gestor"],
-  },
-  {
-    href: "/dashboard/relatorios",
-    label: "Relatórios",
-    icon: BarChart3,
-    roles: ["admin", "cliente", "gestor"],
-  },
-  {
-    href: "/dashboard/admin/usuarios",
-    label: "Usuários",
-    icon: Users,
-    roles: ["admin", "cliente", "gestor"],
-  },
-  {
-    href: "/dashboard/admin/clientes",
-    label: "Clientes",
-    icon: Users,
-    roles: ["admin"],
-  },
-  {
-    href: "/dashboard/profissionais",
-    label: "Profissionais",
-    icon: Users,
-    roles: ["admin", "cliente", "gestor"],
-  },
-  {
-    href: "/dashboard/configuracoes",
-    label: "Configurações",
-    icon: Settings,
-    roles: ["admin", "cliente", "gestor"],
-  },
-];
+type Plano = "express" | "premium";
+
+const NAV_BY_PLAN: Record<Plano, NavItem[]> = {
+  express: [
+    {
+      href: "/dashboard/express",
+      label: "Inclusão de usuários",
+      icon: Home,
+    },
+    {
+      href: "/dashboard/express/documentos",
+      label: "Documentos",
+      icon: FileText,
+    },
+    {
+      href: "/dashboard/express/copsoq",
+      label: "Acesso de usuários",
+      icon: QrCode,
+    },
+    {
+      href: "/dashboard/express/parceiros",
+      label: "Parceiros",
+      icon: Users,
+    },
+    {
+      href: "/dashboard/express/relatorio-copsoq",
+      label: "Relatório NR-1 | Psicossocial",
+      icon: ClipboardList,
+    },
+  ],
+  premium: [
+    {
+      href: "/dashboard/premium",
+      label: "Visão geral",
+      icon: LayoutDashboard,
+      roles: ["admin", "cliente", "gestor"],
+    },
+    {
+      href: "/dashboard/premium/relatorios",
+      label: "Relatórios",
+      icon: BarChart3,
+      roles: ["admin", "cliente", "gestor"],
+    },
+    {
+      href: "/dashboard/admin/usuarios",
+      label: "Usuários",
+      icon: Users,
+      roles: ["admin", "cliente", "gestor"],
+    },
+    {
+      href: "/dashboard/admin/clientes",
+      label: "Clientes",
+      icon: Users,
+      roles: ["admin"],
+    },
+    {
+      href: "/dashboard/premium/profissionais",
+      label: "Profissionais",
+      icon: Users,
+      roles: ["admin", "cliente", "gestor"],
+    },
+    {
+      href: `/dashboard/premium/configuracoes`,
+      label: "Configurações",
+      icon: Settings,
+      roles: ["admin", "cliente", "gestor"],
+    },
+  ],
+};
 
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, role, loading, signOut } = useAuth();
-
+  const { user, role, loading, signOut, plano } = useAuth();
+  const effectivePlano = plano ?? "express";
   const [isOpen, setIsOpen] = useState(false);
   const [displayName, setDisplayName] = useState("Usuário");
 
-  const normalizedRole = role?.toLowerCase();
-
   const items = useMemo(() => {
-    if (loading || !normalizedRole) return [];
-    return NAV_ITEMS.filter((item) => item.roles.includes(normalizedRole));
-  }, [loading, normalizedRole]);
+    const planItems = NAV_BY_PLAN[effectivePlano] || [];
+
+    return planItems.filter((item) => {
+      if (!item.roles) return true;
+      return role ? item.roles.includes(role) : false;
+    });
+  }, [effectivePlano, role]);
 
   const isActive = (href: string) => {
     if (href === "/dashboard") return pathname === "/dashboard";

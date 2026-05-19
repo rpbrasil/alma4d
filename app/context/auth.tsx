@@ -11,10 +11,12 @@ import { supabase } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 
 type Role = "admin" | "cliente" | "gestor" | "usuario";
+type Plano = "express" | "premium";
 
 type AuthContextValue = {
   user: User | null;
   role?: Role;
+  plano?: Plano;
   loading: boolean;
   signOut: () => Promise<void>;
 };
@@ -24,33 +26,49 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<Role | undefined>();
+  const [plano, setPlano] = useState<Plano | undefined>();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
 
+    const loadProfile = async (authUser: User) => {
+      const { data, error } = await supabase
+        .from("usuarios")
+        .select("role, tipo_plano")
+        .eq("id", authUser.id)
+        .single();
+
+      if (cancelled) return;
+
+      if (error || !data) {
+        setRole(undefined);
+        setPlano(undefined);
+        return;
+      }
+
+      setRole(data.role);
+      setPlano(data.tipo_plano);
+    };
+
     const init = async () => {
       const {
         data: { session },
       } = await supabase.auth.getSession();
+
       if (cancelled) return;
 
       const authUser = session?.user ?? null;
       setUser(authUser);
 
       if (authUser) {
-        const { data } = await supabase
-          .from("usuarios")
-          .select("role")
-          .eq("id", authUser.id)
-          .single();
-
-        if (!cancelled) setRole(data?.role);
+        await loadProfile(authUser);
       } else {
         setRole(undefined);
+        setPlano(undefined);
       }
 
-      setLoading(false); // ✅ SEMPRE libera
+      setLoading(false);
     };
 
     init();
@@ -58,22 +76,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      
       if (cancelled) return;
 
       const authUser = session?.user ?? null;
       setUser(authUser);
 
       if (authUser) {
-        const { data } = await supabase
-          .from("usuarios")
-          .select("role")
-          .eq("id", authUser.id)
-          .single();
-
-        setRole(data?.role);
+        await loadProfile(authUser);
       } else {
         setRole(undefined);
+        setPlano(undefined);
       }
     });
 
@@ -88,7 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, role, loading, signOut }}>
+    <AuthContext.Provider value={{ user, role, plano, loading, signOut }}>
       {children}
     </AuthContext.Provider>
   );

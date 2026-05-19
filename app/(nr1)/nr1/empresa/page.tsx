@@ -497,7 +497,8 @@ export default function EmpresaNR1Page() {
 
       const { error } = await supabase.auth.signInWithOtp({
         phone: e164,
-        options: { channel: "sms", shouldCreateUser: true },
+        options: { channel: "sms", shouldCreateUser: true },// permite criar usuário no Supabase Auth se não existir, o que é útil para o fluxo de OTP sem cadastro prévio
+
       });
 
       if (error) throw new Error(error.message);
