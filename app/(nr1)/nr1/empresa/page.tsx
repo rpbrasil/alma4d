@@ -11,29 +11,7 @@ import {
 } from "@/lib/precificacao/getConfig";
 import { calcularPrecificacao } from "../_components/ModeloPrecificacaoExpress";
 import { validarCupom } from "../../../lib/cupons/validarcupom";
-
-declare global {
-  interface Turnstile {
-    render: (
-      container: string | HTMLElement,
-      options: {
-        sitekey: string;
-        callback?: (token: string) => void;
-        "error-callback"?: (errorCode: string | number) => unknown;
-        "timeout-callback"?: () => void;
-        execution?: "execute";
-        appearance?: "execute" | "always";
-      },
-    ) => string;
-
-    reset: (widgetId?: string) => void;
-    execute: (widgetId?: string) => void;
-  }
-
-  interface Window {
-    turnstile?: Turnstile;
-  }
-}
+import { Turnstile, TurnstileInstance } from "@marsidev/react-turnstile";
 
 type FormState = "idle" | "submitting" | "success" | "error";
 
@@ -235,9 +213,8 @@ function usePrecificacaoConfig() {
 
         setLoadingConfig(false);
         return;
-      } catch  {
+      } catch {
         if (i === attempts.length - 1) {
-          setConfig((prev) => prev);
           setConfigError("Erro ao carregar preços");
           setLoadingConfig(false);
         }
@@ -255,7 +232,6 @@ function usePrecificacaoConfig() {
 
   return { config, loadingConfig, configError };
 }
-
 
 export default function EmpresaNR1Page() {
   const [state, setState] = useState<FormState>("idle");
@@ -292,8 +268,7 @@ export default function EmpresaNR1Page() {
     (state === "idle" || state === "submitting" || state === "error") &&
     cnpjSucesso &&
     !empresaInativa;
-  const { config, loadingConfig, configError } =
-    usePrecificacaoConfig();
+  const { config, loadingConfig, configError } = usePrecificacaoConfig();
 
   const [cupom, setCupom] = useState("");
   const [cupomValido, setCupomValido] = useState<string | null>(null);
@@ -308,7 +283,7 @@ export default function EmpresaNR1Page() {
     number | null
   >(null);
   const [msgCupomSugestao, setMsgCupomSugestao] = useState<string | null>(null);
-
+  const turnstileRef = React.useRef<TurnstileInstance>(null);
   const quote = useMemo(() => {
     if (!config || !riscoEmpresa || form.funcionarios < 2) return null;
 
@@ -334,9 +309,8 @@ export default function EmpresaNR1Page() {
       precoPorUsuarioComDescontoBRL: totalFinalCents / quote.n / 100,
     };
   }, [quote, totalComDescontoCents]);
-  const [captchaReady, setCaptchaReady] = useState(false);
+  const [captchaReady, setCaptchaReady] = useState(true);
 
-  const hasExecutedRef = React.useRef(false);
   const pendingCnpjRef = React.useRef<string>("");
   const autoCupomExecutadoRef = React.useRef(false);
 
@@ -360,28 +334,6 @@ export default function EmpresaNR1Page() {
 
   // Carrega configuração de precificação ao montar a página
   const widgetIdRef = React.useRef<string | null>(null);
-
-  // Carrega script do Cloudflare Turnstile e marca quando estiver pronto
-  useEffect(() => {
-    const id = "cf-turnstile";
-
-    if (document.getElementById(id)) {
-      return; // ✅ não faz setState aqui
-    }
-
-    const script = document.createElement("script");
-    script.id = id;
-    script.src =
-      "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
-    script.async = true;
-    script.defer = true;
-
-    script.onload = () => {
-      setCaptchaReady(true); // ✅ aqui é permitido
-    };
-
-    document.body.appendChild(script);
-  }, []);
 
   const consultarCNPJComToken = useCallback(async (token: string) => {
     try {
@@ -449,43 +401,6 @@ export default function EmpresaNR1Page() {
     }
   }, []);
 
-  // Inicializa o widget do Turnstile quando o script estiver pronto
-  useEffect(() => {
-    if (!captchaReady || !window.turnstile || widgetIdRef.current) return;
-    if (widgetIdRef.current) return;
-    widgetIdRef.current = window.turnstile.render("#turnstile-container", {
-      sitekey: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!,
-      execution: "execute",
-      appearance: "execute",
-
-      callback: (token: string) => {
-        if (hasExecutedRef.current) {
-          console.warn("🚫 Token ignorado (já executado)");
-          return;
-        }
-
-        hasExecutedRef.current = true;
-
-        consultarCNPJComToken(token).finally(() => {
-          setTimeout(() => {
-            hasExecutedRef.current = false;
-          }, 1000); // 🔥 importante
-        });
-      },
-
-      "error-callback": () => {
-        setCnpjLoading(false);
-        setErrorMsg("Falha ao validar o captcha. Tente novamente.");
-        return true;
-      },
-
-      "timeout-callback": () => {
-        setCnpjLoading(false);
-        setErrorMsg("Captcha expirou/timeout. Tente novamente.");
-      },
-    });
-  }, [captchaReady, consultarCNPJComToken]);
-
   async function buscarCupomAutomatica(cnpj: string) {
     try {
       const res = await fetch("/api/cupom/auto", {
@@ -519,8 +434,8 @@ export default function EmpresaNR1Page() {
       return;
     }
 
-    if (!window.turnstile || !widgetIdRef.current) {
-      setErrorMsg("Captcha não carregou. Recarregue a página.");
+    if (!turnstileRef.current) {
+      setErrorMsg("O verificador de segurança ainda está carregando. Aguarde.");
       return;
     }
 
@@ -529,8 +444,7 @@ export default function EmpresaNR1Page() {
 
     setCnpjLoading(true);
     setErrorMsg(null);
-
-    window.turnstile.execute(widgetIdRef.current);
+    turnstileRef.current?.execute();
   }
 
   function update<K extends keyof EmpresaForm>(key: K, value: EmpresaForm[K]) {
@@ -852,7 +766,33 @@ export default function EmpresaNR1Page() {
             </button>
           </div>
 
-          <div id="turnstile-container" />
+          {/* Componente do Turnstile Invisível/Explícito */}
+          <Turnstile
+            onLoad={() => {
+              setCaptchaReady(true);
+            }}
+            ref={turnstileRef}
+            siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || ""}
+            options={{
+              execution: "execute",
+              appearance: "always", 
+            }}
+            onSuccess={(token) => {
+              // Quando o token for gerado, chamamos sua função original
+              consultarCNPJComToken(token).finally(() => {
+                // Reseta para a próxima consulta
+                turnstileRef.current?.reset();
+              });
+            }}
+            onError={() => {
+              setCnpjLoading(false);
+              setErrorMsg("Falha ao validar o captcha. Tente novamente.");
+            }}
+            onExpire={() => {
+              setCnpjLoading(false);
+              setErrorMsg("Captcha expirou. Tente novamente.");
+            }}
+          />
 
           {/* 🔹 RISCO AO LADO */}
           {riscoEmpresa && !empresaInativa && (
