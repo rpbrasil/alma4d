@@ -8,6 +8,7 @@ import { supabaseBrowser as supabase } from "@/lib/supabase/browser";
 import {
   getPrecificacaoConfig,
   PrecificacaoConfig,
+  invalidatePrecificacaoCache,
 } from "@/lib/precificacao/getConfig";
 import { calcularPrecificacao } from "../_components/ModeloPrecificacaoExpress";
 import { validarCupom } from "../../../lib/cupons/validarcupom";
@@ -207,6 +208,66 @@ function getRiscoByCNAE(cnae?: string): Risco {
   return CNAE_RISCO_MAP[prefix] || "medio";
 }
 
+function usePrecificacaoConfig() {
+  const [config, setConfig] = useState<PrecificacaoConfig | null>(null);
+  const [loadingConfig, setLoadingConfig] = useState(true);
+  const [configError, setConfigError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoadingConfig(true);
+    setConfigError(null);
+
+    // retry simples (dev/HMR dá NetworkError às vezes)
+    const attempts = [0, 400, 900]; // delays ms
+    for (let i = 0; i < attempts.length; i++) {
+      try {
+        if (attempts[i] > 0)
+          await new Promise((r) => setTimeout(r, attempts[i]));
+        const cfg = await getPrecificacaoConfig();
+
+        if (!cfg) {
+          setConfig(null);
+          setConfigError(
+            "Configuração de preço não encontrada (express ativo).",
+          );
+        } else {
+          setConfig(cfg);
+        }
+
+        setLoadingConfig(false);
+        return;
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : "Erro ao carregar preço";
+        // só seta erro no último attempt
+        if (i === attempts.length - 1) {
+          setConfig(null);
+          setConfigError(msg);
+          setLoadingConfig(false);
+          return;
+        }
+      }
+    }
+  }, []);
+
+  const reload = useCallback(async () => {
+    invalidatePrecificacaoCache();
+    await load();
+  }, [load]);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      if (!alive) return;
+      await load();
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [load]);
+
+  return { config, loadingConfig, configError, reloadConfig: reload };
+}
+
 export default function EmpresaNR1Page() {
   const [state, setState] = useState<FormState>("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -242,8 +303,8 @@ export default function EmpresaNR1Page() {
     (state === "idle" || state === "submitting" || state === "error") &&
     cnpjSucesso &&
     !empresaInativa;
-  const [config, setConfig] = useState<PrecificacaoConfig | null>(null);
-  const [loadingConfig, setLoadingConfig] = useState(false);
+  const { config, loadingConfig, configError, reloadConfig } =
+    usePrecificacaoConfig();
 
   const [cupom, setCupom] = useState("");
   const [cupomValido, setCupomValido] = useState<string | null>(null);
@@ -260,14 +321,16 @@ export default function EmpresaNR1Page() {
   const [msgCupomSugestao, setMsgCupomSugestao] = useState<string | null>(null);
 
   const quote = useMemo(() => {
-    if (!config || !riscoEmpresa || !form.funcionarios) return null;
+    if (!config || !riscoEmpresa || form.funcionarios < 2) return null;
 
-    return calcularPrecificacao(
+    const result = calcularPrecificacao(
       form.funcionarios,
       riscoEmpresa,
       config,
       ufEmpresa,
     );
+
+    return result;
   }, [form.funcionarios, riscoEmpresa, config, ufEmpresa]);
 
   const quoteComDesconto = useMemo(() => {
@@ -286,6 +349,8 @@ export default function EmpresaNR1Page() {
 
   const hasExecutedRef = React.useRef(false);
   const pendingCnpjRef = React.useRef<string>("");
+  const autoCupomExecutadoRef = React.useRef(false);
+
   // Esconde o aviso de risco após alguns segundos
   useEffect(() => {
     if (!mostrarRisco) return;
@@ -303,23 +368,6 @@ export default function EmpresaNR1Page() {
     const t = setInterval(() => setResendIn((s) => s - 1), 1000);
     return () => clearInterval(t);
   }, [resendIn]);
-
-  // Carrega configuração de precificação ao montar a página
-  useEffect(() => {
-    async function loadConfig() {
-      try {
-        setLoadingConfig(true);
-        const cfg = await getPrecificacaoConfig();
-        setConfig(cfg);
-      } catch (e) {
-        console.error("Erro config", e);
-      } finally {
-        setLoadingConfig(false);
-      }
-    }
-
-    loadConfig();
-  }, []);
 
   // Carrega configuração de precificação ao montar a página
   const widgetIdRef = React.useRef<string | null>(null);
@@ -363,8 +411,6 @@ export default function EmpresaNR1Page() {
       });
 
       const data = await res.json().catch(() => ({}));
-
-      console.log("✅ RESPOSTA:", data);
 
       if (!res.ok) {
         throw new Error(data?.error || "Erro ao consultar CNPJ");
@@ -431,8 +477,6 @@ export default function EmpresaNR1Page() {
 
         hasExecutedRef.current = true;
 
-        console.log("TOKEN ✅", token);
-
         consultarCNPJComToken(token).finally(() => {
           setTimeout(() => {
             hasExecutedRef.current = false;
@@ -475,8 +519,6 @@ export default function EmpresaNR1Page() {
 
   async function consultarCNPJ() {
     const digits = onlyDigits(cnpjInput);
-
-    console.log("👉 CNPJ digitado (digits):", digits, "len:", digits.length);
 
     if (digits.length !== 14) {
       setErrorMsg("Digite um CNPJ válido com 14 números.");
@@ -651,8 +693,6 @@ export default function EmpresaNR1Page() {
       });
 
       const data = (await res.json().catch(() => ({}))) as EmpresaApiResponse;
-      console.log("Resposta API:", data);
-
       if (!res.ok) {
         console.error("Erro /api/nr1/empresa:", data);
         throw new Error(data.error ?? "Erro desconhecido");
@@ -683,6 +723,15 @@ export default function EmpresaNR1Page() {
     }
   }
 
+  function timeout<T>(p: Promise<T>, ms = 8000): Promise<T> {
+    return Promise.race([
+      p,
+      new Promise<T>((_, rej) =>
+        setTimeout(() => rej(new Error("Timeout cupom")), ms),
+      ),
+    ]);
+  }
+
   const aplicarCupom = useCallback(
     async (codigoParam?: string) => {
       setLoadingCupom(true);
@@ -698,17 +747,21 @@ export default function EmpresaNR1Page() {
 
         setCupom(codigo);
 
-        const applied = await validarCupom({
-          codigo,
-          totalMensalCents: quote.totalMensalCents,
-          plano: "express",
-        });
+        const applied = await timeout(
+          validarCupom({
+            codigo,
+            totalMensalCents: quote.totalMensalCents,
+            plano: "express",
+          }),
+          8000,
+        );
 
         setCupomValido(applied.codigo);
         setDescontoCents(applied.descontoCents);
         setTotalComDescontoCents(applied.totalComDescontoCents);
       } catch (e: unknown) {
         const message = e instanceof Error ? e.message : "Erro no cupom";
+
         setCupomValido(null);
         setDescontoCents(0);
         setTotalComDescontoCents(null);
@@ -724,19 +777,25 @@ export default function EmpresaNR1Page() {
 
   useEffect(() => {
     if (
+      autoCupomExecutadoRef.current // ✅ já rodou
+    )
+      return;
+
+    if (
       autoCupomSugerido &&
       quote &&
       cupom === autoCupomSugerido &&
       !cupomValido &&
       !loadingCupom
     ) {
+      autoCupomExecutadoRef.current = true; // ✅ trava
+
       const timer = window.setTimeout(() => {
         void aplicarCupom(autoCupomSugerido);
       }, 0);
+
       return () => window.clearTimeout(timer);
     }
-
-    return undefined;
   }, [
     autoCupomSugerido,
     quote,
@@ -768,7 +827,6 @@ export default function EmpresaNR1Page() {
 
     prevQuoteTotalCentsRef.current = currentTotal;
   }, [quote?.totalMensalCents, cupom, cupomValido, loadingCupom, aplicarCupom]);
-
 
   return (
     <main className="min-h-screen bg-surface-muted">
@@ -898,6 +956,7 @@ export default function EmpresaNR1Page() {
             )}
           </div>
         )}
+
         {errorMsg && (
           <div className="mt-3 bg-red-50 border border-red-200 text-red-600 p-3 text-sm rounded-lg">
             {errorMsg}
@@ -921,11 +980,7 @@ export default function EmpresaNR1Page() {
                 disabled
               />
             </div>
-            {!quoteComDesconto && riscoEmpresa && (
-              <p className="text-xs text-slate-400 mt-2">
-                Informe o número de funcionários para calcular o valor
-              </p>
-            )}
+
             {/* CNPJ + Funcionários */}
             <div className="grid sm:grid-cols-2 gap-4">
               <input
@@ -933,103 +988,143 @@ export default function EmpresaNR1Page() {
                 disabled
                 className="h-11 border rounded-lg px-3 cursor-not-allowed bg-gray-100"
               />
+
               <input
                 type="number"
                 inputMode="numeric"
                 min={2}
-                value={form.funcionarios || ""}
-                onChange={(e) => update("funcionarios", Number(e.target.value))}
+                value={form.funcionarios === 0 ? "" : form.funcionarios}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  update("funcionarios", v === "" ? 0 : Number(v));
+                }}
                 className="h-11 border rounded-lg px-3"
                 placeholder="Nº funcionários"
                 required
               />
-              {quoteComDesconto && (
-                <div className="mt-4 rounded-xl border border-border bg-white p-4 shadow-sm">
-                  <p className="text-xs text-slate-500 uppercase tracking-wide">
-                    Calculo do Preço
+            </div>
+            {/* Painel de preço */}
+            {quoteComDesconto && (
+              <div className="mt-4 rounded-xl border border-border bg-white p-5 shadow-sm space-y-3">
+                <p className="text-xs text-slate-500 uppercase tracking-wide">
+                  Cálculo de preço
+                </p>
+
+                {/* Cabeçalho */}
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-slate-600">
+                    {quoteComDesconto.n} colaboradores
+                  </span>
+                  <span className="text-xs text-slate-400 capitalize">
+                    risco {quoteComDesconto.risco}
+                  </span>
+                </div>
+
+                {/* 💥 Preço principal */}
+                <div className="mt-2">
+                  <p className="text-xs text-slate-500">
+                    Valor por colaborador
                   </p>
 
-                  <div className="mt-3 flex items-center justify-between">
-                    <span className="text-sm text-slate-600">
-                      {quoteComDesconto.n} colaboradores
-                    </span>
-                    <span className="text-xs text-slate-400 capitalize">
-                      risco {quoteComDesconto.risco}
-                    </span>
-                  </div>
+                  <p className="text-2xl font-extrabold text-brand">
+                    {quoteComDesconto.precoPorUsuarioComDescontoBRL.toLocaleString(
+                      "pt-BR",
+                      { style: "currency", currency: "BRL" },
+                    )}
+                  </p>
 
-                  <div className="mt-3 flex justify-between">
-                    <span className="text-sm text-slate-600">
-                      Valor por colaborador
-                    </span>
-                    <span className="font-semibold text-slate-800">
-                      {quoteComDesconto.precoPorUsuarioComDescontoBRL.toLocaleString(
+                  {descontoCents > 0 && (
+                    <p className="text-xs text-slate-400 line-through">
+                      {(quote?.precoPorUsuarioBRL ?? 0).toLocaleString(
                         "pt-BR",
                         {
                           style: "currency",
                           currency: "BRL",
                         },
                       )}
-                    </span>
-                  </div>
+                    </p>
+                  )}
+                </div>
 
-                  <div className="mt-1 flex justify-between items-center">
-                    <span className="text-sm text-slate-600">
-                      Valor Total{descontoCents > 0 ? " antes do desconto" : ""}
-                    </span>
-                    <span className="text-xl font-extrabold text-brand">
-                      {(quote?.totalMensalBRL ?? 0).toLocaleString("pt-BR", {
-                        style: "currency",
-                        currency: "BRL",
-                      })}
-                    </span>
-                  </div>
+                {/* Totais */}
+                <div className="mt-3 border-t pt-3 space-y-1">
+                  <div className="flex justify-between text-sm text-slate-600">
+                    <span>Total mensal</span>
 
-                  {descontoCents > 0 ? (
-                    <>
-                      <div className="mt-1 flex justify-between items-center">
-                        <span className="text-sm text-slate-600">
-                          Total com desconto
-                        </span>
-                        <span className="text-xl font-extrabold text-brand">
-                          {quoteComDesconto.totalFinalBRL.toLocaleString(
-                            "pt-BR",
-                            {
-                              style: "currency",
-                              currency: "BRL",
-                            },
-                          )}
-                        </span>
-                      </div>
-                      <p className="text-xs text-green-600 mt-1">
-                        💸 Desconto:{" "}
-                        {(descontoCents / 100).toLocaleString("pt-BR", {
+                    {descontoCents > 0 ? (
+                      <span className="line-through text-slate-400">
+                        {(quote?.totalMensalBRL ?? 0).toLocaleString("pt-BR", {
                           style: "currency",
                           currency: "BRL",
                         })}
-                      </p>
-                    </>
-                  ) : null}
-                  {quoteComDesconto.minimoAplicado && (
-                    <div className="mt-3 text-xs text-amber-600">
-                      ⚠️ Mínimo de 2 colaboradores aplicado
+                      </span>
+                    ) : (
+                      <span className="font-semibold">
+                        {(quote?.totalMensalBRL ?? 0).toLocaleString("pt-BR", {
+                          style: "currency",
+                          currency: "BRL",
+                        })}
+                      </span>
+                    )}
+                  </div>
+
+                  {descontoCents > 0 && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-slate-600">
+                        Total com desconto
+                      </span>
+
+                      <span className="text-xl font-extrabold text-green-600">
+                        {quoteComDesconto.totalFinalBRL.toLocaleString(
+                          "pt-BR",
+                          {
+                            style: "currency",
+                            currency: "BRL",
+                          },
+                        )}
+                      </span>
                     </div>
                   )}
+
+                  {descontoCents > 0 && (
+                    <p className="text-xs text-green-600">
+                      💸 Economia de{" "}
+                      {(descontoCents / 100).toLocaleString("pt-BR", {
+                        style: "currency",
+                        currency: "BRL",
+                      })}
+                    </p>
+                  )}
                 </div>
-              )}
+
+                {quoteComDesconto.minimoAplicado && (
+                  <div className="mt-2 text-xs text-amber-600">
+                    ⚠️ Mínimo de 2 colaboradores aplicado
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Mensagens de status do preço (fora do grid) */}
+            <div className="mt-2 space-y-1">
               {loadingConfig && (
                 <p className="text-xs text-slate-500">
                   Carregando base de preço...
                 </p>
               )}
+
+              {!loadingConfig && configError && (
+                <p className="text-xs text-red-600">⚠️ {configError}</p>
+              )}
             </div>
+
             {msgCupomSugestao && (
               <p className="text-xs text-green-600">{msgCupomSugestao}</p>
             )}
 
-            <div className="mt-4 space-y-2">
+            <div className="mt-5 space-y-2">
               <label className="text-xs text-slate-500 uppercase tracking-wide">
-                Cupom de desconto
+                Cupom
               </label>
 
               <div className="flex gap-2">
@@ -1041,20 +1136,23 @@ export default function EmpresaNR1Page() {
                     setDescontoCents(0);
                     setTotalComDescontoCents(null);
                     setCupomError(null);
-                    setMsgCupomSugestao(null);
-                    setAutoCupomSugerido(null);
+                    autoCupomExecutadoRef.current = false;
                   }}
-                  placeholder="Ex: ALMA10"
+                  placeholder="Ex: ACSJC10"
                   className="flex-1 h-11 border rounded-lg px-3 text-sm"
                 />
 
                 <button
                   type="button"
                   onClick={() => aplicarCupom()}
-                  disabled={loadingCupom || !cupom}
-                  className="px-4 h-11 rounded-lg bg-brand text-white text-sm font-semibold disabled:opacity-50"
+                  disabled={loadingCupom || !cupom || !!cupomValido}
+                  className={`px-4 h-11 rounded-lg text-sm font-semibold ${cupomValido ? "bg-brand text-white cursor-default" : "bg-brand text-white hover:brightness-95"} disabled:opacity-50 `}
                 >
-                  {loadingCupom ? "Aplicando..." : "Aplicar"}
+                  {loadingCupom
+                    ? "Aplicando..."
+                    : cupomValido
+                      ? "Aplicado"
+                      : "Aplicar"}
                 </button>
               </div>
 
@@ -1063,7 +1161,7 @@ export default function EmpresaNR1Page() {
               )}
 
               {cupomValido && (
-                <p className="text-xs text-green-600">
+                <p className="text-xs text-brand font-medium">
                   ✅ Cupom aplicado: {cupomValido}
                 </p>
               )}
@@ -1233,7 +1331,7 @@ export default function EmpresaNR1Page() {
                 checked={form.aceiteLgpd}
                 onChange={(e) => update("aceiteLgpd", e.target.checked)}
               />
-              Aceito todas as clausulas da LGPD
+              Aceito todas as cláusulas da LGPD
             </label>
 
             {/* ERRO */}

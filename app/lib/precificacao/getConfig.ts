@@ -1,5 +1,3 @@
-import { supabaseBrowser } from "../supabase/browser";
-
 export type PrecificacaoConfig = {
   k_base: number;
   decaimento: number;
@@ -15,49 +13,54 @@ export type PrecificacaoConfig = {
 };
 
 let cachedConfig: PrecificacaoConfig | null = null;
+let pending: Promise<PrecificacaoConfig | null> | null = null;
+
+export function invalidatePrecificacaoCache() {
+  cachedConfig = null;
+  pending = null;
+}
+
+function withAbort(ms: number) {
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), ms);
+  return { controller, clear: () => clearTimeout(t) };
+}
 
 export async function getPrecificacaoConfig(): Promise<PrecificacaoConfig | null> {
   if (cachedConfig) return cachedConfig;
+  if (pending) return pending;
 
-  const { data, error, status, statusText } = await supabaseBrowser
-    .from("precificacao_config")
-    .select(
-      `
-      k_base,
-      decaimento,
-      multiplicador_baixo,
-      multiplicador_medio,
-      multiplicador_alto,
-      minimo_usuarios,
-      fator_sudeste,
-      fator_sul,
-      fator_centro_oeste,
-      fator_nordeste,
-      fator_norte
-    `,
-    )
-    .eq("plano", "express")
-    .eq("ativo", true)
-    .order("id", { ascending: false }) 
-    .limit(1)
-    .maybeSingle();
+  pending = (async () => {
+    const { controller, clear } = withAbort(8000);
 
-  if (error) {
-    console.error("Erro Supabase (detalhado):", {
-      status,
-      statusText,
-      message: error.message,
-      code: error.code,
-      details: error.details,
-      hint: error.hint,
-    });
-    
-    throw new Error(error.message);
-  }
+    try {
+      const res = await fetch("/api/precificacao/config?plano=express", {
+        method: "GET",
+        cache: "no-store",
+        signal: controller.signal,
+      });
 
-  // ✅ se não há config ainda, NÃO derrube a página
-  if (!data) return null;
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j?.error || "Erro ao carregar configuração de preço");
+      }
 
-  cachedConfig = data;
-  return data;
+      const j = (await res.json().catch(() => null)) as {
+        ok: boolean;
+        config: PrecificacaoConfig | null;
+      } | null;
+
+      cachedConfig = j?.config ?? null;
+      return cachedConfig;
+    } finally {
+      clear();
+      // se não tiver cachedConfig, libera pending pra permitir retry
+      if (!cachedConfig) pending = null;
+    }
+  })().catch((e) => {
+    pending = null;
+    throw e;
+  });
+
+  return pending;
 }

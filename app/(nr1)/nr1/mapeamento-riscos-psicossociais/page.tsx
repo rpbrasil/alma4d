@@ -68,7 +68,7 @@ export default function PaginaNR1() {
             </Link>
 
             <Link
-              href="/nr1/parceiros"
+              href="/contato"
               className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl
                          border border-white/40 text-white hover:bg-white/10 transition"
             >
@@ -238,10 +238,10 @@ export default function PaginaNR1() {
               </ul>
 
               <Link
-                href="/nr1/parceiros"
+                href="/contato"
                 className="mt-6 inline-flex items-center gap-2 text-brand font-semibold hover:underline"
               >
-                Área do parceiro <ArrowRight size={16} />
+                Seja nosso parceiro <ArrowRight size={16} />
               </Link>
             </div>
           </div>

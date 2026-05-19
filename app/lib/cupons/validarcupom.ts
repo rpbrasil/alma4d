@@ -1,20 +1,33 @@
-import { supabaseBrowser as supabase } from "@/lib/supabase/browser";
-
 type Plano = "express" | "premium";
-type TipoCupom = "percentual" | "fixo" | "desconto" | "comissao";
+type TipoCupom = "desconto" | "comissao";
 
 export type CupomAplicado = {
   codigo: string;
   tipo: TipoCupom;
-  valor: number; // % ou BRL
-  descontoBRL: number;
+
+  percentual: number;
+
   descontoCents: number;
-  totalComDescontoBRL: number;
+  descontoBRL: number;
+
   totalComDescontoCents: number;
+  totalComDescontoBRL: number;
 };
 
 function round2(n: number) {
   return Math.round(n * 100) / 100;
+}
+
+function fetchWithTimeout(
+  input: RequestInfo,
+  init: RequestInit = {},
+  ms = 8000,
+) {
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), ms);
+  return fetch(input, { ...init, signal: controller.signal }).finally(() =>
+    clearTimeout(t),
+  );
 }
 
 export async function validarCupom(params: {
@@ -22,99 +35,62 @@ export async function validarCupom(params: {
   totalMensalCents: number;
   plano: Plano;
 }): Promise<CupomAplicado> {
-  const codigo = params.codigo.trim().toUpperCase();
+  const codigo = String(params.codigo ?? "")
+    .trim()
+    .toUpperCase();
+  if (!codigo) throw new Error("Informe um cupom.");
 
-  if (!codigo) {
-    throw new Error("Informe um cupom.");
+  if (
+    !Number.isFinite(params.totalMensalCents) ||
+    params.totalMensalCents <= 0
+  ) {
+    throw new Error("Total inválido para aplicar cupom.");
   }
 
-  const totalBRL = params.totalMensalCents / 100;
+  const res = await fetchWithTimeout(
+    "/api/cupom/validar",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        codigo,
+        totalMensalCents: params.totalMensalCents,
+        plano: params.plano,
+      }),
+    },
+    8000,
+  );
 
-  // ✅ busca cupom no banco
-  const { data: cupom, error } = await supabase
-    .from("cupons")
-    .select(
-      `
-      id,
-      codigo,
-      tipo,
-      valor,
-      minimo_valor,
-      maximo_desconto,
-      limite_total,
-      usos_total,
-      plano,
-      ativo,
-      valido_de,
-      valido_ate
-    `,
-    )
-    .eq("codigo", codigo)
-    .maybeSingle();
+  const json = (await res.json().catch(() => ({}))) as
+    | {
+        ok?: boolean;
+        error?: string;
+        codigo?: string;
+        tipo?: TipoCupom;
+        percentual?: number;
+        descontoCents?: number;
+        totalComDescontoCents?: number;
+      }
+    | undefined;
 
-  if (error) throw new Error(error.message);
-  if (!cupom) throw new Error("Cupom inválido.");
-
-  // ✅ ativo
-  if (!cupom.ativo) {
-    throw new Error("Cupom inativo.");
+  if (!res.ok || !json?.ok) {
+    throw new Error(json?.error || "Erro ao validar cupom.");
   }
 
-  // ✅ validade
-  const now = new Date();
-
-  if (cupom.valido_de && new Date(cupom.valido_de) > now) {
-    throw new Error("Cupom ainda não está válido.");
-  }
-
-  if (cupom.valido_ate && new Date(cupom.valido_ate) < now) {
-    throw new Error("Cupom expirado.");
-  }
-
-  // ✅ plano
-  if (cupom.plano && cupom.plano !== params.plano) {
-    throw new Error("Cupom não aplicável a este plano.");
-  }
-
-  // ✅ mínimo
-  if (cupom.minimo_valor && totalBRL < Number(cupom.minimo_valor)) {
-    throw new Error("Valor mínimo não atingido para usar este cupom.");
-  }
-
-  // ✅ limite global
-  if (cupom.limite_total !== null && cupom.usos_total >= cupom.limite_total) {
-    throw new Error("Cupom esgotado.");
-  }
-
-  // ✅ cálculo do desconto
-  let descontoBRL = 0;
-
-  if (cupom.tipo === "percentual" || cupom.tipo === "desconto") {
-    descontoBRL = totalBRL * (Number(cupom.valor) / 100);
-  } else if (cupom.tipo === "fixo") {
-    descontoBRL = Number(cupom.valor);
-  } else {
-    descontoBRL = 0;
-  }
-
-  // ✅ teto de desconto (se existir)
-  if (cupom.maximo_desconto) {
-    descontoBRL = Math.min(descontoBRL, Number(cupom.maximo_desconto));
-  }
-
-  descontoBRL = round2(Math.max(0, descontoBRL));
-
-  const totalComDescontoBRL = round2(Math.max(0, totalBRL - descontoBRL));
+  const descontoCents = Number(json.descontoCents ?? 0);
+  const totalComDescontoCents = Number(
+    json.totalComDescontoCents ?? params.totalMensalCents,
+  );
 
   return {
-    codigo: cupom.codigo,
-    tipo: cupom.tipo,
-    valor: Number(cupom.valor),
+    codigo: String(json.codigo ?? codigo),
+    tipo: (json.tipo ?? "desconto") as TipoCupom,
+    percentual: Number(json.percentual ?? 0),
 
-    descontoBRL,
-    descontoCents: Math.round(descontoBRL * 100),
+    descontoCents,
+    descontoBRL: round2(descontoCents / 100),
 
-    totalComDescontoBRL,
-    totalComDescontoCents: Math.round(totalComDescontoBRL * 100),
+    totalComDescontoCents,
+    totalComDescontoBRL: round2(totalComDescontoCents / 100),
   };
 }
