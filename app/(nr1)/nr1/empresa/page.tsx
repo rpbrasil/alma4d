@@ -8,7 +8,6 @@ import { supabaseBrowser as supabase } from "@/lib/supabase/browser";
 import {
   getPrecificacaoConfig,
   PrecificacaoConfig,
-  invalidatePrecificacaoCache,
 } from "@/lib/precificacao/getConfig";
 import { calcularPrecificacao } from "../_components/ModeloPrecificacaoExpress";
 import { validarCupom } from "../../../lib/cupons/validarcupom";
@@ -217,56 +216,46 @@ function usePrecificacaoConfig() {
     setLoadingConfig(true);
     setConfigError(null);
 
-    // retry simples (dev/HMR dá NetworkError às vezes)
-    const attempts = [0, 400, 900]; // delays ms
+    const attempts = [0, 400, 900];
+
     for (let i = 0; i < attempts.length; i++) {
       try {
-        if (attempts[i] > 0)
+        if (attempts[i] > 0) {
           await new Promise((r) => setTimeout(r, attempts[i]));
+        }
+
         const cfg = await getPrecificacaoConfig();
 
         if (!cfg) {
           setConfig(null);
-          setConfigError(
-            "Configuração de preço não encontrada (express ativo).",
-          );
+          setConfigError("Configuração de preço não encontrada.");
         } else {
           setConfig(cfg);
         }
 
         setLoadingConfig(false);
         return;
-      } catch (e: unknown) {
-        const msg = e instanceof Error ? e.message : "Erro ao carregar preço";
-        // só seta erro no último attempt
+      } catch  {
         if (i === attempts.length - 1) {
-          setConfig(null);
-          setConfigError(msg);
+          setConfig((prev) => prev);
+          setConfigError("Erro ao carregar preços");
           setLoadingConfig(false);
-          return;
         }
       }
     }
   }, []);
 
-  const reload = useCallback(async () => {
-    invalidatePrecificacaoCache();
-    await load();
-  }, [load]);
-
   useEffect(() => {
-    let alive = true;
-    (async () => {
-      if (!alive) return;
+    const run = async () => {
       await load();
-    })();
-    return () => {
-      alive = false;
     };
+
+    run();
   }, [load]);
 
-  return { config, loadingConfig, configError, reloadConfig: reload };
+  return { config, loadingConfig, configError };
 }
+
 
 export default function EmpresaNR1Page() {
   const [state, setState] = useState<FormState>("idle");
@@ -303,7 +292,7 @@ export default function EmpresaNR1Page() {
     (state === "idle" || state === "submitting" || state === "error") &&
     cnpjSucesso &&
     !empresaInativa;
-  const { config, loadingConfig, configError, reloadConfig } =
+  const { config, loadingConfig, configError } =
     usePrecificacaoConfig();
 
   const [cupom, setCupom] = useState("");
@@ -484,8 +473,7 @@ export default function EmpresaNR1Page() {
         });
       },
 
-      "error-callback": (code) => {
-        console.error("Turnstile error:", code);
+      "error-callback": () => {
         setCnpjLoading(false);
         setErrorMsg("Falha ao validar o captcha. Tente novamente.");
         return true;
@@ -773,8 +761,6 @@ export default function EmpresaNR1Page() {
     [quote, cupom],
   );
 
-  const prevQuoteTotalCentsRef = React.useRef<number | null>(null);
-
   useEffect(() => {
     if (
       autoCupomExecutadoRef.current // ✅ já rodou
@@ -804,29 +790,6 @@ export default function EmpresaNR1Page() {
     loadingCupom,
     aplicarCupom,
   ]);
-
-  useEffect(() => {
-    const currentTotal = quote?.totalMensalCents;
-
-    if (!currentTotal) {
-      prevQuoteTotalCentsRef.current = null;
-      return;
-    }
-
-    const prevTotal = prevQuoteTotalCentsRef.current;
-
-    if (
-      prevTotal !== null &&
-      currentTotal !== prevTotal &&
-      cupomValido &&
-      cupom &&
-      !loadingCupom
-    ) {
-      void aplicarCupom(cupom);
-    }
-
-    prevQuoteTotalCentsRef.current = currentTotal;
-  }, [quote?.totalMensalCents, cupom, cupomValido, loadingCupom, aplicarCupom]);
 
   return (
     <main className="min-h-screen bg-surface-muted">
@@ -996,7 +959,11 @@ export default function EmpresaNR1Page() {
                 value={form.funcionarios === 0 ? "" : form.funcionarios}
                 onChange={(e) => {
                   const v = e.target.value;
-                  update("funcionarios", v === "" ? 0 : Number(v));
+                  const num = v === "" ? 0 : Number(v);
+                  update("funcionarios", num);
+                  setCupomValido(null);
+                  setDescontoCents(0);
+                  setTotalComDescontoCents(null);
                 }}
                 className="h-11 border rounded-lg px-3"
                 placeholder="Nº funcionários"
