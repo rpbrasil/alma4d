@@ -24,7 +24,8 @@ const nextConfig: NextConfig = {
               img-src 
                 'self' 
                 data: 
-                blob:;
+                blob:
+                https://*.heyzine.com;
 
               connect-src 
                 'self' 
@@ -32,7 +33,10 @@ const nextConfig: NextConfig = {
                 https://*.supabase.co;
 
               frame-src 
-                https://challenges.cloudflare.com;
+                'self'
+                https://challenges.cloudflare.com
+                https://heyzine.com 
+                https://*.heyzine.com;
 
             `.replace(/\n/g, ""),
           },
