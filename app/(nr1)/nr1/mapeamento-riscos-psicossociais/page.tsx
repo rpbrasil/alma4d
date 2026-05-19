@@ -35,12 +35,12 @@ export default function PaginaNR1() {
   return (
     <>
       {modalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-100 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="relative w-full max-w-5xl h-[90vh] bg-white rounded-2xl overflow-hidden flex flex-col shadow-2xl">
             {/* Cabeçalho do Modal */}
             <div className="flex items-center justify-between p-4 border-b bg-white">
               <h3 className="font-bold text-brand flex items-center gap-2">
-                <FileText size={20} /> Visualização do Modelo Técnico
+                <FileText size={20} /> NR-1 | RISCOS PSICOSSOCIAIS
               </h3>
               <button
                 onClick={closeModal}
@@ -53,7 +53,7 @@ export default function PaginaNR1() {
             {/* Container do Iframe */}
             <div className="flex-1 w-full bg-slate-50">
               <iframe
-                src="https://heyzine.com/flip-book/4757966bd8" // Removido o .html para melhor compatibilidade
+                src={ pdfUrl }
                 className="w-full h-full border-none"
                 allowFullScreen
                 allow="clipboard-write"
