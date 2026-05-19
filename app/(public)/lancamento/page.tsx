@@ -11,7 +11,7 @@ export default function LancamentoPage() {
 
   useEffect(() => {
     // Data de lançamento: 02/06/2026
-    const launchDate = new Date("2026-06-02T00:00:00").getTime();
+    const launchDate = new Date("2026-06-12T00:00:00").getTime();
 
     const updateCountdown = () => {
       const now = new Date().getTime();
