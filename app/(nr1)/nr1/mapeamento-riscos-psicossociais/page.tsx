@@ -24,32 +24,32 @@ const steps = [
   {
     icon: Search,
     title: "Captação & Inteligência",
-    text: "Landing Page com busca de CNPJ via API para preenchimento automático de dados e porte da empresa.",
+    text: "O CNPJ é confirmado via API para preenchimento automático de dados e estimativa do risco da empresa.",
   },
   {
     icon: Tag,
     title: "Precificação Automática",
-    text: "Cálculo de valores dinâmico com identificação de origem de parceiros e aplicação de desconto automático.",
+    text: "Precificação dinâmica e aplicação de desconto automático no caso de cupom.",
   },
   {
     icon: Zap,
     title: "Ativação Instantânea",
-    text: "Pagamento via checkout seguro com Webhook para emissão de Nota Fiscal e liberação imediata do Dashboard.",
+    text: "Pagamento via checkout seguro com emissão de nota fiscal eletrônica, contrato e liberação imediata do Dashboard.",
   },
   {
     icon: Users,
     title: "Gestão de Acessos",
-    text: "Configuração da empresa e inserção de colaboradores limitada ao número de licenças adquiridas.",
+    text: "Inserção de colaboradores conforme o número de licenças adquiridas.",
   },
   {
     icon: QrCode,
     title: "Coleta de Dados",
-    text: "Geração de links exclusivos e QR Codes para acesso anônimo e responsivo ao questionário COPSOQ II.",
+    text: "Geração de links exclusivos e QR Codes para acesso anônimo e responsivo ao questionário de avaliação de riscos psicossociais.",
   },
   {
     icon: BarChart3,
     title: "Entrega Técnica",
-    text: "Consolidação de dados em tempo real no Dashboard e exportação do Relatório Técnico NR-1 para fiscalização.",
+    text: "Consolidação de dados em tempo real no Dashboard e geração do Relatório Técnico NR-1 para fiscalização.",
   },
 ];
 
@@ -170,8 +170,8 @@ export default function PaginaNR1() {
 
         {/* ================= NR‑1 ================= */}
         <section className="px-6 py-16 bg-surface">
-          <div className="max-w-5xl mx-auto">
-            <h2 className="text-2xl font-extrabold text-brand">
+          <div className="max-w-5xl mx-auto text-center">
+            <h2 className="text-2xl font-extrabold text-brand mx-auto">
               O que a NR‑1 exige das empresas
             </h2>
 
@@ -211,8 +211,8 @@ export default function PaginaNR1() {
 
         {/* ================= SOLUÇÃO ================= */}
         <section className="px-6 py-16 bg-surface-muted">
-          <div className="max-w-6xl mx-auto">
-            <h2 className="text-2xl font-extrabold text-brand">
+          <div className="max-w-6xl mx-auto text-center">
+            <h2 className="text-2xl font-extrabold text-brand mx-auto">
               Como alma4D atende à NR‑1
             </h2>
 
@@ -263,7 +263,7 @@ export default function PaginaNR1() {
         <section className="px-6 py-20 bg-surface-muted">
           <div className="max-w-6xl mx-auto">
             <h2 className="text-2xl font-extrabold text-brand text-center">
-              Jornada do Cliente
+              Jornada do Cliente alma4D
             </h2>
 
             <p className="mt-3 text-center text-slate-600 max-w-2xl mx-auto">
