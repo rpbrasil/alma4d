@@ -12,8 +12,46 @@ import {
   Handshake,
   CheckCircle2,
   ArrowRight,
+  Search,
+  Tag,
+  Zap,
+  QrCode,
+  BarChart3,
 } from "lucide-react";
 import Image from "next/image";
+
+const steps = [
+  {
+    icon: Search,
+    title: "Captação & Inteligência",
+    text: "Landing Page com busca de CNPJ via API para preenchimento automático de dados e porte da empresa.",
+  },
+  {
+    icon: Tag,
+    title: "Precificação Automática",
+    text: "Cálculo de valores dinâmico com identificação de origem de parceiros e aplicação de desconto automático.",
+  },
+  {
+    icon: Zap,
+    title: "Ativação Instantânea",
+    text: "Pagamento via checkout seguro com Webhook para emissão de Nota Fiscal e liberação imediata do Dashboard.",
+  },
+  {
+    icon: Users,
+    title: "Gestão de Acessos",
+    text: "Configuração da empresa e inserção de colaboradores limitada ao número de licenças adquiridas.",
+  },
+  {
+    icon: QrCode,
+    title: "Coleta de Dados",
+    text: "Geração de links exclusivos e QR Codes para acesso anônimo e responsivo ao questionário COPSOQ II.",
+  },
+  {
+    icon: BarChart3,
+    title: "Entrega Técnica",
+    text: "Consolidação de dados em tempo real no Dashboard e exportação do Relatório Técnico NR-1 para fiscalização.",
+  },
+];
 
 export default function PaginaNR1() {
   const [modalOpen, setModalOpen] = useState(false);
@@ -53,7 +91,7 @@ export default function PaginaNR1() {
             {/* Container do Iframe */}
             <div className="flex-1 w-full bg-slate-50">
               <iframe
-                src={ pdfUrl }
+                src={pdfUrl}
                 className="w-full h-full border-none"
                 allowFullScreen
                 allow="clipboard-write"
@@ -215,6 +253,51 @@ export default function PaginaNR1() {
                     />
                     <p className="mt-4 font-bold text-brand">{item.title}</p>
                     <p className="mt-2 text-sm text-slate-600">{item.text}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        <section className="px-6 py-20 bg-surface-muted">
+          <div className="max-w-6xl mx-auto">
+            <h2 className="text-2xl font-extrabold text-brand text-center">
+              Jornada do Cliente
+            </h2>
+
+            <p className="mt-3 text-center text-slate-600 max-w-2xl mx-auto">
+              Do primeiro acesso até a entrega técnica conforme a NR‑1.
+            </p>
+
+            <div className="mt-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {steps.map((step, index) => {
+                const Icon = step.icon;
+
+                return (
+                  <div
+                    key={step.title}
+                    className="relative group rounded-2xl border border-border bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-[#00E676]/60"
+                  >
+                    {/* Badge numérico */}
+                    <div className="absolute -top-3 -left-3 w-8 h-8 flex items-center justify-center rounded-full bg-[#00E676] text-white text-sm font-bold shadow">
+                      {index + 1}
+                    </div>
+
+                    {/* Ícone */}
+                    <div className="w-12 h-12 rounded-xl bg-[#00E676]/10 flex items-center justify-center">
+                      <Icon className="text-[#00E676]" size={22} />
+                    </div>
+
+                    {/* Conteúdo */}
+                    <h3 className="mt-4 font-bold text-brand">{step.title}</h3>
+
+                    <p className="mt-2 text-sm text-slate-600 leading-relaxed">
+                      {step.text}
+                    </p>
+
+                    {/* Linha visual conectiva (opcional leve) */}
+                    <div className="pointer-events-none absolute inset-0 border rounded-2xl opacity-0 group-hover:opacity-100 transition border-[#00E676]/30" />
                   </div>
                 );
               })}

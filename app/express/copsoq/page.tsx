@@ -370,7 +370,7 @@ function CopsoqPageContent() {
                 <p>
                   Os dados serão usados exclusivamente para identificar e
                   prevenir riscos no trabalho. Este questionário{" "}
-                  <strong>não é diagnóstico individual</strong>.
+                  <strong>não se presta ao diagnóstico individual</strong>.
                 </p>
               </div>
             </div>
