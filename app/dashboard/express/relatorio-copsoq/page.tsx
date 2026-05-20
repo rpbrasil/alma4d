@@ -5,7 +5,7 @@ import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase/client";
 import { ExportToolbar } from "@/components/dashboard/ExportToolbar";
 import { AlertCircle, Building2, Layers, ShieldAlert } from "lucide-react";
-import { CopsoqOfficialReport } from "@/dashboard/relatorios/psicossocial/copsoq/CopsoqOfficialReport";
+import { CopsoqOfficialReport } from "@/dashboard/premium/relatorios/psicossocial/copsoq/CopsoqOfficialReport";
 
 type Role = "admin" | "cliente" | "gestor" | "usuario";
 

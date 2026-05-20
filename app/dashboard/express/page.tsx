@@ -158,7 +158,6 @@ export default function DashboardExpress() {
   const [jobErrors, setJobErrors] = useState<BulkLineError[]>([]);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
-  const [showDeptModal, setShowDeptModal] = useState(true);
   const enqueueUrl = process.env.NEXT_PUBLIC_FN_IMPORT_ENQUEUE_URL!;
   const workerUrl = process.env.NEXT_PUBLIC_FN_IMPORT_WORKER_URL!;
   const { loading } = useAccessGuard({
@@ -166,6 +165,29 @@ export default function DashboardExpress() {
     allowAdmin: true,
     redirectIfFail: "/ativacao",
   });
+  
+const [showDeptModal, setShowDeptModal] = useState(() => {
+  if (typeof window === "undefined") return false;
+
+  const CONSENT_KEY = "copsoq_consent_v1";
+  const CONSENT_TTL = 1000 * 60 * 60 * 24; // 24h
+
+  const stored = localStorage.getItem(CONSENT_KEY);
+
+  if (!stored) return true;
+
+  try {
+    const parsed = JSON.parse(stored);
+
+    const isExpired =
+      !parsed.timestamp || Date.now() - parsed.timestamp > CONSENT_TTL;
+
+    return isExpired;
+  } catch {
+    return true;
+  }
+});
+
 
   useEffect(() => {
     let cancelled = false;
@@ -198,18 +220,17 @@ export default function DashboardExpress() {
     };
   }, []);
 
+  useEffect(() => {
+    if (showDeptModal) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "auto";
+    }
 
-useEffect(() => {
-  if (showDeptModal) {
-    document.body.style.overflow = "hidden";
-  } else {
-    document.body.style.overflow = "auto";
-  }
-
-  return () => {
-    document.body.style.overflow = "auto";
-  };
-}, [showDeptModal]);
+    return () => {
+      document.body.style.overflow = "auto";
+    };
+  }, [showDeptModal]);
 
   const progress = useMemo(() => {
     if (!job) return 0;
@@ -483,6 +504,7 @@ useEffect(() => {
 
   async function closeDeptModal() {
     if (!deptAcknowledge) return;
+
     await trackConsent({
       type: "copsoq_departamento",
       version: "v1.0",
@@ -491,6 +513,16 @@ useEffect(() => {
         feature: "departamento_toggle",
       },
     });
+
+    // ✅ salva no localStorage com timestamp
+    localStorage.setItem(
+      "copsoq_consent_v1",
+      JSON.stringify({
+        accepted: true,
+        timestamp: Date.now(),
+      }),
+    );
+
     setShowDeptModal(false);
   }
 
@@ -562,32 +594,59 @@ useEffect(() => {
       )}
 
       {/* HEADER */}
-      <div className="rounded-lg border border-slate-200 bg-white p-5">
-        <div className="flex items-center justify-between">
+      <section className="rounded-3xl border border-border bg-white p-8 shadow-sm">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          {/* Esquerda */}
           <div>
-            <h1 className="text-lg font-semibold text-slate-900">
-              Inclusão de usuários
+            <span className="inline-flex items-center rounded-full bg-brand/10 px-3 py-1 text-sm font-semibold text-brand">
+              👥 Inclusão Express
+            </span>
+
+            <h1 className="mt-4 text-3xl font-semibold text-slate-900">
+              Cadastro de usuários
             </h1>
-            <p className="text-sm text-slate-500 mt-1">
-              Cadastre rapidamente sua equipe
+
+            <p className="mt-2 max-w-2xl text-sm text-slate-600">
+              Adicione usuários de forma rápida ou em massa e gerencie o acesso
+              ao sistema.
             </p>
           </div>
 
-          <div className="text-sm text-slate-600">
-            Usuários: <strong>{usuariosAtuais}</strong>
-            {limiteUsuarios !== null && <> / {limiteUsuarios}</>}
+          {/* Direita (mini dashboard) */}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+              <p className="text-sm text-slate-500">Usuários ativos</p>
+              <p className="mt-2 text-2xl font-semibold text-slate-900">
+                {usuariosAtuais}
+              </p>
+            </div>
+
+            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+              <p className="text-sm text-slate-500">Limite do plano</p>
+              <p className="mt-2 text-2xl font-semibold text-slate-900">
+                {limiteUsuarios ?? "—"}
+              </p>
+            </div>
           </div>
         </div>
 
-        <div className="mt-4 flex items-center gap-3">
-          <input
-            type="checkbox"
-            checked={deptEnabled}
-            onChange={(e) => setDeptEnabled(e.target.checked)}
-          />
-          <span className="text-sm text-slate-700">
-            Habilitar campo Departamento
-          </span>
+        <div className="mt-6 flex items-center gap-4">
+          <button
+            onClick={refreshEntitlements}
+            disabled={busy}
+            className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+          >
+            Atualizar dados
+          </button>
+
+          <div className="flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={deptEnabled}
+              onChange={(e) => setDeptEnabled(e.target.checked)}
+            />
+            Habilitar departamento
+          </div>
         </div>
 
         {msg && (
@@ -595,7 +654,7 @@ useEffect(() => {
             {msg}
           </div>
         )}
-      </div>
+      </section>
 
       {/* TABS */}
       <div className="rounded-lg border border-slate-200 bg-white p-5">

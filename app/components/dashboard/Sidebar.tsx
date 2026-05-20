@@ -37,7 +37,7 @@ const NAV_BY_PLAN: Record<Plano, NavItem[]> = {
     },
     {
       href: "/dashboard/express/copsoq",
-      label: "Acesso de usuários",
+      label: "Acesso ao Questionário",
       icon: QrCode,
     },
     {
@@ -108,10 +108,15 @@ export default function Sidebar() {
     });
   }, [effectivePlano, role]);
 
+
   const isActive = (href: string) => {
-    if (href === "/dashboard") return pathname === "/dashboard";
+    // ✅ Caso raiz (Express ou Premium)
+    if (href === "/dashboard/express" || href === "/dashboard/premium") {
+      return pathname === href;
+    }
     return pathname.startsWith(href);
   };
+
 
   useEffect(() => {
     if (loading || !user?.id) return;

@@ -10,14 +10,18 @@ import Image from "next/image";
 
 // Uso:
 <Image src="/logo.png" width={500} height={500} alt="Descrição" />;
+
 export default function DashboardHeader() {
-  const { user, signOut, loading } = useAuth();
+  const { user, signOut, loading, plano } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
   const [clienteNome, setClienteNome] = useState<string>("Painel Corporativo");
   const [clienteLogo, setClienteLogo] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  const basePath =
+    plano === "express" ? "/dashboard/express" : "/dashboard/premium";
 
   // ✅ listener só após mount (não altera HTML inicial)
   useEffect(() => {
@@ -141,7 +145,7 @@ export default function DashboardHeader() {
                             shadow-lg border border-border py-1 text-sm z-50"
             >
               <Link
-                href="/dashboard/perfil"
+                href={`${basePath}/perfil`}
                 onClick={() => setOpen(false)}
                 className="flex items-center gap-2 px-4 py-2 hover:bg-surface-muted"
               >
@@ -150,7 +154,7 @@ export default function DashboardHeader() {
               </Link>
 
               <Link
-                href="/dashboard/configuracoes"
+                href={`${basePath}/configuracoes`}
                 onClick={() => setOpen(false)}
                 className="flex items-center gap-2 px-4 py-2 hover:bg-surface-muted"
               >
