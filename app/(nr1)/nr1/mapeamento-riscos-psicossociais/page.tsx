@@ -120,7 +120,8 @@ export default function PaginaNR1() {
             </div>
             <div className="mt-10 flex justify-center">
               <button
-                onClick={() => openModal(linkModeloRelatorio)}
+                //onClick={() => openModal(linkModeloRelatorio)}
+                onClick={() => window.open(linkModeloRelatorio, "_blank")}
                 className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl border border-white/40 text-white hover:bg-white/10 transition"
               >
                 Saiba mais sobre a NR-1
@@ -317,7 +318,8 @@ export default function PaginaNR1() {
           </Link>
           <div className="mt-10 flex justify-center">
             <button
-              onClick={() => openModal(linkModeloRelatorio)}
+              //onClick={() => openModal(linkModeloRelatorio)}
+              onClick={() => window.open(linkModeloRelatorio, "_blank")}
               className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl border border-white/40 text-white hover:bg-white/10 transition"
             >
               Saiba mais sobre a NR-1
