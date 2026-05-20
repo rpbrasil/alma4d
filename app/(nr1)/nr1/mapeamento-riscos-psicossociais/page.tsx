@@ -24,7 +24,7 @@ const steps = [
   {
     icon: Search,
     title: "Captação & Inteligência",
-    text: "O CNPJ é confirmado via API para preenchimento automático de dados e estimativa do risco da empresa.",
+    text: "O CNPJ é confirmado para preenchimento automático de dados e estimativa do risco da empresa.",
   },
   {
     icon: Tag,
@@ -59,11 +59,11 @@ export default function PaginaNR1() {
 
   const linkModeloRelatorio = "https://heyzine.com/flip-book/4757966bd8";
 
-  const openModal = (url: string) => {
-    setPdfUrl(url);
-    setModalOpen(true);
-    if (typeof window !== "undefined") document.body.style.overflow = "hidden";
-  };
+  // const openModal = (url: string) => {
+  //   setPdfUrl(url);
+  //   setModalOpen(true);
+  //   if (typeof window !== "undefined") document.body.style.overflow = "hidden";
+  // };
 
   const closeModal = () => {
     setModalOpen(false);
@@ -280,7 +280,7 @@ export default function PaginaNR1() {
                     className="relative group rounded-2xl border border-border bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-[#00E676]/60"
                   >
                     {/* Badge numérico */}
-                    <div className="absolute -top-3 -left-3 w-8 h-8 flex items-center justify-center rounded-full bg-[#00E676] text-white text-sm font-bold shadow">
+                    <div className="absolute -top-4 -left-4 w-12 h-12 flex items-center justify-center rounded-full bg-[#00E676] text-white text-xl font-bold shadow-lg ring-4 ring-white">
                       {index + 1}
                     </div>
 
