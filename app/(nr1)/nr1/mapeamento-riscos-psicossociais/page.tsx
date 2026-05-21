@@ -29,7 +29,7 @@ const steps = [
   {
     icon: Tag,
     title: "Precificação Automática",
-    text: "Precificação dinâmica e aplicação de desconto automático no caso de cupom.",
+    text: "Precificação e aplicação de desconto automático no caso de cupom.",
   },
   {
     icon: Zap,
@@ -149,7 +149,7 @@ export default function PaginaNR1() {
               </Link>
 
               <Link
-                href="/contato"
+                href="/nr1/parceiros"
                 className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl border border-white/40 text-white hover:bg-white/10 transition"
               >
                 Quero ser parceiro alma4D
@@ -203,7 +203,7 @@ export default function PaginaNR1() {
                   size={18}
                   className="text-brand-secondary shrink-0"
                 />
-                Resultados devem incluir Inventário e Plano de Ação.
+                Resultados devem incluir Inventário para elaboração do Plano de Ação.
               </li>
             </ul>
           </div>
@@ -231,7 +231,7 @@ export default function PaginaNR1() {
                 {
                   icon: FileText,
                   title: "Relatórios técnicos",
-                  text: "Inventário de riscos e Plano de Ação prontos para o Plano de Gestão de Riscos.",
+                  text: "Inventário para elaboração do Plano de Gestão de Riscos.",
                 },
                 {
                   icon: ShieldCheck,
@@ -372,7 +372,7 @@ export default function PaginaNR1() {
                 </ul>
 
                 <Link
-                  href="/contato"
+                  href="/nr1/parceiros"
                   className="mt-6 inline-flex items-center gap-2 text-brand font-semibold hover:underline"
                 >
                   Seja nosso parceiro <ArrowRight size={16} />
