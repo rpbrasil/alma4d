@@ -57,9 +57,21 @@ export async function POST(req: Request) {
       .eq("id", callerId)
       .maybeSingle();
 
-    if (!caller || !caller.ativo) {
-      return NextResponse.json({ error: "Sem permissão" }, { status: 403 });
-    }
+   if (!caller) {
+     return NextResponse.json(
+       { error: "Usuário não encontrado" },
+       { status: 401 },
+     );
+   }
+
+   // ✅ agora TS sabe que caller não é null
+   const isOnboarding =
+     caller.ativo === false &&
+     (caller.tipo_plano === "express" || caller.tipo_plano === "trial");
+
+   if (!caller.ativo && !isOnboarding) {
+     return NextResponse.json({ error: "Sem permissão" }, { status: 403 });
+   }
 
     const cliente_id = String(body.cliente_id ?? "");
     const contrato_id = String(body.contrato_id ?? "");
@@ -69,7 +81,6 @@ export async function POST(req: Request) {
     const cupom_codigo = body.cupom_codigo
       ? String(body.cupom_codigo).trim().toUpperCase()
       : null;
-
     const email = body.email ? String(body.email) : "";
     const nome_completo = body.nome_completo
       ? String(body.nome_completo)
@@ -170,12 +181,35 @@ export async function POST(req: Request) {
       .eq("ativo", true);
 
     const usuariosReais = count ?? 0;
-    if (usuariosReais < 2) {
+
+    // ✅ Em onboarding, aceite a compra usando o número do contrato/body
+    // (sem exigir que já existam 2 usuários ativos cadastrados)
+    const funcionariosSolicitados = Number(body.funcionarios ?? 0);
+
+    // mantém regra mínima 2 para contratação
+    if (
+      !Number.isInteger(funcionariosSolicitados) ||
+      funcionariosSolicitados < 2
+    ) {
+      return NextResponse.json(
+        { error: "É necessário no mínimo 2 funcionários para contratar." },
+        { status: 400 },
+      );
+    }
+
+    if (!isOnboarding && usuariosReais < 2) {
       return NextResponse.json(
         { error: "É necessário no mínimo 2 usuários ativos para contratar." },
         { status: 400 },
       );
     }
+
+    // ✅ define o número de funcionários que vai para o Azure
+    // onboarding → usa o solicitado/contrato
+    // não-onboarding → usa antifraude baseado em usuários reais
+    const funcionariosParaPagamento = isOnboarding
+      ? funcionariosSolicitados
+      : usuariosReais;
 
     // ✅ pega CNPJ real do cliente
     const { data: cliente } = await supabaseAdmin
@@ -215,10 +249,10 @@ export async function POST(req: Request) {
       product_id: "nr1_psicossocial",
       cliente_id,
       contrato_id,
-      funcionarios: usuariosReais,
+      funcionarios: funcionariosParaPagamento,
       payment_method,
       cupom_codigo,
-
+      total_amount_cents: Number(body.total_amount_cents ?? 0),
       email: email.trim(),
       nome_completo,
       documento,

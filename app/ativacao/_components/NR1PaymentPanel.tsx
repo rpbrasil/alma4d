@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import { supabaseBrowser as supabase } from "@/lib/supabase/browser";
 
 type PaymentMethod = "pix" | "boleto";
 
@@ -83,7 +84,6 @@ export function NR1PaymentPanel(props: {
   contratoId: string;
 
   funcionarios: number;
-  onFuncionariosChange: (v: number) => void;
 
   nomeCompleto: string;
   email: string;
@@ -91,6 +91,12 @@ export function NR1PaymentPanel(props: {
 
   origem?: string | null;
   campanha?: string | null;
+
+  // ✅ agora explicitamente em CENTAVOS
+  precoTotalCents: number;
+
+  // ✅ opcional: mostrar cupom aplicado (somente leitura)
+  cupomCodigo?: string | null;
 }) {
   const {
     userId,
@@ -101,19 +107,18 @@ export function NR1PaymentPanel(props: {
     documento,
     origem,
     campanha,
-    funcionarios, // ✅ AQUI
-    onFuncionariosChange, // ✅ AQUI
+    funcionarios,
+    precoTotalCents,
+    cupomCodigo,
   } = props;
 
   const [method, setMethod] = useState<PaymentMethod>("pix");
-
-  const [cupom, setCupom] = useState<string>("");
 
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
   const [result, setResult] = useState<CreatePaymentResponse | null>(null);
-  
+
   const [copied, setCopied] = useState(false);
 
   // countdown
@@ -122,11 +127,6 @@ export function NR1PaymentPanel(props: {
   // timers
   const pollTimerRef = useRef<number | null>(null);
   const countdownTimerRef = useRef<number | null>(null);
-
-  const totalEstimado = useMemo(() => {
-    const unit = 1600; // R$16,00 em centavos (estimativa UI)
-    return unit * (Number(funcionarios) || 0);
-  }, [funcionarios]);
 
   const order = result?.order;
   const charge = order?.charges?.[0];
@@ -155,17 +155,31 @@ export function NR1PaymentPanel(props: {
       if (!Number.isInteger(funcionarios) || funcionarios <= 0)
         throw new Error("Funcionários inválido.");
 
+      // ✅ pega token da sessão (obrigatório para /api/nr1/pagamento)
+      const { data: sessionData, error: sessionErr } =
+        await supabase.auth.getSession();
+      if (sessionErr) throw new Error("Falha ao obter sessão para pagamento.");
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken)
+        throw new Error(
+          "Sessão inválida (token ausente). Faça login novamente.",
+        );
+
       const res = await fetch("/api/nr1/pagamento", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
         body: JSON.stringify({
+          // OBS: o backend ignora user_id vindo do client e usa o callerId do token
           user_id: userId,
           product_id: "nr1_psicossocial",
           cliente_id: clienteId,
           contrato_id: contratoId,
           funcionarios,
           payment_method: method,
-          cupom_codigo: cupom.trim() || null,
+          total_amount_cents: precoTotalCents,
 
           email: email.trim(),
           nome_completo: nomeCompleto.trim(),
@@ -271,14 +285,21 @@ export function NR1PaymentPanel(props: {
         </p>
       </div>
       {/* Resumo */}
-      <div className="rounded-xl border border-border bg-surface-muted p-4">
+      {/* <div className="rounded-xl border border-border bg-surface-muted p-4">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="font-semibold text-slate-800">NR‑1 • COPSOQ II BR</p>
             <p className="text-sm text-slate-600">
-              Estimativa: {formatMoneyBRL(totalEstimado)} ({funcionarios}{" "}
-              funcionários)
+              Valor total: {formatMoneyBRL(precoTotalCents)} ({funcionarios}{" "}
+              colaboradores)
             </p>
+
+            {cupomCodigo ? (
+              <p className="text-xs text-slate-500 mt-1">
+                Cupom aplicado:{" "}
+                <span className="font-semibold">{cupomCodigo}</span>
+              </p>
+            ) : null}
           </div>
           <div className="text-xs text-slate-500 font-semibold text-right">
             Contrato
@@ -286,9 +307,9 @@ export function NR1PaymentPanel(props: {
             <span className="text-slate-700">{contratoId.slice(0, 8)}…</span>
           </div>
         </div>
-      </div>
+      </div> */}
       {/* Configuração */}
-      <div className="grid sm:grid-cols-2 gap-3">
+      {/* <div className="grid sm:grid-cols-2 gap-3">
         <label className="grid gap-1">
           <span className="text-sm font-semibold text-slate-700">
             Funcionários
@@ -297,24 +318,12 @@ export function NR1PaymentPanel(props: {
             type="number"
             min={1}
             value={funcionarios}
-            onChange={(e) => onFuncionariosChange(Number(e.target.value))}
+            readOnly
             className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-brand/10"
             inputMode="numeric"
           />
         </label>
-
-        <label className="grid gap-1">
-          <span className="text-sm font-semibold text-slate-700">
-            Cupom (opcional)
-          </span>
-          <input
-            value={cupom}
-            onChange={(e) => setCupom(e.target.value)}
-            placeholder="n.Cupom"
-            className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-brand/10"
-          />
-        </label>
-      </div>
+      </div> */}
       {/* Métodos + CTA */}
       <div className="rounded-xl border border-border bg-white p-4">
         <p className="text-sm font-semibold text-slate-700 mb-3">

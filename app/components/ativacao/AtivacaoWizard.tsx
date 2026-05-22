@@ -31,6 +31,7 @@ type Contrato = {
   valor_mensal: number | null;
   observacoes: string | null;
   limite_usuarios?: number | null;
+  aceite_termos?: boolean | null;
 };
 type PrecificacaoContrato = {
   preco_por_usuario_cents?: number;
@@ -264,7 +265,7 @@ function SummarySticky({
             <p className="font-semibold text-slate-800">Confiabilidade</p>
             <p className="mt-1">
               • Conformidade NR‑1 • Relatório técnico estruturado • Ativação
-              após confirmação.
+              após confirmação do pagamento.
             </p>
           </div>
         </div>
@@ -309,13 +310,10 @@ function PrimaryCTA({
 
 /** -------------------- Steps -------------------- */
 function Step1Servico({
-  funcionarios,
-  precoTotal,
-  precoPorColab,
+  // precoTotal,
   aceitouTermos,
   setAceitouTermos,
   contratoLido,
-  setContratoLido,
   onOpenTerms,
   onOpenContrato,
   onNext,
@@ -326,12 +324,11 @@ function Step1Servico({
   aceitouTermos: boolean;
   setAceitouTermos: (v: boolean) => void;
   contratoLido: boolean;
-  setContratoLido: (v: boolean) => void;
   onOpenTerms: () => void;
   onOpenContrato: () => void;
   onNext: () => void;
 }) {
-  const preco = precoTotal;
+  //const preco = precoTotal;
 
   return (
     <div className="space-y-6">
@@ -345,7 +342,7 @@ function Step1Servico({
       </div>
 
       {/* Card de valor (curto e claro) */}
-      <div className="rounded-2xl border border-border bg-surface p-5">
+      {/* <div className="rounded-2xl border border-border bg-surface p-5">
         <p className="text-xs text-slate-500">Valor total</p>
         <p className="mt-1 text-2xl font-extrabold text-brand">
           {preco.toLocaleString("pt-BR", {
@@ -361,7 +358,7 @@ function Step1Servico({
           })}{" "}
           por colaborador
         </p>
-      </div>
+      </div> */}
 
       {/* O que você recebe */}
       <div className="rounded-2xl border border-border bg-surface-muted p-5">
@@ -434,21 +431,16 @@ function Step1Servico({
             )}
           </div>
         </label>
-
-        {/* fallback manual (caso o scroll tracking falhe por qualquer motivo) */}
-        {!contratoLido ? (
-          <button
-            type="button"
-            onClick={() => setContratoLido(true)}
-            className="text-xs text-brand-secondary font-semibold underline"
-          >
-            Não consigo rolar o contrato — habilitar aceite manualmente
-          </button>
-        ) : null}
       </div>
 
       <PrimaryCTA
-        onClick={onNext}
+        onClick={() => {
+          if (!contratoLido) {
+            onOpenContrato();
+            return;
+          }
+          onNext();
+        }}
         disabled={!aceitouTermos}
         label="Continuar cadastro"
         disabledLabel="Aceite os termos para continuar"
@@ -465,7 +457,6 @@ function Step2Dados({
   documento,
   setDocumento,
   email,
-  setEmail,
   aceitouTermos,
   onBack,
   onNext,
@@ -479,7 +470,6 @@ function Step2Dados({
   documento: string;
   setDocumento: (v: string) => void;
   email: string;
-  setEmail: (v: string) => void;
   aceitouTermos: boolean;
   onBack: () => void;
   onNext: () => void;
@@ -503,7 +493,7 @@ function Step2Dados({
         </p>
       </div>
 
-      <div className="rounded-2xl border border-border bg-surface-muted p-4 flex items-start justify-between">
+      {/* <div className="rounded-2xl border border-border bg-surface-muted p-4 flex items-start justify-between">
         <div>
           <p className="font-semibold text-slate-800">Empresa cadastrada</p>
           <p className="text-sm text-slate-600">
@@ -519,7 +509,7 @@ function Step2Dados({
             })}
           </p>
         </div>
-      </div>
+      </div> */}
 
       <div className="grid gap-4">
         <label className="grid gap-1">
@@ -571,11 +561,11 @@ function Step2Dados({
 
         <label className="grid gap-1">
           <span className="text-sm font-semibold text-slate-700">
-            E‑mail (para envio do recibo)
+            E‑mail (para envio de documentos)
           </span>
           <input
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            readOnly
             placeholder="voce@empresa.com"
             className={cx(
               "w-full rounded-xl border bg-white px-3 py-2 text-sm outline-none focus:ring-4",
@@ -644,6 +634,8 @@ function Step3Pagamento({
   documento,
   origem,
   campanha,
+  precoTotalCents,
+  cupomCodigo,
 }: {
   userId: string;
   clienteId: string;
@@ -655,6 +647,8 @@ function Step3Pagamento({
   documento: string;
   origem: string;
   campanha: string | null;
+  precoTotalCents: number;
+  cupomCodigo: string | null;
 }): React.ReactElement {
   return (
     <div className="space-y-6">
@@ -673,12 +667,13 @@ function Step3Pagamento({
           clienteId={clienteId}
           contratoId={contratoId}
           funcionarios={funcionarios}
-          onFuncionariosChange={() => {}}
           nomeCompleto={nomeCompleto}
           email={email}
           documento={onlyDigits(documento)}
           origem={origem}
           campanha={campanha}
+          precoTotalCents={precoTotalCents}
+          cupomCodigo={cupomCodigo}
         />
       </div>
 
@@ -738,15 +733,17 @@ function AtivacaoWizardContent() {
   const [nomeCompleto, setNomeCompleto] = useState(
     searchParams.get("nome") || "",
   );
-  const [email, setEmail] = useState(searchParams.get("email") || "");
+  const email = searchParams.get("email") || "";
   const [documento, setDocumento] = useState("");
 
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [funcionarios, setFuncionarios] = useState(funcionariosParam || 1);
-  const obsObj = safeJsonParse<{ precificacao?: PrecificacaoContrato }>(
-    contrato?.observacoes ?? null,
-  );
+  const obsObj = safeJsonParse<{
+    precificacao?: PrecificacaoContrato;
+    cupom?: string | null;
+  }>(contrato?.observacoes ?? null);
+  const cupomCodigo = obsObj?.cupom ?? null;
   const precificacao = obsObj?.precificacao ?? null;
 
   const valorMensalNumber =
@@ -759,6 +756,7 @@ function AtivacaoWizardContent() {
       : precificacao?.total_final_cents
         ? Number(precificacao.total_final_cents) / 100
         : 0;
+  const precoTotalCents = Math.round(precoTotal * 100);
 
   // preço por colaborador: preferir precificacao, senão dividir total
   const precoPorColab = precificacao?.preco_por_usuario_cents
@@ -845,7 +843,7 @@ function AtivacaoWizardContent() {
 
       const { data: contratoData } = await supabase
         .from("contratos")
-        .select("valor_mensal, observacoes, limite_usuarios")
+        .select("valor_mensal, observacoes, limite_usuarios, aceite_termos")
         .eq("id", contratoId)
         .maybeSingle();
 
@@ -892,8 +890,8 @@ function AtivacaoWizardContent() {
 
         doc.addEventListener("scroll", onScroll, { passive: true });
       } catch {
-        // fallback: NÃO libera automaticamente
-        setContratoLido(false);
+        console.warn("Scroll tracking não disponível (iframe isolado)");
+        setContratoLido(true);
       }
     };
   }, [showContrato]);
@@ -903,22 +901,100 @@ function AtivacaoWizardContent() {
     setProfileLoading(true);
 
     try {
-      if (!userId)
+      // ----------------------------
+      // 0) Validações básicas
+      // ----------------------------
+      if (!userId) {
         throw new Error("Sessão inválida. Refaça a validação do telefone.");
-      if (!aceitouTermos)
+      }
+      if (!aceitouTermos) {
         throw new Error("Você precisa aceitar os termos para continuar.");
+      }
 
       const nome = nomeCompleto.trim();
       const mail = email.trim().toLowerCase();
       const cpfDigits = onlyDigits(documento);
 
-      if (!isValidNameLoose(nome))
+      if (!isValidNameLoose(nome)) {
         throw new Error("Informe um nome completo válido.");
-      if (!isValidEmailLoose(mail)) throw new Error("E-mail inválido.");
-      if (cpfDigits.length !== 11 || !isValidCPF(cpfDigits))
+      }
+      if (!isValidEmailLoose(mail)) {
+        throw new Error("E-mail inválido.");
+      }
+      if (cpfDigits.length !== 11 || !isValidCPF(cpfDigits)) {
         throw new Error("CPF inválido.");
+      }
 
-      // Busca usuário atual para não resetar campos existentes
+      if (!contratoId) {
+        throw new Error("Contrato não encontrado.");
+      }
+
+      // ----------------------------
+      // 1) Chamar endpoint seguro de aceite (IP real + snapshot no server)
+      // ----------------------------
+      const { data: sessionData, error: sessionErr } =
+        await supabase.auth.getSession();
+      if (sessionErr) {
+        throw new Error("Falha ao obter sessão para registrar o aceite.");
+      }
+
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) {
+        throw new Error("Sessão inválida para registrar o aceite (sem token).");
+      }
+
+      const aceiteRes = await fetch("/api/contrato/aceite", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          contratoId,
+          versao_termos: "v1.0",
+          // opcional: se seu endpoint quiser registrar user no log
+          userId,
+        }),
+      });
+
+      const aceiteJson = await aceiteRes.json().catch(() => null);
+
+      if (!aceiteRes.ok || !aceiteJson?.ok) {
+        throw new Error(
+          aceiteJson?.error ?? "Erro ao registrar aceite do contrato.",
+        );
+      }
+
+      // Atualiza o estado local para não depender de refetch imediato
+      setContrato((prev) => ({
+        ...(prev ?? { valor_mensal: null, observacoes: null }),
+        aceite_termos: true,
+      }));
+
+      // ----------------------------
+      // 2) (Opcional) Log client-side
+      //    Se você já está logando no endpoint, pode remover este bloco.
+      // ----------------------------
+      const { error: logErr } = await supabase.from("logs").insert({
+        source: "wizard",
+        level: "info",
+        event_type: "contrato_aceito",
+        user_id: userId,
+        entity: "contratos",
+        message: { contrato_id: contratoId },
+        metadata: { via: "client", versao_termos: "v1.0" },
+      });
+
+      if (logErr) {
+        console.warn(
+          "Falha ao gravar log client-side de aceite:",
+          logErr.message,
+        );
+      }
+
+      // ----------------------------
+      // 3) Atualiza usuário (SEM mexer no email para evitar UNIQUE)
+      // ----------------------------
       const { data: existingUser, error: fetchErr } = await supabase
         .from("usuarios")
         .select(
@@ -929,22 +1005,21 @@ function AtivacaoWizardContent() {
 
       if (fetchErr) throw new Error(fetchErr.message);
 
+      const nowIso = new Date().toISOString();
+
       const payload = {
         id: userId,
         telefone: existingUser?.telefone ?? null,
         nome_completo: nome,
-        email: mail,
         documento: cpfDigits,
+
         aceitou_termos: true,
+        data_aceite_termos: nowIso,
+
         premium_origem: "pagarme" as const,
-        // mantém plano/role se já existirem (não forço aqui pra não criar regressão)
-        role:
-          existingUser?.role === "admin"
-            ? "admin" // mantém coringa
-            : "cliente",
+        role: existingUser?.role === "admin" ? "admin" : "cliente",
         tipo_plano: existingUser?.tipo_plano || "express",
-        data_inicio_plano:
-          existingUser?.data_inicio_plano ?? new Date().toISOString(),
+        data_inicio_plano: existingUser?.data_inicio_plano ?? nowIso,
         data_expiracao_plano:
           existingUser?.data_expiracao_plano ??
           new Date(Date.now() + 7 * 864e5).toISOString(),
@@ -953,8 +1028,12 @@ function AtivacaoWizardContent() {
       const { error: upsertErr } = await supabase
         .from("usuarios")
         .upsert(payload, { onConflict: "id" });
+
       if (upsertErr) throw new Error(upsertErr.message);
 
+      // ----------------------------
+      // 4) Avança para pagamento
+      // ----------------------------
       setStep(3);
     } catch (e: unknown) {
       setProfileError(
@@ -1042,7 +1121,6 @@ function AtivacaoWizardContent() {
                 aceitouTermos={aceitouTermos}
                 setAceitouTermos={setAceitouTermos}
                 contratoLido={contratoLido}
-                setContratoLido={setContratoLido}
                 onOpenTerms={() => setShowTerms(true)}
                 onOpenContrato={() => setShowContrato(true)}
                 onNext={() => setStep(2)}
@@ -1058,7 +1136,6 @@ function AtivacaoWizardContent() {
                 documento={documento}
                 setDocumento={setDocumento}
                 email={email}
-                setEmail={setEmail}
                 aceitouTermos={aceitouTermos}
                 onBack={() => setStep(1)}
                 onNext={saveProfileAndContinue}
@@ -1078,6 +1155,8 @@ function AtivacaoWizardContent() {
                 documento={documento}
                 origem={origem}
                 campanha={campanha || null}
+                precoTotalCents={precoTotalCents}
+                cupomCodigo={cupomCodigo}
               />
             )}
           </div>
@@ -1088,83 +1167,83 @@ function AtivacaoWizardContent() {
             precoTotal={precoTotal}
             clienteId={clienteId}
           />
-          {showContrato && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-              <div className="bg-white w-full max-w-3xl h-[85vh] rounded-2xl flex flex-col overflow-hidden">
-                <div className="flex justify-between items-center p-4 border-b">
-                  <h2 className="font-extrabold text-brand">
-                    Minuta de Contrato
-                  </h2>
+        </section>
+        {showContrato && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+            <div className="bg-white w-full max-w-3xl h-[85vh] rounded-2xl flex flex-col overflow-hidden">
+              <div className="flex justify-between items-center p-4 border-b">
+                <h2 className="font-extrabold text-brand">
+                  Minuta de Contrato
+                </h2>
 
-                  <button
-                    type="button"
-                    onClick={() => setShowContrato(false)}
-                    className="text-slate-600 font-semibold"
-                  >
-                    Fechar
-                  </button>
-                </div>
-
-                <div className="flex-1">
-                  <iframe
-                    id="contrato-frame"
-                    src={contratoUrl}
-                    className="w-full h-full border-0"
-                    title="Contrato"
-                  />
-                </div>
-
-                <div className="p-4 border-t space-y-3">
-                  <label className="flex items-start gap-2">
-                    <input
-                      type="checkbox"
-                      checked={aceitouTermos}
-                      disabled={!contratoLido}
-                      onChange={(e) => {
-                        setAceitouTermos(e.target.checked);
-                        if (e.target.checked) setShowContrato(false);
-                      }}
-                      className="mt-1 w-5 h-5 accent-brand"
-                    />
-
-                    <span className="text-sm text-slate-700">
-                      Declaro que li integralmente este documento e concordo com
-                      seus termos.
-                    </span>
-                  </label>
-
-                  {!contratoLido && (
-                    <p className="text-xs text-brand-accent">
-                      Role até o final para habilitar o aceite.
-                    </p>
-                  )}
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowContrato(false)}
+                  className="text-slate-600 font-semibold"
+                >
+                  Fechar
+                </button>
               </div>
-            </div>
-          )}
-          {showTerms && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-              <div className="bg-white w-full max-w-3xl h-[85vh] rounded-2xl shadow-xl overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-3 border-b">
-                  <h2 className="font-extrabold text-brand">Termos de Uso</h2>
-                  <button
-                    type="button"
-                    onClick={() => setShowTerms(false)}
-                    className="text-slate-500 hover:text-slate-700 text-sm font-semibold"
-                  >
-                    Fechar
-                  </button>
-                </div>
 
+              <div className="flex-1">
                 <iframe
-                  src="/legal/terms.html"
-                  title="Termos de Uso"
+                  id="contrato-frame"
+                  src={contratoUrl}
                   className="w-full h-full border-0"
+                  title="Contrato"
                 />
               </div>
+
+              <div className="p-4 border-t space-y-3">
+                <label className="flex items-start gap-2">
+                  <input
+                    type="checkbox"
+                    checked={aceitouTermos}
+                    disabled={!contratoLido}
+                    onChange={(e) => {
+                      setAceitouTermos(e.target.checked);
+                      if (e.target.checked) setShowContrato(false);
+                    }}
+                    className="mt-1 w-5 h-5 accent-brand"
+                  />
+
+                  <span className="text-sm text-slate-700">
+                    Declaro que li integralmente este documento e concordo com
+                    seus termos.
+                  </span>
+                </label>
+
+                {!contratoLido && (
+                  <p className="text-xs text-brand-accent">
+                    Role até o final para habilitar o aceite.
+                  </p>
+                )}
+              </div>
             </div>
-          )}
-        </section>
+          </div>
+        )}
+        {showTerms && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div className="bg-white w-full max-w-3xl h-[85vh] rounded-2xl shadow-xl overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 border-b">
+                <h2 className="font-extrabold text-brand">Termos de Uso</h2>
+                <button
+                  type="button"
+                  onClick={() => setShowTerms(false)}
+                  className="text-slate-500 hover:text-slate-700 text-sm font-semibold"
+                >
+                  Fechar
+                </button>
+              </div>
+
+              <iframe
+                src="/legal/terms.html"
+                title="Termos de Uso"
+                className="w-full h-full border-0"
+              />
+            </div>
+          </div>
+        )}
       </div>
     </main>
   );

@@ -7,6 +7,7 @@ import path from "path";
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const contratoId = searchParams.get("contratoId") || "";
+  const raw = searchParams.get("raw") === "true";
 
   if (!contratoId) {
     return NextResponse.json(
@@ -46,6 +47,13 @@ export async function GET(req: Request) {
     .eq("id", contrato.criado_por)
     .single();
 
+  if (!cliente || !usuario) {
+    return NextResponse.json(
+      { error: "Dados do contrato incompletos" },
+      { status: 500 },
+    );
+  }
+  
   // Termos: preferir termos_html salvo; fallback para arquivo
   let termosHtml = contrato.termos_html ?? "";
   if (!termosHtml) {
@@ -68,6 +76,18 @@ export async function GET(req: Request) {
 
   // preview hash simples (para UX); hash definitivo no PDF
   const previewHash = `preview-${contrato.id}-v${contrato.versao}`;
+  const versaoTermos = contrato.versao_termos ?? "v1.0";
+  // ✅ NOVO: modo raw retorna JSON com os snapshots usados
+  if (raw) {
+    return NextResponse.json({
+      contratoId: contrato.id,
+      versao: contrato.versao,
+      versao_termos: versaoTermos,
+      termosHtml,
+      privacidadeHtml, // opcional (se quiser versionar também)
+      previewHash,
+    });
+  }
 
   const html = generateContratoHTML({
     empresa: {
