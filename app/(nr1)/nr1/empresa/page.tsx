@@ -309,6 +309,7 @@ export default function EmpresaNR1Page() {
       precoPorUsuarioComDescontoBRL: totalFinalCents / quote.n / 100,
     };
   }, [quote, totalComDescontoCents]);
+
   const [captchaReady, setCaptchaReady] = useState(true);
 
   const pendingCnpjRef = React.useRef<string>("");
@@ -564,13 +565,11 @@ export default function EmpresaNR1Page() {
     e.preventDefault();
     setErrorMsg(null);
 
-    // exige OTP verificado
     if (!otpVerified) {
       setErrorMsg("Valide o telefone via código SMS antes de continuar.");
       return;
     }
 
-    // valida com E.164 garantido
     const erro = validarFormulario(form);
     if (erro) {
       setErrorMsg(erro);
@@ -580,22 +579,46 @@ export default function EmpresaNR1Page() {
     try {
       setState("submitting");
 
+      const totalFinalCents =
+        quoteComDesconto?.totalFinalCents ?? quote?.totalMensalCents; // ✅ sem null
+
+      // ✅ payload "null-safe": só envia risco/uf/preço se existirem
+      const payload: Record<string, unknown> = {
+        razaoSocial: form.razaoSocial.trim(),
+        cnpj: form.cnpjDigits,
+        email: form.email.trim(),
+        telefone: form.telefoneE164,
+        responsavel: form.responsavel.trim(),
+        funcionarios: form.funcionarios,
+        aceiteLgpd: form.aceiteLgpd,
+
+        // cupom pode ser "" (ok)
+        cupom: (cupomValido ?? cupom).trim().toUpperCase() || "",
+
+        // desconto só manda se >0 (evita ruído)
+        ...(descontoCents > 0 ? { desconto_client_cents: descontoCents } : {}),
+      };
+
+      // riscoEmpresa pode ser null -> só envia se tiver
+      if (riscoEmpresa) payload.risco = riscoEmpresa;
+
+      // ufEmpresa pode ser null -> só envia se tiver
+      if (ufEmpresa) payload.uf = ufEmpresa;
+
+      // totalFinalCents pode ser undefined -> só envia se tiver número
+      if (typeof totalFinalCents === "number") {
+        payload.preco_client_total_final_cents = totalFinalCents;
+      }
+
       const res = await fetch("/api/nr1/empresa", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // envia o formato que sua API espera
-        body: JSON.stringify({
-          razaoSocial: form.razaoSocial.trim(),
-          cnpj: form.cnpjDigits,
-          email: form.email.trim(),
-          telefone: form.telefoneE164,
-          responsavel: form.responsavel.trim(),
-          funcionarios: form.funcionarios,
-          aceiteLgpd: form.aceiteLgpd,
-        }),
+        credentials: "include",
+        body: JSON.stringify(payload),
       });
 
       const data = (await res.json().catch(() => ({}))) as EmpresaApiResponse;
+
       if (!res.ok) {
         console.error("Erro /api/nr1/empresa:", data);
         throw new Error(data.error ?? "Erro desconhecido");
@@ -604,7 +627,6 @@ export default function EmpresaNR1Page() {
       if (!data.cliente_id || !data.contrato_id) {
         throw new Error("Resposta inválida da API.");
       }
-      setUfEmpresa(data.endereco?.uf ?? null);
 
       setState("success");
 

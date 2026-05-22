@@ -27,6 +27,17 @@ type Step = {
   status: StepStatus;
   icon: IconDefinition;
 };
+type Contrato = {
+  valor_mensal: number | null;
+  observacoes: string | null;
+  limite_usuarios?: number | null;
+};
+type PrecificacaoContrato = {
+  preco_por_usuario_cents?: number;
+  total_base_cents?: number;
+  total_final_cents?: number;
+  desconto_cents?: number;
+};
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -71,6 +82,15 @@ function formatCPF(input: string) {
     .replace(/^(\d{3})(\d)/, "$1.$2")
     .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
     .replace(/^(\d{3})\.(\d{3})\.(\d{3})(\d)/, "$1.$2.$3-$4");
+}
+
+function safeJsonParse<T = unknown>(value: string | null): T | null {
+  if (!value) return null;
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return null;
+  }
 }
 
 /** -------------------- UI Blocks -------------------- */
@@ -172,14 +192,16 @@ function StepperStripe({ current }: { current: StepId }) {
 
 function SummarySticky({
   funcionarios,
-  precoPorColab = 16,
+  precoPorColab,
+  precoTotal,
   clienteId,
 }: {
   funcionarios: number;
-  precoPorColab?: number;
+  precoPorColab: number;
+  precoTotal: number;
   clienteId?: string;
 }) {
-  const total = Math.max(funcionarios, 1) * precoPorColab;
+  const total = precoTotal;
 
   return (
     <aside className="lg:sticky lg:top-6 space-y-4">
@@ -288,6 +310,8 @@ function PrimaryCTA({
 /** -------------------- Steps -------------------- */
 function Step1Servico({
   funcionarios,
+  precoTotal,
+  precoPorColab,
   aceitouTermos,
   setAceitouTermos,
   contratoLido,
@@ -297,6 +321,8 @@ function Step1Servico({
   onNext,
 }: {
   funcionarios: number;
+  precoTotal: number; // ✅ novo
+  precoPorColab: number;
   aceitouTermos: boolean;
   setAceitouTermos: (v: boolean) => void;
   contratoLido: boolean;
@@ -305,7 +331,7 @@ function Step1Servico({
   onOpenContrato: () => void;
   onNext: () => void;
 }) {
-  const preco = Math.max(funcionarios, 1) * 16;
+  const preco = precoTotal;
 
   return (
     <div className="space-y-6">
@@ -328,7 +354,12 @@ function Step1Servico({
           })}
         </p>
         <p className="mt-1 text-xs text-slate-500">
-          {Math.max(funcionarios, 1)} colaboradores • R$16 por colaborador
+          {Math.max(funcionarios, 1)} colaboradores •{" "}
+          {precoPorColab.toLocaleString("pt-BR", {
+            style: "currency",
+            currency: "BRL",
+          })}{" "}
+          por colaborador
         </p>
       </div>
 
@@ -428,6 +459,7 @@ function Step1Servico({
 
 function Step2Dados({
   funcionarios,
+  precoTotal,
   nomeCompleto,
   setNomeCompleto,
   documento,
@@ -441,6 +473,7 @@ function Step2Dados({
   error,
 }: {
   funcionarios: number;
+  precoTotal: number;
   nomeCompleto: string;
   setNomeCompleto: (v: string) => void;
   documento: string;
@@ -480,7 +513,7 @@ function Step2Dados({
         <div className="text-right">
           <p className="text-xs text-slate-500">Total</p>
           <p className="text-lg font-extrabold text-brand">
-            {(Math.max(funcionarios, 1) * 16).toLocaleString("pt-BR", {
+            {precoTotal.toLocaleString("pt-BR", {
               style: "currency",
               currency: "BRL",
             })}
@@ -606,7 +639,6 @@ function Step3Pagamento({
   clienteId,
   contratoId,
   funcionarios,
-  onFuncionariosChange,
   nomeCompleto,
   email,
   documento,
@@ -617,7 +649,7 @@ function Step3Pagamento({
   clienteId: string;
   contratoId: string;
   funcionarios: number;
-  onFuncionariosChange: (v: number) => void;
+
   nomeCompleto: string;
   email: string;
   documento: string;
@@ -641,7 +673,7 @@ function Step3Pagamento({
           clienteId={clienteId}
           contratoId={contratoId}
           funcionarios={funcionarios}
-          onFuncionariosChange={onFuncionariosChange}
+          onFuncionariosChange={() => {}}
           nomeCompleto={nomeCompleto}
           email={email}
           documento={onlyDigits(documento)}
@@ -699,6 +731,8 @@ function AtivacaoWizardContent() {
   const [contratoLido, setContratoLido] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   const [showContrato, setShowContrato] = useState(false);
+  const [contrato, setContrato] = useState<Contrato | null>(null);
+  const [contratoLoading, setContratoLoading] = useState(true);
 
   // Step 2: perfil (agora email é editável para não travar)
   const [nomeCompleto, setNomeCompleto] = useState(
@@ -710,7 +744,28 @@ function AtivacaoWizardContent() {
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [funcionarios, setFuncionarios] = useState(funcionariosParam || 1);
+  const obsObj = safeJsonParse<{ precificacao?: PrecificacaoContrato }>(
+    contrato?.observacoes ?? null,
+  );
+  const precificacao = obsObj?.precificacao ?? null;
 
+  const valorMensalNumber =
+    contrato?.valor_mensal == null ? null : Number(contrato.valor_mensal);
+
+  // fallback: se valor_mensal não veio, usa precificacao.total_final_cents
+  const precoTotal =
+    valorMensalNumber != null
+      ? valorMensalNumber
+      : precificacao?.total_final_cents
+        ? Number(precificacao.total_final_cents) / 100
+        : 0;
+
+  // preço por colaborador: preferir precificacao, senão dividir total
+  const precoPorColab = precificacao?.preco_por_usuario_cents
+    ? Number(precificacao.preco_por_usuario_cents) / 100
+    : funcionarios > 0
+      ? precoTotal / funcionarios
+      : 0;
   // contrato preview
   const contratoUrl = contratoId
     ? `/api/contrato/preview?contratoId=${contratoId}`
@@ -741,7 +796,14 @@ function AtivacaoWizardContent() {
         .eq("id", user.id)
         .single();
 
-      if (!perfil || perfil.ativo === false) {
+      if (!perfil) {
+        window.location.href = "/login";
+        return;
+      }
+      const isOnboarding =
+        perfil.ativo === false &&
+        (perfil.tipo_plano === "trial" || perfil.tipo_plano === "express");
+      if (!perfil.ativo && !isOnboarding) {
         window.location.href = "/login";
         return;
       }
@@ -765,11 +827,37 @@ function AtivacaoWizardContent() {
         .eq("id", perfil.cliente_id)
         .single();
 
-      if (!cliente || cliente.ativo === false) {
+      if (!cliente) {
         window.location.href = "/login";
         return;
       }
 
+      // 👇 só bloqueia se NÃO for onboarding
+      if (!cliente.ativo && !isOnboarding) {
+        window.location.href = "/login";
+        return;
+      }
+
+      if (!contratoId) {
+        window.location.href = "/login";
+        return;
+      }
+
+      const { data: contratoData } = await supabase
+        .from("contratos")
+        .select("valor_mensal, observacoes, limite_usuarios")
+        .eq("id", contratoId)
+        .maybeSingle();
+
+      if (!contratoData) {
+        window.location.href = "/login";
+        return;
+      }
+
+      setContrato(contratoData);
+      setContratoLoading(false);
+      const limite = contratoData.limite_usuarios ?? funcionariosParam ?? 1;
+      setFuncionarios(limite);
       // ✅ permitido
       setUserId(user.id);
     })();
@@ -777,8 +865,7 @@ function AtivacaoWizardContent() {
     return () => {
       mounted = false;
     };
-  }, []);
-
+  }, [contratoId, funcionariosParam]);
 
   /** Tracking de “leu o contrato” (mesma origem: /api/contrato/preview) */
   useEffect(() => {
@@ -878,6 +965,33 @@ function AtivacaoWizardContent() {
     }
   }
 
+  // ✅ loading
+  if (contratoLoading) {
+    return (
+      <main className="min-h-screen bg-surface-muted overflow-x-hidden">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-10">
+          <div className="rounded-2xl border border-border bg-surface p-6 text-slate-600">
+            Carregando contrato...
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  // ✅ erro (contrato não encontrado)
+  if (!contrato) {
+    return (
+      <main className="min-h-screen bg-surface-muted overflow-x-hidden">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-10">
+          <div className="rounded-2xl border border-border bg-surface p-6 text-brand-accent">
+            Não foi possível carregar o contrato.
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  // ✅ ✅ UI PRINCIPAL (ANTES NÃO EXISTIA RETURN AQUI)
   return (
     <main
       className="min-h-screen bg-surface-muted overflow-x-hidden"
@@ -886,7 +1000,6 @@ function AtivacaoWizardContent() {
       {/* Header */}
       <div className="bg-linear-to-b from-white/70 to-transparent">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-6 pb-3 flex items-start justify-between gap-4">
-          {/* ESQUERDA (texto) */}
           <div className="flex-1">
             <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
               <span className="inline-flex h-2 w-2 rounded-full bg-brand-secondary" />
@@ -903,7 +1016,6 @@ function AtivacaoWizardContent() {
             </div>
           </div>
 
-          {/* ✅ DIREITA (logo alinhado) */}
           <div className="shrink-0 flex items-start">
             <Image
               src="/images/alma4d_express_nobground.png"
@@ -921,11 +1033,12 @@ function AtivacaoWizardContent() {
         <StepperStripe current={step} />
 
         <section className="mt-5 grid lg:grid-cols-[1fr_360px] gap-6 items-start">
-          {/* Conteúdo */}
           <div className="rounded-2xl border border-border bg-surface p-4 sm:p-6 shadow-[0_25px_70px_rgba(3,8,112,0.10)]">
             {step === 1 && (
               <Step1Servico
                 funcionarios={funcionarios}
+                precoTotal={precoTotal}
+                precoPorColab={precoPorColab}
                 aceitouTermos={aceitouTermos}
                 setAceitouTermos={setAceitouTermos}
                 contratoLido={contratoLido}
@@ -939,6 +1052,7 @@ function AtivacaoWizardContent() {
             {step === 2 && (
               <Step2Dados
                 funcionarios={funcionarios}
+                precoTotal={precoTotal}
                 nomeCompleto={nomeCompleto}
                 setNomeCompleto={setNomeCompleto}
                 documento={documento}
@@ -959,7 +1073,6 @@ function AtivacaoWizardContent() {
                 clienteId={clienteId}
                 contratoId={contratoId}
                 funcionarios={funcionarios}
-                onFuncionariosChange={setFuncionarios}
                 nomeCompleto={nomeCompleto}
                 email={email}
                 documento={documento}
@@ -969,89 +1082,89 @@ function AtivacaoWizardContent() {
             )}
           </div>
 
-          {/* Resumo sticky */}
-          <SummarySticky funcionarios={funcionarios} clienteId={clienteId} />
-        </section>
+          <SummarySticky
+            funcionarios={funcionarios}
+            precoPorColab={precoPorColab}
+            precoTotal={precoTotal}
+            clienteId={clienteId}
+          />
+          {showContrato && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+              <div className="bg-white w-full max-w-3xl h-[85vh] rounded-2xl flex flex-col overflow-hidden">
+                <div className="flex justify-between items-center p-4 border-b">
+                  <h2 className="font-extrabold text-brand">
+                    Minuta de Contrato
+                  </h2>
 
-        {/* Modais */}
-        {showTerms && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-            <div className="bg-white w-full max-w-3xl h-[85vh] rounded-2xl shadow-xl overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-3 border-b">
-                <h2 className="font-extrabold text-brand">Termos de Uso</h2>
-                <button
-                  type="button"
-                  onClick={() => setShowTerms(false)}
-                  className="text-slate-500 hover:text-slate-700 text-sm font-semibold"
-                >
-                  Fechar
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowContrato(false)}
+                    className="text-slate-600 font-semibold"
+                  >
+                    Fechar
+                  </button>
+                </div>
+
+                <div className="flex-1">
+                  <iframe
+                    id="contrato-frame"
+                    src={contratoUrl}
+                    className="w-full h-full border-0"
+                    title="Contrato"
+                  />
+                </div>
+
+                <div className="p-4 border-t space-y-3">
+                  <label className="flex items-start gap-2">
+                    <input
+                      type="checkbox"
+                      checked={aceitouTermos}
+                      disabled={!contratoLido}
+                      onChange={(e) => {
+                        setAceitouTermos(e.target.checked);
+                        if (e.target.checked) setShowContrato(false);
+                      }}
+                      className="mt-1 w-5 h-5 accent-brand"
+                    />
+
+                    <span className="text-sm text-slate-700">
+                      Declaro que li integralmente este documento e concordo com
+                      seus termos.
+                    </span>
+                  </label>
+
+                  {!contratoLido && (
+                    <p className="text-xs text-brand-accent">
+                      Role até o final para habilitar o aceite.
+                    </p>
+                  )}
+                </div>
               </div>
-              <iframe
-                src="/legal/terms.html"
-                title="Termos de Uso"
-                className="w-full h-full border-0"
-              />
             </div>
-          </div>
-        )}
+          )}
+          {showTerms && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+              <div className="bg-white w-full max-w-3xl h-[85vh] rounded-2xl shadow-xl overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-3 border-b">
+                  <h2 className="font-extrabold text-brand">Termos de Uso</h2>
+                  <button
+                    type="button"
+                    onClick={() => setShowTerms(false)}
+                    className="text-slate-500 hover:text-slate-700 text-sm font-semibold"
+                  >
+                    Fechar
+                  </button>
+                </div>
 
-        {showContrato && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-            <div className="bg-white w-full max-w-3xl h-[85vh] rounded-2xl flex flex-col overflow-hidden">
-              <div className="flex justify-between items-center p-4 border-b">
-                <h2 className="font-extrabold text-brand">
-                  Minuta de Contrato
-                </h2>
-                <button
-                  type="button"
-                  onClick={() => setShowContrato(false)}
-                  className="text-slate-600 font-semibold"
-                >
-                  Fechar
-                </button>
-              </div>
-
-              <div className="flex-1">
                 <iframe
-                  id="contrato-frame"
-                  src={contratoUrl || "/legal/placeholder.html"}
+                  src="/legal/terms.html"
+                  title="Termos de Uso"
                   className="w-full h-full border-0"
-                  title="Contrato"
                 />
               </div>
-
-              <div className="p-4 border-t space-y-3">
-                <label className="flex items-start gap-2">
-                  <input
-                    type="checkbox"
-                    checked={aceitouTermos}
-                    disabled={!contratoLido}
-                    onChange={(e) => {
-                      setAceitouTermos(e.target.checked);
-                      if (e.target.checked) setShowContrato(false);
-                    }}
-                    className="mt-1 w-5 h-5 accent-brand)"
-                  />
-                  <span className="text-sm text-slate-700">
-                    Declaro que li integralmente este documento e concordo com
-                    seus termos.
-                  </span>
-                </label>
-
-                {!contratoLido ? (
-                  <p className="text-xs text-brand-accent">
-                    Role até o final para habilitar o aceite.
-                  </p>
-                ) : null}
-              </div>
             </div>
-          </div>
-        )}
-
-        <footer className="mt-10 text-center text-slate-400 text-xs font-semibold pb-6">
-          alma4D • Sincronização segura • 2026
-        </footer>
+          )}
+        </section>
       </div>
     </main>
   );

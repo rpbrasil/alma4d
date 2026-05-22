@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createServerSupabase } from "@/lib/supabase/server";
-
+import { getPrecificacaoConfig } from "@/lib/precificacao/getConfig";
+import { calcularPrecificacao } from "@/(nr1)/nr1/_components/ModeloPrecificacaoExpress";
+import { validarCupom } from "@/lib/cupons/validarcupom";
 
 function isValidCNPJ(input: string): boolean {
   const cnpj = input.replace(/\D/g, "");
@@ -30,7 +32,7 @@ const EmpresaSchema = z.object({
   razaoSocial: z.string().min(2).max(200),
   cnpj: z
     .string()
-    .regex(/^\d{14}$/, "CNPJ deve conter 14 dígitos")
+    .regex(/^\d{14}$/)
     .refine((v) => isValidCNPJ(v), "CNPJ inválido"),
   email: z.string().email(),
   telefone: z
@@ -40,6 +42,17 @@ const EmpresaSchema = z.object({
   funcionarios: z.number().int().min(1).max(200000),
   aceiteLgpd: z.boolean().refine((v) => v === true, "LGPD deve ser aceita"),
   cupom: z.string().trim().min(3).max(40).optional().or(z.literal("")),
+  risco: z.enum(["baixo", "medio", "alto"]).optional(),
+  uf: z
+    .string()
+    .trim()
+    .length(2)
+    .optional()
+    .or(z.literal(""))
+    .transform((v) => v || undefined),
+
+  preco_client_total_final_cents: z.number().int().nonnegative().optional(),
+  desconto_client_cents: z.number().int().nonnegative().optional(),
 });
 
 type EmpresaPayload = z.infer<typeof EmpresaSchema>;
@@ -80,13 +93,13 @@ export async function POST(req: Request) {
 
     // ✅ exige usuário autenticado (OTP já feito no public)
     const { data: authData, error: authErr } = await supabase.auth.getUser();
+
     if (authErr || !authData.user?.id) {
       return NextResponse.json(
         { error: "Sessão não encontrada. Valide o telefone novamente." },
         { status: 401 },
       );
     }
-
     const userId = authData.user.id;
 
     // =========================================================
@@ -105,11 +118,64 @@ export async function POST(req: Request) {
       );
     }
 
+    // ✅ calcula preço no server (fonte da verdade)
+    const config = await getPrecificacaoConfig();
+    if (!config) {
+      return NextResponse.json(
+        { error: "Configuração de preço indisponível." },
+        { status: 500 },
+      );
+    }
+
+    const risco = body.risco ?? "medio";
+    const uf = body.uf ?? null;
+
+    // calcula quote server-side
+    const quote = calcularPrecificacao(body.funcionarios, risco, config, uf);
+
+    // total base
+    let totalFinalCents = quote.totalMensalCents;
+    let descontoCents = 0;
+    let cupomAplicado: string | null = null;
+
+    // aplica cupom (se veio)
+    const cupom = (body.cupom ?? "").trim().toUpperCase();
+    if (cupom) {
+      try {
+        const applied = await validarCupom({
+          codigo: cupom,
+          totalMensalCents: quote.totalMensalCents,
+          plano: "express",
+        });
+
+        cupomAplicado = applied.codigo;
+        descontoCents = applied.descontoCents;
+        totalFinalCents = applied.totalComDescontoCents;
+      } catch (e: unknown) {
+        console.error("Erro no endpoint NR1:", e);
+        cupomAplicado = null;
+        descontoCents = 0;
+        totalFinalCents = quote.totalMensalCents;
+      }
+    }
+
+    // log opcional se divergir do client
+    if (
+      typeof body.preco_client_total_final_cents === "number" &&
+      body.preco_client_total_final_cents !== totalFinalCents
+    ) {
+      console.warn("Preço client diverge do server", {
+        client: body.preco_client_total_final_cents,
+        server: totalFinalCents,
+        userId,
+      });
+    }
+
     // helper: garante que existe um contrato rascunho NR‑1 (ou cria)
     async function ensureContratoRascunho(clienteId: string) {
       const { data: existingContrato, error: exContrErr } = await supabase
         .from("contratos")
-        .select("id")
+        .select("id, valor_mensal, observacoes, cupom_codigo")
         .eq("cliente_id", clienteId)
         .eq("tipo_contrato", "nr1_psicossocial")
         .eq("status", "rascunho")
@@ -117,23 +183,61 @@ export async function POST(req: Request) {
         .limit(1)
         .maybeSingle();
 
-      if (exContrErr) {
-        throw exContrErr;
-      }
-
-      if (existingContrato?.id) {
-        return existingContrato.id as string;
-      }
+      if (exContrErr) throw exContrErr;
 
       const observacoes = JSON.stringify({
         origem: "nr1",
         responsavel: body.responsavel.trim(),
         funcionarios: body.funcionarios,
         aceite_lgpd: true,
-        cupom: body.cupom ? body.cupom.trim() : null,
+        cupom: cupomAplicado,
         created_via: "self_service",
+        precificacao: {
+          risco,
+          uf,
+          total_base_cents: quote.totalMensalCents,
+          desconto_cents: descontoCents,
+          total_final_cents: totalFinalCents,
+          preco_por_usuario_cents: Math.round(
+            totalFinalCents / Math.max(quote.n, 1),
+          ),
+        },
       });
 
+      const valorMensal = totalFinalCents / 100;
+
+      // ✅ Se já existe, atualiza os campos de preço/audit se estiverem vazios ou divergentes
+      if (existingContrato?.id) {
+        const currentValor =
+          existingContrato.valor_mensal == null
+            ? null
+            : Number(existingContrato.valor_mensal);
+
+        const needsUpdate =
+          currentValor == null ||
+          Math.abs(currentValor - valorMensal) > 0.00001 ||
+          existingContrato.cupom_codigo !== cupomAplicado ||
+          existingContrato.observacoes == null;
+
+        if (needsUpdate) {
+          const { error: updErr } = await supabase
+            .from("contratos")
+            .update({
+              valor_mensal: valorMensal,
+              cupom_codigo: cupomAplicado,
+              observacoes,
+              limite_usuarios: body.funcionarios,
+              atualizado_em: new Date().toISOString(),
+            })
+            .eq("id", existingContrato.id);
+
+          if (updErr) throw updErr;
+        }
+
+        return existingContrato.id as string;
+      }
+
+      // ✅ Senão, cria novo
       const { data: contrato, error: contratoError } = await supabase
         .from("contratos")
         .insert({
@@ -147,9 +251,9 @@ export async function POST(req: Request) {
           limite_usuarios: body.funcionarios,
 
           valor_total: null,
-          valor_mensal: null,
+          valor_mensal: valorMensal,
           forma_pagamento: "pagarme",
-
+          cupom_codigo: cupomAplicado,
           observacoes,
         })
         .select("id")
@@ -175,6 +279,7 @@ export async function POST(req: Request) {
           ativo: false,
           aceitou_termos: true,
           premium_origem: "pagarme",
+          tipo_plano: "express",
         })
         .eq("id", userId);
 
@@ -183,9 +288,16 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           success: true,
-          reused: true,
           cliente_id: clienteId,
           contrato_id: contratoId,
+
+          // ✅ devolve para o wizard mostrar certinho
+          precificacao: {
+            total_final_cents: totalFinalCents,
+            desconto_cents: descontoCents,
+            cupom: cupomAplicado,
+            total_base_cents: quote.totalMensalCents,
+          },
         },
         { status: 200 },
       );
@@ -256,13 +368,13 @@ export async function POST(req: Request) {
         nome_completo: body.responsavel.trim(),
         aceitou_termos: true,
         premium_origem: "pagarme",
+        tipo_plano: "express",
+        data_inicio_plano: new Date().toISOString(),
       },
       { onConflict: "id" },
     );
 
     if (usuarioError) {
-      // Sem rollback frágil (delete cliente pode falhar por RLS).
-      // Deixa consistente para retry (idempotência pegará cliente_id depois que o usuário for atualizado).
       return NextResponse.json(
         {
           error: "Falha ao vincular usuário ao cliente.",
