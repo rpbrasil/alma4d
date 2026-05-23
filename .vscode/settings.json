@@ -4,5 +4,12 @@
   "files.exclude": {
     "**/BEQVapp-ref": true
   },
-  "cSpell.language": "en,pt-BR"
+  "cSpell.language": "en,pt-BR",
+  "azureFunctions.deploySubpath": "BEQVapp-ref\\assistenteApp",
+  "azureFunctions.postDeployTask": "npm install (functions)",
+  "azureFunctions.projectLanguage": "JavaScript",
+  "azureFunctions.projectRuntime": "~4",
+  "debug.internalConsoleOptions": "neverOpen",
+  "azureFunctions.projectLanguageModel": 4,
+  "azureFunctions.preDeployTask": "npm prune (functions)"
 }

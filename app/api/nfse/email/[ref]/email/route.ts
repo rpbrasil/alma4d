@@ -4,7 +4,6 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 /** Tipos mínimos (somente o que usamos neste endpoint) */
 type Json = string | number | boolean | null | { [key: string]: Json } | Json[];
 
-
 type Database = {
   public: {
     Tables: {
@@ -49,17 +48,20 @@ type Database = {
           cliente_id: string | null;
           contrato_id: string | null;
           status: string;
+          email_enviado: boolean | null;
         };
         Insert: {
           ref: string;
           cliente_id?: string | null;
           contrato_id?: string | null;
           status?: string;
+          email_enviado?: boolean | null;
         };
         Update: {
           cliente_id?: string | null;
           contrato_id?: string | null;
           status?: string;
+          email_enviado?: boolean | null;
         };
         Relationships: [];
       };
@@ -86,7 +88,6 @@ type Database = {
     CompositeTypes: Record<string, never>;
   };
 };
-
 
 function basicAuthHeader(token: string) {
   return `Basic ${Buffer.from(`${token}:`, "utf8").toString("base64")}`;
@@ -156,9 +157,15 @@ export async function POST(
     // pega cliente/contrato/status da tabela local
     const { data: nfseLocal } = await supabase
       .from("nfse_emissoes")
-      .select("cliente_id, contrato_id, status")
+      .select("cliente_id, contrato_id, status, email_enviado")
       .eq("ref", ref)
       .maybeSingle();
+    if (nfseLocal?.email_enviado === true) {
+      return NextResponse.json(
+        { ok: true, already_sent: true },
+        { status: 200 },
+      );
+    }
 
     const clienteId = nfseLocal?.cliente_id ?? null;
     const contratoId = nfseLocal?.contrato_id ?? null;
@@ -318,7 +325,11 @@ export async function POST(
         focus_response: data,
       },
     });
-
+    await supabase
+      .from("nfse_emissoes")
+      .update({ email_enviado: true })
+      .eq("ref", ref);
+    
     return NextResponse.json({ ok: true, emails }, { status: 200 });
   } catch (e: unknown) {
     await logEvent(supabase, {

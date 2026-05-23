@@ -12,14 +12,12 @@ export type ExtractedGatewayData = {
   eventId: string | null;
   eventType: string;
   contratoId: string | null;
-
-  orderId: string | null;
-  chargeId: string | null;
-
   paymentMethod: string | null;
   paymentStatus: string | null;
-
   cupomCodigo: string | null;
+  amountCents: number | null;
+  orderId: string | null;
+  chargeId: string | null;
 };
 
 export type PagarmeCharge = {
@@ -27,7 +25,8 @@ export type PagarmeCharge = {
   status?: string;
   payment_method?: string;
   metadata?: Record<string, unknown>;
-  order?: PagarmeOrder; // quando o object é charge
+  order?: PagarmeOrder;
+  amount?: number | null;
 };
 
 export type PagarmeOrder = {
@@ -35,6 +34,7 @@ export type PagarmeOrder = {
   status?: string;
   metadata?: Record<string, unknown>;
   charges?: PagarmeCharge[];
+  amount?: number | null;
 };
 
 export type PagarmeOrderResponse = PagarmeOrder;
@@ -133,15 +133,22 @@ export function extractGatewayData(evt: PagarmeWebhook): ExtractedGatewayData {
   const orderRoot = asOrderLike(objUnknown);
 
   const order = orderMaybe ?? orderRoot;
-
-  const contratoId =
-    norm(order?.metadata?.["contrato_id"]) ??
-    norm(
-      objRecord?.["metadata"] && isRecord(objRecord["metadata"])
-        ? (objRecord["metadata"] as Record<string, unknown>)["contrato_id"]
-        : null,
-    ) ??
+  const amountRaw: number | null =
+    (order && typeof order.amount === "number" ? order.amount : null) ??
+    (objRecord &&
+    "amount" in objRecord &&
+    typeof objRecord["amount"] === "number"
+      ? (objRecord["amount"] as number)
+      : null) ??
+    (firstCharge && typeof firstCharge.amount === "number"
+      ? firstCharge.amount
+      : null) ??
     null;
+
+  const amountCents =
+    typeof amountRaw === "number" && Number.isFinite(amountRaw)
+      ? amountRaw
+      : null;
 
   const cupomCodigo =
     norm(order?.metadata?.["cupom_codigo"]) ??
@@ -164,6 +171,13 @@ export function extractGatewayData(evt: PagarmeWebhook): ExtractedGatewayData {
 
   const paymentStatus =
     norm(firstCharge?.status) ?? norm(objRecord?.["status"]) ?? null;
+  const metadata =
+    order?.metadata ??
+    (isRecord(objRecord?.["metadata"])
+      ? (objRecord["metadata"] as Record<string, unknown>)
+      : null);
+
+  const contratoId = norm(metadata?.["contrato_id"]) ?? null;
 
   return {
     eventId,
@@ -174,6 +188,7 @@ export function extractGatewayData(evt: PagarmeWebhook): ExtractedGatewayData {
     paymentMethod: paymentMethod?.toLowerCase() ?? null,
     paymentStatus: paymentStatus?.toLowerCase() ?? null,
     cupomCodigo: upper(cupomCodigo),
+    amountCents,
   };
 }
 
@@ -189,7 +204,7 @@ export async function fetchPagarmeOrder(
   if (!secretKey) throw new Error("PAGARME_SECRET_KEY ausente");
 
   const base = process.env.PAGARME_API_BASE ?? "https://api.pagar.me/core/v5";
-  const url = `${base}/orders/${encodeURIComponent(orderId)}`; // GET /orders/{id} [1](https://docs.pagar.me/reference/obter-pedido)[2](https://github.com/hirotadev/guia-pagarme-ia/blob/main/pagarme-v5-checkout-implementation-guide.md)
+  const url = `${base}/orders/${encodeURIComponent(orderId)}`;
 
   const res = await fetch(url, {
     method: "GET",

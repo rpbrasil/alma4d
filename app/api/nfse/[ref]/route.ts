@@ -71,7 +71,7 @@ export async function GET(
       );
     }
 
-    // ✅ Auto e-mail pós-autorização (FocusNFe usa status "autorizado") [2](https://doc.focusnfe.com.br/reference/consultar_nfse)
+   
     const AUTO_EMAIL_ENABLED = process.env.NFSE_AUTO_EMAIL_ENABLED === "true";
 
     if (AUTO_EMAIL_ENABLED && data?.status === "autorizado") {

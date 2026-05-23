@@ -109,8 +109,8 @@ export default function StatusClient({
             <Image
               src="/images/alma4d_express_nobground.png"
               alt="alma4D"
-              width={56}
-              height={56}
+              width={92}
+              height={92}
               priority
             />
             <div>
@@ -203,7 +203,7 @@ export default function StatusClient({
         {/* ⏳ PENDING */}
         {contratoStatus === "rascunho" && (
           <section className="bg-white rounded-xl border p-6">
-            <h2 className="text-xl font-bold">Finalize seu pagamento</h2>
+            <h2 className="text-xl font-bold">Confirmação de pagamento</h2>
 
             {/* PIX */}
             {metodo === "pix" && (
@@ -242,7 +242,7 @@ export default function StatusClient({
                 )}
 
                 <p className="mt-4 text-sm text-slate-600">
-                  Após realizar o pagamento, clique em <b>"Já paguei"</b> para
+                  Após realizar o pagamento, clique em <b>Já paguei</b> para
                   verificar.
                 </p>
 

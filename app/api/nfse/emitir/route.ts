@@ -8,7 +8,6 @@ type ClienteRow = {
   email: string | null;
 };
 
-
 function onlyDigits(v: string) {
   return (v || "").replace(/\D/g, "");
 }
