@@ -1,80 +1,86 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
+type ContratoDbRow = {
+  id: string;
+  cliente_id: string;
+  numero_contrato: string;
+  versao: number;
+  status: "rascunho" | "ativo" | "suspenso" | "encerrado";
+  tipo_contrato: string;
+  criado_em: string;
+  atualizado_em: string;
+  pdf_url: string | null;
+  pdf_assinado_url: string | null;
+  forma_pagamento: string | null;
+  pagarme_order_id: string | null;
+  pagarme_payment_status: string | null;
+  valor_total: number | string | null;
+  valor_mensal: number | string | null;
+};
+
+type PagamentoInfo = {
+  order_id: string;
+  status?: string | null;
+  amount?: number | null;
+  method?: string | null;
+};
+
 /**
- * Normaliza referências de PDF para extrair o caminho correto do Supabase Storage.
- * Suporta:
- * 1. URLs assinadas do Supabase (com /sign/)
- * 2. Caminhos relativos simples (clientes/xxx/contratos/yyy/v1/arquivo.pdf)
- * 3. Caminhos corrompidos (remove UUIDs no início se não corresponder ao padrão esperado)
+ * Normaliza referências de PDF
  */
 function normalizePdfReference(value: string | null): string | null {
   if (!value) return null;
 
-  const value_trimmed = value.trim();
+  const v = value.trim();
 
-  // Se for URL completa (começa com http), tentar extrair o caminho
-  if (value_trimmed.startsWith("http")) {
+  if (v.startsWith("http")) {
     try {
-      const parsed = new URL(value_trimmed);
-      const pathSegments = parsed.pathname.split("/");
+      const parsed = new URL(v);
+      const pathSegments = parsed.pathname.split("/").filter(Boolean);
 
-      // Procura por /sign/ que indica URL assinada Supabase
-      const signIndex = pathSegments.findIndex((segment) => segment === "sign");
+      const signIndex = pathSegments.findIndex((seg) => seg === "sign");
       if (signIndex >= 0 && pathSegments.length > signIndex + 2) {
-        // Remove "storage/v1/sign/contratos/" e extrai o caminho do arquivo
         const objectPath = pathSegments.slice(signIndex + 2).join("/");
         return decodeURIComponent(objectPath);
       }
 
-      // Se não tiver /sign/, tenta extrair de forma genérica
-      // Procura por onde começa "contratos/"
       const contratoIndex = pathSegments.findIndex((p) => p === "contratos");
-      if (contratoIndex > 0) {
+      if (contratoIndex >= 0) {
         return pathSegments.slice(contratoIndex).join("/");
       }
 
-      return value_trimmed;
+      return v;
     } catch (e) {
-      console.error("[normalizePdfReference] Erro ao parsear URL:", {
-        value: value_trimmed,
-        error: e instanceof Error ? e.message : String(e),
-      });
-      return value_trimmed;
+      console.error("[normalizePdfReference] erro:", e);
+      return v;
     }
   }
 
-  // Se for caminho relativo e começar com UUID corrompido, tentar recuperar
   const uuidPattern =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
-  if (uuidPattern.test(value_trimmed)) {
-    console.warn("[normalizePdfReference] Caminho com UUID detectado:", {
-      original: value_trimmed,
-      msg: "Caminho pode estar corrompido. Esperado: clientes/{id}/contratos/...",
-    });
 
-    const parts = value_trimmed.split("/");
+  if (uuidPattern.test(v)) {
+    const parts = v.split("/");
     const contratoIndex = parts.findIndex((p) => p === "contratos");
     if (contratoIndex > 0) {
-      const recovered = [
-        "clientes",
-        parts[0],
-        ...parts.slice(contratoIndex),
-      ].join("/");
-      console.warn("[normalizePdfReference] Caminho recuperado:", {
-        recovered,
-      });
-      return recovered;
+      return ["clientes", parts[0], ...parts.slice(contratoIndex)].join("/");
     }
   }
 
-  // Se for caminho relativo normal, apenas retorna
-  // Formato esperado: clientes/{cliente_id}/contratos/{contrato_id}/v{versao}/arquivo.pdf
-  if (value_trimmed.includes("contratos/")) {
-    return value_trimmed;
-  }
+  return v;
+}
 
-  return value_trimmed;
+function toCentsFromValorTotal(
+  valor_total: number | string | null,
+): number | null {
+  if (valor_total == null) return null;
+
+  const n = typeof valor_total === "string" ? Number(valor_total) : valor_total;
+
+  if (Number.isNaN(n)) return null;
+
+  return Math.round(n * 100);
 }
 
 export async function GET(req: Request) {
@@ -89,11 +95,48 @@ export async function GET(req: Request) {
       );
     }
 
+    const authHeader = req.headers.get("authorization") || "";
+    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+
+    if (!token) {
+      return NextResponse.json(
+        { error: "Token ausente", contrato: null, pagamento: null },
+        { status: 401 },
+      );
+    }
+
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
       { auth: { persistSession: false } },
     );
+
+    // ✅ valida token
+    const { data: userWrap, error: authErr } =
+      await supabase.auth.getUser(token);
+
+    if (authErr || !userWrap?.user?.id) {
+      return NextResponse.json(
+        { error: "Token inválido", contrato: null, pagamento: null },
+        { status: 401 },
+      );
+    }
+
+    const callerId = userWrap.user.id;
+
+    // ✅ perfil do usuário
+    const { data: caller } = await supabase
+      .from("usuarios")
+      .select("id, role, cliente_id")
+      .eq("id", callerId)
+      .maybeSingle();
+
+    if (!caller) {
+      return NextResponse.json(
+        { error: "Sem permissão", contrato: null, pagamento: null },
+        { status: 403 },
+      );
+    }
 
     const { data: contrato, error } = await supabase
       .from("contratos")
@@ -111,19 +154,40 @@ export async function GET(req: Request) {
         pdf_assinado_url,
         forma_pagamento,
         pagarme_order_id,
-        pagarme_payment_status
-      `,
+        pagarme_payment_status,
+        valor_mensal,
+        valor_total
+
+        `,
       )
       .eq("id", contratoId)
+      .maybeSingle<ContratoDbRow>();
+
+    if (error || !contrato) {
+      return NextResponse.json(
+        { contrato: null, pagamento: null },
+        { status: 200 },
+      );
+    }
+
+    const { data: lastEvt } = await supabase
+      .from("contrato_eventos")
+      .select("tipo, dados, created_at")
+      .eq("contrato_id", contratoId)
+      .in("tipo", ["pix_gerado", "boleto_gerado"])
+      .order("created_at", { ascending: false })
+      .limit(1)
       .maybeSingle();
 
-    // ✅ NÃO QUEBRAR
-    if (error || !contrato) {
-      console.error("Erro contrato:", error);
-      return NextResponse.json({
-        contrato: null,
-        pagamento: null,
-      });
+    const isAdmin = caller.role === "admin";
+    const sameTenant =
+      String(caller.cliente_id || "") === String(contrato.cliente_id || "");
+
+    if (!isAdmin && !sameTenant) {
+      return NextResponse.json(
+        { error: "Acesso negado", contrato: null, pagamento: null },
+        { status: 403 },
+      );
     }
 
     const contratoSanitizado = {
@@ -132,22 +196,33 @@ export async function GET(req: Request) {
       pdf_assinado_url: normalizePdfReference(contrato.pdf_assinado_url),
     };
 
-    const pagamento = contrato.pagarme_order_id
+    // ✅ fonte única: banco (SEM polling)
+    const baseValor =
+      contrato.valor_mensal != null
+        ? Number(contrato.valor_mensal)
+        : contrato.valor_total != null
+          ? Number(contrato.valor_total)
+          : null;
+   
+    const pagamento: PagamentoInfo | null = contrato.pagarme_order_id
       ? {
           order_id: contrato.pagarme_order_id,
           status: contrato.pagarme_payment_status ?? "unknown",
-          amount: null,
+          amount: toCentsFromValorTotal(baseValor),
           method: contrato.forma_pagamento ?? null,
         }
       : null;
-
-    return NextResponse.json({ contrato: contratoSanitizado, pagamento });
+    const payment_artifacts = lastEvt?.dados ?? null;
+    return NextResponse.json(
+      { contrato: contratoSanitizado, pagamento, payment_artifacts },
+      { status: 200 },
+    );
   } catch (err) {
-    console.error("Erro geral:", err);
+    console.error("[api/contrato/status] erro geral:", err);
 
-    return NextResponse.json({
-      contrato: null,
-      pagamento: null,
-    });
+    return NextResponse.json(
+      { contrato: null, pagamento: null, payment_artifacts: null },
+      { status: 200 },
+    );
   }
 }

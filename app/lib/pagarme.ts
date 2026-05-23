@@ -1,0 +1,208 @@
+// app/lib/pagarme.ts
+import * as crypto from "node:crypto";
+
+export type PagarmeWebhook = {
+  id?: string;
+  type?: string;
+  created_at?: string;
+  data?: { object?: unknown };
+};
+
+export type ExtractedGatewayData = {
+  eventId: string | null;
+  eventType: string;
+  contratoId: string | null;
+
+  orderId: string | null;
+  chargeId: string | null;
+
+  paymentMethod: string | null;
+  paymentStatus: string | null;
+
+  cupomCodigo: string | null;
+};
+
+export type PagarmeCharge = {
+  id?: string;
+  status?: string;
+  payment_method?: string;
+  metadata?: Record<string, unknown>;
+  order?: PagarmeOrder; // quando o object é charge
+};
+
+export type PagarmeOrder = {
+  id?: string;
+  status?: string;
+  metadata?: Record<string, unknown>;
+  charges?: PagarmeCharge[];
+};
+
+export type PagarmeOrderResponse = PagarmeOrder;
+
+export function nowISO() {
+  return new Date().toISOString();
+}
+
+function getSignatureHeader(headers: Headers) {
+  return (
+    headers.get("x-hub-signature-256") ||
+    headers.get("x-hub-signature") ||
+    headers.get("x-pagarme-signature") ||
+    headers.get("x-signature")
+  );
+}
+
+export function verifySignature(params: {
+  rawBody: Buffer;
+  headers: Headers;
+}): { ok: boolean; reason?: string } {
+  const secret = process.env.PAGARME_WEBHOOK_SECRET;
+  const isProd = process.env.NODE_ENV === "production";
+  const sigHeader = getSignatureHeader(params.headers);
+
+  if (!secret)
+    return isProd
+      ? { ok: false, reason: "Secret ausente em produção" }
+      : { ok: true };
+  if (!sigHeader)
+    return isProd ? { ok: false, reason: "Header ausente" } : { ok: true };
+
+  const [algo, provided] = sigHeader.split("=", 2);
+  const hmacAlgo: "sha256" | "sha1" = algo?.toLowerCase().includes("sha256")
+    ? "sha256"
+    : "sha1";
+
+  const expected = crypto
+    .createHmac(hmacAlgo, secret)
+    .update(params.rawBody)
+    .digest("hex");
+
+  if (!provided || provided.length !== expected.length) {
+    return { ok: false, reason: "Assinatura inválida" };
+  }
+
+  const match = crypto.timingSafeEqual(
+    Buffer.from(provided, "hex"),
+    Buffer.from(expected, "hex"),
+  );
+
+  return match ? { ok: true } : { ok: false, reason: "Assinatura inválida" };
+}
+
+function norm(v: unknown): string | null {
+  if (v === null || v === undefined) return null;
+  const s = String(v).trim();
+  return s ? s : null;
+}
+
+function upper(v: string | null): string | null {
+  return v ? v.trim().toUpperCase() : null;
+}
+
+function isRecord(x: unknown): x is Record<string, unknown> {
+  return typeof x === "object" && x !== null;
+}
+
+function asChargeLike(x: unknown): PagarmeCharge | null {
+  if (!isRecord(x)) return null;
+  return x as PagarmeCharge;
+}
+
+function asOrderLike(x: unknown): PagarmeOrder | null {
+  if (!isRecord(x)) return null;
+  return x as PagarmeOrder;
+}
+
+/**
+ * Extrai dados do payload:
+ * - evt.data.object pode ser ORDER ou CHARGE (que aponta para order)
+ */
+export function extractGatewayData(evt: PagarmeWebhook): ExtractedGatewayData {
+  const eventType = norm(evt.type)?.toLowerCase() ?? "";
+  const eventId = norm(evt.id);
+
+  const objUnknown = evt.data?.object ?? null;
+  const objRecord = isRecord(objUnknown) ? objUnknown : null;
+
+  const chargesUnknown = objRecord?.["charges"];
+  const chargesArr = Array.isArray(chargesUnknown) ? chargesUnknown : [];
+  const firstCharge = asChargeLike(chargesArr[0]);
+
+  // order pode estar dentro do charge
+  const orderMaybe = asOrderLike(objRecord?.["order"]);
+  const orderRoot = asOrderLike(objUnknown);
+
+  const order = orderMaybe ?? orderRoot;
+
+  const contratoId =
+    norm(order?.metadata?.["contrato_id"]) ??
+    norm(
+      objRecord?.["metadata"] && isRecord(objRecord["metadata"])
+        ? (objRecord["metadata"] as Record<string, unknown>)["contrato_id"]
+        : null,
+    ) ??
+    null;
+
+  const cupomCodigo =
+    norm(order?.metadata?.["cupom_codigo"]) ??
+    norm(
+      objRecord?.["metadata"] && isRecord(objRecord["metadata"])
+        ? (objRecord["metadata"] as Record<string, unknown>)["cupom_codigo"]
+        : null,
+    ) ??
+    null;
+
+  // IDs
+  const orderId = norm(order?.id) ?? norm(objRecord?.["id"]);
+  const chargeId = orderMaybe ? norm(objRecord?.["id"]) : null;
+
+  // Método/status priorizando charge[0]
+  const paymentMethod =
+    norm(firstCharge?.payment_method) ??
+    norm(objRecord?.["payment_method"]) ??
+    null;
+
+  const paymentStatus =
+    norm(firstCharge?.status) ?? norm(objRecord?.["status"]) ?? null;
+
+  return {
+    eventId,
+    eventType,
+    contratoId,
+    orderId,
+    chargeId,
+    paymentMethod: paymentMethod?.toLowerCase() ?? null,
+    paymentStatus: paymentStatus?.toLowerCase() ?? null,
+    cupomCodigo: upper(cupomCodigo),
+  };
+}
+
+export function pagarmeAuthHeader(secretKey: string) {
+  const basic = Buffer.from(`${secretKey}:`).toString("base64");
+  return `Basic ${basic}`;
+}
+
+export async function fetchPagarmeOrder(
+  orderId: string,
+): Promise<PagarmeOrderResponse> {
+  const secretKey = process.env.PAGARME_SECRET_KEY;
+  if (!secretKey) throw new Error("PAGARME_SECRET_KEY ausente");
+
+  const base = process.env.PAGARME_API_BASE ?? "https://api.pagar.me/core/v5";
+  const url = `${base}/orders/${encodeURIComponent(orderId)}`; // GET /orders/{id} [1](https://docs.pagar.me/reference/obter-pedido)[2](https://github.com/hirotadev/guia-pagarme-ia/blob/main/pagarme-v5-checkout-implementation-guide.md)
+
+  const res = await fetch(url, {
+    method: "GET",
+    headers: {
+      Authorization: pagarmeAuthHeader(secretKey),
+      Accept: "application/json",
+    },
+  });
+
+  if (!res.ok) {
+    const txt = await res.text().catch(() => "");
+    throw new Error(`Falha ao consultar order (${res.status}): ${txt}`);
+  }
+
+  return (await res.json()) as PagarmeOrderResponse;
+}

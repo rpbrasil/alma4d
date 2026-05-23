@@ -3,19 +3,16 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { supabaseBrowser as supabase } from "@/lib/supabase/browser";
+import { useRouter } from "next/navigation";
 
 type PaymentMethod = "pix" | "boleto";
 
 type LastTransaction = {
   id?: string;
   status?: string;
-
-  // PIX
   qr_code?: string;
   qr_code_url?: string;
   expires_at?: string;
-
-  // BOLETO (nomes podem variar; mantemos defensivo)
   boleto_url?: string;
   line?: string;
 };
@@ -43,12 +40,6 @@ type CreatePaymentResponse = {
   order_seq?: number;
   payment_method?: string;
   total_amount?: number;
-  order?: Order;
-  error?: string;
-  detail?: unknown;
-};
-
-type StatusResponse = {
   order?: Order;
   error?: string;
   detail?: unknown;
@@ -112,6 +103,7 @@ export function NR1PaymentPanel(props: {
     cupomCodigo,
   } = props;
 
+  const router = useRouter();
   const [method, setMethod] = useState<PaymentMethod>("pix");
 
   const [loading, setLoading] = useState(false);
@@ -125,7 +117,6 @@ export function NR1PaymentPanel(props: {
   const [remainingMs, setRemainingMs] = useState<number | null>(null);
 
   // timers
-  const pollTimerRef = useRef<number | null>(null);
   const countdownTimerRef = useRef<number | null>(null);
 
   const order = result?.order;
@@ -137,7 +128,6 @@ export function NR1PaymentPanel(props: {
   const isPaid = order?.status === "paid";
   const isFailed = order?.status === "failed";
   const isCanceled = order?.status === "canceled";
-  const isFinal = Boolean(isPaid || isFailed || isCanceled);
 
   const pixExpiresAt = tx?.expires_at ?? null;
   const pixExpired = remainingMs !== null && remainingMs <= 0;
@@ -200,6 +190,7 @@ export function NR1PaymentPanel(props: {
       }
 
       setResult(data);
+      router.push(`/checkout/status?contratoId=${contratoId}`);
     } catch (e: unknown) {
       setErr(getErrorMessage(e, "Erro ao criar pagamento."));
     } finally {
@@ -242,39 +233,6 @@ export function NR1PaymentPanel(props: {
       }
     };
   }, [pixExpiresAt]);
-
-  // ========= Polling status (server route) =========
-  useEffect(() => {
-    if (pollTimerRef.current) window.clearInterval(pollTimerRef.current);
-
-    if (!orderId) return;
-    if (isFinal) return;
-
-    const pollOnce = async () => {
-      try {
-        const r = await fetch(`/api/nr1/pagamento/status?order_id=${orderId}`, {
-          cache: "no-store",
-        });
-        const j = (await r.json().catch(() => ({}))) as StatusResponse;
-        if (j?.order?.id) {
-          setResult((prev) => {
-            if (!prev) return { order_id: orderId, order: j.order };
-            return { ...prev, order: j.order };
-          });
-        }
-      } catch {
-        // silencioso: polling não derruba UI
-      }
-    };
-
-    // dispara imediato e a cada 5s
-    void pollOnce();
-    pollTimerRef.current = window.setInterval(() => void pollOnce(), 5000);
-
-    return () => {
-      if (pollTimerRef.current) window.clearInterval(pollTimerRef.current);
-    };
-  }, [orderId, isFinal]);
 
   return (
     <div className="grid gap-5">
@@ -371,7 +329,7 @@ export function NR1PaymentPanel(props: {
           </button>
           {orderId && (
             <a
-              href={`/contrato/${contratoId}?order_id=${orderId}`}
+              href={`/checkout/status?contratoId=${contratoId}`}
               className="inline-flex flex-col items-start justify-center rounded-xl border border-border bg-white p-4 font-semibold text-brand hover:bg-surface-muted shadow-sm transition-all"
             >
               <span className="mb-1 text-[10px] uppercase tracking-wider text-slate-500">
