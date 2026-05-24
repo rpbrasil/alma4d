@@ -35,11 +35,21 @@ export async function POST(req: Request) {
   const raw = Buffer.from(await req.arrayBuffer());
 
   // 2) Verifica assinatura
-  const sig = verifySignature({ rawBody: raw, headers: req.headers });
-  if (!sig.ok) {
-    return NextResponse.json(
-      { error: "Assinatura inválida", reason: sig.reason },
-      { status: 401 },
+  const hasWebhookSecret = !!process.env.PAGARME_WEBHOOK_SECRET;
+
+  if (hasWebhookSecret) {
+    const sig = verifySignature({ rawBody: raw, headers: req.headers });
+
+    if (!sig.ok) {
+      return NextResponse.json(
+        { error: "Assinatura inválida", reason: sig.reason },
+        { status: 401 },
+      );
+    }
+  } else {
+    // ✅ modo sem assinatura (temporário)
+    console.warn(
+      "Webhook sem verificação de assinatura (PAGARME_WEBHOOK_SECRET não configurado)",
     );
   }
 
