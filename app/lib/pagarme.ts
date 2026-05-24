@@ -200,12 +200,14 @@ export function pagarmeAuthHeader(secretKey: string) {
 export async function fetchPagarmeOrder(
   orderId: string,
 ): Promise<PagarmeOrderResponse> {
-  const secretKey = process.env.PAGARME_SECRET_KEY;
-  if (!secretKey) throw new Error("PAGARME_SECRET_KEY ausente");
+  const secretKey = process.env.PAGARME_API_KEY;
+  if (!secretKey) throw new Error("PAGARME_API_KEY ausente");
 
-  const base = process.env.PAGARME_API_BASE ?? "https://api.pagar.me/core/v5";
+  const base = process.env.PAGARME_API_URL ?? "https://api.pagar.me/core/v5";
   const url = `${base}/orders/${encodeURIComponent(orderId)}`;
-
+  console.log(
+    `Consultando Pagar.me order ${orderId} via ${url} com secretKey ${secretKey ? "****" : "(ausente)"} e auth header ${pagarmeAuthHeader(secretKey)}`,
+  );
   const res = await fetch(url, {
     method: "GET",
     headers: {

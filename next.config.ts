@@ -26,6 +26,9 @@ const nextConfig: NextConfig = {
                 data: 
                 blob:
                 https://*.heyzine.com;
+                https://api.pagar.me;
+                https://alma4d.com.br;
+                .replace(/\n/g, "");
 
               connect-src 
                 'self' 

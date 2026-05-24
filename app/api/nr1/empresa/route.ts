@@ -76,9 +76,8 @@ function isUniqueViolationMsg(msg: string, token: string) {
 }
 
 export async function POST(req: Request) {
-  const supabase = await createServerSupabase();
-
   try {
+    const supabase = await createServerSupabase();
     const json = (await req.json()) as unknown;
     const parsed = EmpresaSchema.safeParse(json);
 

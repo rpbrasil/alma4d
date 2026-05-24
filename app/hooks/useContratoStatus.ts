@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
-import { createClient } from "@supabase/supabase-js";
+import { useEffect, useState, useCallback } from "react";
+import { supabaseBrowser as supabase } from "@/lib/supabase/browser";
+
 
 type StatusResponse = {
   contrato: {
@@ -18,7 +19,10 @@ type StatusResponse = {
       qr_code_url?: string | null;
       expires_at?: string | null;
     } | null;
-    boleto?: { boleto_url?: string | null; line?: string | null } | null;
+    boleto?: {
+      boleto_url?: string | null;
+      line?: string | null;
+    } | null;
   } | null;
 };
 
@@ -26,15 +30,7 @@ export function useContratoStatus(contratoId: string | null) {
   const [data, setData] = useState<StatusResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [checking, setChecking] = useState(false);
-
-  const supabase = useMemo(() => {
-    return createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    );
-  }, []);
-
-  async function fetchStatus() {
+  const fetchStatus = useCallback(async () => {
     if (!contratoId) return;
 
     try {
@@ -43,6 +39,7 @@ export function useContratoStatus(contratoId: string | null) {
       } = await supabase.auth.getSession();
 
       const token = session?.access_token;
+      if (!token) return;
 
       const res = await fetch(`/api/contrato/status?contratoId=${contratoId}`, {
         headers: {
@@ -50,73 +47,57 @@ export function useContratoStatus(contratoId: string | null) {
         },
       });
 
+      if (!res.ok) return;
+
       const json = await res.json();
       setData(json);
     } catch (err) {
-      console.error("Erro fetchStatus:", err);
+      console.error(err);
     } finally {
       setLoading(false);
     }
-  }
+  }, [contratoId]);
 
   async function verificarPix() {
     if (!contratoId) return;
 
     setChecking(true);
 
-    await fetch("/api/pagarme/verificar-pix", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-manual-verify-token": process.env.NEXT_PUBLIC_VERIFY_TOKEN || "",
-      },
-      body: JSON.stringify({ contrato_id: contratoId }),
-    });
+    try {
+      const res = await fetch("/api/pagarme/verificar-pix", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ contrato_id: contratoId }),
+      });
 
-    await fetchStatus();
-    setChecking(false);
+      if (!res.ok) {
+        const text = await res.text();
+        console.error("Erro verificarPix:", text);
+      }
+
+      await fetchStatus();
+    } catch (err) {
+      console.error("Erro verificarPix:", err);
+    } finally {
+      setChecking(false);
+    }
   }
 
   useEffect(() => {
-    let cancelled = false;
+    if (!contratoId) return;
 
-    async function run() {
-      if (!contratoId) return;
+    let ignore = false;
 
-      try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-
-        const token = session?.access_token;
-
-        const res = await fetch(
-          `/api/contrato/status?contratoId=${contratoId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          },
-        );
-
-        const json = await res.json();
-
-        if (!cancelled) {
-          setData(json);
-        }
-      } catch (err) {
-        console.error("Erro status:", err);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-
-    run();
+    (async () => {
+      await fetchStatus();
+    })();
 
     return () => {
-      cancelled = true;
+      ignore = true;
     };
-  }, [contratoId, supabase]);
+  }, [contratoId, fetchStatus]);
 
   return {
     data,

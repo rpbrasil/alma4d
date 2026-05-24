@@ -12,22 +12,12 @@ type Body = {
   pagarme_order_id?: string;
 };
 
-function requireManualToken(req: Request) {
-  const token = process.env.PIX_VERIFY_TOKEN;
-  if (!token) return true;
-  const provided = req.headers.get("x-manual-verify-token");
-  return provided === token;
-}
-
 function firstCharge(order: PagarmeOrderResponse) {
   return Array.isArray(order.charges) ? order.charges[0] : undefined;
 }
 
 export async function POST(req: Request) {
-  if (!requireManualToken(req)) {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
-  }
-
+  
   let body: Body = {};
   try {
     body = (await req.json()) as Body;

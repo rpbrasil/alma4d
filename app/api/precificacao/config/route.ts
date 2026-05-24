@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+//import { getConfigInternal } from "@/lib/precificacao/config-core";
 
 type PrecificacaoConfig = {
   k_base: number;

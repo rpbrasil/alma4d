@@ -25,29 +25,17 @@ type EmpresaForm = {
   funcionarios: number;
   aceiteLgpd: boolean;
 };
-
-type EmpresaApiResponse = {
-  success?: boolean;
-  cliente_id?: string;
-  contrato_id?: string;
-  error?: string;
-
-  cnae_principal?: string;
-  razao_social?: string;
-  cnpj?: string;
-  situacao_cadastral?: string;
-
-  endereco?: {
-    // ✅ ADICIONE ISSO
-    uf?: string;
-    logradouro?: string;
-    numero?: string;
-    complemento?: string;
-    bairro?: string;
-    cep?: string;
-    nome_municipio?: string;
-  };
+type EmpresaSuccess = {
+  success: true;
+  cliente_id: string;
+  contrato_id: string;
 };
+
+type EmpresaError = {
+  error: string;
+};
+
+type EmpresaApiResponse = EmpresaSuccess | EmpresaError;
 
 type Risco = "baixo" | "medio" | "alto";
 
@@ -498,8 +486,7 @@ export default function EmpresaNR1Page() {
 
       const { error } = await supabase.auth.signInWithOtp({
         phone: e164,
-        options: { channel: "sms", shouldCreateUser: true },// permite criar usuário no Supabase Auth se não existir, o que é útil para o fluxo de OTP sem cadastro prévio
-
+        options: { channel: "sms", shouldCreateUser: true }, // permite criar usuário no Supabase Auth se não existir, o que é útil para o fluxo de OTP sem cadastro prévio
       });
 
       if (error) throw new Error(error.message);
@@ -617,17 +604,27 @@ export default function EmpresaNR1Page() {
         body: JSON.stringify(payload),
       });
 
-      const data = (await res.json().catch(() => ({}))) as EmpresaApiResponse;
+      const text = await res.text();
+      let data: EmpresaApiResponse;
+      try {
+        data = text ? JSON.parse(text) : null;
+      } catch {
+        data = { error: text || "Resposta não-JSON do servidor" };
+      }
 
       if (!res.ok) {
         console.error("Erro /api/nr1/empresa:", data);
-        throw new Error(data.error ?? "Erro desconhecido");
+
+        if ("error" in data) {
+          throw new Error(data.error);
+        }
+        throw new Error("Erro desconhecido");
       }
 
-      if (!data.cliente_id || !data.contrato_id) {
-        throw new Error("Resposta inválida da API.");
-      }
 
+      if (!("cliente_id" in data) || !("contrato_id" in data)) {
+        throw new Error("Resposta incompleta do servidor");
+      }
       setState("success");
 
       window.location.href =
@@ -798,7 +795,7 @@ export default function EmpresaNR1Page() {
             siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || ""}
             options={{
               execution: "execute",
-              appearance: "always", 
+              appearance: "always",
             }}
             onSuccess={(token) => {
               // Quando o token for gerado, chamamos sua função original

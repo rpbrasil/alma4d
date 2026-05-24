@@ -34,11 +34,15 @@ export async function getPrecificacaoConfig(): Promise<PrecificacaoConfig | null
     const { controller, clear } = withAbort(8000);
 
     try {
-      const res = await fetch("/api/precificacao/config?plano=express", {
-        method: "GET",
-        cache: "no-store",
-        signal: controller.signal,
-      });
+      const baseUrl = process.env.BASE_URL ?? "http://localhost:3000";
+      const res = await fetch(
+        `${baseUrl}/api/precificacao/config?plano=express`,
+        {
+          method: "GET",
+          cache: "no-store",
+          signal: controller.signal,
+        },
+      );
 
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
