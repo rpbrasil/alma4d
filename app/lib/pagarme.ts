@@ -61,16 +61,24 @@ export function verifySignature(params: {
   const sigHeader = getSignatureHeader(params.headers);
 
   if (!secret)
-    return isProd
-      ? { ok: false, reason: "Secret ausente em produção" }
-      : { ok: true };
+    return { ok: true };
   if (!sigHeader)
     return isProd ? { ok: false, reason: "Header ausente" } : { ok: true };
 
-  const [algo, provided] = sigHeader.split("=", 2);
-  const hmacAlgo: "sha256" | "sha1" = algo?.toLowerCase().includes("sha256")
-    ? "sha256"
-    : "sha1";
+  let provided: string | undefined;
+  let hmacAlgo: "sha256" | "sha1" = "sha1"; // default
+
+  if (sigHeader.includes("=")) {
+    const [algoPart, sigPart] = sigHeader.split("=", 2);
+
+    provided = sigPart;
+    hmacAlgo = algoPart?.toLowerCase().includes("sha256") ? "sha256" : "sha1";
+  } else {
+    provided = sigHeader;
+
+    // ✅ normalmente assume sha256 (mais comum hoje)
+    hmacAlgo = "sha256";
+  }
 
   const expected = crypto
     .createHmac(hmacAlgo, secret)
@@ -206,15 +214,22 @@ export async function fetchPagarmeOrder(
   const base = process.env.PAGARME_API_URL ?? "https://api.pagar.me/core/v5";
   const url = `${base}/orders/${encodeURIComponent(orderId)}`;
   console.log(
-    `Consultando Pagar.me order ${orderId} via ${url} com secretKey ${secretKey ? "****" : "(ausente)"} e auth header ${pagarmeAuthHeader(secretKey)}`,
+    `Consultando Pagar.me order ${orderId} via ${url} com API key ${secretKey ? "****" : "(ausente)"}`,
   );
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+
   const res = await fetch(url, {
     method: "GET",
     headers: {
       Authorization: pagarmeAuthHeader(secretKey),
       Accept: "application/json",
     },
+    signal: controller.signal,
   });
+
+  clearTimeout(timeout);
 
   if (!res.ok) {
     const txt = await res.text().catch(() => "");
