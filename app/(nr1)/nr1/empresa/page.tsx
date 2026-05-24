@@ -739,12 +739,12 @@ export default function EmpresaNR1Page() {
             <Image
               src="/images/alma4d_express_nobground.png"
               alt="alma4D"
-              width={48}
-              height={48}
+              width={64}
+              height={64}
               className="opacity-90"
               priority
             />
-            ← Voltar para NR‑1 Home
+            ← Voltar
           </Link>
         </div>
         {/* HEADER */}

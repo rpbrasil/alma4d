@@ -15,7 +15,7 @@ export async function POST(req: Request) {
 
     const expected = process.env.FOCUS_WEBHOOK_SECRET ?? "";
     const received = req.headers.get("authorization") ?? "";
-
+    console.log("FOCUS WEBHOOK - Received secret:", received); // ✅ log do segredo recebido
     if (!expected || received !== expected) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

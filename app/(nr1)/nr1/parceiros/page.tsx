@@ -11,14 +11,14 @@ export default function ParceirosAlma4DPage() {
         {/* VOLTAR */}
         <div className="mb-8">
           <Link
-            href="/"
+            href="/nr1/mapeamento-riscos-psicossociais"
             className="inline-flex items-center gap-3 text-sm text-slate-500 hover:text-brand transition"
           >
             <Image
               src="/images/alma4d_express_nobground.png"
               alt="alma4D"
-              width={44}
-              height={44}
+              width={64}
+              height={64}
               className="opacity-90"
               priority
             />
