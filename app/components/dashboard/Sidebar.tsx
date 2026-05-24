@@ -8,11 +8,16 @@ import {
   BarChart3,
   Settings,
   User,
-  LogOut,LucideIcon,FileText, ClipboardList, QrCode, Home, Users
+  LogOut,
+  LucideIcon,
+  FileText,
+  ClipboardList,
+  QrCode,
+  Home,
+  Users,
 } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
 import { useAuth } from "@/context/auth";
-
 
 type NavItem = {
   href: string;
@@ -49,6 +54,12 @@ const NAV_BY_PLAN: Record<Plano, NavItem[]> = {
       href: "/dashboard/express/relatorio-copsoq",
       label: "Relatório NR-1 | Psicossocial",
       icon: ClipboardList,
+    },
+    {
+      href: "/dashboard/admin/financeiro",
+      label: "Financeiro",
+      icon: BarChart3,
+      roles: ["admin"],
     },
   ],
   premium: [
@@ -88,35 +99,45 @@ const NAV_BY_PLAN: Record<Plano, NavItem[]> = {
       icon: Settings,
       roles: ["admin", "cliente", "gestor"],
     },
+    {
+      href: "/dashboard/admin/financeiro",
+      label: "Financeiro",
+      icon: BarChart3,
+      roles: ["admin"],
+    },
   ],
 };
 
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, role, loading, signOut, plano } = useAuth();
-  const effectivePlano = plano ?? "express";
+  const { user, loading, signOut, plano } = useAuth();
+
+  const effectivePlano: Plano = plano ?? "express";
   const [isOpen, setIsOpen] = useState(false);
   const [displayName, setDisplayName] = useState("Usuário");
 
+  // ✅ normalizado (evita bugs de string)
+  const role = user?.app_metadata?.claims?.role?.trim().toLowerCase();
+
+  // ✅ cálculo memoizado correto
   const items = useMemo(() => {
+    if (!role) return [];
+
     const planItems = NAV_BY_PLAN[effectivePlano] || [];
 
     return planItems.filter((item) => {
       if (!item.roles) return true;
-      return role ? item.roles.includes(role) : false;
+      return item.roles.includes(role);
     });
   }, [effectivePlano, role]);
 
-
   const isActive = (href: string) => {
-    // ✅ Caso raiz (Express ou Premium)
     if (href === "/dashboard/express" || href === "/dashboard/premium") {
       return pathname === href;
     }
     return pathname.startsWith(href);
   };
-
 
   useEffect(() => {
     if (loading || !user?.id) return;
@@ -137,7 +158,7 @@ export default function Sidebar() {
           setDisplayName(data.nome_completo);
         }
       } catch {
-        // fallback silencioso
+        // silent fallback
       }
     })();
 
@@ -146,20 +167,22 @@ export default function Sidebar() {
     };
   }, [loading, user?.id]);
 
+  // ✅ evita render quebrado/incompleto
+  if (loading || !user) return null;
+
   return (
     <div suppressHydrationWarning>
-      {/* Sidebar */}
       <aside
         className={[
           "bg-brand text-white w-64 shrink-0",
           "fixed inset-y-0 left-0 z-40",
           "transform transition-transform duration-300 ease-in-out",
           isOpen ? "translate-x-0" : "-translate-x-full",
-          "md:translate-x-0", // ✅ sem sticky
+          "md:translate-x-0",
         ].join(" ")}
       >
         <div className="h-screen flex flex-col">
-          {/* Brand + User */}
+          {/* Header */}
           <div className="px-5 py-4 border-b border-white/10">
             <Link
               href="/dashboard"
@@ -182,7 +205,7 @@ export default function Sidebar() {
             </Link>
           </div>
 
-          {/* Navigation */}
+          {/* Menu */}
           <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-1">
             {items.map((item) => {
               const Icon = item.icon;
@@ -207,7 +230,6 @@ export default function Sidebar() {
                       "absolute left-0 top-1/2 -translate-y-1/2 h-7 w-1 rounded-r-full",
                       active ? "bg-brand-secondary" : "bg-transparent",
                     ].join(" ")}
-                    aria-hidden="true"
                   />
 
                   <Icon
@@ -223,7 +245,7 @@ export default function Sidebar() {
             })}
           </nav>
 
-          {/* Account actions */}
+          {/* Footer */}
           <div className="px-3 py-3 border-t border-white/10 space-y-1">
             <Link
               href="/dashboard/perfil"
@@ -250,7 +272,6 @@ export default function Sidebar() {
         </div>
       </aside>
 
-      {/* Mobile overlay */}
       {isOpen && (
         <div
           className="fixed inset-0 bg-black/40 z-30 md:hidden"

@@ -32,13 +32,13 @@ export default function DashboardHeader() {
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  }, [user]);
 
   const handleLogout = async () => {
     await signOut();
     router.push("/");
   };
-
+  
   // ✅ título resolvido de forma estável
   const title = useMemo(() => {
     if (!pathname) return "Painel";

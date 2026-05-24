@@ -31,4 +31,6 @@ export const PAGE_TITLES: Record<string, string> = {
 
   // 👇 PERFIL
   "/dashboard/perfil": "Meu perfil",
+  // financeiro
+  "/dashboard/admin/financeiro": "Financeiro",
 };

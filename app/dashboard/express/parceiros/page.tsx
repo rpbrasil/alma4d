@@ -661,12 +661,12 @@ export default function DashboardExpressParceirosPage() {
             </span>
 
             <h1 className="mt-4 text-3xl font-semibold text-slate-900">
-              Parceiros e comissões
+              Parceiros e associados
             </h1>
 
             <p className="mt-2 max-w-2xl text-sm text-slate-600">
               Cadastre parceiros, gerencie cupons e controle empresas elegíveis
-              para comissões.
+              para descontos.
             </p>
           </div>
 

@@ -24,24 +24,26 @@ const nextConfig: NextConfig = {
               img-src 
                 'self' 
                 data: 
-                blob:
-                https://*.heyzine.com;
-                https://api.pagar.me;
+                blob: 
+                https://*.heyzine.com
+                https://api.pagar.me
                 https://alma4d.com.br;
-                .replace(/\n/g, "");
 
               connect-src 
                 'self' 
                 https://challenges.cloudflare.com
-                https://*.supabase.co;
+                https://*.supabase.co
+                wss://*.supabase.co;
 
               frame-src 
                 'self'
                 https://challenges.cloudflare.com
                 https://heyzine.com 
                 https://*.heyzine.com;
-
-            `.replace(/\n/g, ""),
+            `
+              .replace(/\n/g, " ")
+              .replace(/\s+/g, " ")
+              .trim(),
           },
         ],
       },
