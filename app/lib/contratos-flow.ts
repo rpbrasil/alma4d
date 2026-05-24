@@ -98,7 +98,7 @@ type Contrato = {
   status: string;
   cupom_codigo: string | null;
   numero_contrato: string | null;
-  versao: string | null;
+  versao: number | null;
   criado_em: string | null;
 };
 
