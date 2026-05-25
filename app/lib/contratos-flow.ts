@@ -17,6 +17,21 @@ function isPostgrestLikeError(e: unknown): e is PostgrestLikeError {
   return typeof e === "object" && e !== null && ("message" in e || "code" in e);
 }
 
+function getErrorMessage(err: unknown, fallback: string) {
+  if (isPostgrestLikeError(err) && err.message) return err.message;
+  if (err instanceof Error) return err.message;
+  return fallback;
+}
+
+function getBaseUrl() {
+  return (
+    process.env.BASE_URL ??
+    process.env.APP_BASE_URL ??
+    process.env.NEXT_PUBLIC_SITE_URL ??
+    null
+  );
+}
+
 /**
  * ✅ helper: insere evento com gateway_event_id se existir no schema.
  * - se a coluna não existir, tenta novamente sem gateway_event_id.
@@ -57,6 +72,7 @@ async function insertContratoEvento(
   const msg = isPostgrestLikeError(first.error)
     ? (first.error.message ?? "")
     : "";
+
   const looksLikeMissingColumn =
     msg.toLowerCase().includes("gateway_event_id") ||
     msg.toLowerCase().includes("column") ||
@@ -64,10 +80,11 @@ async function insertContratoEvento(
 
   if (looksLikeMissingColumn) {
     const second = await supabase.from("contrato_eventos").insert(baseRow);
-    // duplicado no segundo também pode acontecer — ignora
+
     const code2 = isPostgrestLikeError(second.error)
       ? second.error?.code
       : undefined;
+
     if (code2 === "23505") return;
 
     if (second.error) {
@@ -76,16 +93,16 @@ async function insertContratoEvento(
         second.error,
       );
     }
+
     return;
   }
 
-  // qualquer outro erro real
   console.error("[insertContratoEvento] insert error:", first.error);
 }
 
 export function supabaseAdmin(): SupabaseClient {
   return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     { auth: { persistSession: false } },
   );
@@ -113,7 +130,7 @@ type ContratoRow = {
   criado_em: string | null;
   pagarme_order_id?: string | null;
 
-  // ✅ usados por validação de valor no webhook
+  // usados por validação de valor no webhook
   valor_mensal?: number | string | null;
   valor_total?: number | string | null;
 };
@@ -172,7 +189,6 @@ export async function alreadyProcessedEvent(
   const byCol = await supabase
     .from("contrato_eventos")
     .select("id")
-    // se a coluna não existir, esse select pode falhar — então tratamos erro
     .eq("gateway_event_id", eventId)
     .eq("contrato_id", contratoId)
     .limit(1);
@@ -213,7 +229,7 @@ export async function markFailOrCancel(params: {
     eventId,
   } = params;
 
-  await supabase
+  const { error: contratoErr } = await supabase
     .from("contratos")
     .update({
       pagarme_order_id: pagarmeOrderId,
@@ -222,6 +238,12 @@ export async function markFailOrCancel(params: {
       atualizado_em: nowISO(),
     })
     .eq("id", contratoId);
+
+  if (contratoErr) {
+    throw new Error(
+      `Erro ao marcar contrato como ${kind}: ${contratoErr.message}`,
+    );
+  }
 
   await insertContratoEvento(supabase, {
     contrato_id: contratoId,
@@ -239,11 +261,15 @@ export async function markFailOrCancel(params: {
 
   // libera cupom reservado
   if (contrato.cupom_codigo) {
-    await supabase
+    const { error: cupomErr } = await supabase
       .from("cupom_reservas")
       .update({ status: "cancelado" })
       .eq("contrato_id", contratoId)
       .eq("status", "reservado");
+
+    if (cupomErr) {
+      console.error("Erro ao cancelar reserva de cupom:", cupomErr);
+    }
   }
 }
 
@@ -264,7 +290,7 @@ export async function markPixPending(params: {
     eventId,
   } = params;
 
-  await supabase
+  const { error: contratoErr } = await supabase
     .from("contratos")
     .update({
       pagarme_order_id: pagarmeOrderId,
@@ -272,6 +298,10 @@ export async function markPixPending(params: {
       atualizado_em: nowISO(),
     })
     .eq("id", contratoId);
+
+  if (contratoErr) {
+    throw new Error(`Erro ao marcar PIX pendente: ${contratoErr.message}`);
+  }
 
   await insertContratoEvento(supabase, {
     contrato_id: contratoId,
@@ -289,12 +319,16 @@ export async function markPixPending(params: {
 
 /**
  * ✅ ATIVAÇÃO COMPLETA (webhook/manual):
- * 1) ativa contrato
+ * 1) normaliza contrato (status/metadados)
  * 2) ativa cliente
  * 3) ativa usuário
  * 4) consome cupom
  * 5) emite NFSe (best-effort)
  * 6) gera PDF (best-effort)
+ *
+ * Observação:
+ * - se o contrato já estiver ativo, a função NÃO sai cedo:
+ *   ela continua e corrige cliente/usuário (self-healing).
  */
 export async function activateContratoFull(params: {
   supabase: SupabaseClient;
@@ -318,71 +352,89 @@ export async function activateContratoFull(params: {
   } = params;
 
   const contrato = await getContrato(supabase, contratoId);
-  if (!contrato) throw new Error("Contrato não encontrado para ativação");
-
-  // idempotência: se já ativo, consome cupom se necessário e sai
-  if (contrato.status === "ativo") {
-    if (contrato.cupom_codigo) {
-      await supabase
-        .from("cupom_reservas")
-        .update({ status: "consumido" })
-        .eq("contrato_id", contratoId)
-        .eq("status", "reservado");
-    }
-    return { alreadyActive: true };
+  if (!contrato) {
+    throw new Error("Contrato não encontrado para ativação");
   }
 
+  const alreadyActive = contrato.status === "ativo";
+
   const cupomFinal =
-    cupomFromGateway?.trim()?.toUpperCase?.() ??
+    cupomFromGateway?.trim().toUpperCase() ??
     (contrato.cupom_codigo
       ? String(contrato.cupom_codigo).trim().toUpperCase()
       : null);
 
-  // 1) ativa contrato
-  await supabase
+  // 1) SEMPRE normaliza metadados do contrato.
+  // Se ainda não estiver ativo, também ativa o status.
+  const contratoPatch: Record<string, unknown> = {
+    forma_pagamento: paymentMethod,
+    pagarme_order_id: pagarmeOrderId,
+    pagarme_payment_status: pagarmePaymentStatus ?? "paid",
+    atualizado_em: nowISO(),
+  };
+
+  if (!alreadyActive) {
+    contratoPatch.status = "ativo";
+  }
+
+  if (cupomFinal) {
+    contratoPatch.cupom_codigo = cupomFinal;
+  }
+
+  const { error: contratoErr } = await supabase
     .from("contratos")
-    .update({
-      status: "ativo",
-      forma_pagamento: paymentMethod,
-      pagarme_order_id: pagarmeOrderId,
-      pagarme_payment_status: pagarmePaymentStatus ?? "paid",
-      ...(cupomFinal ? { cupom_codigo: cupomFinal } : {}),
-      atualizado_em: nowISO(),
-    })
+    .update(contratoPatch)
     .eq("id", contratoId);
 
-  // 2) evento de pagamento confirmado
-  await insertContratoEvento(supabase, {
-    contrato_id: contratoId,
-    tipo: "pagamento_confirmado",
-    descricao: "Pagamento confirmado (webhook/manual)",
-    gateway_event_id: eventId ?? null,
-    dados: {
-      event_id: eventId,
-      pagarme_order_id: pagarmeOrderId,
-      pagarme_payment_status: pagarmePaymentStatus,
-      forma_pagamento: paymentMethod,
-      event_type: eventType,
-    },
-  });
+  if (contratoErr) {
+    throw new Error(`Erro ao normalizar contrato: ${contratoErr.message}`);
+  }
 
-  // 3) consome cupom reservado
+  // 2) registra evento de pagamento confirmado apenas na primeira ativação
+  if (!alreadyActive) {
+    await insertContratoEvento(supabase, {
+      contrato_id: contratoId,
+      tipo: "pagamento_confirmado",
+      descricao: "Pagamento confirmado (webhook/manual)",
+      gateway_event_id: eventId ?? null,
+      dados: {
+        event_id: eventId,
+        pagarme_order_id: pagarmeOrderId,
+        pagarme_payment_status: pagarmePaymentStatus,
+        forma_pagamento: paymentMethod,
+        event_type: eventType,
+      },
+    });
+  }
+
+  // 3) consome cupom reservado (best effort)
   if (cupomFinal) {
-    await supabase
+    const { error: cupomErr } = await supabase
       .from("cupom_reservas")
       .update({ status: "consumido" })
       .eq("contrato_id", contratoId)
       .eq("status", "reservado");
+
+    if (cupomErr) {
+      console.error("Erro ao consumir cupom:", cupomErr);
+    }
   }
 
-  // 4) ativa cliente
-  await supabase
+  // 4) ativa cliente SEMPRE (self-healing)
+  const { error: clienteErr } = await supabase
     .from("clientes")
-    .update({ ativo: true })
+    .update({
+      ativo: true,
+      updated_at: nowISO(),
+    })
     .eq("id", contrato.cliente_id);
 
-  // 5) ativa usuário
-  await supabase
+  if (clienteErr) {
+    throw new Error(`Erro ao ativar cliente: ${clienteErr.message}`);
+  }
+
+  // 5) ativa usuário SEMPRE (self-healing)
+  const { error: usuarioErr } = await supabase
     .from("usuarios")
     .update({
       ativo: true,
@@ -392,33 +444,48 @@ export async function activateContratoFull(params: {
       data_expiracao_plano: new Date(
         Date.now() + 365 * 24 * 60 * 60 * 1000,
       ).toISOString(),
+      updated_at: nowISO(),
     })
     .eq("id", contrato.criado_por);
 
-  // 6) NFSe (best-effort)
-  if (process.env.BASE_URL) {
-    fetch(`${process.env.BASE_URL}/api/nfse/emitir`, {
+  if (usuarioErr) {
+    throw new Error(`Erro ao ativar usuário: ${usuarioErr.message}`);
+  }
+
+  const baseUrl = getBaseUrl();
+
+  // 6) NFSe (best-effort) apenas na primeira ativação
+  if (!alreadyActive && baseUrl) {
+    void fetch(`${baseUrl}/api/nfse/emitir`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ contrato_id: contratoId }),
-    }).catch((e) => console.error("NFSe emit error:", e));
+    }).catch((e: unknown) =>
+      console.error("NFSe emit error:", getErrorMessage(e, "unknown error")),
+    );
   }
 
-  // 7) PDF (best-effort)
-  if (process.env.BASE_URL) {
-    fetch(`${process.env.BASE_URL}/api/contrato/gerar-pdf`, {
+  // 7) PDF (best-effort) apenas na primeira ativação
+  if (!alreadyActive && baseUrl) {
+    void fetch(`${baseUrl}/api/contrato/gerar-pdf`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ contratoId, origem: "webhook" }),
-    }).catch((e) => console.error("PDF error:", e));
+    }).catch((e: unknown) =>
+      console.error("PDF error:", getErrorMessage(e, "unknown error")),
+    );
   }
 
-  return { activated: true };
+  return {
+    activated: true,
+    alreadyActive,
+  };
 }
 
 /**
- * Mantida para compatibilidade (verificação manual PIX).
- * Se você já migrou tudo para activateContratoFull, pode remover depois.
+ * Mantida por compatibilidade com fluxos legados.
+ * Agora ela delega para a ativação completa,
+ * evitando inconsistência entre contrato/cliente/usuário.
  */
 export async function activateContrato(params: {
   supabase: SupabaseClient;
@@ -433,7 +500,6 @@ export async function activateContrato(params: {
 }) {
   const {
     supabase,
-    contrato,
     contratoId,
     pagarmeOrderId,
     pagarmePaymentStatus,
@@ -443,48 +509,14 @@ export async function activateContrato(params: {
     cupomFromGateway,
   } = params;
 
-  if (contrato.status === "ativo") {
-    if (contrato.cupom_codigo) {
-      await supabase
-        .from("cupom_reservas")
-        .update({ status: "consumido" })
-        .eq("contrato_id", contratoId)
-        .eq("status", "reservado");
-    }
-    return { alreadyActive: true };
-  }
-
-  if (cupomFromGateway && !contrato.cupom_codigo) {
-    await supabase
-      .from("contratos")
-      .update({ cupom_codigo: cupomFromGateway })
-      .eq("id", contratoId);
-  }
-
-  await supabase
-    .from("contratos")
-    .update({
-      status: "ativo",
-      forma_pagamento: paymentMethod,
-      pagarme_order_id: pagarmeOrderId,
-      pagarme_payment_status: pagarmePaymentStatus ?? "paid",
-      atualizado_em: nowISO(),
-    })
-    .eq("id", contratoId);
-
-  await insertContratoEvento(supabase, {
-    contrato_id: contratoId,
-    tipo: "pagamento_confirmado",
-    descricao: "Pagamento confirmado (manual PIX)",
-    gateway_event_id: eventId ?? null,
-    dados: {
-      event_id: eventId,
-      pagarme_order_id: pagarmeOrderId,
-      pagarme_payment_status: pagarmePaymentStatus ?? "paid",
-      forma_pagamento: paymentMethod,
-      event_type: eventType,
-    },
+  return activateContratoFull({
+    supabase,
+    contratoId,
+    pagarmeOrderId,
+    pagarmePaymentStatus: pagarmePaymentStatus ?? "paid",
+    paymentMethod,
+    eventType,
+    eventId,
+    cupomFromGateway,
   });
-
-  return { activated: true };
 }

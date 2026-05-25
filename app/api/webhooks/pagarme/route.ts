@@ -15,7 +15,6 @@ import {
   recordWebhookEvent,
 } from "@/lib/contratos-flow";
 
-
 function expectedCentsFromContrato(c: {
   valor_mensal?: number | string | null;
   valor_total?: number | string | null;
@@ -78,6 +77,13 @@ export async function POST(req: Request) {
     g.paymentStatus === "pending" || g.paymentStatus === "waiting_payment";
 
   if (!g.contratoId) {
+    await recordWebhookEvent(supabaseAdmin(), {
+      contrato_id: "unknown",
+      tipo: "webhook_missing_contrato_id",
+      gateway_event_id: g.eventId,
+      dados: { g },
+    });
+
     return NextResponse.json({
       ok: true,
       ignored: true,
@@ -94,10 +100,7 @@ export async function POST(req: Request) {
 
   // 5) Carrega contrato
   const contrato = await getContrato(supabase, g.contratoId);
-const contratoForCheck = contrato as {
-  valor_mensal?: number | string | null;
-  valor_total?: number | string | null;
-};
+  const contratoForCheck = contrato ?? {};
   if (!contrato) {
     return NextResponse.json({
       ok: true,
@@ -164,7 +167,7 @@ const contratoForCheck = contrato as {
     }
 
     // PIX pending
-    if (isPix && isPending && !isPaidEvent) {
+    if (isPix && isPending) {
       await markPixPending({
         supabase,
         contratoId: g.contratoId,
@@ -177,8 +180,8 @@ const contratoForCheck = contrato as {
       return NextResponse.json({ ok: true, pix_pending: true });
     }
 
-    // ✅ Hardening: valida valor (se houver amountCents no payload E valor no contrato)
-   const expected = expectedCentsFromContrato(contratoForCheck);
+    // ✅ Hardening: valida valor
+    const expected = expectedCentsFromContrato(contratoForCheck);
     const got = g.amountCents ?? null;
 
     if (expected != null && got != null && expected !== got) {
@@ -186,10 +189,16 @@ const contratoForCheck = contrato as {
         contrato_id: g.contratoId,
         tipo: "webhook_amount_mismatch",
         gateway_event_id: g.eventId,
-        dados: { expected_cents: expected, got_cents: got, g },
+        dados: {
+          expected_cents: expected,
+          got_cents: got,
+          order_id: g.orderId,
+          payment_method: g.paymentMethod,
+          payment_status: g.paymentStatus,
+          event_type: eventType,
+        },
       });
 
-      // Produção: NÃO ativa se valor divergir
       return NextResponse.json({
         ok: true,
         ignored: true,
@@ -197,60 +206,70 @@ const contratoForCheck = contrato as {
       });
     }
 
-    // ✅ PAGO: fluxo completo (contrato + cliente + usuário + nfse + pdf)
-    const activated = await activateContratoFull({
-      supabase,
-      contratoId: g.contratoId,
-      pagarmeOrderId: g.orderId,
-      pagarmePaymentStatus: g.paymentStatus ?? "paid",
-      paymentMethod: g.paymentMethod,
-      eventType,
-      eventId: g.eventId,
-      cupomFromGateway: g.cupomCodigo,
-    });
-
-    // ✅ Email dedicado (edge function payment-email)
-    try {
-      const base =
-        process.env.PAYMENT_EMAIL_FUNCTION_URL ??
-        `${process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/payment-email`;
-
-      await fetch(base, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
-        },
-        body: JSON.stringify({
-          tipo: "pagamento_confirmado",
-          contrato_id: g.contratoId,
-          pagarme_order_id: g.orderId,
-          payment_method: g.paymentMethod,
-          dashboard_url:
-            process.env.APP_DASHBOARD_URL ??
-            `${process.env.BASE_URL}/dashboard`,
-          express_url:
-            process.env.APP_EXPRESS_URL ?? `${process.env.BASE_URL}/express`,
-        }),
+    // ✅ PAGO: somente eventos paid
+    if (isPaidEvent) {
+      const activated = await activateContratoFull({
+        supabase,
+        contratoId: g.contratoId,
+        pagarmeOrderId: g.orderId,
+        pagarmePaymentStatus: g.paymentStatus ?? "paid",
+        paymentMethod: g.paymentMethod,
+        eventType,
+        eventId: g.eventId,
+        cupomFromGateway: g.cupomCodigo,
       });
-    } catch (err) {
-      console.error("Erro ao enviar email:", err);
-      await recordWebhookEvent(supabase, {
+
+      // ✅ Email apenas na primeira ativação
+      if (!activated.alreadyActive) {
+        try {
+          const base =
+            process.env.PAYMENT_EMAIL_FUNCTION_URL ??
+            `${process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/payment-email`;
+
+          await fetch(base, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+            },
+            body: JSON.stringify({
+              tipo: "pagamento_confirmado",
+              contrato_id: g.contratoId,
+              pagarme_order_id: g.orderId,
+              payment_method: g.paymentMethod,
+              dashboard_url:
+                process.env.APP_DASHBOARD_URL ??
+                `${process.env.BASE_URL}/dashboard`,
+              express_url:
+                process.env.APP_EXPRESS_URL ??
+                `${process.env.BASE_URL}/express`,
+            }),
+          });
+        } catch (err) {
+          console.error("Erro ao enviar email:", err);
+
+          await recordWebhookEvent(supabase, {
+            contrato_id: g.contratoId,
+            tipo: "email_pagamento_confirmado_falhou",
+            gateway_event_id: g.eventId,
+            dados: { error: String(err) },
+          });
+        }
+      }
+
+      return NextResponse.json({
+        ok: true,
+        activated: true,
         contrato_id: g.contratoId,
-        tipo: "email_pagamento_confirmado_falhou",
-        gateway_event_id: g.eventId,
-        dados: { error: String(err) },
+        already_active: activated.alreadyActive ?? false,
       });
     }
 
-    return NextResponse.json({
-      ok: true,
-      activated: true,
-      contrato_id: g.contratoId,
-      already_active: activated.alreadyActive ?? false,
-    });
+    // fallback seguro
+    return NextResponse.json({ ok: true, ignored: true });
   } catch (err) {
     console.error("Webhook error:", err);
+
     await recordWebhookEvent(supabase, {
       contrato_id: g.contratoId,
       tipo: "webhook_internal_error",
@@ -258,7 +277,7 @@ const contratoForCheck = contrato as {
       dados: { error: String(err) },
     });
 
-    // responde 200 para evitar retry infinito por erro interno seu
+    // sempre 200 para evitar retry infinito do gateway
     return NextResponse.json({ ok: true, internal_error: true });
   }
 }

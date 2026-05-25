@@ -2,7 +2,7 @@
 import { NextResponse } from "next/server";
 import { fetchPagarmeOrder, PagarmeOrderResponse } from "@/lib/pagarme";
 import {
-  activateContrato,
+  activateContratoFull,
   getContrato,
   supabaseAdmin,
 } from "@/lib/contratos-flow";
@@ -125,9 +125,8 @@ export async function POST(req: Request) {
     ? String(cupomFromGatewayRaw).trim().toUpperCase()
     : null;
 
-  await activateContrato({
+  await activateContratoFull({
     supabase,
-    contrato,
     contratoId,
     pagarmeOrderId,
     pagarmePaymentStatus: status,

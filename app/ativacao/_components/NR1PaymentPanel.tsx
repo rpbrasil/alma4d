@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { supabaseBrowser as supabase } from "@/lib/supabase/browser";
-import { useRouter } from "next/navigation";
 
 type PaymentMethod = "pix" | "boleto";
 
@@ -73,20 +72,13 @@ export function NR1PaymentPanel(props: {
   userId: string;
   clienteId: string;
   contratoId: string;
-
   funcionarios: number;
-
   nomeCompleto: string;
   email: string;
   documento: string;
-
   origem?: string | null;
   campanha?: string | null;
-
-  // ✅ agora explicitamente em CENTAVOS
   precoTotalCents: number;
-
-  // ✅ opcional: mostrar cupom aplicado (somente leitura)
   cupomCodigo?: string | null;
 }) {
   const {
@@ -100,28 +92,20 @@ export function NR1PaymentPanel(props: {
     campanha,
     funcionarios,
     precoTotalCents,
-    cupomCodigo,
   } = props;
 
-  const router = useRouter();
   const [method, setMethod] = useState<PaymentMethod>("pix");
-
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-
   const [result, setResult] = useState<CreatePaymentResponse | null>(null);
-
   const [copied, setCopied] = useState(false);
-
-  // countdown
   const [remainingMs, setRemainingMs] = useState<number | null>(null);
 
-  // timers
   const countdownTimerRef = useRef<number | null>(null);
 
   const order = result?.order;
   const charge = order?.charges?.[0];
-  const tx = charge?.last_transaction;
+  const tx = charge?.last_transaction ?? null;
 
   const orderId = result?.order_id ?? result?.order?.id ?? null;
 
@@ -132,28 +116,48 @@ export function NR1PaymentPanel(props: {
   const pixExpiresAt = tx?.expires_at ?? null;
   const pixExpired = remainingMs !== null && remainingMs <= 0;
 
+  const limparResultado = () => {
+    setResult(null);
+    setErr(null);
+    setCopied(false);
+    setRemainingMs(null);
+  };
+
   async function criarPagamento(): Promise<void> {
     setErr(null);
     setLoading(true);
 
     try {
-      if (!email?.trim())
+      if (!email.trim()) {
         throw new Error("E-mail é obrigatório para o pagamento.");
-      if (!nomeCompleto?.trim())
-        throw new Error("Nome completo é obrigatório.");
-      if (!onlyDigits(documento)) throw new Error("CPF é obrigatório.");
-      if (!Number.isInteger(funcionarios) || funcionarios <= 0)
-        throw new Error("Funcionários inválido.");
+      }
 
-      // ✅ pega token da sessão (obrigatório para /api/nr1/pagamento)
+      if (!nomeCompleto.trim()) {
+        throw new Error("Nome completo é obrigatório.");
+      }
+
+      if (!onlyDigits(documento)) {
+        throw new Error("CPF é obrigatório.");
+      }
+
+      if (!Number.isInteger(funcionarios) || funcionarios <= 0) {
+        throw new Error("Funcionários inválidos.");
+      }
+
       const { data: sessionData, error: sessionErr } =
         await supabase.auth.getSession();
-      if (sessionErr) throw new Error("Falha ao obter sessão para pagamento.");
+
+      if (sessionErr) {
+        throw new Error("Falha ao obter sessão para pagamento.");
+      }
+
       const accessToken = sessionData.session?.access_token;
-      if (!accessToken)
+
+      if (!accessToken) {
         throw new Error(
           "Sessão inválida (token ausente). Faça login novamente.",
         );
+      }
 
       const res = await fetch("/api/nr1/pagamento", {
         method: "POST",
@@ -162,7 +166,6 @@ export function NR1PaymentPanel(props: {
           Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({
-          // OBS: o backend ignora user_id vindo do client e usa o callerId do token
           user_id: userId,
           product_id: "nr1_psicossocial",
           cliente_id: clienteId,
@@ -170,11 +173,9 @@ export function NR1PaymentPanel(props: {
           funcionarios,
           payment_method: method,
           total_amount_cents: precoTotalCents,
-
           email: email.trim(),
           nome_completo: nomeCompleto.trim(),
           documento: onlyDigits(documento),
-
           origem: origem || null,
           campanha: campanha || null,
         }),
@@ -185,12 +186,11 @@ export function NR1PaymentPanel(props: {
         .catch(() => ({}))) as CreatePaymentResponse;
 
       if (!res.ok) {
-        const msg = data?.error ?? "Falha ao criar pagamento.";
-        throw new Error(msg);
+        throw new Error(data?.error ?? "Falha ao criar pagamento.");
       }
 
+      setCopied(false);
       setResult(data);
-      router.push(`/checkout/status?contratoId=${contratoId}`);
     } catch (e: unknown) {
       setErr(getErrorMessage(e, "Erro ao criar pagamento."));
     } finally {
@@ -201,35 +201,34 @@ export function NR1PaymentPanel(props: {
   function copiarPix(valor: string) {
     navigator.clipboard.writeText(valor);
     setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+
+    window.setTimeout(() => {
+      setCopied(false);
+    }, 1500);
   }
 
-  // ========= Countdown (Pix) =========
   useEffect(() => {
     if (countdownTimerRef.current) {
       window.clearInterval(countdownTimerRef.current);
+      countdownTimerRef.current = null;
     }
 
-    function initCountdown() {
-      if (!pixExpiresAt) {
-        setRemainingMs(null);
-        return;
-      }
-
-      const tick = () => {
-        const ms = new Date(pixExpiresAt).getTime() - Date.now();
-        setRemainingMs(ms);
-      };
-
-      tick();
-      countdownTimerRef.current = window.setInterval(tick, 1000);
+    if (!pixExpiresAt) {
+      return;
     }
 
-    initCountdown();
+    const tick = () => {
+      const ms = new Date(pixExpiresAt).getTime() - Date.now();
+      setRemainingMs(ms);
+    };
+
+    tick();
+    countdownTimerRef.current = window.setInterval(tick, 1000);
 
     return () => {
       if (countdownTimerRef.current) {
         window.clearInterval(countdownTimerRef.current);
+        countdownTimerRef.current = null;
       }
     };
   }, [pixExpiresAt]);
@@ -242,60 +241,23 @@ export function NR1PaymentPanel(props: {
           Escolha Pix ou Boleto e finalize.
         </p>
       </div>
-      {/* Resumo */}
-      {/* <div className="rounded-xl border border-border bg-surface-muted p-4">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="font-semibold text-slate-800">NR‑1 • COPSOQ II BR</p>
-            <p className="text-sm text-slate-600">
-              Valor total: {formatMoneyBRL(precoTotalCents)} ({funcionarios}{" "}
-              colaboradores)
-            </p>
 
-            {cupomCodigo ? (
-              <p className="text-xs text-slate-500 mt-1">
-                Cupom aplicado:{" "}
-                <span className="font-semibold">{cupomCodigo}</span>
-              </p>
-            ) : null}
-          </div>
-          <div className="text-xs text-slate-500 font-semibold text-right">
-            Contrato
-            <br />
-            <span className="text-slate-700">{contratoId.slice(0, 8)}…</span>
-          </div>
-        </div>
-      </div> */}
-      {/* Configuração */}
-      {/* <div className="grid sm:grid-cols-2 gap-3">
-        <label className="grid gap-1">
-          <span className="text-sm font-semibold text-slate-700">
-            Funcionários
-          </span>
-          <input
-            type="number"
-            min={1}
-            value={funcionarios}
-            readOnly
-            className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-brand/10"
-            inputMode="numeric"
-          />
-        </label>
-      </div> */}
-      {/* Métodos + CTA */}
       <div className="rounded-xl border border-border bg-white p-4">
-        <p className="text-sm font-semibold text-slate-700 mb-3">
+        <p className="mb-3 text-sm font-semibold text-slate-700">
           Método de pagamento
         </p>
 
-        <div className="grid sm:grid-cols-2 gap-2">
+        <div className="grid gap-2 sm:grid-cols-2">
           <button
             type="button"
-            onClick={() => setMethod("pix")}
-            className={`rounded-md border px-3 py-2 text-sm font-semibold ${
+            onClick={() => {
+              setMethod("pix");
+              limparResultado();
+            }}
+            className={`rounded-md border px-3 py-2 text-sm font-semibold transition ${
               method === "pix"
                 ? "border-brand bg-brand/5 text-brand"
-                : "border-border bg-white text-slate-700"
+                : "border-border bg-white text-slate-700 hover:bg-surface-muted"
             }`}
           >
             Pix
@@ -303,11 +265,14 @@ export function NR1PaymentPanel(props: {
 
           <button
             type="button"
-            onClick={() => setMethod("boleto")}
-            className={`rounded-md border px-3 py-2 text-sm font-semibold ${
+            onClick={() => {
+              setMethod("boleto");
+              limparResultado();
+            }}
+            className={`rounded-md border px-3 py-2 text-sm font-semibold transition ${
               method === "boleto"
                 ? "border-brand bg-brand/5 text-brand"
-                : "border-border bg-white text-slate-700"
+                : "border-border bg-white text-slate-700 hover:bg-surface-muted"
             }`}
           >
             Boleto
@@ -319,7 +284,7 @@ export function NR1PaymentPanel(props: {
             type="button"
             onClick={criarPagamento}
             disabled={loading}
-            className="inline-flex items-center justify-center rounded-md bg-brand px-4 py-2 text-white font-semibold hover:bg-brand/90 disabled:opacity-50"
+            className="inline-flex items-center justify-center rounded-md bg-brand px-4 py-2 font-semibold text-white transition hover:bg-brand/90 disabled:opacity-50"
           >
             {loading
               ? "Gerando..."
@@ -327,26 +292,30 @@ export function NR1PaymentPanel(props: {
                 ? "Gerar Boleto"
                 : "Gerar Pix"}
           </button>
+
           {orderId && (
             <a
               href={`/checkout/status?contratoId=${contratoId}`}
-              className="inline-flex flex-col items-start justify-center rounded-xl border border-border bg-white p-4 font-semibold text-brand hover:bg-surface-muted shadow-sm transition-all"
+              className="inline-flex flex-col items-start justify-center rounded-xl border border-border bg-white p-4 font-semibold text-brand shadow-sm transition-all hover:bg-surface-muted"
             >
               <span className="mb-1 text-[10px] uppercase tracking-wider text-slate-500">
                 Status do Pedido
               </span>
-              <span className="text-sm">Acompanhar contrato e pagamento</span>
+              <span className="text-sm">Acompanhar pagamento</span>
               <p className="mt-2 text-xs font-normal text-slate-400">
-                Clique aqui para acessar o PDF e o status do Pagar.me
+                Use esta página se quiser acompanhar depois
               </p>
             </a>
           )}
-          {/* Gerar novo QR (Pix) */}
+
           {method === "pix" && orderId && (
             <button
               type="button"
-              onClick={criarPagamento}
-              className="inline-flex items-center justify-center rounded-md border border-border bg-white px-4 py-2 font-semibold text-slate-700 hover:bg-surface-muted"
+              onClick={() => {
+                limparResultado();
+                void criarPagamento();
+              }}
+              className="inline-flex items-center justify-center rounded-md border border-border bg-white px-4 py-2 font-semibold text-slate-700 transition hover:bg-surface-muted"
             >
               Gerar novo QR
             </button>
@@ -354,14 +323,14 @@ export function NR1PaymentPanel(props: {
         </div>
 
         {err && (
-          <div className="mt-3 rounded-md bg-red-50 border border-red-200 p-3 text-sm text-red-700">
+          <div className="mt-3 rounded-md border border-brand-accent/30 bg-brand-accent/10 p-3 text-sm text-brand-accent">
             {err}
           </div>
         )}
       </div>
-      {/* Resultado */}
-      {order && charge && tx && (
-        <div className="rounded-xl border border-border bg-white p-4 grid gap-3">
+
+      {order && charge && (
+        <div className="grid gap-3 rounded-xl border border-border bg-white p-4">
           <div className="flex items-start justify-between">
             <div>
               <p className="font-semibold text-slate-800">
@@ -372,7 +341,8 @@ export function NR1PaymentPanel(props: {
                 Pedido: {order.id ?? "—"} • Cobrança: {charge.id ?? "—"}
               </p>
             </div>
-            <div className="text-xs text-slate-500 text-right">
+
+            <div className="text-right text-xs text-slate-500">
               Total
               <br />
               <span className="font-semibold text-slate-800">
@@ -381,107 +351,165 @@ export function NR1PaymentPanel(props: {
             </div>
           </div>
 
-          {/* PIX */}
           {charge.payment_method === "pix" && (
             <div className="grid gap-3">
               <p className="text-sm font-semibold text-slate-700">
                 Pague com Pix
               </p>
 
-              {/* QR Code */}
-              {tx.qr_code_url ? (
-                <div className="flex justify-center">
-                  <Image
-                    src={tx.qr_code_url}
-                    alt="QR Code Pix"
-                    width={240}
-                    height={240}
-                    unoptimized
-                  />
-                </div>
-              ) : null}
-
-              {/* Countdown */}
-              {remainingMs !== null && (
-                <div
-                  className={`rounded-md p-3 text-sm font-semibold ${
-                    pixExpired
-                      ? "bg-red-50 border border-red-200 text-red-700"
-                      : "bg-amber-50 border border-amber-200 text-amber-800"
-                  }`}
-                >
-                  {pixExpired
-                    ? "QR expirou. Gere um novo QR para pagar."
-                    : `Expira em: ${msToMMSS(remainingMs)}`}
+              {!tx && (
+                <div className="rounded-md border border-border bg-surface-muted p-4 text-center">
+                  <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-4 border-border border-t-brand" />
+                  <p className="text-sm font-semibold text-slate-700">
+                    Gerando QR Code Pix...
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Isso leva só alguns segundos. Aguarde.
+                  </p>
                 </div>
               )}
 
-              {/* Copia e cola */}
-              <div>
-                <p className="text-xs text-slate-500 mb-1">Copia e cola</p>
-                <textarea
-                  readOnly
-                  value={tx.qr_code ?? ""}
-                  className="w-full h-24 rounded-md border border-border p-2 text-xs"
-                />
-                <button
-                  type="button"
-                  onClick={() =>
-                    tx.qr_code ? copiarPix(tx.qr_code) : undefined
-                  }
-                  disabled={!tx.qr_code || pixExpired}
-                  className="mt-2 inline-flex items-center justify-center rounded-md border border-border bg-surface px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-surface-muted disabled:opacity-50"
-                >
-                  {copied ? "Copiado ✅" : "Copiar código Pix"}
-                </button>
-              </div>
+              {tx && (
+                <>
+                  {!tx.qr_code_url && !tx.qr_code && (
+                    <div className="rounded-md border border-border bg-surface-muted p-4 text-center">
+                      <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-4 border-border border-t-brand" />
+                      <p className="text-sm font-semibold text-slate-700">
+                        Finalizando geração do QR Code...
+                      </p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        Aguarde mais alguns instantes.
+                      </p>
+                    </div>
+                  )}
+
+                  {tx.qr_code_url && (
+                    <div className="flex justify-center">
+                      <Image
+                        src={tx.qr_code_url}
+                        alt="QR Code Pix"
+                        width={240}
+                        height={240}
+                        unoptimized
+                      />
+                    </div>
+                  )}
+
+                  {tx.qr_code_url && remainingMs !== null && (
+                    <div
+                      className={`rounded-md p-3 text-sm font-semibold ${
+                        pixExpired
+                          ? "border border-red-200 bg-red-50 text-red-700"
+                          : "border border-amber-200 bg-amber-50 text-amber-800"
+                      }`}
+                    >
+                      {pixExpired
+                        ? "QR expirou. Gere um novo QR."
+                        : `Expira em: ${msToMMSS(remainingMs)}`}
+                    </div>
+                  )}
+
+                  {tx.qr_code && (
+                    <div>
+                      <p className="mb-1 text-xs text-slate-500">
+                        Copia e cola
+                      </p>
+
+                      <textarea
+                        readOnly
+                        value={tx.qr_code}
+                        className="h-24 w-full rounded-md border border-border p-2 text-xs"
+                      />
+
+                      <button
+                        type="button"
+                        onClick={() => copiarPix(tx.qr_code ?? "")}
+                        disabled={!tx.qr_code || pixExpired}
+                        className="mt-2 inline-flex items-center justify-center rounded-md border border-border bg-surface px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-surface-muted disabled:opacity-50"
+                      >
+                        {copied ? "Copiado ✅" : "Copiar código Pix"}
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
 
               {isPaid && (
-                <div className="rounded-md bg-green-50 border border-green-200 p-3 text-sm text-green-800 font-semibold">
+                <div className="rounded-md border border-green-200 bg-green-50 p-3 text-sm font-semibold text-green-800">
                   Pagamento confirmado ✅ Sua NR‑1 está sendo ativada
                   automaticamente.
                 </div>
               )}
+
               {isFailed && (
-                <div className="rounded-md bg-red-50 border border-red-200 p-3 text-sm text-red-700 font-semibold">
-                  Pagamento falhou ❌ Gere um novo QR e tente novamente.
+                <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700">
+                  Pagamento falhou ❌ Gere um novo QR.
                 </div>
               )}
+
               {isCanceled && (
-                <div className="rounded-md bg-slate-100 border border-slate-200 p-3 text-sm text-slate-700 font-semibold">
+                <div className="rounded-md border border-slate-200 bg-slate-100 p-3 text-sm font-semibold text-slate-700">
                   Pagamento cancelado.
                 </div>
               )}
             </div>
           )}
 
-          {/* BOLETO */}
           {charge.payment_method === "boleto" && (
             <div className="grid gap-2">
               <p className="text-sm font-semibold text-slate-700">
                 Boleto gerado
               </p>
 
-              {tx.boleto_url ? (
-                <a
-                  href={tx.boleto_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex justify-center rounded-md bg-brand px-4 py-2 text-white font-semibold hover:bg-brand/90"
-                >
-                  Abrir boleto
-                </a>
-              ) : null}
-
-              {tx.line ? (
-                <div className="rounded-md border border-border p-3">
-                  <p className="text-xs text-slate-500">Linha digitável</p>
-                  <p className="text-sm font-semibold break-all">{tx.line}</p>
+              {!tx && (
+                <div className="rounded-md border border-border bg-surface-muted p-4 text-center">
+                  <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-4 border-border border-t-brand" />
+                  <p className="text-sm font-semibold text-slate-700">
+                    Gerando boleto...
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Isso leva só alguns segundos. Aguarde.
+                  </p>
                 </div>
-              ) : null}
+              )}
+
+              {tx && (
+                <>
+                  {tx.boleto_url ? (
+                    <a
+                      href={tx.boleto_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex justify-center rounded-md bg-brand px-4 py-2 font-semibold text-white hover:bg-brand/90"
+                    >
+                      Abrir boleto
+                    </a>
+                  ) : null}
+
+                  {tx.line ? (
+                    <div className="rounded-md border border-border p-3">
+                      <p className="text-xs text-slate-500">Linha digitável</p>
+                      <p className="break-all text-sm font-semibold">
+                        {tx.line}
+                      </p>
+                    </div>
+                  ) : null}
+
+                  {!tx.boleto_url && !tx.line && (
+                    <div className="rounded-md border border-border bg-surface-muted p-4 text-center">
+                      <p className="text-sm font-semibold text-slate-700">
+                        Finalizando geração do boleto...
+                      </p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        Aguarde mais alguns instantes.
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
 
               {isPaid && (
-                <div className="rounded-md bg-green-50 border border-green-200 p-3 text-sm text-green-800 font-semibold">
+                <div className="rounded-md border border-green-200 bg-green-50 p-3 text-sm font-semibold text-green-800">
                   Pagamento confirmado ✅ Sua NR‑1 está sendo ativada
                   automaticamente.
                 </div>

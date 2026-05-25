@@ -15,6 +15,7 @@ import {
   QrCode,
   Home,
   Users,
+  UserX,
 } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
 import { useAuth } from "@/context/auth";
@@ -61,6 +62,12 @@ const NAV_BY_PLAN: Record<Plano, NavItem[]> = {
       icon: BarChart3,
       roles: ["admin"],
     },
+    {
+      href: "/dashboard/admin/deletar-usuario",
+      label: "Deletar usuário",
+      icon: UserX,
+      roles: ["admin"],
+    },
   ],
   premium: [
     {
@@ -105,6 +112,12 @@ const NAV_BY_PLAN: Record<Plano, NavItem[]> = {
       icon: BarChart3,
       roles: ["admin"],
     },
+    {
+      href: "/dashboard/admin/deletar-usuario",
+      label: "Deletar usuário",
+      icon: UserX,
+      roles: ["admin"],
+    },
   ],
 };
 
@@ -117,10 +130,8 @@ export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const [displayName, setDisplayName] = useState("Usuário");
 
-  // ✅ normalizado (evita bugs de string)
   const role = user?.app_metadata?.claims?.role?.trim().toLowerCase();
 
-  // ✅ cálculo memoizado correto
   const items = useMemo(() => {
     if (!role) return [];
 
@@ -167,7 +178,6 @@ export default function Sidebar() {
     };
   }, [loading, user?.id]);
 
-  // ✅ evita render quebrado/incompleto
   if (loading || !user) return null;
 
   return (
@@ -182,7 +192,6 @@ export default function Sidebar() {
         ].join(" ")}
       >
         <div className="h-screen flex flex-col">
-          {/* Header */}
           <div className="px-5 py-4 border-b border-white/10">
             <Link
               href="/dashboard"
@@ -205,7 +214,6 @@ export default function Sidebar() {
             </Link>
           </div>
 
-          {/* Menu */}
           <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-1">
             {items.map((item) => {
               const Icon = item.icon;
@@ -245,7 +253,6 @@ export default function Sidebar() {
             })}
           </nav>
 
-          {/* Footer */}
           <div className="px-3 py-3 border-t border-white/10 space-y-1">
             <Link
               href="/dashboard/perfil"
