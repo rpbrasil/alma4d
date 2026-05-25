@@ -66,7 +66,7 @@ function isValidPhone(phone: string) {
   return /^\+55\d{10,11}$/.test(phone);
 }
 function normalizeName(name: string) {
-  return name.trim().replace(/\s+/g, " ");
+  return name.trim().replace(/\s+/g, " ").toUpperCase();
 }
 
 function normalizePhoneBR(v: string) {
@@ -76,8 +76,59 @@ function normalizePhoneBR(v: string) {
   return `+55${d}`;
 }
 
+function formatCPF(v: string) {
+  const d = onlyDigits(v).slice(0, 11);
+  return d
+    .replace(/^(\d{3})(\d)/, "$1.$2")
+    .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
+    .replace(/^(\d{3})\.(\d{3})\.(\d{3})(\d)/, "$1.$2.$3-$4");
+}
+
+function formatPhoneBR(v: string) {
+  const d = onlyDigits(v).slice(0, 11);
+
+  if (d.length <= 10) {
+    return d.replace(/^(\d{2})(\d)/, "($1) $2").replace(/(\d{4})(\d)/, "$1-$2");
+  }
+
+  return d.replace(/^(\d{2})(\d)/, "($1) $2").replace(/(\d{5})(\d)/, "$1-$2");
+}
+
 function normalizeDeptName(v: string) {
   return v.trim().replace(/\s+/g, " ");
+}
+
+function formatCPFInput(v: string) {
+  const d = onlyDigits(v).slice(0, 11);
+
+  return d
+    .replace(/^(\d{3})(\d)/, "$1.$2")
+    .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
+    .replace(/^(\d{3})\.(\d{3})\.(\d{3})(\d)/, "$1.$2.$3-$4");
+}
+
+function normalizePhoneInput(v: string) {
+  let d = onlyDigits(v);
+
+  // se o usuário colar com 55 na frente, removemos do input
+  // porque no submit você já aplica normalizePhoneBR()
+  if (d.startsWith("55") && d.length > 11) {
+    d = d.slice(2);
+  }
+
+  return d.slice(0, 11);
+}
+
+function formatPhoneInput(v: string) {
+  const d = normalizePhoneInput(v);
+
+  // fixo: (11) 1234-5678
+  if (d.length <= 10) {
+    return d.replace(/^(\d{2})(\d)/, "($1) $2").replace(/(\d{4})(\d)/, "$1-$2");
+  }
+
+  // celular: (11) 91234-5678
+  return d.replace(/^(\d{2})(\d)/, "($1) $2").replace(/(\d{5})(\d)/, "$1-$2");
 }
 
 function parsePaste(text: string): CsvRegistro[] {
@@ -160,34 +211,36 @@ export default function DashboardExpress() {
   const [msg, setMsg] = useState<string | null>(null);
   const enqueueUrl = process.env.NEXT_PUBLIC_FN_IMPORT_ENQUEUE_URL!;
   const workerUrl = process.env.NEXT_PUBLIC_FN_IMPORT_WORKER_URL!;
+  const gerenciarUsuariosUrl =
+    process.env.NEXT_PUBLIC_FN_GERENCIAR_USUARIOS_URL!;
+
   const { loading } = useAccessGuard({
     requirePlano: "express",
     allowAdmin: true,
     redirectIfFail: "/ativacao",
   });
-  
-const [showDeptModal, setShowDeptModal] = useState(() => {
-  if (typeof window === "undefined") return false;
 
-  const CONSENT_KEY = "copsoq_consent_v1";
-  const CONSENT_TTL = 1000 * 60 * 60 * 24; // 24h
+  const [showDeptModal, setShowDeptModal] = useState(() => {
+    if (typeof window === "undefined") return false;
 
-  const stored = localStorage.getItem(CONSENT_KEY);
+    const CONSENT_KEY = "copsoq_consent_v1";
+    const CONSENT_TTL = 1000 * 60 * 60 * 24; // 24h
 
-  if (!stored) return true;
+    const stored = localStorage.getItem(CONSENT_KEY);
 
-  try {
-    const parsed = JSON.parse(stored);
+    if (!stored) return true;
 
-    const isExpired =
-      !parsed.timestamp || Date.now() - parsed.timestamp > CONSENT_TTL;
+    try {
+      const parsed = JSON.parse(stored);
 
-    return isExpired;
-  } catch {
-    return true;
-  }
-});
+      const isExpired =
+        !parsed.timestamp || Date.now() - parsed.timestamp > CONSENT_TTL;
 
+      return isExpired;
+    } catch {
+      return true;
+    }
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -286,6 +339,11 @@ const [showDeptModal, setShowDeptModal] = useState(() => {
     setMsg(null);
     setBusy(true);
     try {
+      if (!nome.trim() || !cpf.trim() || !tel.trim()) {
+        setMsg("Preencha nome, CPF e telefone.");
+        return;
+      }
+
       const token = await getAccessToken();
       if (!token) throw new Error("Sessão expirada. Faça login novamente.");
 
@@ -316,22 +374,13 @@ const [showDeptModal, setShowDeptModal] = useState(() => {
         return;
       }
 
-      if (onlyDigits(cpf).length !== 11) {
-        setMsg("CPF inválido");
-        return;
-      }
-
-      if (!normalizePhoneBR(tel)) {
-        setMsg("Telefone inválido");
-        return;
-      }
       const deptNome = deptEnabled
         ? normalizeDeptName(departamentoNomePadrao)
         : "";
       const payload = {
         nome_completo: nomeNorm,
-        documento: onlyDigits(cpf),
-        telefone: normalizePhoneBR(tel),
+        documento: cpfNorm,
+        telefone: phoneNorm,
         role: "usuario",
         departamento_nome: deptNome || null,
       };
@@ -347,7 +396,7 @@ const [showDeptModal, setShowDeptModal] = useState(() => {
       }
       // 🚀 chamada da sua edge
       const r = await fetch(
-        "https://ljpiesdyfhukffwlujfy.supabase.co/functions/v1/gerenciarusuarios",
+        gerenciarUsuariosUrl,
         {
           method: "POST",
           headers: {
@@ -360,19 +409,35 @@ const [showDeptModal, setShowDeptModal] = useState(() => {
 
       const j = await r.json().catch(() => ({}));
 
-      if (!r.ok) {
-        throw new Error(j.error ?? "Erro ao criar usuário.");
+      if (!r.ok || j?.error) {
+        throw new Error(j?.error ?? "Erro ao criar usuário.");
       }
 
-      setMsg("Usuário cadastrado.");
+      setMsg(`Usuário ${nomeNorm.split(" ")[0]} cadastrado com sucesso ✅`);
       setUsuariosAtuais((prev) => prev + 1);
       await refreshEntitlements();
       setNome("");
       setCpf("");
       setTel("");
+      document.getElementById("input-nome")?.focus();
     } catch (e: unknown) {
-      if (e instanceof Error) setMsg(e.message);
-      else setMsg("Erro inesperado");
+      if (e instanceof Error) {
+        const msg = e.message.toLowerCase();
+
+        if (
+          msg.includes("duplicate") ||
+          msg.includes("duplicado") ||
+          msg.includes("already exists") ||
+          msg.includes("já existe") ||
+          msg.includes("unique")
+        ) {
+          setMsg("Usuário já cadastrado com este CPF ou telefone.");
+        } else {
+          setMsg(e.message);
+        }
+      } else {
+        setMsg("Erro inesperado");
+      }
     } finally {
       setBusy(false);
     }
@@ -422,6 +487,9 @@ const [showDeptModal, setShowDeptModal] = useState(() => {
       const token = await getAccessToken();
       if (!token) {
         throw new Error("Sessão expirada. Faça login novamente.");
+      }
+      if (!gerenciarUsuariosUrl) {
+        throw new Error("Endpoint de cadastro não configurado.");
       }
 
       // ✅ normaliza dept padrão (se houver)
@@ -684,23 +752,30 @@ const [showDeptModal, setShowDeptModal] = useState(() => {
 
             <div className="mt-4 grid gap-3 sm:grid-cols-3">
               <input
+                id="input-nome"
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
-                placeholder="Nome completo"
+                placeholder="Nome completo do colaborador"
                 className="h-10 rounded-lg border border-slate-200 px-3 text-sm bg-white"
               />
 
               <input
-                value={cpf}
-                onChange={(e) => setCpf(onlyDigits(e.target.value))}
-                placeholder="CPF"
+                value={formatCPFInput(cpf)}
+                onChange={(e) =>
+                  setCpf(onlyDigits(e.target.value).slice(0, 11))
+                }
+                placeholder="CPF (somente números)"
+                inputMode="numeric"
+                autoComplete="off"
                 className="h-10 rounded-lg border border-slate-200 px-3 text-sm bg-white"
               />
 
               <input
-                value={tel}
-                onChange={(e) => setTel(onlyDigits(e.target.value))}
-                placeholder="Telefone"
+                value={formatPhoneInput(tel)}
+                onChange={(e) => setTel(normalizePhoneInput(e.target.value))}
+                placeholder="Telefone com DDD (ex: 11999999999)"
+                inputMode="numeric"
+                autoComplete="off"
                 className="h-10 rounded-lg border border-slate-200 px-3 text-sm bg-white"
               />
 
@@ -725,7 +800,7 @@ const [showDeptModal, setShowDeptModal] = useState(() => {
                 }
                 className="inline-flex items-center justify-center rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand/90 disabled:opacity-60"
               >
-                Adicionar usuário
+                {busy ? "Adicionando..." : "Adicionar usuário"}
               </button>
             </div>
           </>
