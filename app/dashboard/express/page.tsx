@@ -328,7 +328,9 @@ export default function DashboardExpress() {
 
       const token = await getAccessToken();
       if (!token) throw new Error("Sessão expirada. Faça login novamente.");
-
+      if (!gerenciarUsuariosUrl) {
+        throw new Error("Endpoint de cadastro não configurado.");
+      }
       if (limiteUsuarios !== null && usuariosAtuais >= limiteUsuarios) {
         setMsg("Limite de usuários do seu plano atingido.");
         return;
@@ -376,20 +378,29 @@ export default function DashboardExpress() {
         setMsg("Telefone já adicionado.");
         return;
       }
-      // 🚀 chamada da sua edge
-      const r = await fetch(
-        gerenciarUsuariosUrl,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(payload),
-        },
-      );
 
-      const j = await r.json().catch(() => ({}));
+      console.log("URL gerenciarUsuarios:", gerenciarUsuariosUrl);
+      // 🚀 chamada da sua edge
+      const r = await fetch(gerenciarUsuariosUrl, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const text = await r.text();
+      let j: { error?: string; [key: string]: unknown } = {};
+      try {
+        j = JSON.parse(text);
+      } catch {}
+
+      console.log("RES POST USUARIO:", {
+        status: r.status,
+        url: gerenciarUsuariosUrl,
+        raw: text,
+      });
 
       if (!r.ok || j?.error) {
         throw new Error(j?.error ?? "Erro ao criar usuário.");
