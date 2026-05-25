@@ -76,24 +76,6 @@ function normalizePhoneBR(v: string) {
   return `+55${d}`;
 }
 
-function formatCPF(v: string) {
-  const d = onlyDigits(v).slice(0, 11);
-  return d
-    .replace(/^(\d{3})(\d)/, "$1.$2")
-    .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
-    .replace(/^(\d{3})\.(\d{3})\.(\d{3})(\d)/, "$1.$2.$3-$4");
-}
-
-function formatPhoneBR(v: string) {
-  const d = onlyDigits(v).slice(0, 11);
-
-  if (d.length <= 10) {
-    return d.replace(/^(\d{2})(\d)/, "($1) $2").replace(/(\d{4})(\d)/, "$1-$2");
-  }
-
-  return d.replace(/^(\d{2})(\d)/, "($1) $2").replace(/(\d{5})(\d)/, "$1-$2");
-}
-
 function normalizeDeptName(v: string) {
   return v.trim().replace(/\s+/g, " ");
 }
