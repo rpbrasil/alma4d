@@ -3,7 +3,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabaseBrowser as supabase } from "@/lib/supabase/browser";
 
-
 type StatusResponse = {
   contrato: {
     status: "rascunho" | "ativo" | "suspenso" | "encerrado";
@@ -28,31 +27,39 @@ type StatusResponse = {
 
 export function useContratoStatus(contratoId: string | null) {
   const [data, setData] = useState<StatusResponse | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!!contratoId);
   const [checking, setChecking] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const fetchStatus = useCallback(async () => {
     if (!contratoId) return;
-
+    setError(null);
     try {
       const {
         data: { session },
       } = await supabase.auth.getSession();
 
       const token = session?.access_token;
-      if (!token) return;
+      if (!token) {
+        setLoading(false);
+        return;
+      }
 
       const res = await fetch(`/api/contrato/status?contratoId=${contratoId}`, {
+        method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
-
-      if (!res.ok) return;
+      if (!res.ok) {
+        setError("Erro ao carregar status do contrato.");
+        return;
+      }
 
       const json = await res.json();
       setData(json);
-    } catch (err) {
-      console.error(err);
+    } catch (error) {
+      console.error(error);
+      setError("Erro ao carregar status do contrato.");
     } finally {
       setLoading(false);
     }
@@ -64,10 +71,17 @@ export function useContratoStatus(contratoId: string | null) {
     setChecking(true);
 
     try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      const token = session?.access_token;
+
       const res = await fetch("/api/pagarme/verificar-pix", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({ contrato_id: contratoId }),
       });
@@ -75,27 +89,30 @@ export function useContratoStatus(contratoId: string | null) {
       if (!res.ok) {
         const text = await res.text();
         console.error("Erro verificarPix:", text);
+        setError("Erro ao verificar status do PIX.");
       }
 
       await fetchStatus();
-    } catch (err) {
-      console.error("Erro verificarPix:", err);
+    } catch (error) {
+      console.error("Erro verificarPix:", error);
     } finally {
       setChecking(false);
     }
   }
 
   useEffect(() => {
-    if (!contratoId) return;
-
-    let ignore = false;
+    if (!contratoId) {
+      return;
+    }
+    let cancelled = false;
 
     (async () => {
+      if (cancelled) return;
       await fetchStatus();
     })();
 
     return () => {
-      ignore = true;
+      cancelled = true;
     };
   }, [contratoId, fetchStatus]);
 
@@ -103,6 +120,7 @@ export function useContratoStatus(contratoId: string | null) {
     data,
     loading,
     checking,
+    error,
     verificarPix,
     refetch: fetchStatus,
   };
