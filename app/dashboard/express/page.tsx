@@ -4,6 +4,7 @@ import { useMemo, useState, useEffect } from "react";
 import { supabaseBrowser as supabase } from "@/lib/supabase/browser";
 import { trackConsent } from "@/lib/trackConsent";
 import { useAccessGuard } from "@/hooks/useAccessGuard";
+import { setStorageItem } from "@/lib/storage";
 
 type JobStatus = {
   id: string;
@@ -585,7 +586,7 @@ export default function DashboardExpress() {
     });
 
     // ✅ salva no localStorage com timestamp
-    localStorage.setItem(
+    setStorageItem(
       "copsoq_consent_v1",
       JSON.stringify({
         accepted: true,

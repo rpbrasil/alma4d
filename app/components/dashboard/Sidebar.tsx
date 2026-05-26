@@ -20,6 +20,9 @@ import {
 } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
 import { useAuth } from "@/context/auth";
+import { clearAlma4dStorage } from "@/lib/storage";
+
+
 
 type NavItem = {
   href: string;
@@ -125,17 +128,15 @@ const NAV_BY_PLAN: Record<Plano, NavItem[]> = {
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, loading, signOut, plano } = useAuth();
-
-  const effectivePlano: Plano = plano ?? "express";
+  const { user, loading, signOut, plano, role } = useAuth();
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const effectivePlano = plano as Plano;
   const [isOpen, setIsOpen] = useState(false);
   const [displayName, setDisplayName] = useState("Usuário");
-
-  const role = useMemo(() => {
-    return (
-      user?.app_metadata?.claims?.role?.toString().trim().toLowerCase() ?? null
-    );
-  }, [user]);
+  const supabase = useMemo(() => getSupabaseClient(), []);
+ 
+  const userId = user?.id ?? null;
 
   const items = useMemo(() => {
     if (!role) {
@@ -158,20 +159,37 @@ export default function Sidebar() {
     return pathname.startsWith(href);
   };
 
+  async function handleLogout() {
+    try {
+      setLoggingOut(true);
+
+      await signOut();
+
+      // ✅ limpar caches (importante)
+      clearAlma4dStorage();
+      sessionStorage.clear();
+
+      router.push("/");
+    } catch (e) {
+      console.error("Erro ao sair:", e);
+    } finally {
+      setLoggingOut(false);
+      setConfirmOpen(false);
+    }
+  }
+
   useEffect(() => {
-    if (loading || !user?.id) return;
+    if (loading || !userId) return;
 
     let mounted = true;
 
     (async () => {
       try {
-        const supabase = getSupabaseClient();
-
         const { data } = await supabase
           .from("usuarios")
           .select("nome_completo")
-          .eq("id", user.id)
-          .single();
+          .eq("id", userId)
+          .maybeSingle();
 
         if (mounted && data?.nome_completo) {
           setDisplayName(data.nome_completo);
@@ -184,7 +202,7 @@ export default function Sidebar() {
     return () => {
       mounted = false;
     };
-  }, [loading, user?.id]);
+  }, [loading, userId, supabase]);
 
   if (loading) {
     return (
@@ -278,15 +296,11 @@ export default function Sidebar() {
               <User size={18} />
               <span className="font-medium">Meu perfil</span>
             </Link>
-
             <button
               type="button"
-              onClick={async () => {
-                await signOut();
-                router.push("/");
-              }}
+              onClick={() => setConfirmOpen(true)}
               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm
-                         text-red-300 hover:bg-red-500/10 hover:text-red-200 transition-colors"
+             text-red-300 hover:bg-red-500/10 hover:text-red-200 transition-colors"
             >
               <LogOut size={18} />
               <span className="font-medium">Sair</span>
@@ -294,12 +308,45 @@ export default function Sidebar() {
           </div>
         </div>
       </aside>
-
       {isOpen && (
         <div
           className="fixed inset-0 bg-black/40 z-30 md:hidden"
           onClick={() => setIsOpen(false)}
         />
+      )}
+      {confirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-semibold text-slate-900">
+              Confirmar saída
+            </h3>
+
+            <p className="mt-2 text-sm text-slate-600">
+              Tem certeza que deseja sair da sua conta?
+            </p>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                onClick={() => setConfirmOpen(false)}
+                className="px-4 py-2 text-sm rounded-lg border border-slate-200 hover:bg-slate-50"
+              >
+                Cancelar
+              </button>
+
+              <button
+                disabled={loggingOut}
+                onClick={handleLogout}
+                className="px-4 py-2 text-sm rounded-lg bg-red-600 text-white
+                     hover:bg-red-700 disabled:opacity-50 flex items-center gap-2"
+              >
+                {loggingOut && (
+                  <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                )}
+                {loggingOut ? "Saindo..." : "Sair"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

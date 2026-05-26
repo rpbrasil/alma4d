@@ -113,7 +113,6 @@ export default function RelatoriosDesempenho() {
   const supabase = useMemo(() => getSupabaseClient(), []);
   const [loading, setLoading] = useState(true);
   const [me, setMe] = useState<UsuarioMe | null>(null);
-
   // filtros
   const [clienteId, setClienteId] = useState<string | null>(null);
   const [departamentoId, setDepartamentoId] = useState<string | null>(null);
@@ -379,12 +378,11 @@ function SelectCliente(props: {
 }) {
   const [items, setItems] = useState<ClienteRow[]>([]);
   const [loading, setLoading] = useState(true);
-
+  const supabase = useMemo(() => getSupabaseClient(), []);
   useEffect(() => {
     let mounted = true;
     (async () => {
       setLoading(true);
-      const supabase = getSupabaseClient();
       const { data, error } = await supabase
         .from("clientes")
         .select("id,nome,ativo")
@@ -403,7 +401,7 @@ function SelectCliente(props: {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [supabase]);
 
   return (
     <FieldWrap label="Cliente">
@@ -431,7 +429,7 @@ function SelectDepartamento(props: {
 }) {
   const [items, setItems] = useState<DepartamentoRow[]>([]);
   const [loading, setLoading] = useState(false);
-
+  const supabase = useMemo(() => getSupabaseClient(), []);
   useEffect(() => {
     let mounted = true;
 
@@ -442,7 +440,6 @@ function SelectDepartamento(props: {
       }
 
       setLoading(true);
-      const supabase = getSupabaseClient();
       const { data, error } = await supabase
         .from("departamentos")
         .select("id,nome,cliente_id,ativo")
@@ -460,7 +457,7 @@ function SelectDepartamento(props: {
     return () => {
       mounted = false;
     };
-  }, [props.clienteId]);
+  }, [props.clienteId, supabase]);
 
   const disabled = !props.clienteId;
 
@@ -492,7 +489,7 @@ function SelectSetor(props: {
 }) {
   const [items, setItems] = useState<SetorRow[]>([]);
   const [loading, setLoading] = useState(false);
-
+  const supabase = useMemo(() => getSupabaseClient(), []);
   useEffect(() => {
     let mounted = true;
 
@@ -503,7 +500,6 @@ function SelectSetor(props: {
       }
 
       setLoading(true);
-      const supabase = getSupabaseClient();
       const { data, error } = await supabase
         .from("setores")
         .select("id,nome,departamento_id,ativo")
@@ -521,7 +517,7 @@ function SelectSetor(props: {
     return () => {
       mounted = false;
     };
-  }, [props.departamentoId]);
+  }, [props.departamentoId, supabase]);
 
   const disabled = !props.departamentoId;
 
@@ -553,7 +549,7 @@ function SelectGestor(props: {
 }) {
   const [items, setItems] = useState<{ id: string; nome: string }[]>([]);
   const [loading, setLoading] = useState(false);
-
+  const supabase = useMemo(() => getSupabaseClient(), []);
   useEffect(() => {
     let mounted = true;
 
@@ -564,7 +560,6 @@ function SelectGestor(props: {
       }
 
       setLoading(true);
-      const supabase = getSupabaseClient();
       const { data, error } = await supabase
         .from("usuarios")
         .select("id,nome_completo,ativo,role,cliente_id")
@@ -588,7 +583,7 @@ function SelectGestor(props: {
     return () => {
       mounted = false;
     };
-  }, [props.clienteId]);
+  }, [props.clienteId, supabase]);
 
   const disabled = !props.clienteId;
 
@@ -625,7 +620,7 @@ function SelectUsuario(props: {
 }) {
   const [items, setItems] = useState<{ id: string; nome: string }[]>([]);
   const [loading, setLoading] = useState(false);
-
+  const supabase = useMemo(() => getSupabaseClient(), []);
   const disabledAdmin = props.role === "admin" && !props.clienteId;
 
   useEffect(() => {
@@ -639,7 +634,6 @@ function SelectUsuario(props: {
       }
 
       setLoading(true);
-      const supabase = getSupabaseClient();
       // Base: pegar usuários a partir de usuario_organizacao para permitir dept/setor
       // (e também filtrar por gestorId quando vier)
       let q = supabase
@@ -722,6 +716,7 @@ function SelectUsuario(props: {
     props.setorId,
     props.gestorId,
     disabledAdmin,
+    supabase,
   ]);
 
   return (

@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useRef } from "react";
 import {
+  useMemo,
+  useRef,
   createContext,
   useContext,
   useEffect,
@@ -10,14 +11,15 @@ import {
 } from "react";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
+import { getStorageItem, setStorageItem, removeStorageItem } from "@/lib/storage";
 
 type Role = "admin" | "cliente" | "gestor" | "usuario";
 type Plano = "express" | "premium";
 
 type AuthContextValue = {
   user: User | null;
-  role?: Role;
-  plano?: Plano;
+  role: Role | null;
+  plano: Plano | null;
   loading: boolean;
   signOut: () => Promise<void>;
 };
@@ -27,13 +29,13 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 const VALID_ROLES = ["admin", "cliente", "gestor", "usuario"] as const;
 const VALID_PLANOS = ["express", "premium"] as const;
 
-const PROFILE_CACHE_KEY = "auth_profile_cache_v1";
-const PROFILE_CACHE_TTL_MS = 15 * 60 * 1000; // 15 min
+const PROFILE_CACHE_KEY = "auth_profile";
+const PROFILE_CACHE_TTL_MS = 15 * 60 * 1000;
 
 type CachedProfile = {
   userId: string;
-  role?: Role;
-  plano?: Plano;
+  role: Role;
+  plano?: Plano | null;
   updatedAt: number;
 };
 
@@ -45,84 +47,48 @@ function isPlano(value: unknown): value is Plano {
   return typeof value === "string" && VALID_PLANOS.includes(value as Plano);
 }
 
-function safeStorageAvailable() {
-  return typeof window !== "undefined" && typeof localStorage !== "undefined";
-}
-
 function clearCachedProfile() {
-  if (!safeStorageAvailable()) return;
-  try {
-    localStorage.removeItem(PROFILE_CACHE_KEY);
-  } catch {
-    // silencioso
-  }
+  removeStorageItem(PROFILE_CACHE_KEY);
 }
 
 function readCachedProfile(userId: string): CachedProfile | null {
-  if (!safeStorageAvailable()) return null;
+  const parsed = getStorageItem<CachedProfile>(PROFILE_CACHE_KEY);
 
-  try {
-    const raw = localStorage.getItem(PROFILE_CACHE_KEY);
-    if (!raw) return null;
+  if (!parsed) return null;
 
-    const parsed = JSON.parse(raw) as Partial<CachedProfile> | null;
-    if (!parsed || typeof parsed !== "object") {
-      clearCachedProfile();
-      return null;
-    }
+  if (parsed.userId !== userId) return null;
 
-    if (parsed.userId !== userId) {
-      // cache de outro usuário → invalida
-      clearCachedProfile();
-      return null;
-    }
+  if (!isRole(parsed.role)) return null;
 
-    if (typeof parsed.updatedAt !== "number") {
-      clearCachedProfile();
-      return null;
-    }
+  const isExpired = Date.now() - parsed.updatedAt > PROFILE_CACHE_TTL_MS;
+  if (isExpired) return null;
 
-    const isExpired = Date.now() - parsed.updatedAt > PROFILE_CACHE_TTL_MS;
-    if (isExpired) {
-      clearCachedProfile();
-      return null;
-    }
-
-    return {
-      userId: parsed.userId,
-      role: isRole(parsed.role) ? parsed.role : undefined,
-      plano: isPlano(parsed.plano) ? parsed.plano : undefined,
-      updatedAt: parsed.updatedAt,
-    };
-  } catch {
-    clearCachedProfile();
-    return null;
-  }
+  return parsed;
 }
+
+
 
 function writeCachedProfile(profile: CachedProfile) {
-  if (!safeStorageAvailable()) return;
-
-  try {
-    localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(profile));
-  } catch {
-    // silencioso
-  }
-}
+  setStorageItem(PROFILE_CACHE_KEY, profile);
+} 
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [role, setRole] = useState<Role | undefined>();
-  const [plano, setPlano] = useState<Plano | undefined>();
+  const [role, setRole] = useState<Role | null>(null);
+  const [plano, setPlano] = useState<Plano | null>(null);
   const [loading, setLoading] = useState(true);
 
   const supabase = useMemo(() => getSupabaseClient(), []);
   const currentUserIdRef = useRef<string | null>(null);
+  const requestIdRef = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
 
-    const applyProfileState = (profile: { role?: Role; plano?: Plano }) => {
+    const applyProfileState = (profile: {
+      role: Role | null;
+      plano: Plano | null;
+    }) => {
       if (cancelled) return;
       setRole(profile.role);
       setPlano(profile.plano);
@@ -130,11 +96,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const clearProfileState = () => {
       if (cancelled) return;
-      setRole(undefined);
-      setPlano(undefined);
+      setRole(null);
+      setPlano(null);
     };
 
     const fetchAndCacheProfile = async (authUser: User) => {
+      const requestId = ++requestIdRef.current;
+
       try {
         const { data, error } = await supabase
           .from("usuarios")
@@ -142,30 +110,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .eq("id", authUser.id)
           .maybeSingle();
 
-        if (cancelled) return;
+        if (cancelled || requestId !== requestIdRef.current) return;
 
         if (error || !data) {
+          console.warn(
+            "Perfil não encontrado ou erro ao buscar perfil:",
+            error,
+          );
           clearProfileState();
           clearCachedProfile();
           return;
         }
 
-        const nextRole = isRole(data.role) ? data.role : undefined;
-        const nextPlano = isPlano(data.tipo_plano)
-          ? data.tipo_plano
-          : undefined;
+        const nextRole = isRole(data.role) ? data.role : null;
+        const nextPlano = isPlano(data.tipo_plano) ? data.tipo_plano : null;
 
         applyProfileState({
           role: nextRole,
           plano: nextPlano,
         });
 
-        writeCachedProfile({
-          userId: authUser.id,
-          role: nextRole,
-          plano: nextPlano,
-          updatedAt: Date.now(),
-        });
+        if (nextRole !== null) {
+          writeCachedProfile({
+            userId: authUser.id,
+            role: nextRole,
+            plano: nextPlano,
+            updatedAt: Date.now(),
+          });
+        } else {
+          clearCachedProfile();
+          console.warn("Perfil carregado sem role válida:", { raw: data, roleRecebida: data?.role });
+        }
       } catch (e) {
         if (!cancelled) {
           console.error("Erro ao carregar perfil:", e);
@@ -173,6 +148,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           clearCachedProfile();
         }
       }
+    };
+
+    const loadAuthenticatedUser = async (authUser: User) => {
+      setUser(authUser);
+
+      const cached = readCachedProfile(authUser.id);
+
+      if (cached) {
+        applyProfileState({
+          role: cached.role,
+          plano: cached.plano ?? null,
+        });
+        setLoading(false);
+        void fetchAndCacheProfile(authUser);
+        return;
+      }
+
+      await fetchAndCacheProfile(authUser);
+      if (!cancelled) setLoading(false);
     };
 
     const bootstrapFromSession = async () => {
@@ -185,34 +179,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         const authUser = session?.user ?? null;
         currentUserIdRef.current = authUser?.id ?? null;
-        setUser(authUser);
 
         if (!authUser) {
+          setUser(null);
           clearProfileState();
           clearCachedProfile();
           setLoading(false);
           return;
         }
 
-        // 1) hidrata instantaneamente do cache
-        const cached = readCachedProfile(authUser.id);
-        if (cached) {
-          applyProfileState({
-            role: cached.role,
-            plano: cached.plano,
-          });
-
-          // 2) libera a UI já com cache
-          setLoading(false);
-
-          // 3) revalida em background (SWR)
-          void fetchAndCacheProfile(authUser);
-          return;
-        }
-
-        // sem cache válido → busca real
-        await fetchAndCacheProfile(authUser);
-        if (!cancelled) setLoading(false);
+        await loadAuthenticatedUser(authUser);
       } catch (e) {
         if (!cancelled) {
           console.error("Erro ao iniciar autenticação:", e);
@@ -246,38 +222,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      // Se trocou de conta, limpamos o cache anterior
       if (userChanged) {
+        clearProfileState();
         clearCachedProfile();
         setLoading(true);
       }
 
-      setUser(nextUser);
-
-      const cached = readCachedProfile(nextUser.id);
-
-      if (cached) {
-        applyProfileState({
-          role: cached.role,
-          plano: cached.plano,
-        });
-
-        // Em troca de usuário, já libera a UI com o cache do usuário atual
-        if (userChanged && !cancelled) {
-          setLoading(false);
-        }
-
-        // Revalidação em background
-        void fetchAndCacheProfile(nextUser);
-        return;
-      }
-
-      // Sem cache → busca real
-      await fetchAndCacheProfile(nextUser);
-
-      if (!cancelled) {
-        setLoading(false);
-      }
+      await loadAuthenticatedUser(nextUser);
     });
 
     return () => {
@@ -289,6 +240,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     try {
       clearCachedProfile();
+      setUser(null);
+      setRole(null);
+      setPlano(null);
       await supabase.auth.signOut();
     } catch (e) {
       console.error("Erro ao sair:", e);

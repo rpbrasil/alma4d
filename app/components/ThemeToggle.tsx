@@ -1,15 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
-const STORAGE_KEY = "theme"; // "light" | "dark"
+import { getStorageItem, setStorageItem } from "@/lib/storage";
 
 function getInitialTheme(): boolean {
   // ✅ SSR/Prerender guard (no server não existe window/localStorage)
   if (typeof window === "undefined") return false; // default LIGHT
 
   try {
-    const saved = window.localStorage.getItem(STORAGE_KEY);
+    const saved = getStorageItem("theme");
     if (saved === "dark") return true;
     if (saved === "light") return false;
   } catch {
@@ -29,7 +28,7 @@ export function ThemeToggle() {
     document.documentElement.classList.toggle("dark", dark);
 
     try {
-      window.localStorage.setItem(STORAGE_KEY, dark ? "dark" : "light");
+      setStorageItem("theme", dark ? "dark" : "light");
     } catch {
       // ignore
     }

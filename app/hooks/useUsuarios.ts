@@ -1,6 +1,6 @@
 // app/hooks/useUsuarios.ts
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/context/auth";
 import { getSupabaseClient } from "@/lib/supabase/client";
 export interface Usuario {
@@ -18,7 +18,7 @@ export function useUsuarios() {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
+  const supabase = useMemo(() => getSupabaseClient(), []);
   useEffect(() => {
     let isMounted = true;
 
@@ -31,8 +31,7 @@ export function useUsuarios() {
         return;
       }
 
-      try {        
-        const supabase = getSupabaseClient();        
+      try {
         // Carregar usuários
         const { data: usuariosData, error: err } = await supabase
           .from("usuarios")
@@ -84,7 +83,7 @@ export function useUsuarios() {
     return () => {
       isMounted = false;
     };
-  }, [user?.id]);
+  },[user?.id, supabase]);
 
   return {
     usuarios,
