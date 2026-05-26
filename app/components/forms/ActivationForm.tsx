@@ -1,14 +1,14 @@
 "use client";
 
-import { useState } from "react";
-import { supabase } from "@/lib/supabase/client";
+import { useState, useMemo } from "react";
+import { getSupabaseClient } from "@/lib/supabase/client";
 
 export default function ActivationForm() {
   const [step, setStep] = useState(1); // 1: Telefone, 2: Código, 3: Perfil
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [phone, setPhone] = useState("");
-  
+  const supabase = useMemo(() => getSupabaseClient(), []);
   // Estilo Padrão Profissional para os Inputs
   const inputClass =
     "w-full p-4 rounded-xl border border-border bg-white text-base text-foreground outline-none focus:ring-2 focus:ring-[#019499] transition-all placeholder:text-foreground/30";
@@ -19,16 +19,23 @@ export default function ActivationForm() {
     setLoading(true);
     setError(null);
     // Adicionamos o '+' internamente para o Supabase, mas removemos do input visual
-
-    if (!supabase)
-      throw new Error("Supabase client não inicializado (env vars ausentes).");
-    const { error } = await supabase.auth.signInWithOtp({
-      phone: `+${phone.replace(/\D/g, "")}`,
-    });
-    if (error)
-      setError(error.message || "Erro ao enviar SMS. Verifique o número.");
-    else setStep(2);
-    setLoading(false);
+    try {
+      if (!supabase) {
+        setError("Supabase client não inicializado.");
+        setLoading(false);
+        return;
+      }
+      const { error } = await supabase.auth.signInWithOtp({
+        phone: `+${phone.replace(/\D/g, "")}`,
+      });
+      if (error)
+        setError(error.message || "Erro ao enviar SMS. Verifique o número.");
+      else setStep(2);
+    } catch {
+      setError("Erro inesperado ao enviar SMS.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   // ETAPA 2: Validar Código
@@ -37,12 +44,29 @@ export default function ActivationForm() {
     setLoading(true);
     setError(null);
     const formData = new FormData(e.currentTarget as HTMLFormElement);
-    const token = formData.get("token") as string;
+    const token = formData.get("token");
+
+    if (!token || typeof token !== "string") {
+      setError("Código inválido.");
+      setLoading(false);
+      return;
+    }
 
     // Novamente, usamos o telefone formatado internamente
-    const formattedPhone = `+${phone.replace(/\D/g, "")}`;
-    if (!supabase)
-      throw new Error("Supabase client não inicializado (env vars ausentes).");
+    const cleanPhone = phone.replace(/\D/g, "");
+
+    if (cleanPhone.length < 10) {
+      setError("Digite um telefone válido com DDD.");
+      setLoading(false);
+      return;
+    }
+
+    const formattedPhone = `+${cleanPhone}`;
+    if (!supabase) {
+      setError("Supabase client não inicializado.");
+      setLoading(false);
+      return;
+    }
     const { error } = await supabase.auth.verifyOtp({
       phone: formattedPhone,
       token,
@@ -223,8 +247,10 @@ export default function ActivationForm() {
       {/* PASSO 3: DADOS ALMA4D (TRIAL + SEXO) */}
       {step === 3 && (
         <form
-          action={handleFinalSubmit}
-          className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5"
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleFinalSubmit(new FormData(e.currentTarget));
+          }}
         >
           <h3 className="md:col-span-2 text-2xl font-bold text-[#030870] mb-2">
             Finalize seu Perfil Trial

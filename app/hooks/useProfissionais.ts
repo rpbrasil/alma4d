@@ -1,14 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase/client";
+import { useEffect, useState, useMemo } from "react";
+import { getSupabaseClient } from "@/lib/supabase/client";
 import type { Profissional } from "@/types/profissional";
 
 export function useProfissionais() {
   const [data, setData] = useState<Profissional[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
+  const supabase = useMemo(() => getSupabaseClient(), []);
+  
   useEffect(() => {
     let mounted = true;
 
@@ -45,7 +46,7 @@ export function useProfissionais() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [supabase]);
 
   return { data, loading, error };
 }

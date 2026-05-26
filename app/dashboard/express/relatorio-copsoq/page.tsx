@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useRef } from "react";
 import { useAuth } from "@/context/auth";
-import { supabase } from "@/lib/supabase/client";
+import { getSupabaseClient } from "@/lib/supabase/client";
 import { ExportToolbar } from "@/components/dashboard/ExportToolbar";
 import { AlertCircle, Building2, Layers, ShieldAlert } from "lucide-react";
 import { CopsoqOfficialReport } from "@/dashboard/premium/relatorios/psicossocial/copsoq/CopsoqOfficialReport";
@@ -52,7 +52,7 @@ function riskClass(nivel: RowRisco["nivel_risco"]) {
 
 export default function DashboardExpressRelatorioCopsoqPage() {
   const { user, role: authRole, loading: authLoading } = useAuth();
-
+  const supabase = useMemo(() => getSupabaseClient(), []);
   const [loading, setLoading] = useState(true);
   const [clienteNome, setClienteNome] = useState<string>("—");
   const [pdfLoading, setPdfLoading] = useState(false);
@@ -83,13 +83,12 @@ export default function DashboardExpressRelatorioCopsoqPage() {
   const reportRef = useRef<HTMLDivElement>(null);
 
   const generatedAt = useMemo(() => new Date().toLocaleString("pt-BR"), []);
-    // Cliente efetivo: sempre me.cliente_id (já que é express)
+  // Cliente efetivo: sempre me.cliente_id (já que é express)
   const effectiveClienteId = useMemo(() => {
     return me?.cliente_id ?? null;
   }, [me?.cliente_id]);
 
-const [reportId] = useState(() => `COPSOQ_${Date.now()}`);
-
+  const [reportId] = useState(() => `COPSOQ_${Date.now()}`);
 
   // 1) carrega me
   useEffect(() => {
@@ -141,7 +140,7 @@ const [reportId] = useState(() => `COPSOQ_${Date.now()}`);
     return () => {
       mounted = false;
     };
-  }, [user?.id]);
+  }, [user?.id, supabase]);
 
   // 2) carrega rows agregadas quando cliente muda
   useEffect(() => {
@@ -181,7 +180,7 @@ const [reportId] = useState(() => `COPSOQ_${Date.now()}`);
     return () => {
       mounted = false;
     };
-  }, [effectiveClienteId, canViewDashboard]);
+  }, [effectiveClienteId, canViewDashboard, supabase]);
 
   useEffect(() => {
     let mounted = true;
@@ -211,7 +210,7 @@ const [reportId] = useState(() => `COPSOQ_${Date.now()}`);
     return () => {
       mounted = false;
     };
-  }, [effectiveClienteId]);
+  }, [effectiveClienteId, supabase]);
 
   // opções de depto/setor a partir das rows
   const departamentosOptions = useMemo(() => {

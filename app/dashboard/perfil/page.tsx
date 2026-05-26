@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/context/auth";
-import { supabase } from "@/lib/supabase/client";
+import { getSupabaseClient } from "@/lib/supabase/client";
 import { User, Mail, Building2, Save, X } from "lucide-react";
 
 type PerfilRow = {
@@ -23,7 +23,7 @@ function isValidEmailLoose(email: string) {
 
 export default function PerfilPage() {
   const { user, role, plano } = useAuth();
-
+  const supabase = useMemo(() => getSupabaseClient(), []);
   const [perfil, setPerfil] = useState<PerfilRow | null>(null);
   const [clienteNome, setClienteNome] = useState<string | null>(null);
 
@@ -70,7 +70,7 @@ export default function PerfilPage() {
         setClienteNome(cli?.nome ?? null);
       }
     })();
-  }, [user?.id]);
+  }, [user?.id, supabase]);
 
   async function onSave() {
     setMsg(null);
@@ -196,8 +196,8 @@ export default function PerfilPage() {
           ) : (
             <div className="flex gap-2">
               <button
-                  onClick={onSave}
-                  disabled={saving}
+                onClick={onSave}
+                disabled={saving}
                 className="rounded-full bg-brand px-4 py-2 text-sm text-white"
               >
                 <Save size={16} />

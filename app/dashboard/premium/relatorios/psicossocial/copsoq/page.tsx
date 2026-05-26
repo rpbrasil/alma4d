@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useRef } from "react";
 import { useAuth } from "@/context/auth";
-import { supabase } from "@/lib/supabase/client";
+import { getSupabaseClient } from "@/lib/supabase/client";
 import { ExportToolbar } from "@/components/dashboard/ExportToolbar";
 import { AlertCircle, Building2, Layers, ShieldAlert } from "lucide-react";
 import { CopsoqOfficialReport } from "@/dashboard/premium/relatorios/psicossocial/copsoq/CopsoqOfficialReport";
@@ -66,7 +66,7 @@ function riskClass(nivel: RowRisco["nivel_risco"]) {
 
 export default function CopsoqDashboardPage() {
   const { user, role: authRole, loading: authLoading } = useAuth();
-
+  const supabase = useMemo(() => getSupabaseClient(), []);
   const [loading, setLoading] = useState(true);
   const [clienteNome, setClienteNome] = useState<string>("—");
   const [pdfLoading, setPdfLoading] = useState(false);
@@ -105,7 +105,6 @@ export default function CopsoqDashboardPage() {
   const [generatedAt] = useState(() => new Date().toLocaleString("pt-BR"));
 
   const [reportId] = useState(() => `COPSOQ_${Date.now()}`);
-
 
   // Cliente efetivo:
   // - cliente: sempre me.cliente_id
@@ -188,7 +187,7 @@ export default function CopsoqDashboardPage() {
     return () => {
       mounted = false;
     };
-  }, [user?.id]);
+  }, [user?.id, supabase]);
 
   // 2) carrega rows agregadas quando cliente muda
   useEffect(() => {
@@ -228,7 +227,7 @@ export default function CopsoqDashboardPage() {
     return () => {
       mounted = false;
     };
-  }, [effectiveClienteId, canViewDashboard]);
+  }, [effectiveClienteId, canViewDashboard, supabase]);
 
   useEffect(() => {
     let mounted = true;
@@ -258,7 +257,7 @@ export default function CopsoqDashboardPage() {
     return () => {
       mounted = false;
     };
-  }, [effectiveClienteId]);
+  }, [effectiveClienteId, supabase]);
 
   // opções de depto/setor a partir das rows (não precisa bater em tabelas)
   const departamentosOptions = useMemo(() => {

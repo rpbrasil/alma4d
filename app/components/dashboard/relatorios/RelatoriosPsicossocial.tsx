@@ -1,17 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useAuth } from "@/context/auth";
-import { supabase } from "@/lib/supabase/client";
+import { getSupabaseClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 
 export default function RelatoriosPsicossocial() {
   const { user, role } = useAuth();
   const [clienteId, setClienteId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-
+  const supabase = useMemo(() => getSupabaseClient(), []);
   const normalizedRole = role?.toLowerCase();
-  
+
   const isCliente = normalizedRole === "cliente";
   const isGestor = normalizedRole === "gestor";
   const router = useRouter();
@@ -19,7 +19,7 @@ export default function RelatoriosPsicossocial() {
   useEffect(() => {
     const init = async () => {
       if (!user?.id) return;
-
+      
       const { data: usuario } = await supabase
         .from("usuarios")
         .select("cliente_id")
@@ -30,7 +30,7 @@ export default function RelatoriosPsicossocial() {
       setLoading(false);
     };
     init();
-  }, [user]);
+  }, [user, supabase]);
 
   if (loading) {
     return (

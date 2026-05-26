@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Plus, AlertCircle } from "lucide-react";
-import { supabase } from "@/lib/supabase/client";
+import { getSupabaseClient } from "@/lib/supabase/client";
 
 type ProfissionalClienteRow = {
   id: string;
@@ -37,77 +37,88 @@ type ProfissionaisClientesSelectRow = {
 
 export default function ProfissionaisDoClientePage() {
   const params = useParams();
-  const clienteId = params.id as string;
-
+  const clienteId = Array.isArray(params.id)
+    ? params.id[0]
+    : (params.id ?? null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<ProfissionalClienteRow[]>([]);
-
+  const supabase = useMemo(() => getSupabaseClient(), []);
+  
   useEffect(() => {
     let mounted = true;
 
     async function load() {
+      if (!clienteId) {
+        setLoading(false);
+        setRows([]);
+        return;
+      }
+
       setLoading(true);
       setError(null);
 
-      const { data, error } = await supabase
-        .from("profissionais_clientes")
-        .select(
-          `
+      try {
+        const { data, error } = await supabase
+          .from("profissionais_clientes")
+          .select(
+            `
           ativo,
           destaque,
           ordem,
-          profissionais (
+          profissionais:profissionais (
             id,
             nome,
             especialidade,
             documento
           )
         `,
-        )
-        .eq("cliente_id", clienteId)
-        .order("ordem", { ascending: true });
+          )
+          .eq("cliente_id", clienteId)
+          .order("ordem", { ascending: true });
 
-      if (!mounted) return;
+        if (error) throw error;
+        if (!mounted) return;
 
-      if (error) {
-        setError(error.message);
+        const typed = (data ?? []) as ProfissionaisClientesSelectRow[];
+
+        const normalized = typed
+          .map((r) => {
+            const prof = Array.isArray(r.profissionais)
+              ? (r.profissionais[0] ?? null)
+              : (r.profissionais ?? null);
+
+            if (!prof) return null;
+
+            return {
+              id: prof.id,
+              nome: prof.nome,
+              especialidade: prof.especialidade,
+              documento: prof.documento,
+              ativo_no_cliente: r.ativo,
+              destaque: r.destaque,
+              ordem: r.ordem,
+            } as ProfissionalClienteRow;
+          })
+          .filter((x): x is ProfissionalClienteRow => x !== null);
+
+        setRows(normalized);
+      } catch (e) {
+        if (!mounted) return;
+        console.error("Erro ao carregar profissionais:", e);
+        setError("Erro ao carregar profissionais.");
         setRows([]);
-        setLoading(false);
-        return;
+      } finally {
+        if (mounted) setLoading(false);
       }
-
-      const typed = (data ?? []) as ProfissionaisClientesSelectRow[];
-
-      const normalized = typed
-        .map((r) => {
-          const prof = Array.isArray(r.profissionais)
-            ? r.profissionais[0] // quando vier array
-            : r.profissionais; // quando vier objeto
-
-          if (!prof) return null;
-
-          return {
-            id: prof.id,
-            nome: prof.nome,
-            especialidade: prof.especialidade,
-            documento: prof.documento,
-            ativo_no_cliente: r.ativo,
-            destaque: r.destaque,
-            ordem: r.ordem,
-          } as ProfissionalClienteRow;
-        })
-        .filter((x): x is ProfissionalClienteRow => x !== null);
-
-      setRows(normalized);
-      setLoading(false);
     }
 
     load();
+
     return () => {
       mounted = false;
     };
-  }, [clienteId]);
+  }, [clienteId, supabase]);
 
   if (loading) {
     return (

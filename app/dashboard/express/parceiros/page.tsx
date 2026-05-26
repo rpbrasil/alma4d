@@ -242,8 +242,6 @@ export default function DashboardExpressParceirosPage() {
     setBusy(true);
 
     try {
-      console.log("🔄 refresh start");
-
       const { data: p, error } = await supabase.from("parceiros").select("*");
 
       if (error) throw new Error(error.message);
@@ -281,8 +279,6 @@ export default function DashboardExpressParceirosPage() {
       });
 
       setEmpresasMap(emap);
-
-      console.log("✅ refresh ok");
     } catch (e) {
       console.error("❌ erro refresh:", e);
     } finally {

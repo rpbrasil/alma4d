@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { getSupabaseClient } from "@/lib/supabase/client";
 import {
   LayoutDashboard,
   BarChart3,
@@ -130,10 +131,17 @@ export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const [displayName, setDisplayName] = useState("Usuário");
 
-  const role = user?.app_metadata?.claims?.role?.trim().toLowerCase();
+  const role = useMemo(() => {
+    return (
+      user?.app_metadata?.claims?.role?.toString().trim().toLowerCase() ?? null
+    );
+  }, [user]);
 
   const items = useMemo(() => {
-    if (!role) return [];
+    if (!role) {
+      console.warn("Sidebar sem role:", user);
+      return [];
+    }
 
     const planItems = NAV_BY_PLAN[effectivePlano] || [];
 
@@ -141,7 +149,7 @@ export default function Sidebar() {
       if (!item.roles) return true;
       return item.roles.includes(role);
     });
-  }, [effectivePlano, role]);
+  }, [effectivePlano, role, user]);
 
   const isActive = (href: string) => {
     if (href === "/dashboard/express" || href === "/dashboard/premium") {
@@ -157,7 +165,7 @@ export default function Sidebar() {
 
     (async () => {
       try {
-        const { supabase } = await import("@/lib/supabase/client");
+        const supabase = getSupabaseClient();
 
         const { data } = await supabase
           .from("usuarios")
@@ -178,7 +186,15 @@ export default function Sidebar() {
     };
   }, [loading, user?.id]);
 
-  if (loading || !user) return null;
+  if (loading) {
+    return (
+      <div className="w-64 bg-brand text-white flex items-center justify-center">
+        <span className="text-sm opacity-70">Carregando...</span>
+      </div>
+    );
+  }
+
+  if (!user) return null;
 
   return (
     <div suppressHydrationWarning>

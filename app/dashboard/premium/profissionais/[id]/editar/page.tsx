@@ -5,15 +5,15 @@ import { ProfessionalForm } from "@/components/dashboard/ProfessionalForm";
 import { useAuth } from "@/context/auth";
 import { ArrowLeft, AlertCircle } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase/client";
+import { useEffect, useState, useMemo } from "react";
+import { getSupabaseClient } from "@/lib/supabase/client";
 import type { ProfissionalFormData, Profissional } from "@/types/profissional";
 
 export default function EditarProfissionalPage() {
   const router = useRouter();
   const params = useParams();
   const id = params?.id as string;
-
+  const supabase = useMemo(() => getSupabaseClient(), []);
   const { role, loading: authLoading } = useAuth();
 
   const [profissional, setProfissional] = useState<Profissional | null>(null);
@@ -61,7 +61,7 @@ export default function EditarProfissionalPage() {
     return () => {
       mounted = false;
     };
-  }, [id]);
+  }, [id, supabase]);
 
   if (authLoading || loadingData) {
     return (

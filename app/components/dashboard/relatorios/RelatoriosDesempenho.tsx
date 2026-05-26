@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/context/auth";
-import { supabase } from "@/lib/supabase/client";
+import { getSupabaseClient } from "@/lib/supabase/client";
 import {
   ResponsiveContainer,
   LineChart,
@@ -110,7 +110,7 @@ function clamp01to10(v: number) {
 
 export default function RelatoriosDesempenho() {
   const { user, role: authRole } = useAuth();
-
+  const supabase = useMemo(() => getSupabaseClient(), []);
   const [loading, setLoading] = useState(true);
   const [me, setMe] = useState<UsuarioMe | null>(null);
 
@@ -169,7 +169,7 @@ export default function RelatoriosDesempenho() {
     return () => {
       mounted = false;
     };
-  }, [user?.id]);
+  }, [supabase, user?.id]);
 
   const role: Role | null = (me?.role ??
     (authRole as Role | undefined) ??
@@ -384,6 +384,7 @@ function SelectCliente(props: {
     let mounted = true;
     (async () => {
       setLoading(true);
+      const supabase = getSupabaseClient();
       const { data, error } = await supabase
         .from("clientes")
         .select("id,nome,ativo")
@@ -441,6 +442,7 @@ function SelectDepartamento(props: {
       }
 
       setLoading(true);
+      const supabase = getSupabaseClient();
       const { data, error } = await supabase
         .from("departamentos")
         .select("id,nome,cliente_id,ativo")
@@ -501,6 +503,7 @@ function SelectSetor(props: {
       }
 
       setLoading(true);
+      const supabase = getSupabaseClient();
       const { data, error } = await supabase
         .from("setores")
         .select("id,nome,departamento_id,ativo")
@@ -561,6 +564,7 @@ function SelectGestor(props: {
       }
 
       setLoading(true);
+      const supabase = getSupabaseClient();
       const { data, error } = await supabase
         .from("usuarios")
         .select("id,nome_completo,ativo,role,cliente_id")
@@ -635,7 +639,7 @@ function SelectUsuario(props: {
       }
 
       setLoading(true);
-
+      const supabase = getSupabaseClient();
       // Base: pegar usuários a partir de usuario_organizacao para permitir dept/setor
       // (e também filtrar por gestorId quando vier)
       let q = supabase
@@ -833,7 +837,7 @@ function ConsolidadoDesempenho(props: {
           }
           return;
         }
-
+        const supabase = getSupabaseClient();
         let orgQ = supabase
           .from("usuario_organizacao")
           .select(
@@ -936,10 +940,16 @@ function ConsolidadoDesempenho(props: {
         const [deptNames, setorNames, userNames] = await Promise.all([
           deptIds.length
             ? supabase.from("departamentos").select("id,nome").in("id", deptIds)
-            : Promise.resolve({ data: [] as IdNome[], error: null as IdNome | null }),
+            : Promise.resolve({
+                data: [] as IdNome[],
+                error: null as IdNome | null,
+              }),
           setorIds.length
             ? supabase.from("setores").select("id,nome").in("id", setorIds)
-            : Promise.resolve({ data: [] as IdNome[], error: null as IdNome | null }),
+            : Promise.resolve({
+                data: [] as IdNome[],
+                error: null as IdNome | null,
+              }),
           // nomes usuários para breakdown por usuário
           supabase
             .from("usuarios")
@@ -1238,6 +1248,7 @@ function EvolucaoUsuario(props: {
       setErro(null);
 
       try {
+        const supabase = getSupabaseClient();
         const [uRes, aRes] = await Promise.all([
           supabase
             .from("usuarios")

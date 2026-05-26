@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { supabase } from "@/lib/supabase/client";
+import { getSupabaseClient } from "@/lib/supabase/client";
 import { AlertCircle, CheckCircle2, Lock, Send, RefreshCw } from "lucide-react";
 import {
   COPSOQ_QUESTIONS,
@@ -14,7 +14,6 @@ import {
 } from "@/lib/copsoqData";
 import { trackConsent } from "@/lib/trackConsent";
 import Image from "next/image";
-import { Suspense } from "react";
 
 type LinkInfo = {
   id: string;
@@ -25,7 +24,6 @@ type LinkInfo = {
 };
 
 type Answers = Record<string, string | null>;
-
 
 export default function ExpressCopsoqQuizPage() {
   return (
@@ -43,10 +41,13 @@ export default function ExpressCopsoqQuizPage() {
     </Suspense>
   );
 }
+
 function CopsoqPageContent() {
   const searchParams = useSearchParams();
   const rawLinkId = searchParams.get("linkId");
   const linkId = rawLinkId && rawLinkId !== "null" ? rawLinkId : null;
+
+  const supabase = useMemo(() => getSupabaseClient(), []);
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -87,6 +88,12 @@ function CopsoqPageContent() {
         return;
       }
 
+      if (!supabase) {
+        setError("Supabase client não inicializado.");
+        setLoading(false);
+        return;
+      }
+
       try {
         setError(null);
         setLoading(true);
@@ -110,6 +117,7 @@ function CopsoqPageContent() {
           );
           return;
         }
+
         const [
           { data: usuario, error: usuarioError },
           { data: link, error: linkError },
@@ -135,20 +143,17 @@ function CopsoqPageContent() {
           );
           return;
         }
+
         if (usuario.ativo === false) {
           setError("Seu usuário está inativo. Contate o administrador.");
           return;
         }
 
-        if (!link) {
+        if (!link || !link.ativo) {
           setError("Link de aplicação inválido ou desativado.");
           return;
         }
 
-        if (!link.ativo) {
-          setError("Link de aplicação inválido ou desativado.");
-          return;
-        }
         const { data: contrato, error: contratoError } = await supabase
           .from("contratos")
           .select("id, numero_contrato, status, cliente_id")
@@ -156,6 +161,7 @@ function CopsoqPageContent() {
           .maybeSingle();
 
         if (contratoError) throw contratoError;
+
         if (!contrato || contrato.status !== "ativo") {
           setError("O contrato associado ao link não está ativo.");
           return;
@@ -173,11 +179,13 @@ function CopsoqPageContent() {
           .maybeSingle();
 
         if (clienteError) throw clienteError;
+
         if (!cliente || cliente.ativo === false) {
           setError("O cliente associado está inativo.");
           return;
         }
-        // 1) Verifica se já existe vínculo (reserva) para esse usuário+link
+
+        // Verifica se já existe vínculo (reserva) para esse usuário+link
         const { data: linkBind, error: bindError } = await supabase
           .from("copsoq_aplicacoes_links")
           .select("id, aplicacao_id")
@@ -194,12 +202,14 @@ function CopsoqPageContent() {
           );
         } else {
           // cria reserva idempotente (exige UNIQUE (link_id, usuario_id))
-          await supabase
+          const { error: upsertError } = await supabase
             .from("copsoq_aplicacoes_links")
             .upsert(
               { link_id: linkId, usuario_id: uid, aplicacao_id: null },
               { onConflict: "link_id,usuario_id", ignoreDuplicates: true },
             );
+
+          if (upsertError) throw upsertError;
         }
 
         if (active) {
@@ -209,6 +219,7 @@ function CopsoqPageContent() {
           setContratoNumero(contrato.numero_contrato ?? null);
         }
       } catch (err) {
+        if (!active) return;
         setError(
           err instanceof Error
             ? err.message
@@ -219,18 +230,19 @@ function CopsoqPageContent() {
       }
     }
 
-    load();
+    void load();
 
     return () => {
       active = false;
     };
-  }, [linkId]);
+  }, [linkId, supabase]);
 
   async function handleSubmit() {
     if (!linkId) {
       setError("Link inválido.");
       return;
     }
+
     if (existsCompleted) return;
 
     if (!allAnswered) {
@@ -242,7 +254,6 @@ function CopsoqPageContent() {
       setError(null);
       setSubmitting(true);
 
-      // Calcular pontuações das escalas
       const scores = calculateAllScales(answers);
 
       const response = await fetch("/api/copsoq/submit", {
@@ -280,6 +291,30 @@ function CopsoqPageContent() {
     }
   }
 
+  async function handleIntroAccept() {
+    if (!introAccepted) return;
+
+    try {
+      await trackConsent({
+        type: "copsoq_participante",
+        version: "v1.0",
+        page: "copsoq_quiz",
+        metadata: {
+          link_id: linkId,
+          contrato: contratoNumero,
+        },
+      });
+    } catch (err) {
+      console.error("Erro ao registrar consentimento", err);
+    }
+
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("copsoq_intro_ack", "1");
+    }
+
+    setShowIntroModal(false);
+  }
+
   if (loading) {
     return (
       <section className="rounded-3xl border border-border bg-white p-8 shadow-sm">
@@ -305,28 +340,6 @@ function CopsoqPageContent() {
         </div>
       </section>
     );
-  }
-
-  async function handleIntroAccept() {
-    if (!introAccepted) return;
-
-   try {
-     await trackConsent({
-       type: "copsoq_participante",
-       version: "v1.0",
-       page: "copsoq_quiz",
-       metadata: {
-         link_id: linkId,
-         contrato: contratoNumero,
-       },
-     });
-   } catch (err) {
-     console.error("Erro ao registrar consentimento", err);
-   }
-
-
-    sessionStorage.setItem("copsoq_intro_ack", "1");
-    setShowIntroModal(false);
   }
 
   return (
@@ -401,9 +414,9 @@ function CopsoqPageContent() {
           </div>
         </div>
       )}
+
       <header className="space-y-3">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          {/* ESQUERDA - título */}
           <div>
             <p className="text-sm text-slate-500 uppercase tracking-[0.2em]">
               COPSOQ II BR • Preenchimento
@@ -413,9 +426,7 @@ function CopsoqPageContent() {
             </h1>
           </div>
 
-          {/* DIREITA - container com card + logo */}
           <div className="flex items-center gap-4">
-            {/* card acesso */}
             <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
               <p className="font-semibold text-slate-900">Acesso protegido</p>
               <p className="mt-1 flex items-center gap-2">
@@ -423,9 +434,8 @@ function CopsoqPageContent() {
               </p>
             </div>
 
-            {/* LOGO */}
             <Image
-              src="/images/alma4d_express_nobground.png" // ajuste o path
+              src="/images/alma4d_express_nobground.png"
               alt="Logo"
               width={92}
               height={92}
@@ -449,6 +459,7 @@ function CopsoqPageContent() {
               {contratoNumero ?? "—"}
             </p>
           </div>
+
           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm">
             <p className="text-slate-500">Link de aplicação</p>
             <p className="mt-1 font-semibold text-slate-900">
@@ -459,7 +470,6 @@ function CopsoqPageContent() {
       </header>
 
       {submitted || existsCompleted ? (
-        
         <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-6 text-slate-900">
           <div className="flex items-start gap-3">
             <CheckCircle2 className="text-emerald-600" size={24} />
@@ -488,7 +498,7 @@ function CopsoqPageContent() {
             className="space-y-6"
             onSubmit={(event) => {
               event.preventDefault();
-              handleSubmit();
+              void handleSubmit();
             }}
           >
             {COPSOQ_QUESTIONS.map((question: Question, index: number) => {
