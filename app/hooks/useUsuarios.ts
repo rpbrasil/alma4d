@@ -2,7 +2,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/auth";
-
+import { getSupabaseClient } from "@/lib/supabase/client";
 export interface Usuario {
   id: string;
   email: string;
@@ -31,10 +31,8 @@ export function useUsuarios() {
         return;
       }
 
-      try {
-        // Import dinâmico
-        const { supabase } = await import("@/lib/supabase/client");
-        
+      try {        
+        const supabase = getSupabaseClient();        
         // Carregar usuários
         const { data: usuariosData, error: err } = await supabase
           .from("usuarios")

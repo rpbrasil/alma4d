@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/auth";
+import {getSupabaseClient} from "@/lib/supabase/client"
 
 export interface DashboardMetric {
   label: string;
@@ -22,7 +23,6 @@ export interface UsuariosKpis {
 
 export function useDashboardMetrics() {
   const { user, role } = useAuth();
-
   const [metrics, setMetrics] = useState<DashboardMetric[]>([]);
   const [usuariosKpis, setUsuariosKpis] = useState<UsuariosKpis>({
     total: 0,
@@ -43,8 +43,7 @@ export function useDashboardMetrics() {
       }
 
       try {
-        const { supabase } = await import("@/lib/supabase/client");
-        
+        const supabase = getSupabaseClient();        
         const normalizedRole = role?.toLowerCase();
 
         let clientesCount = 0;

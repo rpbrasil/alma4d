@@ -2,6 +2,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/auth";
+import { getSupabaseClient } from "@/lib/supabase/client";
 
 export interface Relatorio {
   id: string;
@@ -41,9 +42,7 @@ export function useRelatorios() {
       }
 
       try {
-        // Import dinâmico
-        const { supabase } = await import("@/lib/supabase/client");
-        
+        const supabase = getSupabaseClient();        
         // Carregar relatórios
         const { data: relatoriosData, error: relErr } = await supabase
           .from("relatorios")
