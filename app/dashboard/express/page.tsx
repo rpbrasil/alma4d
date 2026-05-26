@@ -191,10 +191,19 @@ export default function DashboardExpress() {
   const [jobErrors, setJobErrors] = useState<BulkLineError[]>([]);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
-  const enqueueUrl = process.env.NEXT_PUBLIC_FN_IMPORT_ENQUEUE_URL!;
-  const workerUrl = process.env.NEXT_PUBLIC_FN_IMPORT_WORKER_URL!;
+  const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+
   const gerenciarUsuariosUrl =
-    process.env.NEXT_PUBLIC_FN_GERENCIAR_USUARIOS_URL!;
+    process.env.NEXT_PUBLIC_FN_GERENCIAR_USUARIOS_URL ??
+    `${baseUrl}/functions/v1/gerenciarusuarios`;
+
+  const enqueueUrl =
+    process.env.NEXT_PUBLIC_FN_IMPORT_ENQUEUE_URL ??
+    `${baseUrl}/functions/v1/importarusuarioscsv`;
+
+  const workerUrl =
+    process.env.NEXT_PUBLIC_FN_IMPORT_WORKER_URL ??
+    `${baseUrl}/functions/v1/importarusuarios_worker`;
 
   const { loading } = useAccessGuard({
     requirePlano: "express",
