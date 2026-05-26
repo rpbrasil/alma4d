@@ -46,7 +46,6 @@ export async function POST(req: Request) {
       );
     }
   } else {
-    // ✅ modo sem assinatura (temporário)
     console.warn(
       "Webhook sem verificação de assinatura (PAGARME_WEBHOOK_SECRET não configurado)",
     );
@@ -60,6 +59,18 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "JSON inválido" }, { status: 400 });
   }
 
+  const rawEvent = evt;
+
+  let eventHash: string | null = null;
+
+  eventHash = await crypto.subtle
+    .digest("SHA-256", new TextEncoder().encode(JSON.stringify(rawEvent)))
+    .then((buf) =>
+      Array.from(new Uint8Array(buf))
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join(""),
+    );
+
   // 4) Extrai dados normalizados
   const g = extractGatewayData(evt);
   const eventType = g.eventType;
@@ -71,13 +82,14 @@ export async function POST(req: Request) {
   const isCancelEvent =
     eventType === "order.canceled" || eventType === "checkout.canceled";
 
-  // Pix pending (sem polling)
   const isPix = g.paymentMethod === "pix";
   const isPending =
     g.paymentStatus === "pending" || g.paymentStatus === "waiting_payment";
 
+  const supabase = supabaseAdmin();
+
   if (!g.contratoId) {
-    await recordWebhookEvent(supabaseAdmin(), {
+    await recordWebhookEvent(supabase, {
       contrato_id: "unknown",
       tipo: "webhook_missing_contrato_id",
       gateway_event_id: g.eventId,
@@ -96,12 +108,61 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, ignored: true });
   }
 
-  const supabase = supabaseAdmin();
+  // helper local p/ marcar webhook_logs
+  async function markWebhookLogFinal(params: {
+    processado: boolean;
+    erro?: string | null;
+  }) {
+    if (!eventHash) return;
 
-  // 5) Carrega contrato
+    await supabase
+      .from("webhook_logs")
+      .update({
+        processado: params.processado,
+        erro: params.erro ?? null,
+      })
+      .eq("event_hash", eventHash);
+  }
+
+  // 5) Idempotência por HASH (webhook_logs)
+  const { error: insertErr } = await supabase.from("webhook_logs").insert({
+    provider: "pagarme",
+    event_type: eventType,
+    order_id: g.orderId,
+    contrato_id: g.contratoId,
+    raw_event: rawEvent,
+    event_hash: eventHash,
+  });
+
+  if (insertErr) {
+    const insertErrCode =
+      insertErr && typeof insertErr === "object" && "code" in insertErr
+        ? String((insertErr as { code?: unknown }).code ?? "")
+        : "";
+
+    // 23505 = unique violation (evento já processado / replay)
+    if (insertErrCode === "23505") {
+      console.log("Evento duplicado ignorado:", eventHash);
+
+      return NextResponse.json({
+        ok: true,
+        duplicated: true,
+      });
+    }
+
+    throw insertErr;
+  }
+
+  // 6) Carrega contrato
   const contrato = await getContrato(supabase, g.contratoId);
   const contratoForCheck = contrato ?? {};
+
   if (!contrato) {
+    await markWebhookLogFinal({
+      processado: true,
+      erro: "Contrato não encontrado",
+    });
+
     return NextResponse.json({
       ok: true,
       ignored: true,
@@ -109,8 +170,7 @@ export async function POST(req: Request) {
     });
   }
 
-  // 6) Hardening: validar vínculo order_id (se contrato já tem)
-  // (evita evento de outro pedido ativar contrato errado)
+  // 7) Hardening: validar vínculo order_id (se contrato já tem)
   if (contrato.pagarme_order_id && g.orderId) {
     if (String(contrato.pagarme_order_id) !== String(g.orderId)) {
       await recordWebhookEvent(supabase, {
@@ -125,6 +185,11 @@ export async function POST(req: Request) {
         },
       });
 
+      await markWebhookLogFinal({
+        processado: true,
+        erro: "order_id mismatch",
+      });
+
       return NextResponse.json({
         ok: true,
         ignored: true,
@@ -133,13 +198,15 @@ export async function POST(req: Request) {
     }
   }
 
-  // 7) Idempotência
+  // 8) Idempotência por eventId (contrato_eventos)
   const seen = await alreadyProcessedEvent(supabase, g.contratoId, g.eventId);
   if (seen) {
+    await markWebhookLogFinal({ processado: true });
+
     return NextResponse.json({ ok: true, duplicate: true });
   }
 
-  // 8) Auditoria: registra sempre o evento recebido (antes de aplicar efeitos)
+  // 9) Auditoria: registra sempre o evento recebido (antes de aplicar efeitos)
   await recordWebhookEvent(supabase, {
     contrato_id: g.contratoId,
     tipo: `webhook_${eventType || "unknown"}`,
@@ -147,7 +214,7 @@ export async function POST(req: Request) {
     dados: { g, raw_event_id: evt.id ?? null, raw_type: evt.type ?? null },
   });
 
-  // 9) Roteia
+  // 10) Roteia
   try {
     // FAIL / CANCEL
     if (isFailEvent || isCancelEvent) {
@@ -163,6 +230,8 @@ export async function POST(req: Request) {
         eventId: g.eventId,
       });
 
+      await markWebhookLogFinal({ processado: true });
+
       return NextResponse.json({ ok: true, updated: true });
     }
 
@@ -177,10 +246,12 @@ export async function POST(req: Request) {
         eventId: g.eventId,
       });
 
+      await markWebhookLogFinal({ processado: true });
+
       return NextResponse.json({ ok: true, pix_pending: true });
     }
 
-    // ✅ Hardening: valida valor
+    // Hardening: valida valor
     const expected = expectedCentsFromContrato(contratoForCheck);
     const got = g.amountCents ?? null;
 
@@ -199,6 +270,11 @@ export async function POST(req: Request) {
         },
       });
 
+      await markWebhookLogFinal({
+        processado: true,
+        erro: "amount mismatch",
+      });
+
       return NextResponse.json({
         ok: true,
         ignored: true,
@@ -206,7 +282,7 @@ export async function POST(req: Request) {
       });
     }
 
-    // ✅ PAGO: somente eventos paid
+    // PAGO: somente eventos paid
     if (isPaidEvent) {
       const activated = await activateContratoFull({
         supabase,
@@ -219,7 +295,7 @@ export async function POST(req: Request) {
         cupomFromGateway: g.cupomCodigo,
       });
 
-      // ✅ Email apenas na primeira ativação
+      // Email apenas na primeira ativação
       if (!activated.alreadyActive) {
         try {
           const base =
@@ -257,6 +333,8 @@ export async function POST(req: Request) {
         }
       }
 
+      await markWebhookLogFinal({ processado: true });
+
       return NextResponse.json({
         ok: true,
         activated: true,
@@ -265,7 +343,8 @@ export async function POST(req: Request) {
       });
     }
 
-    // fallback seguro
+    await markWebhookLogFinal({ processado: true });
+
     return NextResponse.json({ ok: true, ignored: true });
   } catch (err) {
     console.error("Webhook error:", err);
@@ -275,6 +354,11 @@ export async function POST(req: Request) {
       tipo: "webhook_internal_error",
       gateway_event_id: g.eventId,
       dados: { error: String(err) },
+    });
+
+    await markWebhookLogFinal({
+      processado: false,
+      erro: String(err),
     });
 
     // sempre 200 para evitar retry infinito do gateway
