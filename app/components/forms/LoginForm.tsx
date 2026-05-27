@@ -1,52 +1,44 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import { supabaseBrowser as supabase } from "@/lib/supabase/browser";
-
-type UserWithRole = {
-  app_metadata?: {
-    role?: string;
-    claims?: { role?: string };
-  };
-  user_metadata?: {
-    role?: string;
-  };
-};
-
-function getUserRole(user: unknown): string | null {
-  if (!user || typeof user !== "object") return null;
-
-  const u = user as UserWithRole;
-
-  return (
-    u.app_metadata?.claims?.role ||
-    u.app_metadata?.role ||
-    u.user_metadata?.role ||
-    null
-  );
-}
+import { getSupabaseClient } from "@/lib/supabase/client";
 
 function formatPhoneBR(value: string): string {
   const digits = value.replace(/\D/g, "");
   if (digits.length <= 2) return `(${digits}`;
   if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
-  if (digits.length <= 10)
+  if (digits.length <= 10) {
     return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  }
   return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`;
 }
+
 function extractDigits(phone: string): string {
   return phone.replace(/\D/g, "");
 }
 
+type PerfilUsuario = {
+  ativo: boolean | null;
+  tipo_plano: string | null;
+  cliente_id: string | null;
+  role: string | null;
+};
+
+type ClienteAtivo = {
+  ativo: boolean | null;
+};
+
+const EXPRESS_BASIC_ROUTE = "/dashboard/express/acesso-basico";
+
 export function LoginForm() {
-  const router = useRouter();
+  const supabase = getSupabaseClient();
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const [country, setCountry] = useState("+55");
+  // Travado em BR por enquanto, porque toda a regra atual é BR
+  const country = "+55";
   const [phoneFormatted, setPhoneFormatted] = useState("");
   const [otp, setOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
@@ -55,8 +47,11 @@ export function LoginForm() {
   const otpRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (!otpSent) phoneRef.current?.focus();
-    else otpRef.current?.focus();
+    if (!otpSent) {
+      phoneRef.current?.focus();
+    } else {
+      otpRef.current?.focus();
+    }
   }, [otpSent]);
 
   const fullPhone = `${country}${extractDigits(phoneFormatted)}`;
@@ -73,22 +68,28 @@ export function LoginForm() {
   async function sendOtp() {
     setError(null);
     setSuccess(null);
+
     if (!isPhoneValid) {
       setError("Informe um telefone válido com DDD (10–11 dígitos).");
       return;
     }
+
     if (loading) return;
     setLoading(true);
 
     try {
       const { error } = await supabase.auth.signInWithOtp({
         phone: fullPhone,
-        options: { shouldCreateUser: false }, //neste cenário, o usuário deve existir previamente no Supabase Auth para receber o OTP
+        options: {
+          shouldCreateUser: false,
+        },
       });
+
       if (error) {
         setError(error.message || "Não foi possível enviar o código.");
         return;
       }
+
       setOtpSent(true);
       setSuccess("Código enviado por SMS.");
     } catch (err: unknown) {
@@ -121,38 +122,36 @@ export function LoginForm() {
         type: "sms",
       });
 
-      if (error) {
-        setError(error.message || "Código inválido ou expirado.");
+      if (error || !data?.session) {
+        setError(error?.message || "Código inválido ou expirado.");
         return;
       }
 
-      const user = data?.user;
+      const user = data.session.user;
       if (!user?.id) {
+        await supabase.auth.signOut();
         setError("Usuário inválido.");
         return;
       }
 
-      // ✅ role vem do token (app_metadata/user_metadata)
-      const role = getUserRole(user)?.toLowerCase() ?? null;
-
-      // ✅ params
-      const params = new URLSearchParams(window.location.search);
-      const redirectParam = params.get("redirect");
-      const linkId = params.get("linkId");
-
-      // ✅ perfil (agora suporta premium/express)
       const { data: perfil, error: perfilErr } = await supabase
         .from("usuarios")
-        .select("ativo, tipo_plano, cliente_id")
+        .select("ativo, tipo_plano, cliente_id, role")
         .eq("id", user.id)
-        .maybeSingle();
+        .maybeSingle<PerfilUsuario>();
 
-      // 🧱 Cenário 1: desconhecido (não cadastrado no seu domínio)
-      if (!perfil || perfilErr) {
+      if (perfilErr) {
+        await supabase.auth.signOut();
+        setError(`Falha ao carregar perfil: ${perfilErr.message}`);
+        return;
+      }
+
+      if (!perfil) {
         await supabase.auth.signOut();
         setError("Usuário não cadastrado. Solicite acesso ao administrador.");
         return;
       }
+
 
       if (perfil.ativo === false) {
         await supabase.auth.signOut();
@@ -160,7 +159,32 @@ export function LoginForm() {
         return;
       }
 
-      const plano = (perfil.tipo_plano ?? "").toString().toLowerCase();
+      const role = (perfil.role ?? "").toString().toLowerCase().trim();
+      const plano = (perfil.tipo_plano ?? "").toString().toLowerCase().trim();
+
+      const params = new URLSearchParams(window.location.search);
+      const redirectParam = params.get("redirect");
+      const linkId = params.get("linkId");
+
+      // 1) ADMIN PRIMEIRO
+      // Admin não depende de cliente_id nem de tipo_plano para entrar na área admin
+      if (role === "admin") {
+        setSuccess("Acesso confirmado. Redirecionando…");
+        window.location.href = "/dashboard/admin/clientes";
+        return;
+      }
+
+      // 2) Roles válidas não-admin
+      const isTenantRole =
+        role === "cliente" || role === "gestor" || role === "usuario";
+
+      if (!isTenantRole) {
+        await supabase.auth.signOut();
+        setError("Perfil de acesso inválido.");
+        return;
+      }
+
+      // 3) Plano do usuário
       const basePath =
         plano === "express"
           ? "/dashboard/express"
@@ -174,12 +198,24 @@ export function LoginForm() {
         return;
       }
 
-      // ✅ valida cliente
-      const { data: cliente } = await supabase
+      // 4) Usuários não-admin precisam de tenant
+      if (!perfil.cliente_id) {
+        await supabase.auth.signOut();
+        setError("Cliente não vinculado ao usuário.");
+        return;
+      }
+
+      const { data: cliente, error: clienteErr } = await supabase
         .from("clientes")
         .select("ativo")
         .eq("id", perfil.cliente_id)
-        .maybeSingle();
+        .maybeSingle<ClienteAtivo>();
+
+      if (clienteErr) {
+        await supabase.auth.signOut();
+        setError("Falha ao validar o cliente vinculado.");
+        return;
+      }
 
       if (!cliente || cliente.ativo === false) {
         await supabase.auth.signOut();
@@ -187,42 +223,40 @@ export function LoginForm() {
         return;
       }
 
-      // ✅ Admin: pode ir para área admin (ou mantenha express se quiser)
-      if (role === "admin") {
-        setSuccess("Acesso confirmado. Redirecionando…");
-        await new Promise((r) => setTimeout(r, 200));
-        router.replace("/dashboard/admin/clientes");
-        router.refresh();
-        return;
-      }
-
-      // ✅ redirect seguro: só aceita se estiver dentro do produto do usuário
+      // 5) Redirect seguro: apenas rotas internas compatíveis com o plano
       const requested =
         redirectParam && redirectParam.startsWith("/") ? redirectParam : null;
 
-      let finalRedirect: string;
+      let finalRedirect: string | null = null;
 
+      // Se houver redirect explícito e for compatível com o plano, respeita
       if (requested && requested.startsWith(basePath)) {
         finalRedirect = requested;
-      } else {
-        // ✅ fallback por plano
-        if (plano === "express" && (role === "usuario" || role === "gestor")) {
-          if (!linkId) {
-            setError("Link de aplicação ausente.");
-            return;
-          }
-          finalRedirect = `${basePath}/copsoq?linkId=${encodeURIComponent(linkId)}`;
+      } else if (
+        plano === "express" &&
+        (role === "usuario" || role === "gestor")
+      ) {
+        // Regra nova: sem linkId -> página básica de compliance/LGPD
+        if (!linkId) {
+          finalRedirect = EXPRESS_BASIC_ROUTE;
         } else {
-          finalRedirect = basePath;
+          finalRedirect = `${basePath}/copsoq?linkId=${encodeURIComponent(linkId)}`;
         }
+      } else {
+        // cliente premium, cliente express, ou qualquer outro caso permitido
+        finalRedirect = basePath;
+      }
+
+      if (!finalRedirect) {
+        await supabase.auth.signOut();
+        setError("Erro interno de navegação.");
+        return;
       }
 
       setSuccess("Acesso confirmado. Redirecionando…");
-      await new Promise((r) => setTimeout(r, 200));
-
-      router.replace(finalRedirect);
-      router.refresh();
+      window.location.href = finalRedirect;
     } catch (err) {
+      await supabase.auth.signOut();
       setError(
         "Erro ao verificar código. " +
           (err instanceof Error ? err.message : ""),
@@ -239,7 +273,6 @@ export function LoginForm() {
     setSuccess(null);
   }
 
-  // estilos reusáveis (compactos e consistentes)
   const fieldWrap =
     "rounded-xl border border-border bg-surface focus-within:ring-2 focus-within:ring-brand-secondary/40";
   const inputBase =
@@ -259,11 +292,10 @@ export function LoginForm() {
           <div className="p-4 sm:p-5">
             <div className="flex items-center gap-3">
               <div className="flex items-center justify-center gap-3">
-                {/* <h1 className="text-base sm:text-lg font-semibold text-foreground leading-tight">
-                  {otpSent ? "Confirmar acesso" : "Entrar"}
-                </h1> */}
+                {/* título opcional */}
               </div>
             </div>
+
             {(error || success) && (
               <div className="mt-3 space-y-2">
                 {error && (
@@ -288,11 +320,9 @@ export function LoginForm() {
               </div>
             )}
 
-            {/* corpo */}
             <div className="mt-3 space-y-3">
               {!otpSent ? (
                 <>
-                  {/* telefone */}
                   <div className="space-y-1.5">
                     <label
                       htmlFor="phone-input"
@@ -303,16 +333,9 @@ export function LoginForm() {
 
                     <div className={fieldWrap}>
                       <div className="flex">
-                        <select
-                          value={country}
-                          onChange={(e) => setCountry(e.target.value)}
-                          disabled={loading}
-                          className="h-10 px-2.5 bg-surface-muted text-sm font-medium text-foreground border-0 border-r border-border outline-none rounded-l-xl"
-                          aria-label="País"
-                        >
-                          <option value="+55">+55</option>
-                          <option value="+1">+1</option>
-                        </select>
+                        <div className="h-10 px-2.5 bg-surface-muted text-sm font-medium text-foreground border-0 border-r border-border outline-none rounded-l-xl flex items-center">
+                          +55
+                        </div>
 
                         <input
                           ref={phoneRef}
@@ -351,7 +374,6 @@ export function LoginForm() {
                 </>
               ) : (
                 <>
-                  {/* otp */}
                   <div className="space-y-1.5">
                     <label
                       htmlFor="otp-input"
@@ -430,7 +452,6 @@ export function LoginForm() {
                 </>
               )}
 
-              {/* rodapé 1 linha (bem compacto) */}
               <p className="text-[11px] text-center text-foreground/45 leading-snug">
                 Seus dados são protegidos e usados apenas para verificação.
               </p>

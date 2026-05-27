@@ -1,6 +1,6 @@
 // ✅ CLIENT-SIDE ACTIONS (sem "use server")
 
-import { createClient } from "@supabase/supabase-js";
+import { getSupabaseClient } from "@/lib/supabase/client";
 
 export type Role = "admin" | "cliente" | "gestor" | "usuario";
 
@@ -25,10 +25,7 @@ function asRole(value: string | null | undefined): Role {
 }
 
 // ✅ Supabase client do browser (usa localStorage)
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-);
+const supabase = getSupabaseClient();
 
 // ✅ Helper: valida sessão e role admin (client)
 async function assertAdminClient() {

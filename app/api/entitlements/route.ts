@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export async function GET(req: Request) {
   const auth = req.headers.get("authorization");
@@ -9,11 +9,7 @@ export async function GET(req: Request) {
 
   const token = auth.split(" ")[1];
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { persistSession: false } },
-  );
+  const supabase = getSupabaseAdmin();
 
   // quem está chamando
   const { data: userWrap, error: authErr } = await supabase.auth.getUser(token);

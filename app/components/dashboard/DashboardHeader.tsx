@@ -7,6 +7,7 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { PAGE_TITLES } from "@/lib/pageTitles";
 import Image from "next/image";
+import { getSupabaseClient } from "@/lib/supabase/client";
 
 // Uso:
 <Image src="/logo.png" width={500} height={500} alt="Descrição" />;
@@ -38,7 +39,7 @@ export default function DashboardHeader() {
     await signOut();
     router.push("/");
   };
-  
+
   // ✅ título resolvido de forma estável
   const title = useMemo(() => {
     if (!pathname) return "Painel";
@@ -63,12 +64,7 @@ export default function DashboardHeader() {
 
     (async () => {
       try {
-        const { createClient } = await import("@supabase/supabase-js");
-
-        const supabase = createClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        );
+        const supabase = getSupabaseClient();
 
         const { data: usuario } = await supabase
           .from("usuarios")

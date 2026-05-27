@@ -94,7 +94,7 @@ export function LoginForm() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = createClient();//gera multiplas instancias
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

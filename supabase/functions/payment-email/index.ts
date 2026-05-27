@@ -1,8 +1,8 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { paymentConfirmedTemplate } from "../_shared/emailTemplates.ts";
+import { supabaseAdmin } from "../_shared/supabaseAdmin.ts";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
-const SUPABASE_URL = Deno.env.get("NEXT_PUBLIC_SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY =
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
@@ -43,7 +43,7 @@ serve(async (req: Request) => {
     return new Response("Method Not Allowed", { status: 405 });
   }
 
-  // ✅ segurança
+  // ⚠️ Se isso vier do front, não use service role aqui
   const auth = req.headers.get("authorization") ?? "";
   if (
     !auth.startsWith("Bearer ") ||
@@ -53,8 +53,6 @@ serve(async (req: Request) => {
       status: 401,
     });
   }
-
-  /* ===================== INPUT ===================== */
 
   const body = await req.json().catch(() => ({}));
 
@@ -70,12 +68,7 @@ serve(async (req: Request) => {
     );
   }
 
-  /* ===================== SUPABASE ===================== */
-
-  const { createClient } = await import("@supabase/supabase-js");
-  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-
-  const { data: contrato } = await supabase
+  const { data: contrato } = await supabaseAdmin
     .from("contratos")
     .select(
       "numero_contrato, pdf_url, pdf_assinado_url, criado_por, forma_pagamento",
@@ -89,7 +82,7 @@ serve(async (req: Request) => {
     });
   }
 
-  const { data: usuario } = await supabase
+  const { data: usuario } = await supabaseAdmin
     .from("usuarios")
     .select("nome_completo, email")
     .eq("id", contrato.criado_por)
@@ -103,8 +96,6 @@ serve(async (req: Request) => {
 
   const nome = usuario.nome_completo ?? "Cliente";
 
-  /* ===================== FLUXO ===================== */
-
   if (tipo === "pagamento_confirmado") {
     const contratoUrl = contrato.pdf_assinado_url ?? contrato.pdf_url ?? "";
 
@@ -112,7 +103,6 @@ serve(async (req: Request) => {
     let html = "";
 
     try {
-      // ✅ usa template profissional
       const tpl = paymentConfirmedTemplate({
         nome,
         numeroContrato: contrato.numero_contrato,
@@ -127,30 +117,21 @@ serve(async (req: Request) => {
     } catch (err) {
       console.error("Erro no template:", err);
 
-      // ✅ fallback seguro
       subject = "Pagamento confirmado ✅";
-
       html = `
         <h2>Pagamento confirmado ✅</h2>
-
         <p>Olá ${nome},</p>
-
         <p>Seu pagamento foi confirmado com sucesso.</p>
-
         <a href="${dashboard_url}">Acessar Dashboard</a><br/>
         <a href="${express_url}">Acessar Express</a>
-
         ${
           contratoUrl
             ? `<p>Contrato: <a href="${contratoUrl}">abrir PDF</a></p>`
             : `<p>Contrato será disponibilizado em breve.</p>`
         }
-
         <p>A Nota Fiscal será enviada assim que for autorizada.</p>
       `;
     }
-
-    /* ===================== ENVIO ===================== */
 
     const sent = await sendEmailResend({
       to: usuario.email,
@@ -172,8 +153,6 @@ serve(async (req: Request) => {
 
     return new Response(JSON.stringify({ ok: true }), { status: 200 });
   }
-
-  /* ===================== DEFAULT ===================== */
 
   return new Response(JSON.stringify({ error: "Tipo não suportado" }), {
     status: 400,

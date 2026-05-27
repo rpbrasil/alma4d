@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { generateContratoHTML } from "@/lib/contratoTemplate";
-import { createClient } from "@supabase/supabase-js";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import fs from "fs";
 import path from "path";
 
@@ -16,11 +16,7 @@ export async function GET(req: Request) {
     );
   }
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { persistSession: false } },
-  );
+  const supabase = getSupabaseAdmin();
 
   const { data: contrato, error: contratoErr } = await supabase
     .from("contratos")

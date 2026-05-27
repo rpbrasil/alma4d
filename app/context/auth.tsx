@@ -10,247 +10,224 @@ import {
   type ReactNode,
 } from "react";
 import { getSupabaseClient } from "@/lib/supabase/client";
-import type { User } from "@supabase/supabase-js";
-import { getStorageItem, setStorageItem, removeStorageItem } from "@/lib/storage";
+import type { User, Session } from "@supabase/supabase-js";
+import { jwtDecode } from "jwt-decode";
 
-type Role = "admin" | "cliente" | "gestor" | "usuario";
-type Plano = "express" | "premium";
+export type Role = "admin" | "cliente" | "gestor" | "usuario";
+export type Plano = "express" | "premium";
 
-type AuthContextValue = {
+type AuthState = {
   user: User | null;
   role: Role | null;
   plano: Plano | null;
+  clienteId: string | null;
+  gestorId: string | null;
+  ativo: boolean | null;
   loading: boolean;
+};
+
+type AuthContextValue = AuthState & {
   signOut: () => Promise<void>;
+  refreshSession: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-const VALID_ROLES = ["admin", "cliente", "gestor", "usuario"] as const;
-const VALID_PLANOS = ["express", "premium"] as const;
-
-const PROFILE_CACHE_KEY = "auth_profile";
-const PROFILE_CACHE_TTL_MS = 15 * 60 * 1000;
-
-type CachedProfile = {
-  userId: string;
-  role: Role;
-  plano?: Plano | null;
-  updatedAt: number;
+type AppJwtClaims = {
+  user_role?: Role | null;
+  user_plano?: Plano | null;
+  user_cliente_id?: string | null;
+  user_gestor_id?: string | null;
+  user_ativo?: boolean | null;
 };
 
 function isRole(value: unknown): value is Role {
-  return typeof value === "string" && VALID_ROLES.includes(value as Role);
+  return (
+    value === "admin" ||
+    value === "cliente" ||
+    value === "gestor" ||
+    value === "usuario"
+  );
 }
 
 function isPlano(value: unknown): value is Plano {
-  return typeof value === "string" && VALID_PLANOS.includes(value as Plano);
+  return value === "express" || value === "premium";
 }
 
-function clearCachedProfile() {
-  removeStorageItem(PROFILE_CACHE_KEY);
+function parseClaims(token: string | null | undefined): {
+  role: Role | null;
+  plano: Plano | null;
+  clienteId: string | null;
+  gestorId: string | null;
+  ativo: boolean | null;
+} {
+  if (!token) {
+    return {
+      role: null,
+      plano: null,
+      clienteId: null,
+      gestorId: null,
+      ativo: null,
+    };
+  }
+
+  try {
+    const decoded = jwtDecode<AppJwtClaims>(token);
+
+    return {
+      role: isRole(decoded.user_role) ? decoded.user_role : null,
+      plano: isPlano(decoded.user_plano) ? decoded.user_plano : null,
+      clienteId:
+        typeof decoded.user_cliente_id === "string"
+          ? decoded.user_cliente_id
+          : null,
+      gestorId:
+        typeof decoded.user_gestor_id === "string"
+          ? decoded.user_gestor_id
+          : null,
+      ativo:
+        typeof decoded.user_ativo === "boolean" ? decoded.user_ativo : null,
+    };
+  } catch (error) {
+    console.warn("Erro ao decodificar access_token JWT:", error);
+
+    return {
+      role: null,
+      plano: null,
+      clienteId: null,
+      gestorId: null,
+      ativo: null,
+    };
+  }
 }
 
-function readCachedProfile(userId: string): CachedProfile | null {
-  const parsed = getStorageItem<CachedProfile>(PROFILE_CACHE_KEY);
-
-  if (!parsed) return null;
-
-  if (parsed.userId !== userId) return null;
-
-  if (!isRole(parsed.role)) return null;
-
-  const isExpired = Date.now() - parsed.updatedAt > PROFILE_CACHE_TTL_MS;
-  if (isExpired) return null;
-
-  return parsed;
+function buildLoggedOutState(): AuthState {
+  return {
+    user: null,
+    role: null,
+    plano: null,
+    clienteId: null,
+    gestorId: null,
+    ativo: null,
+    loading: false,
+  };
 }
 
-
-
-function writeCachedProfile(profile: CachedProfile) {
-  setStorageItem(PROFILE_CACHE_KEY, profile);
-} 
+function buildLoadingState(): AuthState {
+  return {
+    user: null,
+    role: null,
+    plano: null,
+    clienteId: null,
+    gestorId: null,
+    ativo: null,
+    loading: true,
+  };
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [role, setRole] = useState<Role | null>(null);
-  const [plano, setPlano] = useState<Plano | null>(null);
-  const [loading, setLoading] = useState(true);
-
   const supabase = useMemo(() => getSupabaseClient(), []);
-  const currentUserIdRef = useRef<string | null>(null);
-  const requestIdRef = useRef(0);
+
+  const [state, setState] = useState<AuthState>(buildLoadingState());
+
+  const bootstrapDoneRef = useRef(false);
+
+  async function hydrateFromSession(session: Session | null) {
+    const user = session?.user ?? null;
+    const token = session?.access_token;
+
+    if (!user) {
+      setState(buildLoggedOutState());
+      return;
+    }
+
+    const { role, plano, clienteId, gestorId, ativo } = parseClaims(token);
+
+    setState({
+      user,
+      role,
+      plano,
+      clienteId,
+      gestorId,
+      ativo,
+      loading: false,
+    });
+  }
 
   useEffect(() => {
-    let cancelled = false;
+    let mounted = true;
 
-    const applyProfileState = (profile: {
-      role: Role | null;
-      plano: Plano | null;
-    }) => {
-      if (cancelled) return;
-      setRole(profile.role);
-      setPlano(profile.plano);
-    };
+    async function bootstrap() {
+      if (bootstrapDoneRef.current) return;
+      bootstrapDoneRef.current = true;
 
-    const clearProfileState = () => {
-      if (cancelled) return;
-      setRole(null);
-      setPlano(null);
-    };
-
-    const fetchAndCacheProfile = async (authUser: User) => {
-      const requestId = ++requestIdRef.current;
-
-      try {
-        const { data, error } = await supabase
-          .from("usuarios")
-          .select("role, tipo_plano")
-          .eq("id", authUser.id)
-          .maybeSingle();
-
-        if (cancelled || requestId !== requestIdRef.current) return;
-
-        if (error || !data) {
-          console.warn(
-            "Perfil não encontrado ou erro ao buscar perfil:",
-            error,
-          );
-          clearProfileState();
-          clearCachedProfile();
-          return;
-        }
-
-        const nextRole = isRole(data.role) ? data.role : null;
-        const nextPlano = isPlano(data.tipo_plano) ? data.tipo_plano : null;
-
-        applyProfileState({
-          role: nextRole,
-          plano: nextPlano,
-        });
-
-        if (nextRole !== null) {
-          writeCachedProfile({
-            userId: authUser.id,
-            role: nextRole,
-            plano: nextPlano,
-            updatedAt: Date.now(),
-          });
-        } else {
-          clearCachedProfile();
-          console.warn("Perfil carregado sem role válida:", { raw: data, roleRecebida: data?.role });
-        }
-      } catch (e) {
-        if (!cancelled) {
-          console.error("Erro ao carregar perfil:", e);
-          clearProfileState();
-          clearCachedProfile();
-        }
-      }
-    };
-
-    const loadAuthenticatedUser = async (authUser: User) => {
-      setUser(authUser);
-
-      const cached = readCachedProfile(authUser.id);
-
-      if (cached) {
-        applyProfileState({
-          role: cached.role,
-          plano: cached.plano ?? null,
-        });
-        setLoading(false);
-        void fetchAndCacheProfile(authUser);
-        return;
-      }
-
-      await fetchAndCacheProfile(authUser);
-      if (!cancelled) setLoading(false);
-    };
-
-    const bootstrapFromSession = async () => {
       try {
         const {
           data: { session },
         } = await supabase.auth.getSession();
 
-        if (cancelled) return;
+        if (!mounted) return;
 
-        const authUser = session?.user ?? null;
-        currentUserIdRef.current = authUser?.id ?? null;
+        await hydrateFromSession(session);
+      } catch (error) {
+        console.error("Erro ao inicializar autenticação:", error);
 
-        if (!authUser) {
-          setUser(null);
-          clearProfileState();
-          clearCachedProfile();
-          setLoading(false);
-          return;
-        }
-
-        await loadAuthenticatedUser(authUser);
-      } catch (e) {
-        if (!cancelled) {
-          console.error("Erro ao iniciar autenticação:", e);
-          setUser(null);
-          clearProfileState();
-          clearCachedProfile();
-          setLoading(false);
-        }
+        if (!mounted) return;
+        setState(buildLoggedOutState());
       }
-    };
+    }
 
-    void bootstrapFromSession();
+    void bootstrap();
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (cancelled) return;
-
-      const nextUser = session?.user ?? null;
-      const previousUserId = currentUserIdRef.current;
-      const nextUserId = nextUser?.id ?? null;
-      const userChanged = previousUserId !== nextUserId;
-
-      currentUserIdRef.current = nextUserId;
-
-      if (!nextUser) {
-        clearCachedProfile();
-        setUser(null);
-        clearProfileState();
-        setLoading(false);
-        return;
-      }
-
-      if (userChanged) {
-        clearProfileState();
-        clearCachedProfile();
-        setLoading(true);
-      }
-
-      await loadAuthenticatedUser(nextUser);
+      if (!mounted) return;
+      await hydrateFromSession(session);
     });
 
     return () => {
-      cancelled = true;
+      mounted = false;
       subscription.unsubscribe();
     };
   }, [supabase]);
 
   const signOut = async () => {
     try {
-      clearCachedProfile();
-      setUser(null);
-      setRole(null);
-      setPlano(null);
+      setState(buildLoggedOutState());
       await supabase.auth.signOut();
-    } catch (e) {
-      console.error("Erro ao sair:", e);
+    } catch (error) {
+      console.error("Erro ao sair:", error);
+    }
+  };
+
+  const refreshSession = async () => {
+    try {
+      setState((prev) => ({ ...prev, loading: true }));
+
+      const { data, error } = await supabase.auth.refreshSession();
+
+      if (error) {
+        console.error("Erro ao atualizar sessão:", error);
+        setState((prev) => ({ ...prev, loading: false }));
+        return;
+      }
+
+      await hydrateFromSession(data.session ?? null);
+    } catch (error) {
+      console.error("Erro inesperado ao atualizar sessão:", error);
+      setState((prev) => ({ ...prev, loading: false }));
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, role, plano, loading, signOut }}>
+    <AuthContext.Provider
+      value={{
+        ...state,
+        signOut,
+        refreshSession,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -258,8 +235,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
+
   if (!ctx) {
     throw new Error("useAuth must be used within AuthProvider");
   }
+
   return ctx;
 }

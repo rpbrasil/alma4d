@@ -1,11 +1,10 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { nfseAuthorizedTemplate } from "../_shared/emailTemplates.ts";
+import { supabaseAdmin } from "../_shared/supabaseAdmin.ts";
 
 /* ===================== ENV ===================== */
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
 /* ===================== HELPERS ===================== */
@@ -56,8 +55,11 @@ serve(async (req: Request) => {
     return new Response("Method Not Allowed", { status: 405 });
   }
 
-  // ✅ segurança
+  /* ===================== AUTH ===================== */
+
   const auth = req.headers.get("authorization") ?? "";
+
+  // ⚠️ aceita apenas chamadas com service role
   if (!auth.startsWith("Bearer ") || auth.slice(7) !== SERVICE_ROLE) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
@@ -75,15 +77,17 @@ serve(async (req: Request) => {
     });
   }
 
-  const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
-
   /* ===================== NFSE ===================== */
 
-  const { data: nfse } = await supabase
+  const { data: nfse, error: nfseError } = await supabaseAdmin
     .from("nfse_emissoes")
     .select("cliente_id, resposta")
     .eq("ref", ref)
     .maybeSingle();
+
+  if (nfseError) {
+    console.error("Erro ao buscar NFSe:", nfseError);
+  }
 
   if (!nfse) {
     return new Response(JSON.stringify({ error: "NFSe não encontrada" }), {
@@ -93,11 +97,15 @@ serve(async (req: Request) => {
 
   /* ===================== CLIENTE ===================== */
 
-  const { data: cliente } = await supabase
+  const { data: cliente, error: clienteError } = await supabaseAdmin
     .from("clientes")
     .select("email, nome")
     .eq("id", nfse.cliente_id)
     .maybeSingle();
+
+  if (clienteError) {
+    console.error("Erro ao buscar cliente:", clienteError);
+  }
 
   if (!cliente?.email) {
     return new Response(JSON.stringify({ error: "Email do cliente ausente" }), {
@@ -105,7 +113,7 @@ serve(async (req: Request) => {
     });
   }
 
-  /* ===================== EXTRAÇÃO CORRETA (FOCUS REAL) ===================== */
+  /* ===================== EXTRAÇÃO ===================== */
 
   const resp = nfse.resposta;
 
@@ -113,14 +121,9 @@ serve(async (req: Request) => {
   let xmlUrl: string | null = null;
 
   if (isRecord(resp)) {
-    pdfUrl =
-      getString(resp["url_danfse"]) ?? // ✅ principal
-      getString(resp["url"]) ??
-      null;
+    pdfUrl = getString(resp["url_danfse"]) ?? getString(resp["url"]) ?? null;
 
-    xmlUrl =
-      getString(resp["caminho_xml_nota_fiscal"]) ?? // ✅ correto
-      null;
+    xmlUrl = getString(resp["caminho_xml_nota_fiscal"]) ?? null;
   }
 
   /* ===================== TEMPLATE ===================== */
@@ -142,5 +145,9 @@ serve(async (req: Request) => {
     });
   }
 
-  return new Response(JSON.stringify({ ok: true }), { status: 200 });
+  /* ===================== SUCCESS ===================== */
+
+  return new Response(JSON.stringify({ ok: true }), {
+    status: 200,
+  });
 });

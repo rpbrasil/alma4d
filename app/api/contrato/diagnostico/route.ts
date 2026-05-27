@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 type DiagnosticoCheck = Record<string, unknown>;
 
@@ -36,10 +36,7 @@ export async function GET(req: Request) {
   }
 
   try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    );
+    const supabase = getSupabaseAdmin();
 
     const { data: contrato, error: contratoError } = await supabase
       .from("contratos")

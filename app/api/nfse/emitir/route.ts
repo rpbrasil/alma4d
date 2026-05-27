@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 type ClienteRow = {
   id: string;
@@ -30,11 +30,7 @@ export async function POST(req: Request) {
     }
 
     // service role (backend)
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { persistSession: false } },
-    );
+    const supabase = getSupabaseAdmin();
 
     // Carrega contrato + cliente
     const { data: contrato } = await supabase

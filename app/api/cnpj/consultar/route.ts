@@ -1,7 +1,25 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { rateLimit } from "@/lib/rate-limit";
 import { verifyTurnstile } from "@/lib/verify-turnstile";
+
+
+type CnpjConsultaInsert = {
+  cnpj: string;
+  razao_social?: string;
+  situacao_cadastral?: string;
+  cnae_principal?: string;
+  optante_simples?: boolean;
+  optante_mei?: boolean;
+  logradouro?: string | null;
+  numero?: string | null;
+  complemento?: string | null;
+  bairro?: string | null;
+  municipio?: string | null;
+  uf?: string | null;
+  cep?: string | null;
+  raw: unknown;
+};
 
 export async function POST(req: Request) {
   const ip =
@@ -68,12 +86,9 @@ export async function POST(req: Request) {
 
     const data = await response.json();
 
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    );
+    const supabase = getSupabaseAdmin();
 
-    await supabase.from("cnpj_consultas").insert({
+    await supabase.from("cnpj_consultas").insert([{
       cnpj: data.cnpj,
       razao_social: data.razao_social,
       situacao_cadastral: data.situacao_cadastral,
@@ -88,7 +103,7 @@ export async function POST(req: Request) {
       uf: data.endereco?.uf,
       cep: data.endereco?.cep,
       raw: data,
-    });
+    } satisfies CnpjConsultaInsert]);
 
     return NextResponse.json(data);
   } catch (err) {

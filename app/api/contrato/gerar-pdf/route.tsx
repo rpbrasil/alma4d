@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { renderToBuffer } from "@react-pdf/renderer";
-import { createClient } from "@supabase/supabase-js";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { ContratoNR1PDF } from "@/lib/pdf/contratoNR1";
 import QRCode from "qrcode";
 
@@ -54,10 +54,7 @@ export async function POST(req: Request) {
     });
 
     // ✅ 5. SUPABASE
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    );
+    const supabase = getSupabaseAdmin();
 
     const fileName = `clientes/${contrato.cliente_id}/contratos/${contrato.id}/v${contrato.versao}/contrato-gerado.pdf`;
 
