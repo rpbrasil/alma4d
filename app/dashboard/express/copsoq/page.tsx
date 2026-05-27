@@ -659,6 +659,32 @@ export default function DashboardExpressCopsoqPage() {
           ) : (
             <span className="text-xs text-slate-500"> </span>
           )}
+          <button
+            onClick={async () => {
+              const confirm = window.confirm(
+                "Isso encerrará o ciclo atual e iniciará um novo. Deseja continuar?",
+              );
+
+              if (!confirm) return;
+
+              await fetch("/api/copsoq/create-link", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  contratoId,
+                  campaign,
+                  forceNewCycle: true, // 🔥 ESSA É A CHAVE
+                }),
+              });
+
+              // opcional: refetch dados
+            }}
+            className="inline-flex items-center gap-2 rounded-lg bg-brand-accent px-4 py-2 text-sm font-semibold text-white hover:bg-brand/90 transition disabled:opacity-60"
+          >
+            Renovar ciclo
+          </button>
         </div>
       </section>
 

@@ -25,8 +25,7 @@ function parseBoolean(value: FormDataEntryValue | null) {
 }
 
 function parseString(value: FormDataEntryValue | null) {
-  const str = typeof value === "string" ? value.trim() : "";
-  return str;
+  return typeof value === "string" ? value.trim() : "";
 }
 
 function parseJwtClaims(accessToken: string | null | undefined): {
@@ -82,6 +81,18 @@ function extensionFromFilename(name: string) {
   return parts.pop()?.toLowerCase() ?? "";
 }
 
+function isFutureDate(dateString: string | null) {
+  if (!dateString) return false;
+
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, "0");
+  const dd = String(today.getDate()).padStart(2, "0");
+  const todayISO = `${yyyy}-${mm}-${dd}`;
+
+  return dateString > todayISO;
+}
+
 export async function POST(req: Request) {
   try {
     const cookieStore = await cookies();
@@ -103,9 +114,10 @@ export async function POST(req: Request) {
 
     const {
       data: { session },
+      error: sessionError,
     } = await supabase.auth.getSession();
 
-    if (!session?.user) {
+    if (sessionError || !session?.user) {
       return NextResponse.json({ error: "not_authenticated" }, { status: 401 });
     }
 
@@ -118,6 +130,14 @@ export async function POST(req: Request) {
     if (!claims.clienteId) {
       return NextResponse.json(
         { error: "tenant_not_resolved" },
+        { status: 403 },
+      );
+    }
+
+    // Opcionalmente você pode endurecer a validação:
+    if (!claims.role || !claims.plano) {
+      return NextResponse.json(
+        { error: "invalid_token_claims" },
         { status: 403 },
       );
     }
@@ -158,6 +178,13 @@ export async function POST(req: Request) {
     if (!consentimentoTratamento) {
       return NextResponse.json(
         { error: "consentimento_obrigatorio" },
+        { status: 400 },
+      );
+    }
+
+    if (dataOcorrencia && isFutureDate(dataOcorrencia)) {
+      return NextResponse.json(
+        { error: "data_ocorrencia_futura" },
         { status: 400 },
       );
     }
@@ -221,6 +248,7 @@ export async function POST(req: Request) {
     }
 
     if (files.length > 0) {
+      const uploadedPaths: string[] = [];
       const evidenciasRows: Array<{
         denuncia_id: string;
         bucket: string;
@@ -247,11 +275,21 @@ export async function POST(req: Request) {
 
         if (uploadError) {
           console.error("Erro ao enviar arquivo:", uploadError);
+
+          // cleanup dos uploads anteriores
+          if (uploadedPaths.length > 0) {
+            await adminDb.storage
+              .from("denuncias-evidencias")
+              .remove(uploadedPaths);
+          }
+
           return NextResponse.json(
             { error: `upload_failed:${file.name}` },
             { status: 500 },
           );
         }
+
+        uploadedPaths.push(storagePath);
 
         evidenciasRows.push({
           denuncia_id: denuncia.id,
@@ -259,26 +297,24 @@ export async function POST(req: Request) {
           storage_path: storagePath,
           mime_type: file.type,
           tamanho_bytes: file.size,
-          nome_original: anonimizada ? null : file.name, // note: typo? must be anonimizada
+          nome_original: anonimizada ? null : file.name,
         });
       }
 
-      // corrige typo antes de inserir
-      const safeRows = evidenciasRows.map((row) => ({
-        ...row,
-      }));
-
       const { error: evidenceError } = await adminDb
         .from("denuncias_arquivos")
-        .insert(
-          safeRows.map((row) => ({
-            ...row,
-            nome_original: anonimizada ? null : row.nome_original,
-          })),
-        );
+        .insert(evidenciasRows);
 
       if (evidenceError) {
         console.error("Erro ao inserir metadados dos arquivos:", evidenceError);
+
+        // cleanup arquivos já enviados para evitar órfãos
+        if (uploadedPaths.length > 0) {
+          await adminDb.storage
+            .from("denuncias-evidencias")
+            .remove(uploadedPaths);
+        }
+
         return NextResponse.json(
           { error: "evidence_metadata_insert_failed" },
           { status: 500 },

@@ -7,12 +7,14 @@ import { buildCopsoqHref } from "@/lib/navigation/copsoq";
 type Role = "admin" | "cliente" | "gestor" | "usuario" | null;
 type Plano = "express" | "premium" | null;
 
-function parseJwtClaims(accessToken: string | null | undefined): {
+type JwtClaims = {
   role: Role;
   plano: Plano;
   clienteId: string | null;
   ativo: boolean | null;
-} {
+};
+
+function parseJwtClaims(accessToken: string | null | undefined): JwtClaims {
   if (!accessToken) {
     return { role: null, plano: null, clienteId: null, ativo: null };
   }
@@ -78,46 +80,49 @@ export async function GET() {
     } = await supabase.auth.getSession();
 
     if (!session?.user) {
-      return NextResponse.json({ error: "not_authenticated" }, { status: 401 });
+      return NextResponse.json(
+        { ok: false, error: "not_authenticated" },
+        { status: 401 },
+      );
     }
 
     const claims = parseJwtClaims(session.access_token);
 
     if (claims.ativo === false) {
-      return NextResponse.json({ error: "user_inactive" }, { status: 403 });
+      return NextResponse.json(
+        { ok: false, error: "user_inactive" },
+        { status: 403 },
+      );
     }
 
     if (claims.plano !== "express") {
-      return NextResponse.json({ error: "not_express" }, { status: 403 });
+      return NextResponse.json(
+        { ok: false, error: "not_express" },
+        { status: 403 },
+      );
     }
 
     if (!claims.clienteId) {
       return NextResponse.json(
-        { error: "tenant_not_resolved" },
+        { ok: false, error: "tenant_not_resolved" },
         { status: 403 },
       );
     }
 
     const adminDb = getSupabaseAdmin();
 
-    /**
-     * ASSUNÇÃO PRÁTICA:
-     * considera o link ativo mais recente do cliente.
-     *
-     * Se no seu negócio houver mais de um contrato ativo simultâneo por cliente
-     * para campanhas COPSOQ diferentes, esta regra pode ser refinada depois
-     * (por contrato explicitado, por período, por campanha etc.).
-     */
+    // 1) Todos os links ativos do cliente
     const { data: activeLinks, error: linksError } = await adminDb
       .from("copsoq_links")
-      .select("id, contrato_id, ativo, created_at")
+      .select("id, contrato_id, cliente_id, ativo, created_at")
+      .eq("cliente_id", claims.clienteId)
       .eq("ativo", true)
       .order("created_at", { ascending: false });
 
     if (linksError) {
       console.error("Erro ao buscar links ativos:", linksError);
       return NextResponse.json(
-        { error: "active_link_lookup_failed" },
+        { ok: false, error: "active_link_lookup_failed" },
         { status: 500 },
       );
     }
@@ -134,81 +139,58 @@ export async function GET() {
       });
     }
 
-    /**
-     * Como copsoq_links não traz cliente_id diretamente,
-     * filtramos contratos do cliente e cruzamos.
-     */
-    const contratoIds = activeLinks.map((l) => l.contrato_id);
+    const activeLinkIds = activeLinks.map((l) => l.id);
+    const activeLinksMap = new Map(activeLinks.map((l) => [l.id, l] as const));
 
-    const { data: contratos, error: contratosError } = await adminDb
-      .from("contratos")
-      .select("id, cliente_id, status")
-      .in("id", contratoIds)
-      .eq("cliente_id", claims.clienteId)
-      .eq("status", "ativo");
-
-    if (contratosError) {
-      console.error("Erro ao buscar contratos ativos:", contratosError);
-      return NextResponse.json(
-        { error: "contract_lookup_failed" },
-        { status: 500 },
-      );
-    }
-
-    const validContratoIds = new Set((contratos ?? []).map((c) => c.id));
-
-    const candidateLinks = activeLinks.filter((l) =>
-      validContratoIds.has(l.contrato_id),
-    );
-
-    if (candidateLinks.length === 0) {
-      return NextResponse.json({
-        ok: true,
-        status: "no_active_link",
-        canRespond: false,
-        href: null,
-        linkId: null,
-        message:
-          "No momento não há campanha ativa do questionário vinculada ao seu contrato.",
-      });
-    }
-
-    const currentLink = candidateLinks[0];
-    const currentLinkId = currentLink.id as string;
-
-    const { data: userLink, error: userLinkError } = await adminDb
+    // 2) Verifica se o usuário está vinculado a algum link ativo do cliente
+    const { data: userLinks, error: userLinksError } = await adminDb
       .from("copsoq_aplicacoes_links")
-      .select("id, usuario_id, link_id, aplicacao_id")
+      .select("id, usuario_id, link_id, aplicacao_id, created_at")
       .eq("usuario_id", session.user.id)
-      .eq("link_id", currentLinkId)
-      .maybeSingle();
+      .in("link_id", activeLinkIds);
 
-    if (userLinkError) {
+    if (userLinksError) {
       console.error(
-        "Erro ao buscar vínculo do usuário com o link:",
-        userLinkError,
+        "Erro ao buscar vínculos do usuário com links ativos:",
+        userLinksError,
       );
       return NextResponse.json(
-        { error: "user_link_lookup_failed" },
+        { ok: false, error: "user_link_lookup_failed" },
         { status: 500 },
       );
     }
 
-    // 1) Usuário não foi vinculado à campanha atual
-    if (!userLink) {
+    // 3) Usuário não foi incluído em nenhum link ativo do ciclo atual
+    if (!userLinks || userLinks.length === 0) {
       return NextResponse.json({
         ok: true,
         status: "not_linked",
         canRespond: false,
         href: null,
-        linkId: currentLinkId,
+        linkId: activeLinks[0].id,
         message:
-          "Você ainda não foi incluído(a) na campanha atual do questionário.",
+          "Você ainda não foi incluído(a) na campanha ativa atual do questionário.",
       });
     }
 
-    // 2) Já respondeu no ciclo atual
-    if (userLink.aplicacao_id) {
+    // 4) Se houver mais de um vínculo, escolhe o mais recente com base no link ativo
+    const sortedUserLinks = [...userLinks].sort((a, b) => {
+      const aCreated = activeLinksMap.get(a.link_id)?.created_at
+        ? new Date(activeLinksMap.get(a.link_id)!.created_at).getTime()
+        : 0;
+
+      const bCreated = activeLinksMap.get(b.link_id)?.created_at
+        ? new Date(activeLinksMap.get(b.link_id)!.created_at).getTime()
+        : 0;
+
+      return bCreated - aCreated;
+    });
+
+    const currentUserLink = sortedUserLinks[0];
+    const currentLinkId = currentUserLink.link_id;
+
+    // 5) Já respondeu no ciclo atual
+    if (currentUserLink.aplicacao_id) {
       return NextResponse.json({
         ok: true,
         status: "answered",
@@ -220,7 +202,7 @@ export async function GET() {
       });
     }
 
-    // 3) Está apto e ainda não respondeu
+    // 6) Está apto e ainda não respondeu
     return NextResponse.json({
       ok: true,
       status: "pending",
@@ -231,6 +213,9 @@ export async function GET() {
     });
   } catch (error) {
     console.error("Erro inesperado em /api/copsoq/status:", error);
-    return NextResponse.json({ error: "unexpected_failure" }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: "unexpected_failure" },
+      { status: 500 },
+    );
   }
 }

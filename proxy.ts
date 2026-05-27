@@ -7,6 +7,15 @@ type Plano = "express" | "premium" | null;
 
 const ADMIN_TENANT_COOKIE = "alma4d_admin_tenant_id";
 
+function hasValidLinkId(search: string) {
+  if (!search) return false;
+
+  const params = new URLSearchParams(search);
+  const linkId = params.get("linkId");
+
+  return isUuid(linkId);
+}
+
 function copyCookies(from: NextResponse, to: NextResponse) {
   from.cookies.getAll().forEach((cookie) => {
     to.cookies.set(cookie);
@@ -204,13 +213,9 @@ function allowExpressRouteForRole(pathname: string, role: Role) {
 
   // questionário
   if (isExpressCopsoq(pathname)) {
-    return (
-      role === "admin" ||
-      role === "cliente" ||
-      role === "gestor" ||
-      role === "usuario"
-    );
+    return false; // 🚨 bloqueia aqui, vamos tratar no middleware principal
   }
+
 
   // home express
   if (isExpressHome(pathname)) {
@@ -414,6 +419,26 @@ export async function proxy(req: NextRequest) {
       // ✅ admin pode navegar livremente (sem tenant)
       // (mantemos tenant scope só se você quiser restrição mais forte no futuro)
       if (isAdmin) {
+        return nextWithCookies(res, requestHeaders);
+      }
+
+      // -----------------------------------------
+      // COPSOQ - controle de acesso rigoroso
+      // -----------------------------------------
+      if (isExpressCopsoq(pathname)) {
+        // admin pode acessar livremente
+        if (isAdmin) {
+          return nextWithCookies(res, requestHeaders);
+        }
+
+        // precisa de linkId válido
+        if (!hasValidLinkId(search)) {
+          const url = new URL("/dashboard/express/acesso-basico", req.url);
+          url.searchParams.set("step", "3");
+
+          return redirectWithCookies(res, url);
+        }
+
         return nextWithCookies(res, requestHeaders);
       }
 
