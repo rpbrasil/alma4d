@@ -7,14 +7,39 @@ type Plano = "express" | "premium" | null;
 
 const ADMIN_TENANT_COOKIE = "alma4d_admin_tenant_id";
 
-function redirectWithCookies(res: NextResponse, url: URL) {
-  const redirect = NextResponse.redirect(url);
+function copyCookies(from: NextResponse, to: NextResponse) {
+  from.cookies.getAll().forEach((cookie) => {
+    to.cookies.set(cookie);
+  });
+  return to;
+}
 
-  res.cookies.getAll().forEach((cookie) => {
-    redirect.cookies.set(cookie);
+function redirectWithCookies(
+  res: NextResponse,
+  url: URL,
+  status?: 302 | 307 | 308,
+) {
+  const redirect = NextResponse.redirect(url, status);
+  return copyCookies(res, redirect);
+}
+
+function nextWithCookies(res: NextResponse, headers: Headers) {
+  const next = NextResponse.next({
+    request: {
+      headers,
+    },
   });
 
-  return redirect;
+  return copyCookies(res, next);
+}
+
+function jsonWithCookies(
+  res: NextResponse,
+  body: Record<string, unknown>,
+  init?: ResponseInit,
+) {
+  const json = NextResponse.json(body, init);
+  return copyCookies(res, json);
 }
 
 function isUuid(value: string | null | undefined): value is string {
@@ -25,7 +50,6 @@ function isUuid(value: string | null | undefined): value is string {
   );
 }
 
-// Edge-safe base64url decoder
 function decodeJwtPayload(token: string): Record<string, unknown> | null {
   try {
     const parts = token.split(".");
@@ -107,14 +131,146 @@ function parseJwtClaims(accessToken: string | null | undefined): {
   };
 }
 
-function buildBasePath(plano: Plano) {
-  if (plano === "express") return "/dashboard/express";
-  if (plano === "premium") return "/dashboard/premium";
+function buildDefaultLanding(role: Role, plano: Plano) {
+  if (role === "admin") return "/dashboard/admin/clientes";
+
+  if (plano === "premium") {
+    return "/dashboard/premium";
+  }
+
+  if (plano === "express") {
+    if (role === "usuario" || role === "gestor") {
+      return "/dashboard/express/acesso-basico?step=1";
+    }
+
+    return "/dashboard/express";
+  }
+
   return "/dashboard";
+}
+
+function isExpressRoute(pathname: string) {
+  return pathname.startsWith("/dashboard/express");
+}
+
+function isPremiumRoute(pathname: string) {
+  return pathname.startsWith("/dashboard/premium");
+}
+
+function isAdminRoute(pathname: string) {
+  return pathname.startsWith("/dashboard/admin");
+}
+
+function isExpressAcessoBasico(pathname: string) {
+  return pathname.startsWith("/dashboard/express/acesso-basico");
+}
+
+function isExpressCopsoq(pathname: string) {
+  return pathname.startsWith("/dashboard/express/copsoq");
+}
+
+function isExpressParceiros(pathname: string) {
+  return pathname.startsWith("/dashboard/express/parceiros");
+}
+
+function isExpressRelatorio(pathname: string) {
+  return pathname.startsWith("/dashboard/express/relatorio-copsoq");
+}
+
+function isExpressDocumentos(pathname: string) {
+  return pathname.startsWith("/dashboard/express/documentos");
+}
+
+function isExpressHome(pathname: string) {
+  return pathname === "/dashboard/express";
+}
+
+function isPremiumHome(pathname: string) {
+  return pathname === "/dashboard/premium";
+}
+
+function allowExpressRouteForRole(pathname: string, role: Role) {
+  if (!role) return false;
+
+  // rota especial
+  if (isExpressAcessoBasico(pathname)) {
+    return (
+      role === "admin" ||
+      role === "cliente" ||
+      role === "gestor" ||
+      role === "usuario"
+    );
+  }
+
+  // questionário
+  if (isExpressCopsoq(pathname)) {
+    return (
+      role === "admin" ||
+      role === "cliente" ||
+      role === "gestor" ||
+      role === "usuario"
+    );
+  }
+
+  // home express
+  if (isExpressHome(pathname)) {
+    return role === "admin" || role === "cliente";
+  }
+
+  // documentos
+  if (isExpressDocumentos(pathname)) {
+    return role === "admin" || role === "cliente";
+  }
+
+  // relatório
+  if (isExpressRelatorio(pathname)) {
+    return role === "admin" || role === "cliente";
+  }
+
+  // parceiros
+  if (isExpressParceiros(pathname)) {
+    return role === "admin";
+  }
+
+  // fallback geral express
+  return role === "admin" || role === "cliente";
+}
+
+function allowPremiumRouteForRole(pathname: string, role: Role) {
+  if (!role) return false;
+
+  if (isPremiumHome(pathname)) {
+    return role === "admin" || role === "cliente" || role === "gestor";
+  }
+
+  // todas as demais páginas premium seguem o mesmo conjunto por enquanto
+  return role === "admin" || role === "cliente" || role === "gestor";
+}
+
+function allowAdminRouteForRole(pathname: string, role: Role) {
+  if (!role) return false;
+
+  // rotas admin exclusivas
+  if (
+    pathname.startsWith("/dashboard/admin/clientes") ||
+    pathname.startsWith("/dashboard/admin/financeiro") ||
+    pathname.startsWith("/dashboard/admin/deletar-usuario")
+  ) {
+    return role === "admin";
+  }
+
+  // exceção já prevista
+  if (pathname.startsWith("/dashboard/admin/usuarios")) {
+    return role === "admin" || role === "cliente" || role === "gestor";
+  }
+
+  // fallback admin
+  return role === "admin";
 }
 
 export async function proxy(req: NextRequest) {
   const requestHeaders = new Headers(req.headers);
+
   const res = NextResponse.next({
     request: {
       headers: requestHeaders,
@@ -171,117 +327,138 @@ export async function proxy(req: NextRequest) {
     const ativo = claims.ativo;
     const userClienteId = claims.clienteId;
 
-    const isAdmin = role === "admin";
-    
+    if (!role || !plano || ativo === null) {
+      return redirectWithCookies(res, new URL("/login", req.url));
+    }
+
     if (ativo === false) {
       return redirectWithCookies(res, new URL("/login", req.url));
     }
 
-    // tenant scope efetivo
+    const isAdmin = role === "admin";
+
     const scopedTenantIdRaw =
       req.cookies.get(ADMIN_TENANT_COOKIE)?.value ?? null;
+
     const adminScopedTenantId = isUuid(scopedTenantIdRaw)
       ? scopedTenantIdRaw
       : null;
 
-    // usuário normal sempre usa o cliente do JWT
-    // admin usa tenant scope se houver; senão continua com acesso global/admin
     const effectiveTenantId = isAdmin ? adminScopedTenantId : userClienteId;
-
     const adminIsScoped = isAdmin && !!adminScopedTenantId;
 
-    const basePath = buildBasePath(plano);
-
-    // -----------------------------------------
-    // Injetar headers para uso server-side
-    // -----------------------------------------
+    // headers úteis para server-side
     requestHeaders.set("x-alma4d-role", role ?? "");
     requestHeaders.set("x-alma4d-plano", plano ?? "");
     requestHeaders.set("x-alma4d-user-cliente-id", userClienteId ?? "");
     requestHeaders.set("x-alma4d-effective-tenant-id", effectiveTenantId ?? "");
     requestHeaders.set("x-alma4d-admin-scoped", adminIsScoped ? "1" : "0");
 
+    const landing = buildDefaultLanding(role, plano);
+
     // -----------------------------------------
-    // API EXPRESS ONLY
+    // /dashboard -> landing por role/plano
+    // -----------------------------------------
+    if (pathname === "/dashboard") {
+      return redirectWithCookies(res, new URL(landing, req.url));
+    }
+
+    // -----------------------------------------
+    // API EXPRESS
     // -----------------------------------------
     if (pathname.startsWith("/api/copsoq")) {
-      if (!isAdmin && plano !== "express") {
-        return NextResponse.json({ error: "forbidden" }, { status: 403 });
+      if (plano !== "express") {
+        return jsonWithCookies(res, { error: "forbidden" }, { status: 403 });
       }
 
-      // admin scoped ou user normal autenticado passam
-      return NextResponse.next({
-        request: { headers: requestHeaders },
-      });
+      // admin em área de produto precisa ter tenant scope
+      if (isAdmin && !adminScopedTenantId) {
+        return jsonWithCookies(
+          res,
+          { error: "tenant_scope_required" },
+          { status: 403 },
+        );
+      }
+
+      if (
+        role === "usuario" ||
+        role === "gestor" ||
+        role === "cliente" ||
+        role === "admin"
+      ) {
+        return nextWithCookies(res, requestHeaders);
+      }
+
+      return jsonWithCookies(res, { error: "forbidden" }, { status: 403 });
     }
 
     // -----------------------------------------
     // ADMIN AREA
     // -----------------------------------------
-    if (pathname.startsWith("/dashboard/admin")) {
+    if (isAdminRoute(pathname)) {
+      if (allowAdminRouteForRole(pathname, role)) {
+        return nextWithCookies(res, requestHeaders);
+      }
+
+      return redirectWithCookies(res, new URL(landing, req.url));
+    }
+
+    // -----------------------------------------
+    // EXPRESS AREA
+    // -----------------------------------------
+    if (isExpressRoute(pathname)) {
+      if (plano !== "express") {
+        return redirectWithCookies(res, new URL(landing, req.url));
+      }
+
+      // ✅ admin pode navegar livremente (sem tenant)
+      // (mantemos tenant scope só se você quiser restrição mais forte no futuro)
       if (isAdmin) {
-        return NextResponse.next({
-          request: { headers: requestHeaders },
-        });
+        return nextWithCookies(res, requestHeaders);
       }
 
-      // exceção mantida
-      if (
-        pathname.startsWith("/dashboard/admin/usuarios") &&
-        (role === "cliente" || role === "gestor")
-      ) {
-        return NextResponse.next({
-          request: { headers: requestHeaders },
-        });
+      if (allowExpressRouteForRole(pathname, role)) {
+        return nextWithCookies(res, requestHeaders);
       }
 
-      return redirectWithCookies(res, new URL(basePath, req.url));
+      // usuario/gestor express caem no canal seguro
+      if (role === "usuario" || role === "gestor") {
+        const url = new URL("/dashboard/express/acesso-basico", req.url);
+        url.searchParams.set("step", "1"); // ✅ onboarding começa aqui
+        return redirectWithCookies(res, url);
+      }
+      return redirectWithCookies(res, new URL(landing, req.url));
     }
 
     // -----------------------------------------
-    // ÁREAS DE PRODUTO
+    // PREMIUM AREA
     // -----------------------------------------
-
-    // Usuário não-admin continua restrito pelo próprio plano
-    if (!isAdmin) {
-      if (pathname.startsWith("/dashboard/express") && plano !== "express") {
-        return redirectWithCookies(res, new URL(basePath, req.url));
+    if (isPremiumRoute(pathname)) {
+      if (plano !== "premium") {
+        return redirectWithCookies(res, new URL(landing, req.url));
       }
 
-      if (pathname.startsWith("/dashboard/premium") && plano !== "premium") {
-        return redirectWithCookies(res, new URL(basePath, req.url));
-      }
-
-      return NextResponse.next({
-        request: { headers: requestHeaders },
-      });
-    }
-
-    // -----------------------------------------
-    // ADMIN fora da área admin:
-    // melhor prática = exigir tenant scope prévio
-    // -----------------------------------------
-    if (
-      isAdmin &&
-      (pathname.startsWith("/dashboard/express") ||
-        pathname.startsWith("/dashboard/premium"))
-    ) {
-      if (!adminScopedTenantId) {
+      if (isAdmin && !adminScopedTenantId) {
         const url = new URL("/dashboard/admin/clientes", req.url);
         url.searchParams.set("modo", "selecionar-tenant");
         url.searchParams.set("redirect", fullPath);
         return redirectWithCookies(res, url);
       }
 
-      return NextResponse.next({
-        request: { headers: requestHeaders },
-      });
+      if (allowPremiumRouteForRole(pathname, role)) {
+        return nextWithCookies(res, requestHeaders);
+      }
+
+      return redirectWithCookies(res, new URL(landing, req.url));
     }
+
+    // -----------------------------------------
+    // Outras rotas autenticadas genéricas
+    // -----------------------------------------
+    return nextWithCookies(res, requestHeaders);
   }
 
-  return NextResponse.next({
-    request: { headers: requestHeaders },
-  });
+  return nextWithCookies(res, requestHeaders);
 }
 
 export const config = {

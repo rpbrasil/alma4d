@@ -3,7 +3,6 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { getSupabaseClient } from "@/lib/supabase/client";
 import {
   LayoutDashboard,
   BarChart3,
@@ -17,18 +16,17 @@ import {
   Home,
   Users,
   UserX,
+  ShieldCheck,
 } from "lucide-react";
-import { useMemo, useState, useEffect } from "react";
-import { useAuth } from "@/context/auth";
+import { useMemo, useState } from "react";
+import { useAuth, Role } from "@/context/auth";
 import { clearAlma4dStorage } from "@/lib/storage";
-
-
 
 type NavItem = {
   href: string;
   label: string;
   icon: LucideIcon;
-  roles?: string[];
+  roles: Role[];
 };
 
 type Plano = "express" | "premium";
@@ -39,26 +37,43 @@ const NAV_BY_PLAN: Record<Plano, NavItem[]> = {
       href: "/dashboard/express",
       label: "Inclusão de usuários",
       icon: Home,
+      roles: ["admin", "cliente"],
+    },
+    {
+      href: "/dashboard/admin/clientes",
+      label: "Clientes",
+      icon: Users,
+      roles: ["admin"],
     },
     {
       href: "/dashboard/express/documentos",
       label: "Documentos",
       icon: FileText,
+      roles: ["admin", "cliente"],
     },
     {
       href: "/dashboard/express/copsoq",
       label: "Acesso ao Questionário",
       icon: QrCode,
+      roles: ["admin", "cliente"],
+    },
+    {
+      href: "/dashboard/express/acesso-basico?step=2",
+      label: "Canal seguro",
+      icon: ShieldCheck,
+      roles: ["usuario", "cliente", "admin", "gestor"],
     },
     {
       href: "/dashboard/express/parceiros",
       label: "Parceiros",
       icon: Users,
+      roles: ["admin"],
     },
     {
       href: "/dashboard/express/relatorio-copsoq",
       label: "Relatório NR-1 | Psicossocial",
       icon: ClipboardList,
+      roles: ["admin", "cliente"],
     },
     {
       href: "/dashboard/admin/financeiro",
@@ -105,7 +120,7 @@ const NAV_BY_PLAN: Record<Plano, NavItem[]> = {
       roles: ["admin", "cliente", "gestor"],
     },
     {
-      href: `/dashboard/premium/configuracoes`,
+      href: "/dashboard/premium/configuracoes",
       label: "Configurações",
       icon: Settings,
       roles: ["admin", "cliente", "gestor"],
@@ -129,28 +144,24 @@ export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, loading, signOut, plano, role } = useAuth();
+
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [isOpen] = useState(false);
+
   const effectivePlano = plano as Plano;
-  const [isOpen, setIsOpen] = useState(false);
-  const [displayName, setDisplayName] = useState("Usuário");
-  const supabase = useMemo(() => getSupabaseClient(), []);
- 
-  const userId = user?.id ?? null;
 
-  const items = useMemo(() => {
-    if (!role) {
-      console.warn("Sidebar sem role:", user);
-      return [];
-    }
+  const displayName = "Usuário";
 
-    const planItems = NAV_BY_PLAN[effectivePlano] || [];
+  const planItems = useMemo(() => {
+    if (!effectivePlano) return [];
+    return NAV_BY_PLAN[effectivePlano] ?? [];
+  }, [effectivePlano]);
 
-    return planItems.filter((item) => {
-      if (!item.roles) return true;
-      return item.roles.includes(role);
-    });
-  }, [effectivePlano, role, user]);
+  const items = useMemo<NavItem[]>(() => {
+    if (!role) return [];
+    return planItems.filter((item) => item.roles.includes(role));
+  }, [planItems, role]);
 
   const isActive = (href: string) => {
     if (href === "/dashboard/express" || href === "/dashboard/premium") {
@@ -164,8 +175,6 @@ export default function Sidebar() {
       setLoggingOut(true);
 
       await signOut();
-
-      // ✅ limpar caches (importante)
       clearAlma4dStorage();
       sessionStorage.clear();
 
@@ -177,32 +186,6 @@ export default function Sidebar() {
       setConfirmOpen(false);
     }
   }
-
-  useEffect(() => {
-    if (loading || !userId) return;
-
-    let mounted = true;
-
-    (async () => {
-      try {
-        const { data } = await supabase
-          .from("usuarios")
-          .select("nome_completo")
-          .eq("id", userId)
-          .maybeSingle();
-
-        if (mounted && data?.nome_completo) {
-          setDisplayName(data.nome_completo);
-        }
-      } catch {
-        // silent fallback
-      }
-    })();
-
-    return () => {
-      mounted = false;
-    };
-  }, [loading, userId, supabase]);
 
   if (loading) {
     return (
@@ -220,18 +203,14 @@ export default function Sidebar() {
         className={[
           "bg-brand text-white w-64 shrink-0",
           "fixed inset-y-0 left-0 z-40",
-          "transform transition-transform duration-300 ease-in-out",
+          "transform transition-transform duration-300",
           isOpen ? "translate-x-0" : "-translate-x-full",
           "md:translate-x-0",
         ].join(" ")}
       >
         <div className="h-screen flex flex-col">
           <div className="px-5 py-4 border-b border-white/10">
-            <Link
-              href="/dashboard"
-              onClick={() => setIsOpen(false)}
-              className="flex items-center gap-3"
-            >
+            <Link href="/dashboard" className="flex items-center gap-3">
               <div className="relative h-12 w-12 rounded-full overflow-hidden">
                 <Image
                   src="/images/alma4d-round-512.png"
@@ -239,17 +218,14 @@ export default function Sidebar() {
                   fill
                   sizes="48px"
                   className="object-cover"
-                  priority
                 />
               </div>
-              <p className="text-sm font-semibold leading-tight">
-                {displayName}
-              </p>
+              <p className="text-sm font-semibold">{displayName}</p>
             </Link>
           </div>
 
-          <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-1">
-            {items.map((item) => {
+          <nav className="flex-1 px-3 py-3 space-y-1 overflow-y-auto">
+            {items.map((item: NavItem) => {
               const Icon = item.icon;
               const active = isActive(item.href);
 
@@ -257,31 +233,15 @@ export default function Sidebar() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  onClick={() => setIsOpen(false)}
-                  aria-current={active ? "page" : undefined}
                   className={[
-                    "relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm",
-                    "transition-colors",
+                    "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm",
                     active
                       ? "bg-white/12 text-white"
-                      : "text-white/75 hover:bg-white/8 hover:text-white",
+                      : "text-white/75 hover:text-white hover:bg-white/8",
                   ].join(" ")}
                 >
-                  <span
-                    className={[
-                      "absolute left-0 top-1/2 -translate-y-1/2 h-7 w-1 rounded-r-full",
-                      active ? "bg-brand-secondary" : "bg-transparent",
-                    ].join(" ")}
-                  />
-
-                  <Icon
-                    size={18}
-                    className={
-                      active ? "text-brand-secondary" : "text-white/70"
-                    }
-                  />
-
-                  <span className="font-medium">{item.label}</span>
+                  <Icon size={18} />
+                  {item.label}
                 </Link>
               );
             })}
@@ -290,30 +250,24 @@ export default function Sidebar() {
           <div className="px-3 py-3 border-t border-white/10 space-y-1">
             <Link
               href="/dashboard/perfil"
-              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm
-                         text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+              className="flex items-center gap-3 px-3 py-2.5 text-sm text-white/80 hover:bg-white/10"
             >
               <User size={18} />
-              <span className="font-medium">Meu perfil</span>
+              Meu perfil
             </Link>
+
             <button
-              type="button"
               onClick={() => setConfirmOpen(true)}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm
-             text-red-300 hover:bg-red-500/10 hover:text-red-200 transition-colors"
+              className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-red-300 hover:bg-red-500/10"
             >
               <LogOut size={18} />
-              <span className="font-medium">Sair</span>
+              Sair
             </button>
           </div>
         </div>
       </aside>
-      {isOpen && (
-        <div
-          className="fixed inset-0 bg-black/40 z-30 md:hidden"
-          onClick={() => setIsOpen(false)}
-        />
-      )}
+
+      {/* ✅ MODAL FUNCIONANDO */}
       {confirmOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
@@ -328,7 +282,7 @@ export default function Sidebar() {
             <div className="mt-6 flex justify-end gap-3">
               <button
                 onClick={() => setConfirmOpen(false)}
-                className="px-4 py-2 text-sm rounded-lg border border-slate-200 hover:bg-slate-50"
+                className="px-4 py-2 text-sm rounded-lg border border-slate-200"
               >
                 Cancelar
               </button>
@@ -336,8 +290,7 @@ export default function Sidebar() {
               <button
                 disabled={loggingOut}
                 onClick={handleLogout}
-                className="px-4 py-2 text-sm rounded-lg bg-red-600 text-white
-                     hover:bg-red-700 disabled:opacity-50 flex items-center gap-2"
+                className="px-4 py-2 text-sm rounded-lg bg-orange-600 text-white flex items-center gap-2"
               >
                 {loggingOut && (
                   <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />

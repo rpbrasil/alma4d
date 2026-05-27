@@ -7,13 +7,62 @@ type Body = {
   contratoId: string;
   campaign?: string;
 };
+type Role = "admin" | "cliente" | "gestor" | "usuario" | null;
+type Plano = "express" | "premium" | null;
+
+function parseJwtClaims(accessToken: string | null | undefined): {
+  role: Role;
+  plano: Plano;
+  clienteId: string | null;
+  ativo: boolean | null;
+} {
+  if (!accessToken) {
+    return { role: null, plano: null, clienteId: null, ativo: null };
+  }
+
+  try {
+    const parts = accessToken.split(".");
+    if (parts.length !== 3) {
+      return { role: null, plano: null, clienteId: null, ativo: null };
+    }
+
+    const payload = JSON.parse(
+      Buffer.from(parts[1], "base64url").toString("utf-8"),
+    ) as Record<string, unknown>;
+
+    const role =
+      payload.user_role === "admin" ||
+      payload.user_role === "cliente" ||
+      payload.user_role === "gestor" ||
+      payload.user_role === "usuario"
+        ? (payload.user_role as Role)
+        : null;
+
+    const plano =
+      payload.user_plano === "express" || payload.user_plano === "premium"
+        ? (payload.user_plano as Plano)
+        : null;
+
+    const clienteId =
+      typeof payload.user_cliente_id === "string"
+        ? payload.user_cliente_id
+        : null;
+
+    const ativo =
+      typeof payload.user_ativo === "boolean" ? payload.user_ativo : null;
+
+    return { role, plano, clienteId, ativo };
+  } catch {
+    return { role: null, plano: null, clienteId: null, ativo: null };
+  }
+}
 
 function normalizeBaseUrl(raw: string) {
   return raw.replace(/\/+$/, "");
 }
 
 export async function POST(req: Request) {
-  // Next 15/16: cookies() e headers() são async → precisam de await [1](https://onedrive.live.com/personal/97449981f113131d/_layouts/15/doc.aspx?resid=22027e74-949b-48bf-ba71-491157e03c00&cid=97449981f113131d)[2](https://www.npmjs.com/package/react-qr-code)
+  // Next 15/16: cookies() e headers() são async → precisam de await 
   const cookieStore = await cookies();
   const headerStore = await headers();
 
@@ -149,11 +198,39 @@ export async function POST(req: Request) {
 
   // 4) Criar se não existir
   if (!link) {
+    const cookieStore = await cookies();
+
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll() {
+            // rota API geralmente NÃO precisa escrever cookie
+          },
+        },
+      },
+    );
+    
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session?.user) {
+      return NextResponse.json({ error: "not_authenticated" }, { status: 401 });
+    }
+    const claims = parseJwtClaims(session.access_token);
+    const clienteId = claims.clienteId;
+
     const { data: created, error: crErr } = await supabaseAdmin
       .from("copsoq_links")
       .insert({
         contrato_id: contratoId,
-        max_respostas: limiteUsuarios, // ✅ vem do contrato
+        cliente_id: clienteId,
+        max_respostas: limiteUsuarios, 
         usadas: 0,
         ativo: true,
         created_by: user.id,

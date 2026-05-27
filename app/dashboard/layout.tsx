@@ -1,16 +1,9 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import { AuthProvider } from "@/context/auth";
+import Sidebar from "@/components/dashboard/Sidebar";
+import DashboardHeader from "@/components/dashboard/DashboardHeader";
 
-const Sidebar = dynamic(() => import("@/components/dashboard/Sidebar"), {
-  ssr: false,
-});
-
-const DashboardHeader = dynamic(
-  () => import("@/components/dashboard/DashboardHeader"),
-  { ssr: false },
-);
 
 export default function DashboardLayout({
   children,
