@@ -377,13 +377,13 @@ export async function proxy(req: NextRequest) {
       }
 
       // admin em área de produto precisa ter tenant scope
-      if (isAdmin && !adminScopedTenantId) {
-        return jsonWithCookies(
-          res,
-          { error: "tenant_scope_required" },
-          { status: 403 },
-        );
-      }
+      // if (isAdmin && !adminScopedTenantId) {
+      //   return jsonWithCookies(
+      //     res,
+      //     { error: "tenant_scope_required" },
+      //     { status: 403 },
+      //   );
+      // }
 
       if (
         role === "usuario" ||
