@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   ShieldCheck,
@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { useAuth, Role } from "@/context/auth";
 import { buildAcessoBasicoHref } from "@/lib/navigation/copsoq";
+
 
 type CategoriaDenuncia =
   | "assedio_moral"
@@ -990,7 +991,25 @@ function Step3Copsoq({
   );
 }
 
-export default function ExpressAcessoBasicoPage() {
+function LoadingState() {
+  return (
+    <div
+      style={{
+        width: "100%",
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: "14px",
+        color: "#64748b",
+      }}
+    >
+      Carregando...
+    </div>
+  );
+}
+
+function ExpressAcessoBasicoContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { role } = useAuth();
@@ -1142,5 +1161,14 @@ export default function ExpressAcessoBasicoPage() {
         {step === 3 && <Step3Copsoq onPrev={() => goToStep(2)} role={role} />}
       </div>
     </div>
+  );
+}
+
+
+export default function ExpressAcessoBasicoPage() {
+  return (
+    <Suspense fallback={<LoadingState />}>
+      <ExpressAcessoBasicoContent />
+    </Suspense>
   );
 }
