@@ -740,6 +740,18 @@ function Step2CanalSeguro({
             <option value="seguranca">Segurança do trabalho</option>
             <option value="lgpd_privacidade">LGPD / privacidade</option>
             <option value="saude_mental">Saúde mental / psicossocial</option>
+            <option value="saude_seguranca_trabalho">
+              Riscos de saúde e segurança no trabalho
+            </option>
+            <option value="operacionais_processo">
+              Riscos operacionais e de processo
+            </option>
+            <option value="etica_conduta_integridade">
+              Riscos éticos, de conduta e integridade
+            </option>
+            <option value="privacidade_protecao_dados">
+              Riscos de privacidade e proteção de dados
+            </option>
             <option value="nao_conformidade">Não conformidade</option>
             <option value="outros">Outros</option>
           </select>

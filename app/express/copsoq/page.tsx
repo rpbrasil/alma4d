@@ -76,6 +76,12 @@ function CopsoqPageContent() {
     [answers],
   );
 
+  const total = COPSOQ_QUESTIONS.length;
+  const answeredCount = useMemo(() => {
+    return COPSOQ_QUESTIONS.filter((q) => answers[q.id]).length;
+  }, [answers]);
+  const progress = Math.round((answeredCount / total) * 100);
+
   useEffect(() => {
     let active = true;
 
@@ -236,6 +242,15 @@ function CopsoqPageContent() {
       active = false;
     };
   }, [linkId, supabase]);
+
+  function scrollToFirstMissing() {
+    const missing = COPSOQ_QUESTIONS.find((q) => !answers[q.id]);
+
+    if (!missing) return;
+
+    const el = document.getElementById(`q-${missing.id}`);
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
 
   async function handleSubmit() {
     if (!linkId) {
@@ -493,7 +508,42 @@ function CopsoqPageContent() {
               serão compilados por grupo, não individualmente.
             </p>
           </div>
+          <div className="sticky top-0 z-40 bg-white border-b border-border px-4 py-3">
+            <div className="max-w-4xl mx-auto space-y-2">
+              {/* TEXTO */}
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-600">
+                  Progresso do questionário
+                </span>
+                <span className="font-medium">
+                  {answeredCount}/{total} • {progress}%
+                </span>
+              </div>
 
+              {/* BARRA */}
+              <div className="w-full h-2 bg-slate-200 rounded">
+                <div
+                  className="h-2 rounded transition-all duration-300"
+                  style={{
+                    width: `${progress}%`,
+                    backgroundColor: "var(--brand-secondary)",
+                  }}
+                />
+              </div>
+
+              {/* BOTÃO */}
+              {!allAnswered && (
+                <button
+                  type="button"
+                  onClick={scrollToFirstMissing}
+                  className="text-sm font-medium text-var(--brand) underline"
+                >
+                  Ir para perguntas pendentes
+                </button>
+              )}
+            </div>
+          </div>
+          
           <form
             className="space-y-6"
             onSubmit={(event) => {
@@ -508,8 +558,13 @@ function CopsoqPageContent() {
 
               return (
                 <div
+                  id={`q-${question.id}`}
                   key={question.id}
-                  className="rounded-3xl border border-slate-200 p-5"
+                  className={`rounded-3xl p-5 border ${
+                    !answers[question.id]
+                      ? "border-red-200 bg-red-50/40"
+                      : "border-slate-200"
+                  }`}
                 >
                   <div className="mb-2 flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
                     <p className="text-sm font-semibold text-slate-900">
@@ -560,9 +615,15 @@ function CopsoqPageContent() {
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm text-slate-500">
-                {allAnswered
-                  ? `Todas as ${COPSOQ_QUESTIONS.length} questões foram respondidas.`
-                  : "Responda todos os itens antes de enviar."}
+                {allAnswered ? (
+                  <span className="text-green-600 font-medium">
+                    ✔ Todas as perguntas respondidas
+                  </span>
+                ) : (
+                  <span className="text-red-600 font-medium">
+                    ⚠ Faltam {total - answeredCount} perguntas
+                  </span>
+                )}
               </p>
               <button
                 type="submit"

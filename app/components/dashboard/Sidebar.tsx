@@ -17,6 +17,7 @@ import {
   Users,
   UserX,
   ShieldCheck,
+  AlertTriangle,
 } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
 import { useAuth, Role } from "@/context/auth";
@@ -62,6 +63,12 @@ const NAV_BY_PLAN: Record<Plano, NavItem[]> = {
       label: "Canal seguro",
       icon: ShieldCheck,
       roles: ["usuario", "cliente", "admin", "gestor"],
+    },
+    {
+      href: "/dashboard/express/relatorio-ocorrencias",
+      label: "Riscos e Ocorrências",
+      icon: AlertTriangle,
+      roles: ["admin", "cliente"],
     },
     {
       href: "/dashboard/express/parceiros",
