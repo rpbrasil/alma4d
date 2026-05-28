@@ -309,7 +309,7 @@ export async function POST(req: Request) {
     if (!link) {
       return NextResponse.json({ error: "link_not_created" }, { status: 500 });
     }
-    const url = new URL("/dashboard/express/copsoq", baseUrl);
+    const url = new URL("/dashboard/express/acesso-basico", baseUrl);
     url.searchParams.set("linkId", link.id);
 
     if (campaign) {

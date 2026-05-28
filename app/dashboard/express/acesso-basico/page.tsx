@@ -555,7 +555,7 @@ function Step2CanalSeguro({
     <section className="rounded-2xl border border-border bg-surface shadow-sm p-4 sm:p-6 space-y-4">
       <div className="space-y-1">
         <h2 className="text-lg sm:text-xl font-semibold text-foreground">
-          Canal seguro de ocorrências e denúncias
+          Canal seguro de apontamento de riscos e ocorrências
         </h2>
         <p className="text-sm text-foreground/65">
           Você pode escrever do seu jeito. Se preferir, use as perguntas guiadas
@@ -1054,7 +1054,7 @@ function Step3Copsoq({
       <div className="flex flex-col gap-3 sm:flex-row">
         {!loadingStatus &&
           !statusError &&
-          copsoqStatus?.status === "pending" &&
+          copsoqStatus?.canRespond === true &&
           copsoqStatus.href && (
             <a
               href={copsoqStatus.href}

@@ -1,9 +1,9 @@
 export function buildCopsoqHref(linkId?: string | null) {
   if (linkId && linkId.trim()) {
-    return `/dashboard/express/copsoq?linkId=${encodeURIComponent(linkId.trim())}`;
+    return `/express/copsoq?linkId=${encodeURIComponent(linkId.trim())}`;
   }
 
-  return "/dashboard/express/copsoq";
+  return null;
 }
 
 export function buildAcessoBasicoHref(

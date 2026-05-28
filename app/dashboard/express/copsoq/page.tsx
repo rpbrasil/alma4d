@@ -547,7 +547,9 @@ export default function DashboardExpressCopsoqPage() {
           <div className="rounded-2xl border border-border bg-slate-50 p-4">
             <div className="flex items-center gap-2 text-slate-700">
               <AlertCircle className="h-4 w-4 text-slate-400" />
-              <span className="text-sm font-semibold">Restantes</span>
+              <span className="text-sm font-semibold">
+                Capacidade disponivel
+              </span>
             </div>
             <p className="mt-2 text-2xl font-semibold text-slate-900">
               {restantes ?? "—"}
@@ -573,6 +575,51 @@ export default function DashboardExpressCopsoqPage() {
           </button>
         </div>
       </section>
+      {/* 🔥 BLOCO NOVO: EXPANSÃO */}
+      <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h3 className="text-sm font-semibold text-amber-900">
+              Expansão de participação
+            </h3>
+
+            <p className="mt-1 text-xs text-amber-800">
+              Ao atingir o limite de respostas, você pode ampliar a quantidade
+              de participantes adquirindo novas cadeiras para o ciclo atual.
+            </p>
+          </div>
+
+          <Users className="h-6 w-6 text-amber-400 shrink-0" />
+        </div>
+
+        <div className="mt-3 text-sm text-amber-900">
+          {restantes !== null && restantes <= 5 ? (
+            <p className="font-semibold">
+              ⚠️ Poucas vagas restantes. Considere ampliar a capacidade.
+            </p>
+          ) : (
+            <p>Gerencie a capacidade conforme a adesão ao questionário.</p>
+          )}
+          {restantes === 0 && (
+            <div className="mt-2 text-sm text-red-600 font-semibold">
+              Limite atingido. Adquira novas cadeiras para continuar a coleta.
+            </div>
+          )}
+        </div>
+
+        <div className="mt-4 flex gap-2">
+          <button
+            onClick={() => {
+              // próximo passo: integrar com checkout
+              alert("Fluxo de compra de usuarios (em implementação)");
+            }}
+            className="inline-flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700"
+          >
+            <Users size={16} />
+            Comprar mais usuarios
+          </button>
+        </div>
+      </div>
 
       {/* 2) GERAÇÃO DO LINK (ANTES DO QR) */}
       <section className="rounded-3xl border border-border bg-white p-8 shadow-sm no-print">
@@ -659,32 +706,6 @@ export default function DashboardExpressCopsoqPage() {
           ) : (
             <span className="text-xs text-slate-500"> </span>
           )}
-          <button
-            onClick={async () => {
-              const confirm = window.confirm(
-                "Isso encerrará o ciclo atual e iniciará um novo. Deseja continuar?",
-              );
-
-              if (!confirm) return;
-
-              await fetch("/api/copsoq/create-link", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  contratoId,
-                  campaign,
-                  forceNewCycle: true, // 🔥 ESSA É A CHAVE
-                }),
-              });
-
-              // opcional: refetch dados
-            }}
-            className="inline-flex items-center gap-2 rounded-lg bg-brand-accent px-4 py-2 text-sm font-semibold text-white hover:bg-brand/90 transition disabled:opacity-60"
-          >
-            Renovar ciclo
-          </button>
         </div>
       </section>
 
@@ -825,28 +846,61 @@ export default function DashboardExpressCopsoqPage() {
               <QrCode className="h-12 w-12 text-slate-300" />
             </div>
 
-            <div className="mt-6 text-sm text-slate-800 leading-relaxed">
+            <div className="mt-6 text-sm text-slate-800 leading-relaxed space-y-3">
               <p>
-                Convidamos os colaboradores elegíveis a responderem ao
-                Questionário COPSOQ (Copenhagen Psychosocial Questionnaire),
-                utilizado para identificar fatores de risco psicossocial
-                relacionados ao trabalho e apoiar ações de melhoria nas
-                condições de trabalho.
+                Este questionário faz parte de uma iniciativa estruturada de
+                avaliação de{" "}
+                <strong>riscos psicossociais no ambiente de trabalho</strong>,
+                utilizando a metodologia internacional COPSOQ, em conformidade
+                com a <strong>NR‑1 (GRO/PGR)</strong>.
               </p>
-              <p className="mt-3">
-                Este levantamento integra o Gerenciamento de Riscos Ocupacionais
-                (GRO) e o Programa de Gerenciamento de Riscos (PGR), em
-                alinhamento às diretrizes da NR‑1.
+
+              <p>
+                A participação dos colaboradores é essencial para identificar
+                fatores que impactam o bem-estar, a organização do trabalho e a
+                saúde ocupacional. Os dados coletados apoiam decisões voltadas à{" "}
+                <strong>prevenção de riscos</strong> e à construção de um
+                ambiente de trabalho mais seguro, saudável e produtivo.
               </p>
-              <p className="mt-3">
-                <strong>Participação obrigatória</strong> conforme comunicado
-                interno da organização.
+
+              <div>
+                <p className="font-semibold text-slate-900">Como participar:</p>
+                <ul className="list-disc pl-5 mt-2 space-y-1">
+                  <li>
+                    <strong>1. Acesse o sistema</strong> utilizando o seu
+                    celular
+                  </li>
+                  <li>
+                    <strong>2. Utilize o canal seguro</strong> para comunicação,
+                    se necessário
+                  </li>
+                  <li>
+                    <strong>3. Responda ao questionário COPSOQ</strong> de forma
+                    completa
+                  </li>
+                </ul>
+              </div>
+
+              <p>
+                <strong>Sua participação é fundamental.</strong> Quanto maior o
+                nível de contribuição, mais precisa será a análise e mais
+                efetivas serão as ações de melhoria no ambiente de trabalho.
               </p>
-              <p className="mt-3">
-                <strong>Sigilo e respeito à individualidade:</strong> suas
-                respostas serão tratadas de forma confidencial e analisadas de
-                maneira agregada, com foco na prevenção e melhoria
-                organizacional — não se trata de diagnóstico clínico individual.
+
+              <p>
+                <strong>Confidencialidade garantida:</strong> todas as respostas
+                são tratadas de forma anônima e analisadas exclusivamente de
+                maneira agregada. Nenhuma informação individual será
+                identificada ou divulgada.
+              </p>
+
+              <p>
+                Este processo contribui diretamente para a{" "}
+                <strong>
+                  manutenção de um ambiente de trabalho mais equilibrado,
+                  sustentável e próspero
+                </strong>
+                , beneficiando todos os colaboradores.
               </p>
             </div>
 
