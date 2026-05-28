@@ -31,9 +31,14 @@ import {
   LineChart,
   Line,
 } from "recharts";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
-import html2canvas from "html2canvas";
+
+import type { jsPDF as JsPDFClass } from "jspdf";
+
+type JsPDFWithAutoTable = JsPDFClass & {
+  lastAutoTable?: {
+    finalY?: number;
+  };
+};
 
 type Denuncia = {
   id: string;
@@ -140,16 +145,14 @@ function KpiCard({
   return (
     <div
       className={`rounded-2xl border p-4 ${
-        danger
-          ? "border-var(--brand-accent) bg-var(--brand-accent)/10"
-          : "border-border bg-white"
+        danger ? "border-[#df633f] bg-[#df633f]/10" : "border-border bg-white"
       }`}
     >
       <p className="text-sm text-slate-500">{title}</p>
 
       <p
         className={`mt-2 text-2xl font-semibold ${
-          danger ? "text-var(--brand-accent)" : "text-var(--brand)"
+          danger ? "text-[#df633f]" : "text-[#030870]"
         }`}
       >
         {value}
@@ -345,30 +348,141 @@ export default function RelatorioOcorrenciasPage() {
     setDateFrom("");
     setDateTo("");
   }
+  function addExecutiveHeader(
+    doc: JsPDFWithAutoTable,
+    title: string,
+    subtitle: string,
+  ) {
+    // faixa superior
+    doc.setFillColor(3, 8, 112); // #030870
+    doc.rect(0, 0, 210, 18, "F");
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(16);
+    doc.text("alma4D", 14, 11);
+
+    doc.setTextColor(15, 23, 42);
+    doc.setFontSize(20);
+    doc.text(title, 14, 30);
+
+    doc.setFontSize(10);
+    doc.setTextColor(100, 116, 139);
+    doc.text(subtitle, 14, 36);
+  }
+
+  function addSectionTitle(doc: JsPDFWithAutoTable, title: string, y: number) {
+    doc.setFillColor(1, 148, 153); // #019499
+    doc.roundedRect(14, y - 5, 182, 9, 2, 2, "F");
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(11);
+    doc.text(title, 18, y + 1);
+  }
+
+  function getNextY(doc: JsPDFWithAutoTable, fallback = 100) {
+    return (doc as JsPDFWithAutoTable).lastAutoTable?.finalY || fallback;
+  }
+
+  async function loadImageAsBase64(url: string) {
+    const res = await fetch(url);
+    const blob = await res.blob();
+
+    return new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.readAsDataURL(blob);
+    });
+  }
 
   async function captureChart(ref: React.RefObject<HTMLDivElement | null>) {
     if (!ref.current) return null;
+
+    const html2canvas = (await import("html2canvas-pro")).default;
+
+    // pequena espera para garantir layout/calculo final do gráfico
+    await new Promise((resolve) => setTimeout(resolve, 120));
+
     const canvas = await html2canvas(ref.current, {
       scale: 2,
+      useCORS: true,
       backgroundColor: "#ffffff",
+      scrollX: 0,
+      scrollY: -window.scrollY,
     });
-    return canvas.toDataURL("image/png");
+
+    return {
+      dataUrl: canvas.toDataURL("image/png"),
+      width: canvas.width,
+      height: canvas.height,
+    };
+  }
+  function addHeader(doc: any, clienteNome: string, logoBase64: string) {
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    // faixa superior
+    doc.setFillColor(3, 8, 112); // brand
+    doc.rect(0, 0, pageWidth, 18, "F");
+
+    // nome sistema
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(12);
+    doc.text("alma4D • Gestão de Riscos", 14, 11);
+
+    // logo (direita)
+    if (logoBase64) {
+      doc.addImage(logoBase64, "PNG", pageWidth - 40, 4, 26, 10);
+    }
+
+    // conteúdo principal
+    doc.setTextColor(15, 23, 42);
+
+    doc.setFontSize(18);
+    doc.text("Relatório de Riscos e Ocorrências", 14, 30);
+
+    doc.setFontSize(11);
+    doc.setTextColor(71, 85, 105);
+    doc.text(`Empresa: ${clienteNome}`, 14, 36);
+
+    doc.text(`Emitido em: ${new Date().toLocaleString("pt-BR")}`, 14, 42);
+  }
+  function addFooter(doc: any, pageNumber: number) {
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+
+    // linha separadora
+    doc.setDrawColor(226, 232, 240);
+    doc.line(14, pageHeight - 12, pageWidth - 14, pageHeight - 12);
+
+    doc.setFontSize(9);
+    doc.setTextColor(100, 116, 139);
+
+    doc.text("alma4D • Relatório executivo", 14, pageHeight - 6);
+
+    doc.text(`Página ${pageNumber}`, pageWidth - 30, pageHeight - 6);
   }
 
   async function exportPdf() {
     try {
       setExportingPdf(true);
 
+      const jsPDF = (await import("jspdf")).default;
+      const autoTable = (await import("jspdf-autotable")).default;
+
       const doc = new jsPDF("p", "mm", "a4");
       const pageWidth = doc.internal.pageSize.getWidth();
+      const pageContentWidth = pageWidth - 28; // 14 + 14
+      let pageNumber = 1;
 
-      doc.setFontSize(18);
-      doc.text("Relatório de Riscos e Ocorrências", 14, 16);
-
-      doc.setFontSize(10);
-      doc.text(`Emitido em: ${new Date().toLocaleString("pt-BR")}`, 14, 23);
+      // cabeçalho executivo
+      addExecutiveHeader(
+        doc,
+        "Relatório de Riscos e Ocorrências",
+        `Emitido em ${new Date().toLocaleString("pt-BR")}`,
+      );
 
       // filtros aplicados
+      addSectionTitle(doc, "Filtros aplicados", 46);
+
       const filtersSummary = [
         `Busca: ${search || "—"}`,
         `Categoria: ${categoriaFilter}`,
@@ -378,15 +492,16 @@ export default function RelatorioOcorrenciasPage() {
         `Período: ${dateFrom || "—"} até ${dateTo || "—"}`,
       ];
 
-      doc.setFontSize(11);
-      doc.text("Filtros aplicados:", 14, 32);
       doc.setFontSize(10);
+      doc.setTextColor(51, 65, 85);
+
       filtersSummary.forEach((item, idx) => {
-        doc.text(`• ${item}`, 16, 38 + idx * 5);
+        doc.text(`• ${item}`, 18, 55 + idx * 5);
       });
 
+      // resumo executivo
       autoTable(doc, {
-        startY: 72,
+        startY: 88,
         head: [["Indicador", "Valor"]],
         body: [
           ["Total de ocorrências", String(stats.total)],
@@ -395,39 +510,71 @@ export default function RelatorioOcorrenciasPage() {
           ["Encerradas", String(stats.encerradas)],
         ],
         theme: "grid",
-        styles: { fontSize: 10 },
-        headStyles: { fillColor: [37, 99, 235] },
+        styles: { fontSize: 10, cellPadding: 3 },
+        headStyles: {
+          fillColor: [3, 8, 112], // brand
+          textColor: [255, 255, 255],
+        },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
       });
 
+      let currentY = getNextY(doc, 100) + 10;
+
+      // captura gráficos com dimensão real
       const chartImages = await Promise.all([
         captureChart(categoryChartRef),
         captureChart(statusChartRef),
         captureChart(timelineChartRef),
       ]);
 
-      let currentY =
-        (doc as jsPDF & { lastAutoTable?: { finalY?: number } }).lastAutoTable
-          ?.finalY || 100;
-      currentY += 10;
+      const chartTitles = [
+        "Distribuição por categoria",
+        "Ocorrências por status",
+        "Linha do tempo das ocorrências",
+      ];
 
-      for (const img of chartImages) {
+      // inserir gráficos preservando proporção
+      for (let i = 0; i < chartImages.length; i++) {
+        const img = chartImages[i];
         if (!img) continue;
 
-        if (currentY > 220) {
+        const ratio = img.height / img.width;
+        const targetWidth = pageContentWidth;
+        const targetHeight = targetWidth * ratio;
+
+        // se não couber, nova página
+        if (currentY + targetHeight + 18 > 285) {
+          addFooter(doc, pageNumber);
           doc.addPage();
+          pageNumber += 1;
           currentY = 20;
         }
 
-        doc.addImage(img, "PNG", 14, currentY, pageWidth - 28, 55);
-        currentY += 62;
+        addSectionTitle(doc, chartTitles[i], currentY);
+        currentY += 8;
+
+        doc.addImage(
+          img.dataUrl,
+          "PNG",
+          14,
+          currentY,
+          targetWidth,
+          targetHeight,
+        );
+
+        currentY += targetHeight + 10;
       }
 
-      if (currentY > 180) {
+      // tabela final
+      if (currentY > 200) {
+        addFooter(doc, pageNumber);
         doc.addPage();
+        pageNumber += 1;
         currentY = 20;
-      } else {
-        currentY += 4;
       }
+
+      addSectionTitle(doc, "Ocorrências filtradas", currentY);
+      currentY += 10;
 
       autoTable(doc, {
         startY: currentY,
@@ -440,11 +587,17 @@ export default function RelatorioOcorrenciasPage() {
           formatDate(d.created_at),
         ]),
         theme: "striped",
-        styles: { fontSize: 9 },
-        headStyles: { fillColor: [15, 23, 42] },
+        styles: { fontSize: 9, cellPadding: 2.5 },
+        headStyles: {
+          fillColor: [1, 148, 153], // secondary
+          textColor: [255, 255, 255],
+        },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
       });
 
-      doc.save("relatorio-riscos-ocorrencias.pdf");
+      addFooter(doc, pageNumber);
+
+      doc.save("relatorio-riscos-ocorrencias-executivo.pdf");
     } catch (e) {
       console.error("Erro ao exportar PDF:", e);
     } finally {
@@ -666,11 +819,7 @@ export default function RelatorioOcorrenciasPage() {
                 <XAxis dataKey="status" />
                 <YAxis allowDecimals={false} />
                 <Tooltip />
-                <Bar
-                  dataKey="total"
-                  fill="var(--brand)"
-                  radius={[8, 8, 0, 0]}
-                />
+                <Bar dataKey="total" fill="#030870" radius={[8, 8, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -697,7 +846,7 @@ export default function RelatorioOcorrenciasPage() {
                 <Line
                   type="monotone"
                   dataKey="total"
-                  stroke="var(--brand-secondary)"
+                  stroke="#019499"
                   strokeWidth={3}
                   dot={{ r: 4 }}
                 />
@@ -736,7 +885,7 @@ export default function RelatorioOcorrenciasPage() {
                   </td>
                   <td className="p-3">
                     {d.risco_iminente ? (
-                      <span className="inline-flex items-center gap-1 text-var(--brand-accent) font-medium">
+                      <span className="inline-flex items-center gap-1 text-[#df633f] font-medium">
                         <AlertTriangle size={14} />
                         Alto
                       </span>
@@ -748,7 +897,7 @@ export default function RelatorioOcorrenciasPage() {
                   <td className="p-3">
                     <button
                       onClick={() => setSelected(d)}
-                      className="inline-flex items-center gap-1 text-var(--brand-secondary) font-medium hover:underline"
+                      className="inline-flex items-center gap-1 text-[#019499] font-medium hover:underline"
                     >
                       <Eye size={16} />
                       Ver detalhes

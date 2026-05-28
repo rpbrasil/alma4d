@@ -17,6 +17,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ClipboardCheck,
+  ClipboardPen,
   Building2,
   AlertTriangle,
   HeartPulse,
@@ -156,9 +157,9 @@ function Step1Riscos({ onNext }: { onNext: () => void }) {
           Conteúdo de orientação
         </div>
 
-        <h1 className="text-xl sm:text-2xl lg:text-3xl font-semibold text-foreground leading-tight">
+        <h2 className="text-xl sm:text-2xl font-semibold text-foreground">
           Entender riscos ajuda a proteger pessoas, equipes e a empresa
-        </h1>
+        </h2>
 
         <p className="max-w-3xl text-sm sm:text-base text-foreground/70 leading-relaxed">
           Antes de registrar uma ocorrência ou responder ao questionário, vale
@@ -259,14 +260,13 @@ function Step1Riscos({ onNext }: { onNext: () => void }) {
 
           <div className="rounded-xl border border-brand-secondary/20 bg-brand-secondary/5 p-4 text-sm text-foreground/75 leading-relaxed">
             <p>
-              Sua percepção ajuda sua empresa a identificar problemas antes que
+              Sua percepção ajuda a empresa a identificar problemas antes que
               eles cresçam. Relatar um risco não é “atrapalhar”: é colaborar com
               prevenção, cuidado e melhoria do ambiente.
             </p>
           </div>
         </div>
       </div>
-
       <div className="flex flex-col gap-2 sm:flex-row">
         <button
           type="button"
@@ -529,11 +529,15 @@ function Step2CanalSeguro({
   
   return (
     <section className="rounded-2xl border border-border bg-surface shadow-sm p-4 sm:p-6 space-y-4">
+      <div className="inline-flex items-center gap-2 rounded-full border border-brand-secondary/20 bg-brand-secondary/5 px-3 py-1 text-xs sm:text-sm text-foreground/70">
+        <ClipboardPen className="h-4 w-4 text-brand-secondary" />
+        Registro de riscos e ocorrências
+      </div>
       <div className="space-y-1">
-        <h2 className="text-lg sm:text-xl font-semibold text-foreground">
+        <h2 className="text-xl sm:text-2xl font-semibold text-foreground">
           Canal seguro de apontamento de riscos e ocorrências
         </h2>
-        <p className="text-sm text-foreground/65">
+        <p className="max-w-3xl text-sm sm:text-base text-foreground/70 leading-relaxed">
           Você pode escrever do seu jeito. Se preferir, use as perguntas guiadas
           para organizar o texto.
         </p>
@@ -978,7 +982,7 @@ function Step3Copsoq({
         </h2>
 
         <p className="max-w-3xl text-sm sm:text-base text-foreground/70 leading-relaxed">
-          O questionário ajuda sua empresa a entender melhor fatores do trabalho
+          O questionário ajuda a empresa a entender melhor fatores do trabalho
           que podem impactar bem-estar, organização do trabalho, relacionamento,
           sobrecarga e outros aspectos relevantes à prevenção.
         </p>
