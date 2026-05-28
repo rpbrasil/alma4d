@@ -7,17 +7,21 @@ import {
   useContext,
   useEffect,
   useState,
+  useCallback,
   type ReactNode,
 } from "react";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
+type AuthUser = User & {
+  nome?: string | null;
+};
 import { jwtDecode } from "jwt-decode";
 
 export type Role = "admin" | "cliente" | "gestor" | "usuario";
 export type Plano = "express" | "premium";
 
 type AuthState = {
-  user: User | null;
+  user: AuthUser | null;
   role: Role | null;
   plano: Plano | null;
   clienteId: string | null;
@@ -132,27 +136,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const bootstrapDoneRef = useRef(false);
 
-  async function hydrateFromSession(session: Session | null) {
-    const user = session?.user ?? null;
-    const token = session?.access_token;
+  const hydrateFromSession = useCallback(
+    async (session: Session | null) => {
+      const token = session?.access_token;
+      const baseUser = session?.user ?? null;
 
-    if (!user) {
-      setState(buildLoggedOutState());
-      return;
-    }
+      if (!baseUser) {
+        setState(buildLoggedOutState());
+        return;
+      }
 
-    const { role, plano, clienteId, gestorId, ativo } = parseClaims(token);
+      // 🔥 BUSCA DO NOME NO BANCO
+      let nome: string | null = null;
 
-    setState({
-      user,
-      role,
-      plano,
-      clienteId,
-      gestorId,
-      ativo,
-      loading: false,
-    });
-  }
+      try {
+        const { data: profile } = await supabase
+          .from("usuarios")
+          .select("nome_completo")
+          .eq("id", baseUser.id)
+          .single();
+
+        nome = profile?.nome_completo ?? null;
+      } catch (e) {
+        console.warn("Erro ao buscar nome do usuário:", e);
+      }
+
+      const user: AuthUser = {
+        ...baseUser,
+        nome,
+      };
+
+      const { role, plano, clienteId, gestorId, ativo } = parseClaims(token);
+
+      setState({
+        user,
+        role,
+        plano,
+        clienteId,
+        gestorId,
+        ativo,
+        loading: false,
+      });
+    },
+    [supabase],
+  );
 
   useEffect(() => {
     let mounted = true;
@@ -190,7 +217,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [supabase]);
+  }, [supabase, hydrateFromSession]);
 
   const signOut = async () => {
     try {

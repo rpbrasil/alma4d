@@ -18,7 +18,7 @@ import {
   UserX,
   ShieldCheck,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useAuth, Role } from "@/context/auth";
 import { clearAlma4dStorage } from "@/lib/storage";
 
@@ -148,10 +148,14 @@ export default function Sidebar() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [isOpen] = useState(false);
+  const [copsoqStatus, setCopsoqStatus] = useState<{
+    status: string;
+    href: string | null;
+  } | null>(null);
 
   const effectivePlano = plano as Plano;
 
-  const displayName = "Usuário";
+  const displayName = user?.nome || "Usuário";
 
   const planItems = useMemo(() => {
     if (!effectivePlano) return [];
@@ -169,6 +173,27 @@ export default function Sidebar() {
     }
     return pathname.startsWith(href);
   };
+
+  useEffect(() => {
+    async function loadStatus() {
+      try {
+        const res = await fetch("/api/copsoq/status", {
+          method: "GET",
+          cache: "no-store",
+        });
+
+        const data = await res.json();
+
+        if (data?.ok) {
+          setCopsoqStatus(data);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    loadStatus();
+  }, []);
 
   async function handleLogout() {
     try {
@@ -196,6 +221,19 @@ export default function Sidebar() {
   }
 
   if (!user) return null;
+
+  const copsoqNavItem =
+    copsoqStatus?.status === "pending" || copsoqStatus?.status === "answered"
+      ? {
+          href: copsoqStatus.href || "/dashboard/express/acesso-basico?step=3",
+          label:
+            copsoqStatus.status === "pending"
+              ? "Questionário disponível"
+              : "Questionário respondido",
+          icon: QrCode,
+          highlight: copsoqStatus.status === "pending",
+        }
+      : null;
 
   return (
     <div suppressHydrationWarning>
@@ -225,6 +263,26 @@ export default function Sidebar() {
           </div>
 
           <nav className="flex-1 px-3 py-3 space-y-1 overflow-y-auto">
+            {copsoqNavItem?.highlight && (
+              <span className="ml-auto text-xs bg-green-500 px-2 py-0.5 rounded">
+                Novo
+              </span>
+            )}
+            {copsoqNavItem && (
+              <Link
+                href={copsoqNavItem.href}
+                className={[
+                  "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm",
+                  copsoqNavItem.highlight
+                    ? "bg-green-500/20 text-white animate-pulse"
+                    : "bg-white/10 text-white",
+                ].join(" ")}
+              >
+                <QrCode size={18} />
+                {copsoqNavItem.label}
+              </Link>
+            )}
+
             {items.map((item: NavItem) => {
               const Icon = item.icon;
               const active = isActive(item.href);

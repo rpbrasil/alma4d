@@ -189,6 +189,8 @@ function Stepper({
 }
 
 function Step1Riscos({ onNext }: { onNext: () => void }) {
+  const [openModal, setOpenModal] = useState(false);
+
   return (
     <section className="rounded-2xl border border-border bg-surface shadow-sm p-4 sm:p-6 lg:p-8 space-y-6">
       <div className="space-y-3">
@@ -311,6 +313,14 @@ function Step1Riscos({ onNext }: { onNext: () => void }) {
       <div className="flex flex-col gap-3 sm:flex-row">
         <button
           type="button"
+          onClick={() => setOpenModal(true)}
+          className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-300 bg-red-50 px-4 h-11 text-red-700 font-medium hover:bg-red-100"
+        >
+          🚨 Ver contatos de emergência
+        </button>
+        
+        <button
+          type="button"
           onClick={onNext}
           className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand px-4 h-11 text-white font-medium hover:opacity-95"
         >
@@ -318,6 +328,110 @@ function Step1Riscos({ onNext }: { onNext: () => void }) {
           <ChevronRight className="h-4 w-4" />
         </button>
       </div>
+      {openModal && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+    <div className="w-full max-w-5xl rounded-2xl bg-white p-4 sm:p-6 shadow-lg overflow-hidden">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold text-foreground">
+          📋 Emergência e Resposta a Incidentes
+        </h2>
+        <button
+          onClick={() => setOpenModal(false)}
+          className="text-foreground/60 hover:text-foreground"
+        >
+          ✕
+        </button>
+      </div>
+
+      <div className="overflow-auto max-h-[60vh]">
+        <table className="w-full text-sm border border-border rounded-lg overflow-hidden">
+          <thead className="bg-surface-muted text-left">
+            <tr>
+              <th className="px-3 py-2">Cenário</th>
+              <th className="px-3 py-2">Autoridade</th>
+              <th className="px-3 py-2">Contato</th>
+              <th className="px-3 py-2">Quando Acionar</th>
+              <th className="px-3 py-2">Concessionárias</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            <tr>
+              <td className="px-3 py-2">Incêndio / Explosão</td>
+              <td className="px-3 py-2">Bombeiros</td>
+              <td className="px-3 py-2">193</td>
+              <td className="px-3 py-2">Fogo, fumaça ou cheiro de gás</td>
+              <td className="px-3 py-2">Energia: 🔌 / Água: 💧</td>
+            </tr>
+
+            <tr>
+              <td className="px-3 py-2">Mal súbito / Ferimentos</td>
+              <td className="px-3 py-2">SAMU</td>
+              <td className="px-3 py-2">192</td>
+              <td className="px-3 py-2">Desmaio, choque, queda com lesão</td>
+              <td className="px-3 py-2">Energia: 🔌 / Água: 💧</td>
+            </tr>
+
+            <tr>
+              <td className="px-3 py-2">Assalto / Invasão</td>
+              <td className="px-3 py-2">Polícia Militar</td>
+              <td className="px-3 py-2">190</td>
+              <td className="px-3 py-2">Crime em andamento</td>
+              <td className="px-3 py-2">—</td>
+            </tr>
+
+            <tr>
+              <td className="px-3 py-2">Risco de desabamento</td>
+              <td className="px-3 py-2">Defesa Civil</td>
+              <td className="px-3 py-2">199</td>
+              <td className="px-3 py-2">Rachaduras ou estrutura cedendo</td>
+              <td className="px-3 py-2">Energia: 🔌 / Água: 💧</td>
+            </tr>
+
+            <tr>
+              <td className="px-3 py-2">Vazamento químico / óleo</td>
+              <td className="px-3 py-2">Bombeiros / Ambiental</td>
+              <td className="px-3 py-2">193</td>
+              <td className="px-3 py-2">Risco de contaminação</td>
+              <td className="px-3 py-2">Água: 💧</td>
+            </tr>
+
+            <tr>
+              <td className="px-3 py-2">Dano estrutural externo</td>
+              <td className="px-3 py-2">Prefeitura</td>
+              <td className="px-3 py-2">156</td>
+              <td className="px-3 py-2">Árvore caída / poste risco</td>
+              <td className="px-3 py-2">Energia: 🔌</td>
+            </tr>
+
+            <tr>
+              <td className="px-3 py-2">Furto / dano patrimonial</td>
+              <td className="px-3 py-2">Polícia Civil</td>
+              <td className="px-3 py-2">Delegacia</td>
+              <td className="px-3 py-2">Após o incidente</td>
+              <td className="px-3 py-2">—</td>
+            </tr>
+
+            <tr>
+              <td className="px-3 py-2">Acidente com funcionário</td>
+              <td className="px-3 py-2">RH / SESMT</td>
+              <td className="px-3 py-2">Interno</td>
+              <td className="px-3 py-2">CAT em até 24h</td>
+              <td className="px-3 py-2">—</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div className="mt-6 space-y-2 text-sm">
+          <h3 className="font-medium">🛠️ Protocolo rápido</h3>
+
+          <p><strong>1. SOCORRER:</strong> Verifique vítimas e acione 192/193.</p>
+          <p><strong>2. ISOLAR:</strong> Evacue e restrinja acesso.</p>
+          <p><strong>3. REGISTRAR:</strong> Documente com fotos e horário.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
     </section>
   );
 }
