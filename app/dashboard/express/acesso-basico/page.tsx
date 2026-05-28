@@ -24,7 +24,6 @@ import {
 import { useAuth, Role } from "@/context/auth";
 import { buildAcessoBasicoHref } from "@/lib/navigation/copsoq";
 
-
 type CategoriaDenuncia =
   | "assedio_moral"
   | "assedio_sexual"
@@ -92,48 +91,6 @@ const ALLOWED_MIME_TYPES = [
   "image/webp",
 ];
 
-function readInitialDraft(): FormState {
-  if (typeof window === "undefined") return INITIAL_FORM;
-
-  try {
-    const raw = localStorage.getItem(DRAFT_STORAGE_KEY);
-    if (!raw) return INITIAL_FORM;
-
-    const parsed = JSON.parse(raw) as Partial<FormState>;
-
-    return {
-      anonimizada:
-        typeof parsed.anonimizada === "boolean"
-          ? parsed.anonimizada
-          : INITIAL_FORM.anonimizada,
-      categoria:
-        typeof parsed.categoria === "string"
-          ? (parsed.categoria as CategoriaDenuncia)
-          : INITIAL_FORM.categoria,
-      titulo: typeof parsed.titulo === "string" ? parsed.titulo : "",
-      descricao: typeof parsed.descricao === "string" ? parsed.descricao : "",
-      localOcorrencia:
-        typeof parsed.localOcorrencia === "string"
-          ? parsed.localOcorrencia
-          : "",
-      dataOcorrencia:
-        typeof parsed.dataOcorrencia === "string" ? parsed.dataOcorrencia : "",
-      riscoIminente:
-        typeof parsed.riscoIminente === "boolean"
-          ? parsed.riscoIminente
-          : false,
-      contatoRetorno:
-        typeof parsed.contatoRetorno === "string" ? parsed.contatoRetorno : "",
-      consentimentoTratamento:
-        typeof parsed.consentimentoTratamento === "boolean"
-          ? parsed.consentimentoTratamento
-          : false,
-    };
-  } catch {
-    return INITIAL_FORM;
-  }
-}
-
 function parseStep(value: string | null): 1 | 2 | 3 {
   if (value === "2") return 2;
   if (value === "3") return 3;
@@ -196,11 +153,11 @@ function Step1Riscos({ onNext }: { onNext: () => void }) {
       <div className="space-y-3">
         <div className="inline-flex items-center gap-2 rounded-full border border-brand-secondary/20 bg-brand-secondary/5 px-3 py-1 text-xs sm:text-sm text-foreground/70">
           <ShieldCheck className="h-4 w-4 text-brand-secondary" />
-          Conteúdo de acolhimento e orientação
+          Conteúdo de orientação
         </div>
 
         <h1 className="text-xl sm:text-2xl lg:text-3xl font-semibold text-foreground leading-tight">
-          Entender riscos ajuda a proteger pessoas, equipes e a organização
+          Entender riscos ajuda a proteger pessoas, equipes e a empresa
         </h1>
 
         <p className="max-w-3xl text-sm sm:text-base text-foreground/70 leading-relaxed">
@@ -302,136 +259,155 @@ function Step1Riscos({ onNext }: { onNext: () => void }) {
 
           <div className="rounded-xl border border-brand-secondary/20 bg-brand-secondary/5 p-4 text-sm text-foreground/75 leading-relaxed">
             <p>
-              Sua percepção ajuda a organização a identificar problemas antes
-              que eles cresçam. Relatar um risco não é “atrapalhar”: é colaborar
-              com prevenção, cuidado e melhoria do ambiente.
+              Sua percepção ajuda sua empresa a identificar problemas antes que
+              eles cresçam. Relatar um risco não é “atrapalhar”: é colaborar com
+              prevenção, cuidado e melhoria do ambiente.
             </p>
           </div>
         </div>
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row">
+      <div className="flex flex-col gap-2 sm:flex-row">
         <button
           type="button"
           onClick={() => setOpenModal(true)}
-          className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-300 bg-red-50 px-4 h-11 text-red-700 font-medium hover:bg-red-100"
+          className="inline-flex items-center justify-center gap-2 rounded-xl
+      border border-red-300 bg-red-50
+      px-3 h-10 text-[13px] sm:text-sm
+      text-red-700 font-medium
+      hover:bg-red-100"
         >
-          🚨 Ver contatos de emergência
+          🚨 <span className="truncate">Ver contatos de emergência</span>
         </button>
-        
+
         <button
           type="button"
           onClick={onNext}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand px-4 h-11 text-white font-medium hover:opacity-95"
+          className="inline-flex items-center justify-center gap-2 rounded-xl
+      bg-brand px-3 h-10
+      text-[13px] sm:text-sm
+      text-white font-medium
+      hover:opacity-95"
         >
-          Entendi. Quero conhecer o canal seguro
-          <ChevronRight className="h-4 w-4" />
+          <span className="truncate">Entendi. Ir para canal seguro</span>
+          <ChevronRight className="h-4 w-4 shrink-0" />
         </button>
       </div>
       {openModal && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-    <div className="w-full max-w-5xl rounded-2xl bg-white p-4 sm:p-6 shadow-lg overflow-hidden">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-foreground">
-          📋 Emergência e Resposta a Incidentes
-        </h2>
-        <button
-          onClick={() => setOpenModal(false)}
-          className="text-foreground/60 hover:text-foreground"
-        >
-          ✕
-        </button>
-      </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-5xl rounded-2xl bg-white p-4 sm:p-6 shadow-lg overflow-hidden">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-foreground">
+                📋 Emergência e Resposta a Incidentes
+              </h2>
+              <button
+                onClick={() => setOpenModal(false)}
+                className="text-foreground/60 hover:text-foreground"
+              >
+                ✕
+              </button>
+            </div>
 
-      <div className="overflow-auto max-h-[60vh]">
-        <table className="w-full text-sm border border-border rounded-lg overflow-hidden">
-          <thead className="bg-surface-muted text-left">
-            <tr>
-              <th className="px-3 py-2">Cenário</th>
-              <th className="px-3 py-2">Autoridade</th>
-              <th className="px-3 py-2">Contato</th>
-              <th className="px-3 py-2">Quando Acionar</th>
-              <th className="px-3 py-2">Concessionárias</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            <tr>
-              <td className="px-3 py-2">Incêndio / Explosão</td>
-              <td className="px-3 py-2">Bombeiros</td>
-              <td className="px-3 py-2">193</td>
-              <td className="px-3 py-2">Fogo, fumaça ou cheiro de gás</td>
-              <td className="px-3 py-2">Energia: 🔌 / Água: 💧</td>
-            </tr>
+            <div className="overflow-auto max-h-[60vh]">
+              <table className="w-full text-sm border border-border rounded-lg overflow-hidden">
+                <thead className="bg-surface-muted text-left">
+                  <tr>
+                    <th className="px-3 py-2">Cenário</th>
+                    <th className="px-3 py-2">Autoridade</th>
+                    <th className="px-3 py-2">Contato</th>
+                    <th className="px-3 py-2">Quando Acionar</th>
+                    <th className="px-3 py-2">Concessionárias</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  <tr>
+                    <td className="px-3 py-2">Incêndio / Explosão</td>
+                    <td className="px-3 py-2">Bombeiros</td>
+                    <td className="px-3 py-2">193</td>
+                    <td className="px-3 py-2">Fogo, fumaça ou cheiro de gás</td>
+                    <td className="px-3 py-2">Energia: 🔌 / Água: 💧</td>
+                  </tr>
 
-            <tr>
-              <td className="px-3 py-2">Mal súbito / Ferimentos</td>
-              <td className="px-3 py-2">SAMU</td>
-              <td className="px-3 py-2">192</td>
-              <td className="px-3 py-2">Desmaio, choque, queda com lesão</td>
-              <td className="px-3 py-2">Energia: 🔌 / Água: 💧</td>
-            </tr>
+                  <tr>
+                    <td className="px-3 py-2">Mal súbito / Ferimentos</td>
+                    <td className="px-3 py-2">SAMU</td>
+                    <td className="px-3 py-2">192</td>
+                    <td className="px-3 py-2">
+                      Desmaio, choque, queda com lesão
+                    </td>
+                    <td className="px-3 py-2">Energia: 🔌 / Água: 💧</td>
+                  </tr>
 
-            <tr>
-              <td className="px-3 py-2">Assalto / Invasão</td>
-              <td className="px-3 py-2">Polícia Militar</td>
-              <td className="px-3 py-2">190</td>
-              <td className="px-3 py-2">Crime em andamento</td>
-              <td className="px-3 py-2">—</td>
-            </tr>
+                  <tr>
+                    <td className="px-3 py-2">Assalto / Invasão</td>
+                    <td className="px-3 py-2">Polícia Militar</td>
+                    <td className="px-3 py-2">190</td>
+                    <td className="px-3 py-2">Crime em andamento</td>
+                    <td className="px-3 py-2">—</td>
+                  </tr>
 
-            <tr>
-              <td className="px-3 py-2">Risco de desabamento</td>
-              <td className="px-3 py-2">Defesa Civil</td>
-              <td className="px-3 py-2">199</td>
-              <td className="px-3 py-2">Rachaduras ou estrutura cedendo</td>
-              <td className="px-3 py-2">Energia: 🔌 / Água: 💧</td>
-            </tr>
+                  <tr>
+                    <td className="px-3 py-2">Risco de desabamento</td>
+                    <td className="px-3 py-2">Defesa Civil</td>
+                    <td className="px-3 py-2">199</td>
+                    <td className="px-3 py-2">
+                      Rachaduras ou estrutura cedendo
+                    </td>
+                    <td className="px-3 py-2">Energia: 🔌 / Água: 💧</td>
+                  </tr>
 
-            <tr>
-              <td className="px-3 py-2">Vazamento químico / óleo</td>
-              <td className="px-3 py-2">Bombeiros / Ambiental</td>
-              <td className="px-3 py-2">193</td>
-              <td className="px-3 py-2">Risco de contaminação</td>
-              <td className="px-3 py-2">Água: 💧</td>
-            </tr>
+                  <tr>
+                    <td className="px-3 py-2">Vazamento químico / óleo</td>
+                    <td className="px-3 py-2">Bombeiros / Ambiental</td>
+                    <td className="px-3 py-2">193</td>
+                    <td className="px-3 py-2">Risco de contaminação</td>
+                    <td className="px-3 py-2">Água: 💧</td>
+                  </tr>
 
-            <tr>
-              <td className="px-3 py-2">Dano estrutural externo</td>
-              <td className="px-3 py-2">Prefeitura</td>
-              <td className="px-3 py-2">156</td>
-              <td className="px-3 py-2">Árvore caída / poste risco</td>
-              <td className="px-3 py-2">Energia: 🔌</td>
-            </tr>
+                  <tr>
+                    <td className="px-3 py-2">Dano estrutural externo</td>
+                    <td className="px-3 py-2">Prefeitura</td>
+                    <td className="px-3 py-2">156</td>
+                    <td className="px-3 py-2">Árvore caída / poste risco</td>
+                    <td className="px-3 py-2">Energia: 🔌</td>
+                  </tr>
 
-            <tr>
-              <td className="px-3 py-2">Furto / dano patrimonial</td>
-              <td className="px-3 py-2">Polícia Civil</td>
-              <td className="px-3 py-2">Delegacia</td>
-              <td className="px-3 py-2">Após o incidente</td>
-              <td className="px-3 py-2">—</td>
-            </tr>
+                  <tr>
+                    <td className="px-3 py-2">Furto / dano patrimonial</td>
+                    <td className="px-3 py-2">Polícia Civil</td>
+                    <td className="px-3 py-2">Delegacia</td>
+                    <td className="px-3 py-2">Após o incidente</td>
+                    <td className="px-3 py-2">—</td>
+                  </tr>
 
-            <tr>
-              <td className="px-3 py-2">Acidente com funcionário</td>
-              <td className="px-3 py-2">RH / SESMT</td>
-              <td className="px-3 py-2">Interno</td>
-              <td className="px-3 py-2">CAT em até 24h</td>
-              <td className="px-3 py-2">—</td>
-            </tr>
-          </tbody>
-        </table>
+                  <tr>
+                    <td className="px-3 py-2">Acidente com funcionário</td>
+                    <td className="px-3 py-2">RH / SESMT</td>
+                    <td className="px-3 py-2">Interno</td>
+                    <td className="px-3 py-2">CAT em até 24h</td>
+                    <td className="px-3 py-2">—</td>
+                  </tr>
+                </tbody>
+              </table>
 
-        <div className="mt-6 space-y-2 text-sm">
-          <h3 className="font-medium">🛠️ Protocolo rápido</h3>
+              <div className="mt-6 space-y-2 text-sm">
+                <h3 className="font-medium">🛠️ Protocolo rápido</h3>
 
-          <p><strong>1. SOCORRER:</strong> Verifique vítimas e acione 192/193.</p>
-          <p><strong>2. ISOLAR:</strong> Evacue e restrinja acesso.</p>
-          <p><strong>3. REGISTRAR:</strong> Documente com fotos e horário.</p>
+                <p>
+                  <strong>1. SOCORRER:</strong> Verifique vítimas e acione
+                  192/193.
+                </p>
+                <p>
+                  <strong>2. ISOLAR:</strong> Evacue e restrinja acesso.
+                </p>
+                <p>
+                  <strong>3. REGISTRAR:</strong> Documente com fotos e horário.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
-  </div>
-)}
+      )}
     </section>
   );
 }
@@ -550,7 +526,7 @@ function Step2CanalSeguro({
 
   const secondaryLabel =
     role === "usuario" ? "Voltar para a etapa anterior" : "Voltar";
-
+  
   return (
     <section className="rounded-2xl border border-border bg-surface shadow-sm p-4 sm:p-6 space-y-4">
       <div className="space-y-1">
@@ -1002,9 +978,9 @@ function Step3Copsoq({
         </h2>
 
         <p className="max-w-3xl text-sm sm:text-base text-foreground/70 leading-relaxed">
-          O questionário ajuda a organização a entender melhor fatores do
-          trabalho que podem impactar bem-estar, organização do trabalho,
-          relacionamento, sobrecarga e outros aspectos relevantes à prevenção.
+          O questionário ajuda sua empresa a entender melhor fatores do trabalho
+          que podem impactar bem-estar, organização do trabalho, relacionamento,
+          sobrecarga e outros aspectos relevantes à prevenção.
         </p>
       </div>
 
@@ -1016,7 +992,8 @@ function Step3Copsoq({
           <ul className="list-disc pl-5 space-y-2 text-sm text-foreground/70 leading-relaxed">
             <li>Ajuda no mapeamento coletivo do ambiente de trabalho.</li>
             <li>
-              Contribui para ações preventivas e melhorias organizacionais.
+              Contribui para ações preventivas e melhorias dos processos
+              internos.
             </li>
             <li>
               Reforça a participação do colaborador em um processo de gestão de
@@ -1143,7 +1120,7 @@ function ExpressAcessoBasicoContent() {
   const step = parseStep(searchParams.get("step"));
   const origem = searchParams.get("origem");
 
-  const [form, setForm] = useState<FormState>(readInitialDraft);
+  const [form, setForm] = useState<FormState>(INITIAL_FORM);
   const [files, setFiles] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [protocol, setProtocol] = useState<string | null>(null);
@@ -1289,7 +1266,6 @@ function ExpressAcessoBasicoContent() {
     </div>
   );
 }
-
 
 export default function ExpressAcessoBasicoPage() {
   return (
