@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { calcularPrecificacao } from "@/(nr1)/nr1/_components/ModeloPrecificacaoExpress";
 
 type JsonValue =
   | string
@@ -10,6 +11,26 @@ type JsonValue =
   | JsonValue[];
 
 type ParsedJson = JsonValue | { raw: string };
+
+type Risco = "baixo" | "medio" | "alto";
+
+type PrecificacaoConfigRow = {
+  k_base: number;
+  decaimento: number;
+  multiplicador_baixo: number;
+  multiplicador_medio: number;
+  multiplicador_alto: number;
+  minimo_usuarios: number;
+  fator_sudeste: number;
+  fator_sul: number;
+  fator_centro_oeste: number;
+  fator_nordeste: number;
+  fator_norte: number;
+};
+
+function toNumber(value: unknown): number {
+  return typeof value === "number" ? value : Number(value ?? 0);
+}
 
 function safeJsonParse(text: string): ParsedJson {
   try {
@@ -202,7 +223,9 @@ export async function POST(req: Request) {
     // ✅ contrato pertence ao cliente
     const { data: contrato } = await supabaseAdmin
       .from("contratos")
-      .select("id, cliente_id, criado_por, status")
+      .select(
+        "id, cliente_id, criado_por, status, limite_usuarios, valor_total, preco_unitario",
+      )
       .eq("id", contrato_id)
       .maybeSingle();
 
@@ -234,18 +257,8 @@ export async function POST(req: Request) {
           { status: 400 },
         );
       }
-
-      if (
-        preco_unitario == null ||
-        !Number.isFinite(preco_unitario) ||
-        preco_unitario <= 0
-      ) {
-        return NextResponse.json(
-          { error: "preco_unitario inválido" },
-          { status: 400 },
-        );
-      }
     }
+
     // ✅ antifraude: conta usuários ativos reais do cliente
     const { count } = await supabaseAdmin
       .from("usuarios")
@@ -284,7 +297,7 @@ export async function POST(req: Request) {
     // ✅ pega CNPJ real do cliente
     const { data: cliente } = await supabaseAdmin
       .from("clientes")
-      .select("documento")
+      .select("documento, uf, risco_nr1")
       .eq("id", cliente_id)
       .maybeSingle();
 
@@ -312,18 +325,112 @@ export async function POST(req: Request) {
         );
       }
     }
+    // upgrade será persistido somente após recebermos orderId do gateway
+
+    let precoUnitarioEfetivo: number | null = null;
+    let totalAmountCentsEfetivo = Number(body.total_amount_cents ?? 0);
+
     if (operation_type === "upgrade") {
-      await supabaseAdmin.from("contratos_upgrades").insert({
-        contrato_id,
-        cliente_id,
-        created_by_user_id: callerId,
-        quantidade_adicional,
-        limite_anterior: null,
-        limite_novo: null,
-        preco_unitario: body.preco_unitario,
-        total_cents: body.total_amount_cents,
-        pagarme_payment_status: "pending",
-      });
+      // 1) fonte oficial: contrato.preco_unitario
+      const precoContrato = toNumber(contrato?.preco_unitario);
+
+      if (precoContrato > 0) {
+        precoUnitarioEfetivo = Number(precoContrato.toFixed(2));
+      } else {
+        // 2) fallback legado: valor_total / limite_usuarios
+        const limiteContrato = Number(contrato?.limite_usuarios ?? 0);
+        const valorTotalContrato = toNumber(contrato?.valor_total);
+
+        if (limiteContrato > 0 && valorTotalContrato > 0) {
+          precoUnitarioEfetivo = Number(
+            (valorTotalContrato / limiteContrato).toFixed(2),
+          );
+        } else {
+          // 3) último fallback: recalcula usando precificacao_config + cliente
+          const { data: configRow, error: configErr } = await supabaseAdmin
+            .from("precificacao_config")
+            .select(
+              `
+          k_base,
+          decaimento,
+          multiplicador_baixo,
+          multiplicador_medio,
+          multiplicador_alto,
+          minimo_usuarios,
+          fator_sudeste,
+          fator_sul,
+          fator_centro_oeste,
+          fator_nordeste,
+          fator_norte
+        `,
+            )
+            .eq("plano", "express")
+            .eq("ativo", true)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (configErr || !configRow) {
+            return NextResponse.json(
+              { error: "Configuração de precificação não encontrada." },
+              { status: 500 },
+            );
+          }
+
+          const risco = (
+            cliente?.risco_nr1 === "baixo" ||
+            cliente?.risco_nr1 === "medio" ||
+            cliente?.risco_nr1 === "alto"
+              ? cliente.risco_nr1
+              : "medio"
+          ) as Risco;
+
+          const resultado = calcularPrecificacao(
+            quantidade_adicional,
+            risco,
+            {
+              k_base: toNumber(configRow.k_base),
+              decaimento: toNumber(configRow.decaimento),
+              multiplicador_baixo: toNumber(configRow.multiplicador_baixo),
+              multiplicador_medio: toNumber(configRow.multiplicador_medio),
+              multiplicador_alto: toNumber(configRow.multiplicador_alto),
+              minimo_usuarios: Number(configRow.minimo_usuarios),
+              fator_sudeste: toNumber(configRow.fator_sudeste),
+              fator_sul: toNumber(configRow.fator_sul),
+              fator_centro_oeste: toNumber(configRow.fator_centro_oeste),
+              fator_nordeste: toNumber(configRow.fator_nordeste),
+              fator_norte: toNumber(configRow.fator_norte),
+            } as PrecificacaoConfigRow,
+            cliente?.uf ?? null,
+          );
+
+          precoUnitarioEfetivo = Number(
+            resultado.precoPorUsuarioBRL.toFixed(2),
+          );
+        }
+      }
+
+      if (!precoUnitarioEfetivo || precoUnitarioEfetivo <= 0) {
+        return NextResponse.json(
+          { error: "Não foi possível resolver o preço unitário do contrato." },
+          { status: 500 },
+        );
+      }
+
+      totalAmountCentsEfetivo = Math.round(
+        precoUnitarioEfetivo * quantidade_adicional * 100,
+      );
+
+      // persistência defensiva para contratos antigos sem preco_unitario
+      if (!contrato?.preco_unitario) {
+        await supabaseAdmin
+          .from("contratos")
+          .update({
+            preco_unitario: precoUnitarioEfetivo,
+            atualizado_em: new Date().toISOString(),
+          })
+          .eq("id", contrato_id);
+      }
     }
     // ✅ payload para Azure (limpo)
     const payloadToAzure = {
@@ -337,7 +444,7 @@ export async function POST(req: Request) {
       funcionarios: funcionariosParaPagamento,
       payment_method,
       cupom_codigo,
-      total_amount_cents: Number(body.total_amount_cents ?? 0),
+      total_amount_cents: totalAmountCentsEfetivo,
       email: email.trim(),
       nome_completo,
       documento,
@@ -346,7 +453,7 @@ export async function POST(req: Request) {
       telefone,
       origem,
       campanha,
-      operation_type
+      operation_type,
     };
 
     const resp = await fetch(AZURE_NR1_URL, {
@@ -442,7 +549,7 @@ export async function POST(req: Request) {
 
     // ✅ Vincula contrato + cria 1 único evento (com artefatos)
     if (orderId) {
-      const totalAmountCents = Number(body.total_amount_cents ?? 0);
+      const totalAmountCents = totalAmountCentsEfetivo;
       const totalAmountBRL =
         totalAmountCents > 0 ? totalAmountCents / 100 : null;
 
@@ -466,7 +573,7 @@ export async function POST(req: Request) {
             quantidade_adicional,
             limite_anterior: limiteAnterior,
             limite_novo: limiteNovo,
-            preco_unitario: preco_unitario,
+            preco_unitario: precoUnitarioEfetivo,
             total_cents: totalAmountCents,
             pagarme_order_id: orderId,
             pagarme_payment_status: orderStatus,

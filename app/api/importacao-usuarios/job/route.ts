@@ -2,14 +2,6 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { getCaller } from "../_shared/getCaller";
 
-type Caller = {
-  id: string;
-  role: string;
-  cliente_id: string;
-  ativo: boolean;
-  tipo_plano: string | null;
-};
-
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const jobId = searchParams.get("job_id");
@@ -18,12 +10,23 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "job_id obrigatório" }, { status: 400 });
   }
 
+  // ✅ segurança env
+  if (
+    !process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    !process.env.SUPABASE_SERVICE_ROLE_KEY
+  ) {
+    return NextResponse.json(
+      { error: "Configuração do servidor inválida" },
+      { status: 500 },
+    );
+  }
+
   const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
   );
 
-  let caller: Caller;
+  let caller;
 
   try {
     caller = await getCaller(req, supabaseAdmin);
@@ -38,10 +41,16 @@ export async function GET(req: Request) {
       CLIENT_INACTIVE: 403,
     };
 
-    return NextResponse.json({ error: code, message: code }, { status: map[code] ?? 400 });
+    return NextResponse.json(
+      {
+        error: code,
+        message: code,
+      },
+      { status: map[code] ?? 400 },
+    );
   }
 
-  const { data: job } = await supabaseAdmin
+  const { data: job, error: jobError } = await supabaseAdmin
     .from("importacao_usuarios_jobs")
     .select(
       `
@@ -60,10 +69,15 @@ export async function GET(req: Request) {
     .eq("id", jobId)
     .maybeSingle();
 
+  if (jobError) {
+    return NextResponse.json({ error: "Erro ao buscar job" }, { status: 500 });
+  }
+
   if (!job) {
     return NextResponse.json({ error: "Job não encontrado" }, { status: 404 });
   }
 
+  // ✅ proteção multi-tenant
   if (
     caller.role !== "admin" &&
     String(job.caller_cliente_id) !== String(caller.cliente_id)

@@ -6,12 +6,12 @@ import { createServerClient } from "@supabase/ssr";
 type Body = {
   linkId: string;
   answers: Record<string, string>;
+  scaleScores?: Record<string, number | null>;
 };
-
 
 export async function POST(req: Request) {
   const cookieStore = await cookies();
-  
+
   const supabaseAuth = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -67,11 +67,23 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "answers_invalidas" }, { status: 400 });
   }
 
+  const scaleScores = body.scaleScores ?? null;
+  if (
+    scaleScores !== null &&
+    (typeof scaleScores !== "object" || Array.isArray(scaleScores))
+  ) {
+    return NextResponse.json(
+      { error: "scaleScores_invalidos" },
+      { status: 400 },
+    );
+  }
+
   const supabaseAdmin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
   );
 
+  // 1) Link
   const { data: link, error: linkError } = await supabaseAdmin
     .from("copsoq_links")
     .select("id, contrato_id, max_respostas, usadas, ativo")
@@ -86,6 +98,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "link_inativo" }, { status: 403 });
   }
 
+  // 2) Contrato
   const { data: contrato, error: contratoError } = await supabaseAdmin
     .from("contratos")
     .select("id, cliente_id, status")
@@ -103,15 +116,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "contrato_inativo" }, { status: 403 });
   }
 
-  if (contrato.cliente_id !== usuario.cliente_id) {
+  if (String(contrato.cliente_id) !== String(usuario.cliente_id)) {
     return NextResponse.json(
       { error: "link_cliente_nao_corresponde" },
       { status: 403 },
     );
   }
 
+  // 3) Limite do link (mantido)
   const maxRespostas = Number(link.max_respostas ?? 0);
   const usadas = Number(link.usadas ?? 0);
+
   if (maxRespostas > 0 && usadas >= maxRespostas) {
     return NextResponse.json(
       { error: "limite_maximo_alcancado" },
@@ -119,17 +134,32 @@ export async function POST(req: Request) {
     );
   }
 
-  const { data: existingLinkBind, error: bindError } = await supabaseAdmin
-    .from("copsoq_aplicacoes_links")
-    .select("id, aplicacao_id")
-    .eq("link_id", linkId)
+  // 4) Validação DEFENSIVA da vaga do questionário
+  //    Regra: só pode responder se existir vaga elegível para este contrato + usuário
+  const { data: vagaElegivel, error: vagaError } = await supabaseAdmin
+    .from("questionario_vagas")
+    .select("id, status")
+    .eq("contrato_id", contrato.id)
     .eq("usuario_id", user.id)
+    .eq("status", "elegivel")
     .maybeSingle();
 
-  if (bindError) {
-    return NextResponse.json({ error: bindError.message }, { status: 500 });
+  if (vagaError) {
+    return NextResponse.json({ error: vagaError.message }, { status: 500 });
   }
 
+  if (!vagaElegivel) {
+    return NextResponse.json(
+      {
+        error: "sem_vaga",
+        message:
+          "Você já respondeu o questionário ou não está na lista atual de elegíveis.",
+      },
+      { status: 403 },
+    );
+  }
+
+  // 5) Organização
   const { data: org, error: orgError } = await supabaseAdmin
     .from("usuario_organizacao")
     .select("departamento_id, setor_id")
@@ -145,18 +175,32 @@ export async function POST(req: Request) {
 
   if (!org?.departamento_id || !org?.setor_id) {
     return NextResponse.json(
-      {
-        error: "usuario_nao_vinculado_departamento_setor",
-      },
+      { error: "usuario_nao_vinculado_departamento_setor" },
       { status: 403 },
     );
   }
 
-  if (existingLinkBind?.aplicacao_id) {
+  // 6) Verifica vínculo link<->usuário
+  const { data: existingLinkBind, error: bindError } = await supabaseAdmin
+    .from("copsoq_aplicacoes_links")
+    .select("id, aplicacao_id")
+    .eq("link_id", linkId)
+    .eq("usuario_id", user.id)
+    .maybeSingle();
+
+  if (bindError) {
+    return NextResponse.json({ error: bindError.message }, { status: 500 });
+  }
+
+  // 7) Se já existe aplicação vinculada, verifica status
+  const existingAppId: string | null = existingLinkBind?.aplicacao_id ?? null;
+  let shouldIncrementLinkCount = false;
+
+  if (existingAppId) {
     const { data: app, error: appError } = await supabaseAdmin
       .from("copsoq_aplicacoes")
       .select("id, status")
-      .eq("id", existingLinkBind.aplicacao_id)
+      .eq("id", existingAppId)
       .single();
 
     if (appError) {
@@ -173,8 +217,12 @@ export async function POST(req: Request) {
         { status: 200 },
       );
     }
+
+    // havia aplicação, mas ainda não concluída -> ao concluir agora, conta uso
+    shouldIncrementLinkCount = true;
   }
 
+  // 8) Normaliza answers -> scores_itens
   const itemScores = Object.entries(answers).reduce(
     (acc, [key, value]) => {
       const parsed = Number(value);
@@ -194,23 +242,27 @@ export async function POST(req: Request) {
     status: "concluido",
     respostas: answers,
     scores_itens: itemScores,
+    scores_escalas: scaleScores,
     created_by: user.id,
   };
 
   let aplicacaoId: string | null = null;
-  let shouldIncrementLinkCount = false;
 
-  if (existingLinkBind?.aplicacao_id) {
+  // 9) Atualiza ou cria aplicação
+  if (existingAppId) {
     const { error: updateError } = await supabaseAdmin
       .from("copsoq_aplicacoes")
-      .update({ ...payload, updated_by: user.id })
-      .eq("id", existingLinkBind.aplicacao_id);
+      .update({
+        ...payload,
+        updated_by: user.id,
+      })
+      .eq("id", existingAppId);
 
     if (updateError) {
       return NextResponse.json({ error: updateError.message }, { status: 500 });
     }
 
-    aplicacaoId = existingLinkBind.aplicacao_id;
+    aplicacaoId = existingAppId;
   } else {
     const { data: insertData, error: insertError } = await supabaseAdmin
       .from("copsoq_aplicacoes")
@@ -229,6 +281,7 @@ export async function POST(req: Request) {
     shouldIncrementLinkCount = true;
   }
 
+  // 10) Vincula aplicação ao link
   const { error: upsertLinkError } = await supabaseAdmin
     .from("copsoq_aplicacoes_links")
     .upsert(
@@ -237,7 +290,7 @@ export async function POST(req: Request) {
         usuario_id: user.id,
         aplicacao_id: aplicacaoId,
       },
-      { onConflict: "link_id,usuario_id" }
+      { onConflict: "link_id,usuario_id" },
     );
 
   if (upsertLinkError) {
@@ -247,6 +300,24 @@ export async function POST(req: Request) {
     );
   }
 
+  // 11) Consome a vaga: elegivel -> respondido
+  const { error: vagaConsumeError } = await supabaseAdmin
+    .from("questionario_vagas")
+    .update({
+      status: "respondido",
+      responded_at: new Date().toISOString(),
+    })
+    .eq("id", vagaElegivel.id)
+    .eq("status", "elegivel");
+
+  if (vagaConsumeError) {
+    return NextResponse.json(
+      { error: vagaConsumeError.message },
+      { status: 500 },
+    );
+  }
+
+  // 12) Incrementa contador do link apenas na primeira conclusão efetiva
   if (shouldIncrementLinkCount) {
     const { error: updateLinkError } = await supabaseAdmin
       .from("copsoq_links")

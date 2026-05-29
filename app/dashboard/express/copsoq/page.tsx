@@ -17,12 +17,14 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { toDataURL } from "qrcode";
+import { UpgradeLicencasModal } from "@/(nr1)/nr1/_components/UpgradeLicensasModal";
 
 type ContratoLite = {
   id: string;
   numero_contrato: string;
   status: "rascunho" | "ativo" | "suspenso" | "encerrado";
   limite_usuarios: number | null;
+  preco_unitario: number | null;
 };
 
 type LinkInfo = {
@@ -61,8 +63,7 @@ function waLink(url: string) {
 }
 
 function mailtoLink(url: string) {
-  const subject =
-    "Convite — Questionário COPSOQ (Riscos Psicossociais)";
+  const subject = "Convite — Questionário COPSOQ (Riscos Psicossociais)";
 
   const body =
     `Prezada(o),\n\n` +
@@ -95,7 +96,22 @@ export default function DashboardExpressCopsoqPage() {
   const [phase, setPhase] = useState<
     "init" | "session" | "usuario" | "cliente" | "contratos" | "done"
   >("init");
+  const [openUpgradeModal, setOpenUpgradeModal] = useState(false);
+  const [user, setUser] = useState<{
+    id: string;
+    nome: string;
+    email: string;
+    documento: string;
+  } | null>(null);
 
+  const [clienteId, setClienteId] = useState<string | null>(null);
+
+  const [resumoVagas, setResumoVagas] = useState<{
+    limite: number;
+    elegiveis: number;
+    respondidos: number;
+    restantes: number;
+  } | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [clienteNome, setClienteNome] = useState<string | null>(null);
@@ -134,11 +150,25 @@ export default function DashboardExpressCopsoqPage() {
         setError(null);
 
         setPhase("session");
-        const { data: sessionData, error: sessionErr } =
-          await getSessionSafe();
+        const { data: sessionData, error: sessionErr } = await getSessionSafe();
         if (sessionErr) throw sessionErr;
 
-        const userId = sessionData.session?.user?.id;
+        const session = sessionData.session;
+
+        if (!session || !session.user) {
+          setError("Usuário não autenticado.");
+          return;
+        }
+
+        const userId = session.user.id;
+
+        // ✅ salvar user
+        setUser({
+          id: session.user.id,
+          email: session.user.email ?? "",
+          nome: session.user.user_metadata?.full_name ?? "",
+          documento: "", // se tiver campo depois, vem aqui
+        });
         if (!userId) {
           setError("Usuário não autenticado.");
           return;
@@ -155,7 +185,7 @@ export default function DashboardExpressCopsoqPage() {
           setError("Cliente não associado.");
           return;
         }
-
+        setClienteId(usuario.cliente_id);
         setPhase("cliente");
         const { data: cliente, error: clienteError } = await supabase
           .from("clientes")
@@ -177,9 +207,10 @@ export default function DashboardExpressCopsoqPage() {
         }
 
         setPhase("contratos");
+
         const { data: contratosData, error: contratosError } = await supabase
           .from("contratos")
-          .select("id,numero_contrato,status,limite_usuarios")
+          .select("id,numero_contrato,status,limite_usuarios,preco_unitario")
           .eq("cliente_id", usuario.cliente_id)
           .order("criado_em", { ascending: false });
 
@@ -195,7 +226,22 @@ export default function DashboardExpressCopsoqPage() {
         setContratos(elegiveis);
         if (!contratoId && elegiveis.length === 1)
           setContratoId(elegiveis[0].id);
+        // ✅ carregar resumo de vagas
+        try {
+          const vagasRes = await fetch(
+            `/api/contrato/vagas/resumo?contrato_id=${elegiveis[0]?.id}`,
+            {
+              headers: {
+                Authorization: `Bearer ${session.access_token}`,
+              },
+            },
+          );
 
+          const vagasData = await vagasRes.json();
+          setResumoVagas(vagasData);
+        } catch {
+          console.warn("Erro ao carregar resumo de vagas");
+        }
         setPhase("done");
       } catch (err) {
         setError(err instanceof Error ? err.message : "Erro ao carregar.");
@@ -246,10 +292,7 @@ export default function DashboardExpressCopsoqPage() {
   const respondidos = linkInfo?.usadas ?? null;
   const limite =
     contratoSelecionado?.limite_usuarios ?? linkInfo?.maxRespostas ?? null;
-  const restantes =
-    limite != null
-      ? Math.max(0, Number(limite) - Number(respondidos ?? 0))
-      : null;
+  const restantes = resumoVagas?.restantes ?? null;
 
   async function gerarLink() {
     if (!contratoId) {
@@ -610,13 +653,18 @@ export default function DashboardExpressCopsoqPage() {
         <div className="mt-4 flex gap-2">
           <button
             onClick={() => {
-              // próximo passo: integrar com checkout
-              alert("Fluxo de compra de usuarios (em implementação)");
+              if (!contratoSelecionado?.preco_unitario) {
+                setToast(
+                  "Este contrato ainda não tem preço unitário definido.",
+                );
+                setTimeout(() => setToast(null), 2500);
+                return;
+              }
+              setOpenUpgradeModal(true);
             }}
-            className="inline-flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700"
+            className="bg-brand text-white px-4 py-2 rounded-lg"
           >
-            <Users size={16} />
-            Comprar mais licensas de usuario
+            Comprar licenças de usuario
           </button>
         </div>
       </div>
@@ -937,6 +985,20 @@ export default function DashboardExpressCopsoqPage() {
             </div>
           </div>
         </div>
+        {user && clienteId && contratoId && (
+          <UpgradeLicencasModal
+            open={openUpgradeModal}
+            onClose={() => setOpenUpgradeModal(false)}
+            userId={user.id}
+            clienteId={clienteId}
+            contratoId={contratoId}
+            nomeCompleto={user.nome}
+            email={user.email}
+            documento={user.documento}
+            limiteAtual={resumoVagas?.limite ?? 0}
+            precoUnitario={contratoSelecionado?.preco_unitario ?? 0}
+          />
+        )}
       </section>
     </div>
   );

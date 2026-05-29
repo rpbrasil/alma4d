@@ -115,8 +115,16 @@ function CopsoqPageContent() {
           await supabase.auth.getSession();
 
         if (sessionError) throw sessionError;
+        const session = sessionData.session;
 
-        const uid = sessionData.session?.user?.id;
+        if (!session || !session.user?.id) {
+          setError(
+            "Usuário não autenticado. Faça login pelo seu celular com OTP.",
+          );
+          return;
+        }
+
+        const uid = session.user.id;
         if (!uid) {
           setError(
             "Usuário não autenticado. Faça login pelo seu celular com OTP.",
@@ -216,6 +224,34 @@ function CopsoqPageContent() {
             );
 
           if (upsertError) throw upsertError;
+        }
+
+        // ✅ VALIDAÇÃO DE VAGA DO QUESTIONÁRIO
+        const res = await fetch("/api/questionario/verificar-acesso", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        });
+
+        const acesso = await res.json().catch(() => null);
+        if (!acesso) {
+          setError("Falha ao validar acesso.");
+          return;
+        }
+        if (!res.ok || !acesso?.permitido) {
+          if (acesso?.motivo === "SEM_VAGA") {
+            setError(
+              "Você já respondeu o questionário ou não está na lista atual.",
+            );
+            return;
+          }
+
+          setError(
+            acesso?.message ??
+              "Você não possui permissão para responder o questionário.",
+          );
+          return;
         }
 
         if (active) {
@@ -543,7 +579,7 @@ function CopsoqPageContent() {
               )}
             </div>
           </div>
-          
+
           <form
             className="space-y-6"
             onSubmit={(event) => {
