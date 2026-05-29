@@ -1,5 +1,14 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { getCaller } from "../_shared/getCaller";
+
+type Caller = {
+  id: string;
+  role: string;
+  cliente_id: string;
+  ativo: boolean;
+  tipo_plano: string | null;
+};
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -9,61 +18,29 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "job_id obrigatório" }, { status: 400 });
   }
 
-  const authHeader = req.headers.get("authorization");
-
-  if (!authHeader?.startsWith("Bearer ")) {
-    return NextResponse.json({ error: "Token ausente" }, { status: 401 });
-  }
-
-  const token = authHeader.split(" ")[1];
-
   const supabaseAdmin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
   );
 
-  // ✅ valida usuário
-  const { data: userWrap, error: authError } =
-    await supabaseAdmin.auth.getUser(token);
+  let caller: Caller;
 
-  if (authError || !userWrap?.user) {
-    return NextResponse.json({ error: "Token inválido" }, { status: 401 });
+  try {
+    caller = await getCaller(req, supabaseAdmin);
+  } catch (e) {
+    const code = e instanceof Error ? e.message : "UNKNOWN";
+
+    const map: Record<string, number> = {
+      NO_TOKEN: 401,
+      INVALID_TOKEN: 401,
+      NO_PERMISSION: 403,
+      INVALID_PLAN: 403,
+      CLIENT_INACTIVE: 403,
+    };
+
+    return NextResponse.json({ error: code, message: code }, { status: map[code] ?? 400 });
   }
 
-  const callerId = userWrap.user.id;
-
-  // ✅ busca perfil COMPLETO
-  const { data: caller } = await supabaseAdmin
-    .from("usuarios")
-    .select("id, role, cliente_id, ativo, tipo_plano")
-    .eq("id", callerId)
-    .maybeSingle();
-
-  if (!caller || !caller.ativo) {
-    return NextResponse.json({ error: "Sem permissão" }, { status: 403 });
-  }
-
-  // ✅ valida plano (mesma regra do dashboard)
-  const plano = String(caller.tipo_plano ?? "");
-
-  if (plano !== "express" && plano !== "premium" && caller.role !== "admin") {
-    return NextResponse.json({ error: "Plano inválido" }, { status: 403 });
-  }
-
-  // ✅ valida cliente ativo (se não for admin)
-  if (caller.role !== "admin") {
-    const { data: cliente } = await supabaseAdmin
-      .from("clientes")
-      .select("ativo")
-      .eq("id", caller.cliente_id)
-      .maybeSingle();
-
-    if (!cliente?.ativo) {
-      return NextResponse.json({ error: "Cliente inativo" }, { status: 403 });
-    }
-  }
-
-  // ✅ busca job
   const { data: job } = await supabaseAdmin
     .from("importacao_usuarios_jobs")
     .select(
@@ -77,8 +54,7 @@ export async function GET(req: Request) {
       last_error,
       created_at,
       updated_at,
-      caller_cliente_id,
-      caller_role
+      caller_cliente_id
     `,
     )
     .eq("id", jobId)
@@ -88,7 +64,6 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Job não encontrado" }, { status: 404 });
   }
 
-  // ✅ proteção multi-tenant
   if (
     caller.role !== "admin" &&
     String(job.caller_cliente_id) !== String(caller.cliente_id)

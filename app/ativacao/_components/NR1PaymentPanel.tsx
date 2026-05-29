@@ -80,6 +80,9 @@ export function NR1PaymentPanel(props: {
   campanha?: string | null;
   precoTotalCents: number;
   cupomCodigo?: string | null;
+  operationType?: "ativacao" | "upgrade";
+  quantidadeAdicional?: number | null;
+  precoUnitario?: number | null;
 }) {
   const {
     userId,
@@ -92,6 +95,9 @@ export function NR1PaymentPanel(props: {
     campanha,
     funcionarios,
     precoTotalCents,
+    operationType = "ativacao",
+    quantidadeAdicional = null,
+    precoUnitario = null,
   } = props;
 
   const [method, setMethod] = useState<PaymentMethod>("pix");
@@ -178,6 +184,9 @@ export function NR1PaymentPanel(props: {
           documento: onlyDigits(documento),
           origem: origem || null,
           campanha: campanha || null,
+          operation_type: operationType,
+          quantidade_adicional: quantidadeAdicional,
+          preco_unitario: precoUnitario,
         }),
       });
 

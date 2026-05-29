@@ -124,7 +124,6 @@ export async function POST(req: Request) {
     const cliente_id = String(body.cliente_id ?? "");
     const contrato_id = String(body.contrato_id ?? "");
     const funcionarios = Number(body.funcionarios ?? 0);
-
     const payment_method = String(body.payment_method ?? "");
     const cupom_codigo = body.cupom_codigo
       ? String(body.cupom_codigo).trim().toUpperCase()
@@ -143,6 +142,13 @@ export async function POST(req: Request) {
 
     const origem = body.origem ? String(body.origem) : null;
     const campanha = body.campanha ? String(body.campanha) : null;
+    const operation_type =
+      body.operation_type && String(body.operation_type) === "upgrade"
+        ? "upgrade"
+        : "ativacao";
+    const quantidade_adicional = Number(body.quantidade_adicional ?? 0);
+    const preco_unitario =
+      body.preco_unitario != null ? Number(body.preco_unitario) : null;
 
     if (!cliente_id) {
       return NextResponse.json(
@@ -221,7 +227,25 @@ export async function POST(req: Request) {
         { status: 403 },
       );
     }
+    if (operation_type === "upgrade") {
+      if (!Number.isInteger(quantidade_adicional) || quantidade_adicional < 1) {
+        return NextResponse.json(
+          { error: "quantidade_adicional inválida" },
+          { status: 400 },
+        );
+      }
 
+      if (
+        preco_unitario == null ||
+        !Number.isFinite(preco_unitario) ||
+        preco_unitario <= 0
+      ) {
+        return NextResponse.json(
+          { error: "preco_unitario inválido" },
+          { status: 400 },
+        );
+      }
+    }
     // ✅ antifraude: conta usuários ativos reais do cliente
     const { count } = await supabaseAdmin
       .from("usuarios")
@@ -250,9 +274,12 @@ export async function POST(req: Request) {
       );
     }
 
-    const funcionariosParaPagamento = isOnboarding
-      ? funcionariosSolicitados
-      : usuariosReais;
+    const funcionariosParaPagamento =
+      operation_type === "upgrade"
+        ? quantidade_adicional
+        : isOnboarding
+          ? funcionariosSolicitados
+          : usuariosReais;
 
     // ✅ pega CNPJ real do cliente
     const { data: cliente } = await supabaseAdmin
@@ -285,11 +312,26 @@ export async function POST(req: Request) {
         );
       }
     }
-
+    if (operation_type === "upgrade") {
+      await supabaseAdmin.from("contratos_upgrades").insert({
+        contrato_id,
+        cliente_id,
+        created_by_user_id: callerId,
+        quantidade_adicional,
+        limite_anterior: null,
+        limite_novo: null,
+        preco_unitario: body.preco_unitario,
+        total_cents: body.total_amount_cents,
+        pagarme_payment_status: "pending",
+      });
+    }
     // ✅ payload para Azure (limpo)
     const payloadToAzure = {
       user_id: callerId,
-      product_id: "nr1_psicossocial",
+      product_id:
+        operation_type === "upgrade"
+          ? "nr1_upgrade_usuarios"
+          : "nr1_psicossocial",
       cliente_id,
       contrato_id,
       funcionarios: funcionariosParaPagamento,
@@ -304,6 +346,7 @@ export async function POST(req: Request) {
       telefone,
       origem,
       campanha,
+      operation_type
     };
 
     const resp = await fetch(AZURE_NR1_URL, {
@@ -403,50 +446,113 @@ export async function POST(req: Request) {
       const totalAmountBRL =
         totalAmountCents > 0 ? totalAmountCents / 100 : null;
 
-      await supabaseAdmin
-        .from("contratos")
-        .update({
-          pagarme_order_id: orderId,
-          pagarme_payment_status: orderStatus,
-          forma_pagamento: paymentMethodFromAzure,
-          ...(totalAmountBRL != null && !Number.isNaN(totalAmountBRL)
-            ? {
-                valor_total: totalAmountBRL,
-                valor_mensal: totalAmountBRL,
-              }
-            : {}),
-          ...(cupom_codigo ? { cupom_codigo } : {}),
-          atualizado_em: new Date().toISOString(),
-        })
-        .eq("id", contrato_id);
-      console.log("CRIANDO EVENTO", {
-        contrato_id,
-        orderId,
-      });
-      await supabaseAdmin.from("contrato_eventos").insert({
-        contrato_id,
-        tipo: paymentMethodFromAzure === "pix" ? "pix_gerado" : "boleto_gerado",
-        descricao: "Pagamento iniciado (Azure OK)",
-        dados: {
-          pagarme_order_id: orderId,
-          pagarme_payment_status: orderStatus,
-          forma_pagamento: paymentMethodFromAzure,
-          origem,
-          campanha,
-          pix:
+      if (operation_type === "upgrade") {
+        // busca limite atual para registrar o upgrade pendente
+        const { data: contratoAtual } = await supabaseAdmin
+          .from("contratos")
+          .select("limite_usuarios")
+          .eq("id", contrato_id)
+          .maybeSingle();
+
+        const limiteAnterior = Number(contratoAtual?.limite_usuarios ?? 0);
+        const limiteNovo = limiteAnterior + quantidade_adicional;
+
+        const { error: upgradeInsertErr } = await supabaseAdmin
+          .from("contratos_upgrades")
+          .insert({
+            contrato_id,
+            cliente_id,
+            created_by_user_id: callerId,
+            quantidade_adicional,
+            limite_anterior: limiteAnterior,
+            limite_novo: limiteNovo,
+            preco_unitario: preco_unitario,
+            total_cents: totalAmountCents,
+            pagarme_order_id: orderId,
+            pagarme_payment_status: orderStatus,
+            payment_method: paymentMethodFromAzure,
+            metadata: {
+              origem,
+              campanha,
+              operation_type: "upgrade",
+            },
+          });
+
+        if (upgradeInsertErr) {
+          console.error(
+            "Erro ao inserir contratos_upgrades:",
+            upgradeInsertErr,
+          );
+
+          return NextResponse.json(
+            { error: "Não foi possível registrar o upgrade." },
+            { status: 500 },
+          );
+        }
+
+        await supabaseAdmin.from("contrato_eventos").insert({
+          contrato_id,
+          tipo:
             paymentMethodFromAzure === "pix"
+              ? "upgrade_pix_gerado"
+              : "upgrade_boleto_gerado",
+          descricao: "Pagamento de upgrade iniciado",
+          dados: {
+            pagarme_order_id: orderId,
+            pagarme_payment_status: orderStatus,
+            forma_pagamento: paymentMethodFromAzure,
+            quantidade_adicional,
+            preco_unitario,
+            total_cents: totalAmountCents,
+            origem,
+            campanha,
+          },
+        });
+      } else {
+        // fluxo original de ativação
+        await supabaseAdmin
+          .from("contratos")
+          .update({
+            pagarme_order_id: orderId,
+            pagarme_payment_status: orderStatus,
+            forma_pagamento: paymentMethodFromAzure,
+            ...(totalAmountBRL != null && !Number.isNaN(totalAmountBRL)
               ? {
-                  qr_code_url: qrCodeUrl,
-                  qr_code: qrCode,
-                  expires_at: expiresAt,
+                  valor_total: totalAmountBRL,
+                  valor_mensal: totalAmountBRL,
                 }
-              : null,
-          boleto:
-            paymentMethodFromAzure === "boleto"
-              ? { boleto_url: boletoUrl, line }
-              : null,
-        },
-      });
+              : {}),
+            ...(cupom_codigo ? { cupom_codigo } : {}),
+            atualizado_em: new Date().toISOString(),
+          })
+          .eq("id", contrato_id);
+
+        await supabaseAdmin.from("contrato_eventos").insert({
+          contrato_id,
+          tipo:
+            paymentMethodFromAzure === "pix" ? "pix_gerado" : "boleto_gerado",
+          descricao: "Pagamento iniciado (Azure OK)",
+          dados: {
+            pagarme_order_id: orderId,
+            pagarme_payment_status: orderStatus,
+            forma_pagamento: paymentMethodFromAzure,
+            origem,
+            campanha,
+            pix:
+              paymentMethodFromAzure === "pix"
+                ? {
+                    qr_code_url: qrCodeUrl,
+                    qr_code: qrCode,
+                    expires_at: expiresAt,
+                  }
+                : null,
+            boleto:
+              paymentMethodFromAzure === "boleto"
+                ? { boleto_url: boletoUrl, line }
+                : null,
+          },
+        });
+      }
     } else {
       console.warn("[api/nr1/pagamento] Azure OK, mas sem order_id/order.id", {
         contrato_id,
