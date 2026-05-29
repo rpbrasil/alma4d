@@ -247,8 +247,8 @@ export default function DashboardExpressCopsoqPage() {
   const limite =
     contratoSelecionado?.limite_usuarios ?? linkInfo?.maxRespostas ?? null;
   const restantes =
-    respondidos != null && limite != null
-      ? Math.max(0, Number(limite) - Number(respondidos))
+    limite != null
+      ? Math.max(0, Number(limite) - Number(respondidos ?? 0))
       : null;
 
   async function gerarLink() {
@@ -616,7 +616,7 @@ export default function DashboardExpressCopsoqPage() {
             className="inline-flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700"
           >
             <Users size={16} />
-            Comprar mais usuarios
+            Comprar mais licensas de usuario
           </button>
         </div>
       </div>
