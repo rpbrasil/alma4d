@@ -106,9 +106,9 @@ function Stepper({
   onGoStep: (step: 1 | 2 | 3) => void;
 }) {
   const items = [
-    { step: 1 as const, label: "Entender riscos" },
-    { step: 2 as const, label: "Canal seguro" },
-    { step: 3 as const, label: "Questionário COPSOQ" },
+    { step: 1 as const, label: "Entender o que são riscos" },
+    { step: 2 as const, label: "Comunicar riscos e ocorrências" },
+    { step: 3 as const, label: "Mapear riscos psicossociais" },
   ];
 
   return (
@@ -876,7 +876,7 @@ function Step2CanalSeguro({
             className="flex-1 h-11 rounded-xl bg-brand px-4 text-white font-medium transition hover:opacity-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             <Send className="h-4 w-4" />
-            {submitting ? "Enviando..." : "Registrar relato / denúncia"}
+            {submitting ? "Enviando..." : "Registrar este relato"}
           </button>
 
           <button
@@ -982,8 +982,7 @@ function Step3Copsoq({
         </h2>
 
         <p className="max-w-3xl text-sm sm:text-base text-foreground/70 leading-relaxed">
-          O questionário ajuda a empresa a entender melhor fatores do trabalho
-          que podem impactar bem-estar, organização do trabalho, relacionamento,
+          Este questionário ajuda a empresa a entender melhor  os fatores que podem impactar bem-estar, organização do trabalho, relacionamentos,
           sobrecarga e outros aspectos relevantes à prevenção.
         </p>
       </div>

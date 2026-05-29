@@ -40,6 +40,12 @@ type JsPDFWithAutoTable = JsPDFClass & {
   };
 };
 
+type PdfImage = {
+  dataUrl: string;
+  width: number;
+  height: number;
+};
+
 type Denuncia = {
   id: string;
   protocolo: string;
@@ -68,6 +74,92 @@ type DenunciaArquivo = {
   bucket: string;
   created_at: string;
 };
+
+async function loadImageAsBase64(url: string): Promise<string | null> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+
+    const blob = await res.blob();
+
+    return await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+
+function addSectionTitle(doc: JsPDFClass, title: string, y: number) {
+  doc.setFillColor(1, 148, 153); // #019499
+  doc.roundedRect(14, y - 5, 182, 9, 2, 2, "F");
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(11);
+  doc.text(title, 18, y + 1);
+}
+
+function addImageKeepRatio(
+  doc: JsPDFClass,
+  base64: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  maxHeight: number,
+) {
+  const img = new Image();
+  img.src = base64;
+
+  const imgWidth = img.naturalWidth || 100;
+  const imgHeight = img.naturalHeight || 100;
+
+  const ratio = imgWidth / imgHeight;
+
+  let width = maxWidth;
+  let height = width / ratio;
+
+  if (height > maxHeight) {
+    height = maxHeight;
+    width = height * ratio;
+  }
+
+  doc.addImage(base64, "PNG", x, y, width, height);
+}
+
+function addFooter(
+  doc: JsPDFClass,
+  pageNumber: number,
+  almaLogoBase64?: string | null,
+) {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+
+  doc.setDrawColor(226, 232, 240);
+  doc.line(14, pageHeight - 14, pageWidth - 14, pageHeight - 14);
+
+  // ✅ LOGO SEM DISTORÇÃO
+  if (almaLogoBase64) {
+    addImageKeepRatio(
+      doc,
+      almaLogoBase64,
+      14, // X
+      pageHeight - 12, // Y
+      12, // largura máxima
+      6, // altura máxima
+    );
+  }
+
+  doc.setFontSize(9);
+  doc.setTextColor(100, 116, 139);
+
+  doc.text("Relatório executivo", 30, pageHeight - 6);
+  doc.text(`Página ${pageNumber}`, pageWidth - 28, pageHeight - 6);
+}
+
+
 
 const STATUS_LABELS: Record<string, string> = {
   recebida: "Recebida",
@@ -184,7 +276,7 @@ export default function RelatorioOcorrenciasPage() {
   >("todos");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-
+  const [clienteNome, setClienteNome] = useState<string | null>(null);
   const categoryChartRef = useRef<HTMLDivElement | null>(null);
   const statusChartRef = useRef<HTMLDivElement | null>(null);
   const timelineChartRef = useRef<HTMLDivElement | null>(null);
@@ -201,31 +293,59 @@ export default function RelatorioOcorrenciasPage() {
     async function load() {
       setLoading(true);
 
-      const [
-        { data: denunciasData, error: denunciasError },
-        { data: arquivosData, error: arquivosError },
-      ] = await Promise.all([
-        supabase
-          .from("denuncias")
-          .select("*")
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("denuncias_arquivos")
-          .select("*")
-          .order("created_at", { ascending: false }),
-      ]);
+      try {
+        const [
+          { data: denunciasData, error: denunciasError },
+          { data: arquivosData, error: arquivosError },
+        ] = await Promise.all([
+          supabase
+            .from("denuncias")
+            .select("*")
+            .order("created_at", { ascending: false }),
+          supabase
+            .from("denuncias_arquivos")
+            .select("*")
+            .order("created_at", { ascending: false }),
+        ]);
 
-      if (denunciasError) {
-        console.error("Erro ao carregar denúncias:", denunciasError);
+        if (denunciasError) {
+          console.error("Erro ao carregar denúncias:", denunciasError);
+        }
+
+        if (arquivosError) {
+          console.error("Erro ao carregar arquivos:", arquivosError);
+        }
+
+        setDenuncias((denunciasData as Denuncia[]) || []);
+        setArquivos((arquivosData as DenunciaArquivo[]) || []);
+
+        // tenta descobrir o cliente atual via sessão -> usuarios -> clientes
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        const uid = session?.user?.id;
+
+        if (uid) {
+          const { data: usuario } = await supabase
+            .from("usuarios")
+            .select("cliente_id")
+            .eq("id", uid)
+            .maybeSingle();
+
+          if (usuario?.cliente_id) {
+            const { data: cliente } = await supabase
+              .from("clientes")
+              .select("nome")
+              .eq("id", usuario.cliente_id)
+              .maybeSingle();
+
+            setClienteNome(cliente?.nome ?? null);
+          }
+        }
+      } finally {
+        setLoading(false);
       }
-
-      if (arquivosError) {
-        console.error("Erro ao carregar arquivos:", arquivosError);
-      }
-
-      setDenuncias((denunciasData as Denuncia[]) || []);
-      setArquivos((arquivosData as DenunciaArquivo[]) || []);
-      setLoading(false);
     }
 
     load();
@@ -339,67 +459,60 @@ export default function RelatorioOcorrenciasPage() {
     return arquivos.filter((a) => a.denuncia_id === selected.id);
   }, [selected, arquivos]);
 
-  function resetFilters() {
-    setSearch("");
-    setCategoriaFilter("todas");
-    setStatusFilter("todos");
-    setRiscoFilter("todos");
-    setAnonFilter("todos");
-    setDateFrom("");
-    setDateTo("");
-  }
   function addExecutiveHeader(
-    doc: JsPDFWithAutoTable,
-    title: string,
-    subtitle: string,
+    doc: JsPDFClass,
+    options: {
+      title: string;
+      subtitle: string;
+      companyName?: string | null;
+      companyLogoBase64?: string | null;
+    },
   ) {
-    // faixa superior
-    doc.setFillColor(3, 8, 112); // #030870
-    doc.rect(0, 0, 210, 18, "F");
+    const pageWidth = doc.internal.pageSize.getWidth();
 
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(16);
-    doc.text("alma4D", 14, 11);
+    // fundo sutil
+    doc.setFillColor(248, 250, 252);
+    doc.rect(0, 0, pageWidth, 50, "F");
 
+    // título
     doc.setTextColor(15, 23, 42);
-    doc.setFontSize(20);
-    doc.text(title, 14, 30);
+    doc.setFontSize(18);
+    doc.text(options.title, 14, 20);
 
+    // subtítulo
     doc.setFontSize(10);
     doc.setTextColor(100, 116, 139);
-    doc.text(subtitle, 14, 36);
+    doc.text(options.subtitle, 14, 26);
+
+    // empresa
+    if (options.companyName) {
+      doc.setFontSize(11);
+      doc.setTextColor(15, 23, 42);
+      doc.text(`Empresa: ${options.companyName}`, 14, 34);
+    }
+
+    // logo cliente (direita)
+    if (options.companyLogoBase64) {
+      addImageKeepRatio(
+        doc,
+        options.companyLogoBase64,
+        pageWidth - 40,
+        12,
+        26,
+        20,
+      );
+    }
   }
 
-  function addSectionTitle(doc: JsPDFWithAutoTable, title: string, y: number) {
-    doc.setFillColor(1, 148, 153); // #019499
-    doc.roundedRect(14, y - 5, 182, 9, 2, 2, "F");
 
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(11);
-    doc.text(title, 18, y + 1);
-  }
 
-  function getNextY(doc: JsPDFWithAutoTable, fallback = 100) {
-    return (doc as JsPDFWithAutoTable).lastAutoTable?.finalY || fallback;
-  }
-
-  async function loadImageAsBase64(url: string) {
-    const res = await fetch(url);
-    const blob = await res.blob();
-
-    return new Promise<string>((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.readAsDataURL(blob);
-    });
-  }
-
-  async function captureChart(ref: React.RefObject<HTMLDivElement | null>) {
+  async function captureChart(
+    ref: React.RefObject<HTMLDivElement | null>,
+  ): Promise<PdfImage | null> {
     if (!ref.current) return null;
 
     const html2canvas = (await import("html2canvas-pro")).default;
 
-    // pequena espera para garantir layout/calculo final do gráfico
     await new Promise((resolve) => setTimeout(resolve, 120));
 
     const canvas = await html2canvas(ref.current, {
@@ -416,50 +529,6 @@ export default function RelatorioOcorrenciasPage() {
       height: canvas.height,
     };
   }
-  function addHeader(doc: any, clienteNome: string, logoBase64: string) {
-    const pageWidth = doc.internal.pageSize.getWidth();
-
-    // faixa superior
-    doc.setFillColor(3, 8, 112); // brand
-    doc.rect(0, 0, pageWidth, 18, "F");
-
-    // nome sistema
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(12);
-    doc.text("alma4D • Gestão de Riscos", 14, 11);
-
-    // logo (direita)
-    if (logoBase64) {
-      doc.addImage(logoBase64, "PNG", pageWidth - 40, 4, 26, 10);
-    }
-
-    // conteúdo principal
-    doc.setTextColor(15, 23, 42);
-
-    doc.setFontSize(18);
-    doc.text("Relatório de Riscos e Ocorrências", 14, 30);
-
-    doc.setFontSize(11);
-    doc.setTextColor(71, 85, 105);
-    doc.text(`Empresa: ${clienteNome}`, 14, 36);
-
-    doc.text(`Emitido em: ${new Date().toLocaleString("pt-BR")}`, 14, 42);
-  }
-  function addFooter(doc: any, pageNumber: number) {
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-
-    // linha separadora
-    doc.setDrawColor(226, 232, 240);
-    doc.line(14, pageHeight - 12, pageWidth - 14, pageHeight - 12);
-
-    doc.setFontSize(9);
-    doc.setTextColor(100, 116, 139);
-
-    doc.text("alma4D • Relatório executivo", 14, pageHeight - 6);
-
-    doc.text(`Página ${pageNumber}`, pageWidth - 30, pageHeight - 6);
-  }
 
   async function exportPdf() {
     try {
@@ -469,19 +538,32 @@ export default function RelatorioOcorrenciasPage() {
       const autoTable = (await import("jspdf-autotable")).default;
 
       const doc = new jsPDF("p", "mm", "a4");
+      const pdfDoc = doc as JsPDFWithAutoTable;
+
       const pageWidth = doc.internal.pageSize.getWidth();
-      const pageContentWidth = pageWidth - 28; // 14 + 14
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const pageContentWidth = pageWidth - 28;
       let pageNumber = 1;
 
-      // cabeçalho executivo
-      addExecutiveHeader(
-        doc,
-        "Relatório de Riscos e Ocorrências",
-        `Emitido em ${new Date().toLocaleString("pt-BR")}`,
+      const almaLogoBase64 = await loadImageAsBase64(
+        "/images/alma4d-round-512.png",
       );
 
-      // filtros aplicados
-      addSectionTitle(doc, "Filtros aplicados", 46);
+      // Se no futuro você tiver logo da empresa, substitua aqui:
+      const companyLogoBase64: string | null = null;
+
+      const reportTitle = "Relatório de Riscos e Ocorrências";
+      const reportSubtitle = `Emitido em ${new Date().toLocaleString("pt-BR")}`;
+
+      addExecutiveHeader(doc, {
+        title: reportTitle,
+        subtitle: reportSubtitle,
+        companyName: clienteNome ?? undefined,
+        
+        companyLogoBase64,
+      });
+
+      addSectionTitle(doc, "Filtros aplicados", 50);
 
       const filtersSummary = [
         `Busca: ${search || "—"}`,
@@ -496,12 +578,11 @@ export default function RelatorioOcorrenciasPage() {
       doc.setTextColor(51, 65, 85);
 
       filtersSummary.forEach((item, idx) => {
-        doc.text(`• ${item}`, 18, 55 + idx * 5);
+        doc.text(`• ${item}`, 18, 59 + idx * 5);
       });
 
-      // resumo executivo
       autoTable(doc, {
-        startY: 88,
+        startY: 92,
         head: [["Indicador", "Valor"]],
         body: [
           ["Total de ocorrências", String(stats.total)],
@@ -512,15 +593,14 @@ export default function RelatorioOcorrenciasPage() {
         theme: "grid",
         styles: { fontSize: 10, cellPadding: 3 },
         headStyles: {
-          fillColor: [3, 8, 112], // brand
+          fillColor: [3, 8, 112],
           textColor: [255, 255, 255],
         },
         alternateRowStyles: { fillColor: [248, 250, 252] },
       });
 
-      let currentY = getNextY(doc, 100) + 10;
+      let currentY = (pdfDoc.lastAutoTable?.finalY ?? 100) + 10;
 
-      // captura gráficos com dimensão real
       const chartImages = await Promise.all([
         captureChart(categoryChartRef),
         captureChart(statusChartRef),
@@ -533,7 +613,6 @@ export default function RelatorioOcorrenciasPage() {
         "Linha do tempo das ocorrências",
       ];
 
-      // inserir gráficos preservando proporção
       for (let i = 0; i < chartImages.length; i++) {
         const img = chartImages[i];
         if (!img) continue;
@@ -542,12 +621,22 @@ export default function RelatorioOcorrenciasPage() {
         const targetWidth = pageContentWidth;
         const targetHeight = targetWidth * ratio;
 
-        // se não couber, nova página
-        if (currentY + targetHeight + 18 > 285) {
-          addFooter(doc, pageNumber);
+        const requiredSpace = 10 + targetHeight + 10;
+
+        if (currentY + requiredSpace > pageHeight - 20) {
+          addFooter(doc, pageNumber, almaLogoBase64);
           doc.addPage();
           pageNumber += 1;
-          currentY = 20;
+
+          addExecutiveHeader(doc, {
+            title: reportTitle,
+            subtitle: reportSubtitle,
+            companyName: clienteNome ?? undefined,
+            
+            companyLogoBase64,
+          });
+
+          currentY = 54;
         }
 
         addSectionTitle(doc, chartTitles[i], currentY);
@@ -565,12 +654,20 @@ export default function RelatorioOcorrenciasPage() {
         currentY += targetHeight + 10;
       }
 
-      // tabela final
-      if (currentY > 200) {
-        addFooter(doc, pageNumber);
+      if (currentY > pageHeight - 80) {
+        addFooter(doc, pageNumber, almaLogoBase64);
         doc.addPage();
         pageNumber += 1;
-        currentY = 20;
+
+        addExecutiveHeader(doc, {
+          title: reportTitle,
+          subtitle: reportSubtitle,
+          companyName: clienteNome ?? undefined,
+          
+          companyLogoBase64,
+        });
+
+        currentY = 54;
       }
 
       addSectionTitle(doc, "Ocorrências filtradas", currentY);
@@ -589,13 +686,13 @@ export default function RelatorioOcorrenciasPage() {
         theme: "striped",
         styles: { fontSize: 9, cellPadding: 2.5 },
         headStyles: {
-          fillColor: [1, 148, 153], // secondary
+          fillColor: [1, 148, 153],
           textColor: [255, 255, 255],
         },
         alternateRowStyles: { fillColor: [248, 250, 252] },
       });
 
-      addFooter(doc, pageNumber);
+      addFooter(doc, pageNumber, almaLogoBase64);
 
       doc.save("relatorio-riscos-ocorrencias-executivo.pdf");
     } catch (e) {
@@ -609,6 +706,16 @@ export default function RelatorioOcorrenciasPage() {
     return <div className="p-6">Carregando relatório...</div>;
   }
 
+function resetFilters() {
+  setSearch("");
+  setCategoriaFilter("todas");
+  setStatusFilter("todos");
+  setRiscoFilter("todos");
+  setAnonFilter("todos");
+  setDateFrom("");
+  setDateTo("");
+  }
+  
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
