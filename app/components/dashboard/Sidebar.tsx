@@ -147,14 +147,19 @@ const NAV_BY_PLAN: Record<Plano, NavItem[]> = {
   ],
 };
 
-export default function Sidebar() {
+type SidebarProps = {
+  isOpen: boolean;
+  onClose: () => void;
+};
+
+export default function Sidebar({isOpen, onClose}: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, loading, signOut, plano, role } = useAuth();
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
-  const [isOpen] = useState(false);
+  
   const [copsoqStatus, setCopsoqStatus] = useState<{
     status: string;
     href: string | null;
@@ -244,10 +249,19 @@ export default function Sidebar() {
 
   return (
     <div suppressHydrationWarning>
+      {/* ✅ OVERLAY FORA DO ASIDE */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 z-40 md:hidden"
+          onClick={onClose}
+        />
+      )}
+
+      {/* ✅ SIDEBAR */}
       <aside
         className={[
           "bg-brand text-white w-64 shrink-0",
-          "fixed inset-y-0 left-0 z-40",
+          "fixed inset-y-0 left-0 z-50",
           "transform transition-transform duration-300",
           isOpen ? "translate-x-0" : "-translate-x-full",
           "md:translate-x-0",
@@ -255,7 +269,11 @@ export default function Sidebar() {
       >
         <div className="h-screen flex flex-col">
           <div className="px-5 py-4 border-b border-white/10">
-            <Link href="/dashboard" className="flex items-center gap-3">
+            <Link
+              href="/dashboard"
+              className="flex items-center gap-3"
+              onClick={onClose}
+            >
               <div className="relative h-12 w-12 rounded-full overflow-hidden">
                 <Image
                   src="/images/alma4d-round-512.png"
@@ -275,9 +293,11 @@ export default function Sidebar() {
                 Novo
               </span>
             )}
+
             {copsoqNavItem && (
               <Link
                 href={copsoqNavItem.href}
+                onClick={onClose}
                 className={[
                   "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm",
                   copsoqNavItem.highlight
@@ -298,6 +318,7 @@ export default function Sidebar() {
                 <Link
                   key={item.href}
                   href={item.href}
+                  onClick={onClose} // ✅ fecha ao clicar ✅
                   className={[
                     "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm",
                     active
@@ -315,6 +336,7 @@ export default function Sidebar() {
           <div className="px-3 py-3 border-t border-white/10 space-y-1">
             <Link
               href="/dashboard/perfil"
+              onClick={onClose}
               className="flex items-center gap-3 px-3 py-2.5 text-sm text-white/80 hover:bg-white/10"
             >
               <User size={18} />
@@ -332,7 +354,7 @@ export default function Sidebar() {
         </div>
       </aside>
 
-      {/* ✅ MODAL FUNCIONANDO */}
+      {/* ✅ MODAL */}
       {confirmOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">

@@ -398,7 +398,8 @@ function Step1Riscos({ onNext }: { onNext: () => void }) {
                   192/193.
                 </p>
                 <p>
-                  <strong>2. ISOLAR:</strong> Retire as pessoas e restrinja o acesso.
+                  <strong>2. ISOLAR:</strong> Retire as pessoas e restrinja o
+                  acesso.
                 </p>
                 <p>
                   <strong>3. REGISTRAR:</strong> Documente com fotos e horário.
@@ -526,7 +527,7 @@ function Step2CanalSeguro({
 
   const secondaryLabel =
     role === "usuario" ? "Voltar para a etapa anterior" : "Voltar";
-  
+
   return (
     <section className="rounded-2xl border border-border bg-surface shadow-sm p-4 sm:p-6 space-y-4">
       <div className="inline-flex items-center gap-2 rounded-full border border-brand-secondary/20 bg-brand-secondary/5 px-3 py-1 text-xs sm:text-sm text-foreground/70">
@@ -982,7 +983,8 @@ function Step3Copsoq({
         </h2>
 
         <p className="max-w-3xl text-sm sm:text-base text-foreground/70 leading-relaxed">
-          Este questionário ajuda a empresa a entender melhor  os fatores que podem impactar bem-estar, organização do trabalho, relacionamentos,
+          Este questionário ajuda a empresa a entender melhor os fatores que
+          podem impactar bem-estar, organização do trabalho, relacionamentos,
           sobrecarga e outros aspectos relevantes à prevenção.
         </p>
       </div>

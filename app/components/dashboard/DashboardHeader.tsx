@@ -9,16 +9,20 @@ import { PAGE_TITLES } from "@/lib/pageTitles";
 import Image from "next/image";
 import { getSupabaseClient } from "@/lib/supabase/client";
 
+type Props = {
+  onMenuClick: () => void;
+};
 // Uso:
 <Image src="/logo.png" width={500} height={500} alt="Descrição" />;
 
-export default function DashboardHeader() {
+export default function DashboardHeader({ onMenuClick }: Props) {
   const { user, signOut, loading, plano } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
   const [clienteNome, setClienteNome] = useState<string>("Painel Corporativo");
   const [clienteLogo, setClienteLogo] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
+ 
   const menuRef = useRef<HTMLDivElement>(null);
 
   const basePath =
@@ -107,11 +111,19 @@ export default function DashboardHeader() {
       className="bg-white border-b border-border sticky top-0 z-30"
     >
       <div className="h-12 px-6 flex items-center justify-between">
-        {/* Título dinâmico */}
-        <span className="text-xs uppercase tracking-[0.18em] text-slate-500">
-          {title}
-        </span>
+        {/* ✅ BOTÃO HAMBURGER */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onMenuClick}
+            className="md:hidden mr-3 p-2 rounded-lg bg-slate-100 hover:bg-slate-200 active:scale-95 transition"
+            aria-label="Abrir menu">
+            <span className="text-2xl">☰</span>
+          </button>
 
+          <span className="text-xs uppercase tracking-[0.18em] text-slate-500">
+            {title}
+          </span>
+        </div>
         {/* User menu */}
         <div className="relative" ref={menuRef}>
           <div className="flex items-center gap-3">
@@ -124,7 +136,6 @@ export default function DashboardHeader() {
                 className="object-contain"
               />
             </div>
-
             <div className="hidden sm:flex flex-col leading-tight">
               <span className="text-sm font-semibold text-foreground">
                 {clienteNome}
@@ -134,7 +145,6 @@ export default function DashboardHeader() {
               </span>
             </div>
           </div>
-
           {open && !loading && (
             <div
               className="absolute right-0 mt-2 w-52 bg-white rounded-md
