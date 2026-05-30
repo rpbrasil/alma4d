@@ -205,7 +205,6 @@ export default function DashboardExpressCopsoqPage() {
           setError("Cliente inativo. Acesso bloqueado.");
           return;
         }
-
         setPhase("contratos");
 
         const { data: contratosData, error: contratosError } = await supabase
@@ -222,10 +221,10 @@ export default function DashboardExpressCopsoqPage() {
             String(c.status).toLowerCase() === "ativo" &&
             (c.limite_usuarios ?? 0) > 0,
         );
-
         setContratos(elegiveis);
         if (!contratoId && elegiveis.length === 1)
           setContratoId(elegiveis[0].id);
+
         // ✅ carregar resumo de vagas
         try {
           const vagasRes = await fetch(
@@ -443,6 +442,7 @@ export default function DashboardExpressCopsoqPage() {
     window.print();
   }
 
+ 
   // ----------- estados -----------
 
   if (loading) {
@@ -618,6 +618,7 @@ export default function DashboardExpressCopsoqPage() {
           </button>
         </div>
       </section>
+      
       {/* 🔥 BLOCO NOVO: EXPANSÃO */}
       <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5">
         <div className="flex items-start justify-between gap-4">

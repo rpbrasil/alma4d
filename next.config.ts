@@ -64,6 +64,10 @@ const nextConfig: NextConfig = {
         hostname: "alma4d.com.br",
         pathname: "/images/**",
       },
+      {
+        protocol: "https",
+        hostname: "voss.digital",
+      },
     ],
   },
 

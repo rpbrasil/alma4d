@@ -251,9 +251,9 @@ export async function POST(req: Request) {
       );
     }
     if (operation_type === "upgrade") {
-      if (!Number.isInteger(quantidade_adicional) || quantidade_adicional < 1) {
+      if (!Number.isInteger(quantidade_adicional) || quantidade_adicional < 5) {
         return NextResponse.json(
-          { error: "quantidade_adicional inválida" },
+          { error: "A compra mínima é de 5 licenças." },
           { status: 400 },
         );
       }

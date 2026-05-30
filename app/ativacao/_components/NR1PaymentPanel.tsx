@@ -271,7 +271,6 @@ export function NR1PaymentPanel(props: {
           >
             Pix
           </button>
-
           <button
             type="button"
             onClick={() => {
