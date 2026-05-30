@@ -629,7 +629,7 @@ export default function DashboardExpressCopsoqPage() {
 
             <p className="mt-1 text-xs text-amber-800">
               Ao atingir o limite de respostas, você pode ampliar a quantidade
-              de participantes adquirindo novas cadeiras para o ciclo atual.
+              de participantes adquirindo novas licenças para o ciclo atual.
             </p>
           </div>
 
@@ -646,7 +646,7 @@ export default function DashboardExpressCopsoqPage() {
           )}
           {restantes === 0 && (
             <div className="mt-2 text-sm text-red-600 font-semibold">
-              Limite atingido. Adquira novas cadeiras para continuar a coleta.
+              Limite atingido. Adquira novas licenças para continuar a coleta.
             </div>
           )}
         </div>

@@ -394,11 +394,11 @@ function Step1Riscos({ onNext }: { onNext: () => void }) {
                 <h3 className="font-medium">🛠️ Protocolo rápido</h3>
 
                 <p>
-                  <strong>1. SOCORRER:</strong> Verifique vítimas e acione
+                  <strong>1. SOCORRER:</strong> Verifique as vítimas e acione
                   192/193.
                 </p>
                 <p>
-                  <strong>2. ISOLAR:</strong> Evacue e restrinja acesso.
+                  <strong>2. ISOLAR:</strong> Retire as pessoas e restrinja o acesso.
                 </p>
                 <p>
                   <strong>3. REGISTRAR:</strong> Documente com fotos e horário.
