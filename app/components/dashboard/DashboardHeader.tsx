@@ -127,12 +127,12 @@ export default function DashboardHeader({ onMenuClick }: Props) {
         {/* User menu */}
         <div className="relative" ref={menuRef}>
           <div className="flex items-center gap-3">
-            <div className="relative h-8 w-8 rounded-md overflow-hidden bg-surface-muted">
+            <div className="relative h-10 w-10 rounded-md overflow-hidden bg-surface-muted">
               <Image
                 src={clienteLogo ?? "/images/alma4d-round-512.png"}
                 alt="Cliente"
                 fill
-                sizes="32px"
+                sizes="64px"
                 className="object-contain"
               />
             </div>

@@ -1,3 +1,5 @@
+import BackFloatingButton from "@/components/public/BackFloatingButton";
+
 export const metadata = {
   title: "Política de Privacidade | alma4D",
   description:
@@ -321,6 +323,7 @@ export default function PrivacidadePage() {
           </p>
         </Card>
       </section>
+      <BackFloatingButton />
     </main>
   );
 }

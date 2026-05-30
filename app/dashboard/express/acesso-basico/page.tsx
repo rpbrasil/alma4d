@@ -650,7 +650,7 @@ function Step2CanalSeguro({
                 <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-800">
                   Para proteger seu anonimato, o upload de evidências fica
                   desabilitado no envio anônimo. Imagens e PDFs podem conter
-                  informações ou metadados que ajudem a identificar quem enviou.
+                  informações ou metadados que ajudam a identificar quem enviou.
                 </div>
               ) : (
                 <>

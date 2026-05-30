@@ -58,7 +58,7 @@ export default function PerfilPage() {
       const row = data as PerfilRow;
 
       setPerfil(row);
-      setEmail(row.email ?? "");
+      setEmail(row.email ?? user.email ?? "");
 
       if (row.cliente_id) {
         const { data: cli } = (await supabase
@@ -70,7 +70,7 @@ export default function PerfilPage() {
         setClienteNome(cli?.nome ?? null);
       }
     })();
-  }, [user?.id, supabase]);
+  }, [user?.id, supabase, user?.email]);
 
   async function onSave() {
     setMsg(null);
@@ -180,7 +180,6 @@ export default function PerfilPage() {
           </div>
         )}
       </section>
-
       {/* CARD */}
       <section className="rounded-3xl border border-border bg-white p-6 shadow-sm">
         <div className="flex items-center justify-between">
@@ -254,6 +253,28 @@ export default function PerfilPage() {
               {user?.phone ?? "—"}
             </div>
           </div>
+        </div>
+      </section>
+      {/* ✅ LINKS LEGAIS */}
+      <section className="rounded-3xl border border-border bg-white p-6 shadow-sm">
+        <h2 className="text-sm font-semibold text-slate-900">
+          Informações legais
+        </h2>
+
+        <div className="mt-3 flex flex-col gap-2 text-sm">
+          <a
+            href="/nr1/privacidade"
+            className="text-brand underline hover:opacity-80"
+          >
+            Política de Privacidade
+          </a>
+
+          <a
+            href="/nr1/termos"
+            className="text-brand underline hover:opacity-80"
+          >
+            Termos de Uso
+          </a>
         </div>
       </section>
     </div>

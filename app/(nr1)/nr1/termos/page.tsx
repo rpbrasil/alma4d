@@ -1,3 +1,5 @@
+import BackFloatingButton from "@/components/public/BackFloatingButton";
+
 export const metadata = {
   title: "Termos de Uso | alma4D",
   description: "Termos de Uso aplicáveis ao aplicativo alma4D.",
@@ -275,6 +277,7 @@ export default function TermosPage() {
           </p>
         </Card>
       </section>
+      <BackFloatingButton />
     </main>
   );
 }
