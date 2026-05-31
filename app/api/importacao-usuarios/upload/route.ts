@@ -10,7 +10,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Payload inválido" }, { status: 400 });
   }
 
-  const { contrato_id, usuario_ids } = body;
+  const { contrato_id, usuario_ids, departamento_id } = body;
 
   if (!contrato_id || !Array.isArray(usuario_ids)) {
     return NextResponse.json(
@@ -34,7 +34,6 @@ export async function POST(req: Request) {
     process.env.SUPABASE_SERVICE_ROLE_KEY,
   );
 
-  // ✅ autenticação / caller
   let caller;
   try {
     caller = await getCaller(req, supabaseAdmin);
@@ -55,7 +54,7 @@ export async function POST(req: Request) {
     );
   }
 
-  // ✅ contrato + tenant guard
+  // 1) contrato + tenant guard
   const { data: contrato, error: contratoError } = await supabaseAdmin
     .from("contratos")
     .select("id, cliente_id")
@@ -86,7 +85,7 @@ export async function POST(req: Request) {
     );
   }
 
-  // ✅ normaliza ids do payload
+  // 2) normaliza ids do payload
   const usuarioIdsUnicos = Array.from(
     new Set(
       usuario_ids.map((v: unknown) => String(v ?? "").trim()).filter(Boolean),
@@ -100,7 +99,7 @@ export async function POST(req: Request) {
     );
   }
 
-  // ✅ valida usuários do payload
+  // 3) valida usuários do payload
   const { data: usuariosValidos, error: usuariosError } = await supabaseAdmin
     .from("usuarios")
     .select("id, cliente_id, ativo")
@@ -130,10 +129,43 @@ export async function POST(req: Request) {
     );
   }
 
-  // ✅ resumo atual
+  // 4) se veio departamento_id, valida o departamento
+  if (departamento_id) {
+    const { data: departamento, error: departamentoError } = await supabaseAdmin
+      .from("departamentos")
+      .select("id, cliente_id")
+      .eq("id", departamento_id)
+      .maybeSingle();
+
+    if (departamentoError) {
+      return NextResponse.json(
+        {
+          error: "ERRO_AO_BUSCAR_DEPARTAMENTO",
+          message: departamentoError.message,
+        },
+        { status: 500 },
+      );
+    }
+
+    if (!departamento) {
+      return NextResponse.json(
+        { error: "Departamento não encontrado" },
+        { status: 404 },
+      );
+    }
+
+    if (String(departamento.cliente_id) !== String(contrato.cliente_id)) {
+      return NextResponse.json(
+        { error: "Departamento de outro tenant" },
+        { status: 403 },
+      );
+    }
+  }
+
+  // 5) resumo atual
   const resumoAntes = await getResumoVagasContrato(supabaseAdmin, contrato_id);
 
-  // ✅ link ativo atual do contrato (se existir)
+  // 6) link ativo do COPSOQ
   const { data: activeLink, error: activeLinkError } = await supabaseAdmin
     .from("copsoq_links")
     .select("id")
@@ -151,7 +183,7 @@ export async function POST(req: Request) {
     );
   }
 
-  // ✅ verifica quem já está elegível no contrato atual
+  // 7) verifica quem já está elegível
   const { data: jaElegiveis, error: jaElegiveisError } = await supabaseAdmin
     .from("questionario_vagas")
     .select("usuario_id")
@@ -170,11 +202,8 @@ export async function POST(req: Request) {
   }
 
   const jaSet = new Set((jaElegiveis ?? []).map((r) => String(r.usuario_id)));
-
-  // ✅ só estes consomem novas vagas
   const novos = usuarioIdsValidados.filter((id) => !jaSet.has(String(id)));
 
-  // ✅ bloqueio por limite
   if (novos.length > resumoAntes.restantes) {
     return NextResponse.json(
       {
@@ -189,7 +218,7 @@ export async function POST(req: Request) {
     );
   }
 
-  // ✅ inserir novas vagas elegíveis
+  // 8) inserir novas vagas
   if (novos.length > 0) {
     const inserts = novos.map((usuario_id) => ({
       contrato_id,
@@ -213,8 +242,83 @@ export async function POST(req: Request) {
     }
   }
 
-  // ✅ sincronizar vínculos técnicos do COPSOQ para todos os usuários do payload
-  //    (não só os novos, para corrigir vínculos faltantes)
+  // 9) sincronizar vínculo organizacional (opcional)
+  //    Se não vier departamento_id, não cria org e tudo bem.
+  if (departamento_id && usuarioIdsValidados.length > 0) {
+    const { data: orgAtuais, error: orgAtuaisError } = await supabaseAdmin
+      .from("usuario_organizacao")
+      .select("id, usuario_id")
+      .eq("ativo", true)
+      .in("usuario_id", usuarioIdsValidados);
+
+    if (orgAtuaisError) {
+      return NextResponse.json(
+        {
+          error: "ERRO_AO_BUSCAR_ORGANIZACAO",
+          message: orgAtuaisError.message,
+        },
+        { status: 500 },
+      );
+    }
+
+    const orgByUser = new Map(
+      (orgAtuais ?? []).map((row) => [String(row.usuario_id), row.id]),
+    );
+
+    const idsParaUpdate = usuarioIdsValidados
+      .map((uid) => orgByUser.get(String(uid)))
+      .filter(Boolean) as string[];
+
+    const usuariosSemOrg = usuarioIdsValidados.filter(
+      (uid) => !orgByUser.has(String(uid)),
+    );
+
+    if (idsParaUpdate.length > 0) {
+      const { error: updateOrgError } = await supabaseAdmin
+        .from("usuario_organizacao")
+        .update({
+          departamento_id,
+          setor_id: null,
+          ativo: true,
+        })
+        .in("id", idsParaUpdate);
+
+      if (updateOrgError) {
+        return NextResponse.json(
+          {
+            error: "ERRO_AO_ATUALIZAR_ORGANIZACAO",
+            message: updateOrgError.message,
+          },
+          { status: 500 },
+        );
+      }
+    }
+
+    if (usuariosSemOrg.length > 0) {
+      const insertsOrg = usuariosSemOrg.map((usuario_id) => ({
+        usuario_id,
+        departamento_id,
+        setor_id: null,
+        ativo: true,
+      }));
+
+      const { error: insertOrgError } = await supabaseAdmin
+        .from("usuario_organizacao")
+        .insert(insertsOrg);
+
+      if (insertOrgError) {
+        return NextResponse.json(
+          {
+            error: "ERRO_AO_INSERIR_ORGANIZACAO",
+            message: insertOrgError.message,
+          },
+          { status: 500 },
+        );
+      }
+    }
+  }
+
+  // 10) sincronizar vínculos técnicos do COPSOQ
   if (activeLink?.id && usuarioIdsValidados.length > 0) {
     const linkRows = usuarioIdsValidados.map((usuario_id) => ({
       link_id: activeLink.id,
@@ -227,7 +331,6 @@ export async function POST(req: Request) {
       .upsert(linkRows, { onConflict: "link_id,usuario_id" });
 
     if (linkSyncError) {
-      // cleanup defensivo das vagas recém-criadas neste request
       if (novos.length > 0) {
         await supabaseAdmin
           .from("questionario_vagas")
@@ -247,7 +350,7 @@ export async function POST(req: Request) {
     }
   }
 
-  // ✅ REMOÇÃO: quem saiu da lista atual deixa de ficar elegível
+  // 11) remoção: quem saiu da lista atual deixa de ficar elegível
   const { data: vagasElegiveisAtuais, error: vagasElegiveisAtuaisError } =
     await supabaseAdmin
       .from("questionario_vagas")
@@ -281,7 +384,6 @@ export async function POST(req: Request) {
       .from("questionario_vagas")
       .update({
         status: "removido",
-        removed_at: new Date().toISOString(),
       })
       .in("id", idsVagasParaRemover);
 
@@ -295,7 +397,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // ✅ remove vínculo técnico do COPSOQ apenas se ainda não respondeu
+    // remove vínculo técnico do COPSOQ apenas se ainda não respondeu
     if (activeLink?.id && idsUsuariosRemovidos.length > 0) {
       const { error: removeLinkBindError } = await supabaseAdmin
         .from("copsoq_aplicacoes_links")
@@ -314,9 +416,13 @@ export async function POST(req: Request) {
         );
       }
     }
+
+    // opcional: desativar vínculo organizacional somente se você quiser limpar também
+    // Aqui eu NÃO recomendo apagar usuario_organizacao, porque ele pode continuar útil
+    // para o app mesmo fora do COPSOQ.
   }
 
-  // ✅ resumo atualizado
+  // 12) resumo atualizado
   const resumoAtualizado = await getResumoVagasContrato(
     supabaseAdmin,
     contrato_id,

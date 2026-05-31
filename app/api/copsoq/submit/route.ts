@@ -237,13 +237,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: orgError.message }, { status: 500 });
   }
 
-  if (!org?.departamento_id || !org?.setor_id) {
-    return NextResponse.json(
-      { error: "usuario_nao_vinculado_departamento_setor" },
-      { status: 403 },
-    );
-  }
-
   // 9) Normaliza answers -> scores_itens
   const itemScores = Object.entries(answers).reduce(
     (acc, [key, value]) => {
@@ -259,8 +252,8 @@ export async function POST(req: Request) {
     cliente_id: usuario.cliente_id,
     contrato_id: link.contrato_id,
     link_id: linkId,
-    departamento_id: org.departamento_id,
-    setor_id: org.setor_id,
+    departamento_id: org?.departamento_id ?? null,
+    setor_id: null,
     status: "concluido",
     respostas: answers,
     scores_itens: itemScores,
