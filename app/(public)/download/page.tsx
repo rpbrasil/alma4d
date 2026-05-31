@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 
 export default function DownloadPage() {
-  //const amazonUrl = "https://www.amazon.com.br/dp/ASIN";
+  const amazonUrl = "https://www.amazon.com.br/dp/B0H3864R5C";
   return (
     <section className="flex flex-col gap-8 py-16 text-center md:text-left items-center md:items-start">
       <h1 className="text-4xl font-bold text-brand">
@@ -41,7 +41,7 @@ export default function DownloadPage() {
       </p>
       <div className="pt-2">
         <Link
-          href="/lancamento"
+          href={amazonUrl}
           aria-label="Comprar o livro na Amazon"
           className="inline-block"
         >

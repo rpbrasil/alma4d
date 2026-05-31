@@ -15,7 +15,7 @@ export default function DashboardLayout({
 
   return (
     <AuthProvider>
-      <div className="flex min-h-screen bg-gray-100">
+      <div className="flex min-h-screen bg-blue-50">
         {/* ✅ SIDEBAR */}
         <Sidebar isOpen={menuOpen} onClose={() => setMenuOpen(false)} />
 

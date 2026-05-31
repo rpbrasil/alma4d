@@ -134,7 +134,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // Opcionalmente você pode endurecer a validação:
     if (!claims.role || !claims.plano) {
       return NextResponse.json(
         { error: "invalid_token_claims" },
@@ -201,9 +200,20 @@ export async function POST(req: Request) {
     }
 
     for (const file of files) {
-      if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+      const ext = extensionFromFilename(file.name);
+      const allowedExtensions = ["pdf", "png", "jpg", "jpeg", "webp"];
+      const mimeValido = ALLOWED_MIME_TYPES.includes(file.type);
+      const extValida = allowedExtensions.includes(ext);
+
+      if (!mimeValido && !extValida) {
         return NextResponse.json(
-          { error: `invalid_file_type:${file.name}` },
+          {
+            error: `invalid_file_type:${file.name}`,
+            detail: {
+              mime: file.type,
+              extension: ext,
+            },
+          },
           { status: 400 },
         );
       }
@@ -267,24 +277,26 @@ export async function POST(req: Request) {
         const fileBuffer = Buffer.from(arrayBuffer);
 
         const { error: uploadError } = await adminDb.storage
-          .from("denuncias-evidencias")
+          .from("denuncias")
           .upload(storagePath, fileBuffer, {
-            contentType: file.type,
+            contentType: file.type || "application/octet-stream",
             upsert: false,
           });
 
         if (uploadError) {
           console.error("Erro ao enviar arquivo:", uploadError);
 
-          // cleanup dos uploads anteriores
           if (uploadedPaths.length > 0) {
             await adminDb.storage
-              .from("denuncias-evidencias")
+              .from("denuncias")
               .remove(uploadedPaths);
           }
 
           return NextResponse.json(
-            { error: `upload_failed:${file.name}` },
+            {
+              error: `upload_failed:${file.name}`,
+              detail: uploadError.message ?? String(uploadError),
+            },
             { status: 500 },
           );
         }
@@ -295,7 +307,7 @@ export async function POST(req: Request) {
           denuncia_id: denuncia.id,
           bucket: "denuncias-evidencias",
           storage_path: storagePath,
-          mime_type: file.type,
+          mime_type: file.type || "application/octet-stream",
           tamanho_bytes: file.size,
           nome_original: anonimizada ? null : file.name,
         });
@@ -308,15 +320,17 @@ export async function POST(req: Request) {
       if (evidenceError) {
         console.error("Erro ao inserir metadados dos arquivos:", evidenceError);
 
-        // cleanup arquivos já enviados para evitar órfãos
         if (uploadedPaths.length > 0) {
           await adminDb.storage
-            .from("denuncias-evidencias")
+            .from("denuncias")
             .remove(uploadedPaths);
         }
 
         return NextResponse.json(
-          { error: "evidence_metadata_insert_failed" },
+          {
+            error: "evidence_metadata_insert_failed",
+            detail: evidenceError.message ?? String(evidenceError),
+          },
           { status: 500 },
         );
       }
@@ -328,6 +342,13 @@ export async function POST(req: Request) {
     });
   } catch (error) {
     console.error("Erro inesperado em /api/denuncias:", error);
-    return NextResponse.json({ error: "unexpected_failure" }, { status: 500 });
+
+    return NextResponse.json(
+      {
+        error: "unexpected_failure",
+        detail: error instanceof Error ? error.message : String(error),
+      },
+      { status: 500 },
+    );
   }
 }

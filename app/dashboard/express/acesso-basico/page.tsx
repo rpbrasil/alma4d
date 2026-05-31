@@ -81,8 +81,8 @@ Ex.: documentos, mensagens, prints, testemunhas ou contexto adicional.
 `;
 
 const DRAFT_STORAGE_KEY = "alma4d_denuncia_draft_express_acesso_basico";
-const MAX_FILES = 5;
-const MAX_FILE_SIZE_MB = 10;
+const MAX_FILES = 3;
+const MAX_FILE_SIZE_MB = 1;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 
 const ALLOWED_MIME_TYPES = [
@@ -146,7 +146,12 @@ function Stepper({
   );
 }
 
-function Step1Riscos({ onNext }: { onNext: () => void }) {
+function Step1Riscos({
+  onNext
+}: {
+  onNext: () => void;
+  setError: (msg: string | null) => void;
+}) {
   const [openModal, setOpenModal] = useState(false);
 
   return (
@@ -482,17 +487,18 @@ function Step2CanalSeguro({
     if (nextFiles.length > MAX_FILES) {
       return `Você pode anexar no máximo ${MAX_FILES} arquivos.`;
     }
-
+    const allowedExtensions = [".pdf", ".png", ".jpg", ".jpeg", ".webp"];
     for (const file of nextFiles) {
-      if (!ALLOWED_MIME_TYPES.includes(file.type)) {
-        return `Arquivo não permitido: ${file.name}. Envie apenas PDF, PNG, JPG ou WEBP.`;
+      const ext = file.name.toLowerCase().slice(file.name.lastIndexOf("."));
+      const mimeValido = ALLOWED_MIME_TYPES.includes(file.type);
+      const extValida = allowedExtensions.includes(ext);
+      if (!mimeValido && !extValida) {
+        return `Arquivo não permitido: ${file.name}. Envie apenas PDF, PNG, JPG, JPEG ou WEBP.`;
       }
-
       if (file.size > MAX_FILE_SIZE_BYTES) {
         return `O arquivo ${file.name} excede o limite de ${MAX_FILE_SIZE_MB} MB.`;
       }
     }
-
     return null;
   }
 
@@ -660,7 +666,7 @@ function Step2CanalSeguro({
                       Selecionar arquivos
                       <input
                         type="file"
-                        accept=".pdf,image/png,image/jpeg,image/webp"
+                        accept=".pdf,.png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
                         multiple
                         onChange={handleFilesChange}
                         className="hidden"
@@ -935,10 +941,12 @@ function Step3Copsoq({
 
         const payload = await res.json().catch(() => null);
 
-        if (!res.ok || !payload?.ok) {
-          if (!mounted) return;
+        if (!res.ok) {
           setStatusError(
-            payload?.error ?? "Não foi possível verificar o questionário.",
+            payload?.error ??
+              payload?.message ??
+              payload?.detail ??
+              "Não foi possível verificar o questionário.",
           );
           return;
         }
@@ -1221,7 +1229,12 @@ function ExpressAcessoBasicoContent() {
       const payload = await res.json().catch(() => null);
 
       if (!res.ok) {
-        setError(payload?.error ?? "Não foi possível registrar o relato.");
+        setError(
+          payload?.error ??
+            payload?.message ??
+            payload?.detail ??
+            "Não foi possível registrar o relato.",
+        );
         return;
       }
 
@@ -1247,7 +1260,9 @@ function ExpressAcessoBasicoContent() {
       <div className="mx-auto w-full max-w-6xl space-y-4 sm:space-y-6">
         <Stepper currentStep={step} onGoStep={goToStep} />
 
-        {step === 1 && <Step1Riscos onNext={() => goToStep(2)} />}
+        {step === 1 && (
+          <Step1Riscos onNext={() => goToStep(2)} setError={setError} />
+        )}
 
         {step === 2 && (
           <Step2CanalSeguro
