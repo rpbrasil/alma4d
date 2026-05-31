@@ -147,7 +147,7 @@ function Stepper({
 }
 
 function Step1Riscos({
-  onNext
+  onNext,
 }: {
   onNext: () => void;
   setError: (msg: string | null) => void;
@@ -467,6 +467,19 @@ function Step2CanalSeguro({
     if (files.length > MAX_FILES) return true;
     return false;
   }, [form, submitting, todayISO, files.length]);
+
+  const validationMessage = useMemo(() => {
+    if (!form.titulo.trim()) return "Informe o título";
+    if (!form.descricao.trim() || form.descricao.trim().length < 20)
+      return "Descreva o ocorrido com pelo menos 20 caracteres";
+    if (!form.consentimentoTratamento)
+      return "Confirme a ciência sobre o tratamento das informações";
+    if (form.dataOcorrencia && form.dataOcorrencia > todayISO)
+      return "A data do fato não pode ser futura";
+    if (files.length > MAX_FILES)
+      return `Máximo de ${MAX_FILES} arquivos permitido`;
+    return null;
+  }, [form, todayISO, files.length]);
 
   function updateField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -874,16 +887,25 @@ function Step2CanalSeguro({
             </p>
           </div>
         </label>
-
+        {validationMessage && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            {validationMessage}
+          </div>
+        )}
         <div className="flex flex-col gap-3 sm:flex-row">
           <button
             type="button"
             onClick={onSubmit}
             disabled={isSubmitDisabled}
+            title={validationMessage ?? undefined}
             className="flex-1 h-11 rounded-xl bg-brand px-4 text-white font-medium transition hover:opacity-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             <Send className="h-4 w-4" />
-            {submitting ? "Enviando..." : "Registrar este relato"}
+            {submitting
+              ? "Enviando..."
+              : protocol
+                ? "Enviado ✅"
+                : "Registrar este relato"}
           </button>
 
           <button
@@ -1155,13 +1177,32 @@ function ExpressAcessoBasicoContent() {
     }
   }, [form]);
 
+  useEffect(() => {
+    try {
+      localStorage.removeItem(DRAFT_STORAGE_KEY);
+    } catch {}
+  }, []);
+
   function goToStep(nextStep: 1 | 2 | 3) {
+    if (step === 2 && nextStep !== 2) {
+      // saiu do Step 2 → limpa tudo
+      setForm(INITIAL_FORM);
+      setFiles([]);
+      setProtocol(null);
+      setError(null);
+
+      try {
+        localStorage.removeItem(DRAFT_STORAGE_KEY);
+      } catch {}
+    }
+
     router.replace(
       buildAcessoBasicoHref(nextStep, {
         origem,
       }),
     );
   }
+
 
   function validateForm() {
     if (!form.titulo.trim()) {
