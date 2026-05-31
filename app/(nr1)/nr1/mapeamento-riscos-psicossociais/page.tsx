@@ -122,8 +122,8 @@ export default function PaginaNR1() {
 
             <p className="mt-6 text-lg text-white/90 max-w-3xl mx-auto">
               Aplicação do <b>COPSOQ II BR</b> com geração de relatórios
-              técnicos válidos para fiscalização, GRO e PGR — com segurança
-              jurídica e conformidade com a LGPD.
+              técnicos válidos para fiscalização, GRO e PGR — segurança
+              jurídica e conformidade LGPD.
             </p>
 
             <div className="mt-8 flex flex-wrap justify-center gap-3 text-sm">
