@@ -250,8 +250,6 @@ export async function POST(req: Request) {
   const payload = {
     usuario_id: user.id,
     cliente_id: usuario.cliente_id,
-    contrato_id: link.contrato_id,
-    link_id: linkId,
     departamento_id: org?.departamento_id ?? null,
     setor_id: null,
     status: "concluido",
