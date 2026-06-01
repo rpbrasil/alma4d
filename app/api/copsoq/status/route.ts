@@ -185,7 +185,7 @@ export async function GET() {
       return NextResponse.json({
         ok: true,
         status: "answered",
-        canRespond: true,
+        canRespond: false,
         href: buildCopsoqHref(currentLinkId),
         linkId: currentLinkId,
         message:
@@ -198,7 +198,7 @@ export async function GET() {
       return NextResponse.json({
         ok: true,
         status: "answered",
-        canRespond: true,
+        canRespond: false,
         href: buildCopsoqHref(currentLinkId),
         linkId: currentLinkId,
         message:

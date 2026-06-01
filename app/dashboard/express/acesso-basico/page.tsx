@@ -1071,14 +1071,24 @@ function Step3Copsoq({
 
       {!loadingStatus && !statusError && copsoqStatus && (
         <div className="rounded-2xl border border-border bg-background/60 p-4 text-sm text-foreground/75 leading-relaxed">
-          <p>{copsoqStatus.message}</p>
+          {copsoqStatus?.status === "answered" ? (
+            <div className="flex items-start gap-2 text-emerald-700">
+              <CheckCircle2 className="h-4 w-4 mt-0.5" />
+              <p>
+                Você já respondeu o questionário neste ciclo. ✅ Sua
+                participação foi registrada com sucesso.
+              </p>
+            </div>
+          ) : (
+            <p>{copsoqStatus.message}</p>
+          )}
         </div>
       )}
 
       <div className="flex flex-col gap-3 sm:flex-row">
         {!loadingStatus &&
           !statusError &&
-          copsoqStatus?.canRespond === true &&
+          copsoqStatus?.status === "pending" &&
           copsoqStatus.href && (
             <a
               href={copsoqStatus.href}
@@ -1086,19 +1096,6 @@ function Step3Copsoq({
             >
               <ClipboardCheck className="h-4 w-4" />
               Responder questionário
-            </a>
-          )}
-
-        {!loadingStatus &&
-          !statusError &&
-          copsoqStatus?.status === "answered" &&
-          copsoqStatus.href && (
-            <a
-              href={copsoqStatus.href}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-brand px-4 text-white font-medium hover:opacity-95"
-            >
-              <ClipboardCheck className="h-4 w-4" />
-              Abrir questionário novamente
             </a>
           )}
 
