@@ -150,18 +150,46 @@ export function generateContratoHTML(params: ContratoHTMLParams) {
       </p>
     </section>
 
-    <section id="sec-execucao" class="section">
-      <h2>4. Execução do Serviço</h2>
-      <p>
-        O serviço é considerado em execução a partir do momento em que os usuários iniciam o preenchimento dos questionários disponibilizados pela plataforma.
-      </p>
-      <p>
-        O contrato será considerado concluído após o preenchimento integral dos questionários pelos usuários vinculados.
-      </p>
-    </section>
+   
+<section id="sec-execucao" class="section">
+    <h2>4. Execução do Serviço</h2>
+    <p>
+      O serviço é considerado em execução a partir do momento em que os usuários iniciam o preenchimento dos questionários disponibilizados pela plataforma.
+    </p>
+    <p>
+      O contrato será considerado concluído após o preenchimento integral dos questionários pelos usuários vinculados.
+    </p>
+  </section>
 
-    <section id="sec-naoreembolso" class="section">
-      <h2>5. Irretratabilidade e Não Reembolso</h2>
+  <section id="sec-ocorrencias" class="section">
+    <h2>5. Registro de Riscos e Ocorrências</h2>
+
+    <p>
+      A plataforma disponibiliza funcionalidade complementar para registro de riscos, ocorrências e situações relacionadas ao ambiente de trabalho, incluindo aspectos operacionais, comportamentais e psicossociais.
+    </p>
+
+    <p>
+      Esses registros possuem natureza informativa e preventiva, podendo ser utilizados pela contratante como insumo adicional para ações de gestão, investigação interna e melhoria contínua.
+    </p>
+    <p>
+      Os registros poderão ser anonimizados conforme configurado pelo usuario, sendo vedada a utilização da plataforma para finalidades ilícitas ou que violem direitos de terceiros.
+    </p>
+    <div class="callout info">
+      O canal de registro de ocorrências não substitui canais formais de denúncia, comunicação institucional ou procedimentos legais aplicáveis.
+    </div>
+
+    <p>
+      A contratante é integralmente responsável pela análise, tratamento e eventual encaminhamento dos registros realizados por seus usuários, incluindo medidas disciplinares, administrativas ou legais quando aplicável.
+    </p>
+
+    <p>
+      A plataforma não realiza validação, investigação ou conclusão sobre os fatos relatados,
+      limitando-se ao armazenamento seguro e disponibilização estruturada das informações registradas.
+    </p>
+  </section>
+
+  <section id="sec-naoreembolso" class="section">
+    <h2>6. Irretratabilidade e Não Reembolso</h2>
       <p>
         Devido à natureza personalizada e técnica do serviço, o início do preenchimento dos questionários caracteriza o início efetivo da prestação.
       </p>
@@ -171,8 +199,8 @@ export function generateContratoHTML(params: ContratoHTMLParams) {
     </section>
 
     <section id="sec-limitacao" class="section">
-      <h2>6. Limitação de Responsabilidade</h2>
-      <p>A alma4D não se responsabiliza por:</p>
+      <h2>7. Limitação de Responsabilidade</h2>
+      <p>A contratada não se responsabiliza por:</p>
       <ul>
         <li>Decisões tomadas com base no relatório gerado</li>
         <li>Uso inadequado das informações fornecidas</li>
@@ -182,7 +210,7 @@ export function generateContratoHTML(params: ContratoHTMLParams) {
     </section>
 
     <section id="sec-lgpd" class="section">
-      <h2>7. Conformidade com LGPD</h2>
+      <h2>8. Conformidade com LGPD</h2>
       <p>O tratamento de dados pessoais será realizado conforme a Lei nº 13.709/2018 (LGPD).</p>
       <p>
         A empresa contratante atua como <strong>Controladora</strong> dos dados coletados, sendo responsável pela base legal de tratamento e pelas finalidades de uso.
@@ -193,7 +221,7 @@ export function generateContratoHTML(params: ContratoHTMLParams) {
     </section>
 
     <section id="sec-registros" class="section">
-      <h2>8. Segurança e Registros</h2>
+      <h2>9. Segurança e Registros</h2>
       <p>Para fins de segurança, auditoria e comprovação jurídica, poderão ser registrados:</p>
       <ul>
         <li>Endereço IP do usuário</li>
@@ -204,7 +232,7 @@ export function generateContratoHTML(params: ContratoHTMLParams) {
     </section>
 
     <section id="sec-aceite" class="section">
-      <h2>9. Aceite Eletrônico</h2>
+      <h2>10. Aceite Eletrônico</h2>
       <p>
         O aceite destes Termos ocorre de forma eletrônica e possui validade jurídica, nos termos da legislação brasileira,
         incluindo a Medida Provisória nº 2.200-2/2001.
@@ -213,13 +241,13 @@ export function generateContratoHTML(params: ContratoHTMLParams) {
     </section>
 
     <section id="sec-atualizacoes" class="section">
-      <h2>10. Atualizações</h2>
+      <h2>11. Atualizações</h2>
       <p>Estes Termos poderão ser atualizados periodicamente.</p>
       <p>Cada nova contratação estará vinculada à versão vigente no momento do aceite.</p>
     </section>
 
     <section id="sec-foro" class="section">
-      <h2>11. Lei Aplicável e Foro</h2>
+      <h2>12. Lei Aplicável e Foro</h2>
       <p>Este instrumento será regido pelas leis da República Federativa do Brasil.</p>
       <p>Fica eleito o foro da Comarca de São Paulo/SP, salvo disposição legal em contrário.</p>
     </section>

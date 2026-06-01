@@ -288,7 +288,7 @@ export default function DashboardExpressCopsoqPage() {
     [contratos, contratoId],
   );
 
-  const respondidos = linkInfo?.usadas ?? null;
+  const respondidos = resumoVagas?.respondidos ?? linkInfo?.usadas ?? null;
   const limite =
     contratoSelecionado?.limite_usuarios ?? linkInfo?.maxRespostas ?? null;
   const restantes = resumoVagas?.restantes ?? null;
@@ -570,7 +570,7 @@ export default function DashboardExpressCopsoqPage() {
               {limite ?? "—"}
             </p>
             <p className="mt-1 text-xs text-slate-500">
-              Total de respostas permitidas
+              Total de licenças adquiridas
             </p>
           </div>
 
@@ -583,7 +583,7 @@ export default function DashboardExpressCopsoqPage() {
               {respondidos ?? "—"}
             </p>
             <p className="mt-1 text-xs text-slate-500">
-              Atualiza ao gerar/atualizar
+              Licenças utilizadas
             </p>
           </div>
 
@@ -591,13 +591,13 @@ export default function DashboardExpressCopsoqPage() {
             <div className="flex items-center gap-2 text-slate-700">
               <AlertCircle className="h-4 w-4 text-slate-400" />
               <span className="text-sm font-semibold">
-                Capacidade disponivel
+                Disponiveis
               </span>
             </div>
             <p className="mt-2 text-2xl font-semibold text-slate-900">
               {restantes ?? "—"}
             </p>
-            <p className="mt-1 text-xs text-slate-500">limite − respondidos</p>
+            <p className="mt-1 text-xs text-slate-500">Licenças disponíveis</p>
           </div>
         </div>
         {/* BOTÃO ATUALIZAR (REFRESH DOS NÚMEROS) */}

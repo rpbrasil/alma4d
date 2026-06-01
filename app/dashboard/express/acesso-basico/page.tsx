@@ -108,7 +108,7 @@ function Stepper({
   const items = [
     { step: 1 as const, label: "Entender o que são riscos" },
     { step: 2 as const, label: "Comunicar riscos e ocorrências" },
-    { step: 3 as const, label: "Mapear riscos psicossociais" },
+    { step: 3 as const, label: "Acessar mapeamento de riscos" },
   ];
 
   return (
@@ -288,11 +288,8 @@ function Step1Riscos({
         <button
           type="button"
           onClick={onNext}
-          className="inline-flex items-center justify-center gap-2 rounded-xl
-      bg-brand px-3 h-10
-      text-[13px] sm:text-sm
-      text-white font-medium
-      hover:opacity-95"
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand px-3 h-10
+      text-[13px] sm:text-sm text-white font-medium hover:opacity-95"
         >
           <span className="truncate">Entendi. Ir para canal seguro</span>
           <ChevronRight className="h-4 w-4 shrink-0" />
@@ -522,7 +519,7 @@ function Step2CanalSeguro({
 
     const merged = [...files, ...selected].slice(0, MAX_FILES);
     const validationError = validateFiles(merged);
-    
+
     if (files.length + selected.length > MAX_FILES) {
       setError(`Você pode anexar no máximo ${MAX_FILES} arquivos.`);
     }
@@ -555,11 +552,11 @@ function Step2CanalSeguro({
     <section className="rounded-2xl border border-border bg-surface shadow-sm p-4 sm:p-6 space-y-4">
       <div className="inline-flex items-center gap-2 rounded-full border border-brand-secondary/20 bg-brand-secondary/5 px-3 py-1 text-xs sm:text-sm text-foreground/70">
         <ClipboardPen className="h-4 w-4 text-brand-secondary" />
-        Registro de riscos e ocorrências
+        Comunicar riscos e ocorrências
       </div>
       <div className="space-y-1">
         <h2 className="text-xl sm:text-2xl font-semibold text-foreground">
-          Canal seguro de apontamento de riscos e ocorrências
+          Canal seguro para registro de riscos e ocorrências
         </h2>
         <p className="max-w-3xl text-sm sm:text-base text-foreground/70 leading-relaxed">
           Você pode escrever do seu jeito. Se preferir, use as perguntas guiadas
@@ -924,9 +921,9 @@ function Step2CanalSeguro({
           <button
             type="button"
             onClick={onNext}
-            className="h-11 rounded-xl border border-border px-4 font-medium text-foreground hover:bg-surface-muted inline-flex items-center justify-center gap-2"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand px-3 h-10 text-[13px] sm:text-sm text-white font-medium hover:opacity-95"
           >
-            Etapa sobre o questionário
+            Ir para o questionário
             <ChevronRight className="h-4 w-4" />
           </button>
         </div>
@@ -1009,7 +1006,7 @@ function Step3Copsoq({
       <div className="space-y-3">
         <div className="inline-flex items-center gap-2 rounded-full border border-brand-secondary/20 bg-brand-secondary/5 px-3 py-1 text-xs sm:text-sm text-foreground/70">
           <ClipboardCheck className="h-4 w-4 text-brand-secondary" />
-          Questionário psicossocial / COPSOQ
+          Responder questionário
         </div>
 
         <h2 className="text-xl sm:text-2xl font-semibold text-foreground">

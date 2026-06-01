@@ -11,6 +11,7 @@ import {
   supabaseAdmin,
   applyContratoUpgrade,
 } from "@/lib/contratos-flow";
+import { gerarContratoPdfInterno } from "@/lib/contrato-pdf";
 
 function expectedCentsFromContrato(c: {
   valor_mensal?: number | string | null;
@@ -140,6 +141,12 @@ export async function POST(req: Request) {
       eventType: g.eventType,
       eventId: g.eventId,
       cupomFromGateway: g.cupomCodigo ?? null,
+    });
+
+    // 🔥 NOVO BLOCO
+    await gerarContratoPdfInterno({
+      supabase,
+      contratoId: g.contratoId,
     });
 
     return NextResponse.json({
