@@ -76,18 +76,23 @@ export async function GET() {
     );
 
     const {
-      data: { session },
-      error: sessionError,
-    } = await supabase.auth.getSession();
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
 
-    if (sessionError || !session?.user) {
+    if (userError || !user) {
       return NextResponse.json(
         { ok: false, error: "not_authenticated" },
         { status: 401 },
       );
     }
 
-    const claims = parseJwtClaims(session.access_token);
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    // ✅ parse continua funcionando
+    const claims = parseJwtClaims(session?.access_token);
 
     if (claims.ativo === false) {
       return NextResponse.json(
@@ -149,7 +154,7 @@ export async function GET() {
       .from("questionario_vagas")
       .select("id, status")
       .eq("contrato_id", currentContratoId)
-      .eq("usuario_id", session.user.id)
+      .eq("usuario_id", user.id)
       .in("status", ["elegivel", "respondido"])
       .maybeSingle();
 
@@ -165,7 +170,7 @@ export async function GET() {
     const { data: currentUserLink, error: userLinkError } = await adminDb
       .from("copsoq_aplicacoes_links")
       .select("id, usuario_id, link_id, aplicacao_id, created_at")
-      .eq("usuario_id", session.user.id)
+      .eq("usuario_id", user.id)
       .eq("link_id", currentLinkId)
       .maybeSingle();
 
@@ -186,7 +191,7 @@ export async function GET() {
         ok: true,
         status: "answered",
         canRespond: false,
-        href: buildCopsoqHref(currentLinkId),
+        href: null,
         linkId: currentLinkId,
         message:
           "Seu registro indica que o questionário já foi respondido neste ciclo.",
@@ -199,7 +204,7 @@ export async function GET() {
         ok: true,
         status: "answered",
         canRespond: false,
-        href: buildCopsoqHref(currentLinkId),
+        href: null,
         linkId: currentLinkId,
         message:
           "Seu registro indica que o questionário já foi respondido neste ciclo.",
@@ -214,7 +219,7 @@ export async function GET() {
           .upsert(
             {
               link_id: currentLinkId,
-              usuario_id: session.user.id,
+              usuario_id: user.id,
               aplicacao_id: null,
             },
             { onConflict: "link_id,usuario_id" },

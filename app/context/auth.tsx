@@ -2,7 +2,6 @@
 
 import {
   useMemo,
-  useRef,
   createContext,
   useContext,
   useEffect,
@@ -12,10 +11,11 @@ import {
 } from "react";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
+import { jwtDecode } from "jwt-decode";
+
 type AuthUser = User & {
   nome?: string | null;
 };
-import { jwtDecode } from "jwt-decode";
 
 export type Role = "admin" | "cliente" | "gestor" | "usuario";
 export type Plano = "express" | "premium";
@@ -58,13 +58,7 @@ function isPlano(value: unknown): value is Plano {
   return value === "express" || value === "premium";
 }
 
-function parseClaims(token: string | null | undefined): {
-  role: Role | null;
-  plano: Plano | null;
-  clienteId: string | null;
-  gestorId: string | null;
-  ativo: boolean | null;
-} {
+function parseClaims(token: string | null | undefined) {
   if (!token) {
     return {
       role: null,
@@ -131,93 +125,125 @@ function buildLoadingState(): AuthState {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const supabase = useMemo(() => getSupabaseClient(), []);
-
   const [state, setState] = useState<AuthState>(buildLoadingState());
 
-  const bootstrapDoneRef = useRef(false);
+  // Atualiza estado BASE imediatamente, sem esperar query extra
+  const applySession = useCallback((session: Session | null) => {
+    const token = session?.access_token;
+    const baseUser = session?.user ?? null;
 
-  const hydrateFromSession = useCallback(
-    async (session: Session | null) => {
-      const token = session?.access_token;
-      const baseUser = session?.user ?? null;
+    if (!baseUser) {
+      setState(buildLoggedOutState());
+      return;
+    }
 
-      if (!baseUser) {
-        setState(buildLoggedOutState());
-        return;
-      }
+    const { role, plano, clienteId, gestorId, ativo } = parseClaims(token);
 
-      // 🔥 BUSCA DO NOME NO BANCO
-      let nome: string | null = null;
+    setState({
+      user: {
+        ...baseUser,
+        nome: null,
+      },
+      role,
+      plano,
+      clienteId,
+      gestorId,
+      ativo,
+      loading: false,
+    });
+  }, []);
 
+  // Busca nome separadamente, sem travar loading global
+  const hydrateUserName = useCallback(
+    async (userId: string) => {
       try {
-        const { data: profile } = await supabase
+        const { data, error } = await supabase
           .from("usuarios")
           .select("nome_completo")
-          .eq("id", baseUser.id)
+          .eq("id", userId)
           .single();
 
-        nome = profile?.nome_completo ?? null;
+        if (error) {
+          console.warn("Erro ao buscar nome do usuário:", error.message);
+          return;
+        }
+
+        const nome = data?.nome_completo ?? null;
+
+        setState((prev) => {
+          if (!prev.user || prev.user.id !== userId) return prev;
+
+          return {
+            ...prev,
+            user: {
+              ...prev.user,
+              nome,
+            },
+          };
+        });
       } catch (e) {
-        console.warn("Erro ao buscar nome do usuário:", e);
+        console.warn("Erro inesperado ao buscar nome do usuário:", e);
       }
-
-      const user: AuthUser = {
-        ...baseUser,
-        nome,
-      };
-
-      const { role, plano, clienteId, gestorId, ativo } = parseClaims(token);
-
-      setState({
-        user,
-        role,
-        plano,
-        clienteId,
-        gestorId,
-        ativo,
-        loading: false,
-      });
     },
     [supabase],
+  );
+
+  const syncFromSession = useCallback(
+    async (session: Session | null) => {
+      applySession(session);
+
+      if (session?.user?.id) {
+        void hydrateUserName(session.user.id);
+      }
+    },
+    [applySession, hydrateUserName],
   );
 
   useEffect(() => {
     let mounted = true;
 
-    async function bootstrap() {
-      if (bootstrapDoneRef.current) return;
-      bootstrapDoneRef.current = true;
-
+    const bootstrap = async () => {
       try {
         const {
           data: { session },
+          error,
         } = await supabase.auth.getSession();
 
         if (!mounted) return;
 
-        await hydrateFromSession(session);
+        if (error) {
+          console.error("Erro ao obter sessão:", error.message);
+          setState(buildLoggedOutState());
+          return;
+        }
+
+        await syncFromSession(session);
       } catch (error) {
         console.error("Erro ao inicializar autenticação:", error);
-
         if (!mounted) return;
         setState(buildLoggedOutState());
       }
-    }
+    };
 
     void bootstrap();
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!mounted) return;
-      await hydrateFromSession(session);
+
+      // IMPORTANTE: não usar await direto aqui
+      setTimeout(() => {
+        if (!mounted) return;
+        void syncFromSession(session);
+      }, 0);
     });
 
     return () => {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [supabase, hydrateFromSession]);
+  }, [supabase, syncFromSession]);
 
   const signOut = async () => {
     try {
@@ -235,12 +261,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { data, error } = await supabase.auth.refreshSession();
 
       if (error) {
-        console.error("Erro ao atualizar sessão:", error);
+        console.error("Erro ao atualizar sessão:", error.message);
         setState((prev) => ({ ...prev, loading: false }));
         return;
       }
 
-      await hydrateFromSession(data.session ?? null);
+      await syncFromSession(data.session ?? null);
     } catch (error) {
       console.error("Erro inesperado ao atualizar sessão:", error);
       setState((prev) => ({ ...prev, loading: false }));

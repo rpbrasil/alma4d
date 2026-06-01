@@ -17,17 +17,6 @@ function extractDigits(phone: string): string {
   return phone.replace(/\D/g, "");
 }
 
-type PerfilUsuario = {
-  ativo: boolean | null;
-  tipo_plano: string | null;
-  cliente_id: string | null;
-  role: string | null;
-};
-
-type ClienteAtivo = {
-  ativo: boolean | null;
-};
-
 const EXPRESS_BASIC_ROUTE = "/dashboard/express/acesso-basico";
 
 export function LoginForm() {
@@ -107,7 +96,7 @@ export function LoginForm() {
     setError(null);
     setSuccess(null);
 
-    if (otp.length < 6) {
+    if (otp.trim().length < 6) {
       setError("Digite o código de 6 dígitos.");
       return;
     }
@@ -127,6 +116,12 @@ export function LoginForm() {
         return;
       }
 
+      // ✅ garantir sessão persistida no client
+      await supabase.auth.setSession({
+        access_token: data.session.access_token,
+        refresh_token: data.session.refresh_token,
+      });
+
       const user = data.session.user;
       if (!user?.id) {
         await supabase.auth.signOut();
@@ -134,11 +129,12 @@ export function LoginForm() {
         return;
       }
 
+      // ✅ tipagem correta do perfil
       const { data: perfil, error: perfilErr } = await supabase
         .from("usuarios")
         .select("ativo, tipo_plano, cliente_id, role")
         .eq("id", user.id)
-        .maybeSingle<PerfilUsuario>();
+        .maybeSingle();
 
       if (perfilErr) {
         await supabase.auth.signOut();
@@ -148,10 +144,9 @@ export function LoginForm() {
 
       if (!perfil) {
         await supabase.auth.signOut();
-        setError("Usuário não cadastrado. Solicite acesso ao administrador.");
+        setError("Usuário não cadastrado.");
         return;
       }
-
 
       if (perfil.ativo === false) {
         await supabase.auth.signOut();
@@ -159,22 +154,20 @@ export function LoginForm() {
         return;
       }
 
-      const role = (perfil.role ?? "").toString().toLowerCase().trim();
-      const plano = (perfil.tipo_plano ?? "").toString().toLowerCase().trim();
+      const role = (perfil.role ?? "").toLowerCase().trim();
+      const plano = (perfil.tipo_plano ?? "").toLowerCase().trim();
 
       const params = new URLSearchParams(window.location.search);
       const redirectParam = params.get("redirect");
       const linkId = params.get("linkId");
 
-      // 1) ADMIN PRIMEIRO
-      // Admin não depende de cliente_id nem de tipo_plano para entrar na área admin
+      // ✅ ADMIN
       if (role === "admin") {
         setSuccess("Acesso confirmado. Redirecionando…");
-        window.location.href = "/dashboard/admin/clientes";
+        window.location.replace("/dashboard/admin/clientes");
         return;
       }
 
-      // 2) Roles válidas não-admin
       const isTenantRole =
         role === "cliente" || role === "gestor" || role === "usuario";
 
@@ -184,7 +177,6 @@ export function LoginForm() {
         return;
       }
 
-      // 3) Plano do usuário
       const basePath =
         plano === "express"
           ? "/dashboard/express"
@@ -194,14 +186,13 @@ export function LoginForm() {
 
       if (!basePath) {
         await supabase.auth.signOut();
-        setError("Plano não configurado para este usuário.");
+        setError("Plano não configurado.");
         return;
       }
 
-      // 4) Usuários não-admin precisam de tenant
       if (!perfil.cliente_id) {
         await supabase.auth.signOut();
-        setError("Cliente não vinculado ao usuário.");
+        setError("Cliente não vinculado.");
         return;
       }
 
@@ -209,11 +200,11 @@ export function LoginForm() {
         .from("clientes")
         .select("ativo")
         .eq("id", perfil.cliente_id)
-        .maybeSingle<ClienteAtivo>();
+        .maybeSingle();
 
       if (clienteErr) {
         await supabase.auth.signOut();
-        setError("Falha ao validar o cliente vinculado.");
+        setError("Falha ao validar cliente.");
         return;
       }
 
@@ -223,27 +214,21 @@ export function LoginForm() {
         return;
       }
 
-      // 5) Redirect seguro: apenas rotas internas compatíveis com o plano
-      const requested =
-        redirectParam && redirectParam.startsWith("/") ? redirectParam : null;
-
+      // ✅ redirect seguro
       let finalRedirect: string | null = null;
 
-      // Se houver redirect explícito e for compatível com o plano, respeita
-      if (requested && requested.startsWith(basePath)) {
-        finalRedirect = requested;
+      if (redirectParam && redirectParam.startsWith(basePath)) {
+        finalRedirect = redirectParam;
       } else if (
         plano === "express" &&
         (role === "usuario" || role === "gestor")
       ) {
-        // Regra nova: sem linkId -> página básica de compliance/LGPD
         if (!linkId) {
           finalRedirect = EXPRESS_BASIC_ROUTE;
         } else {
           finalRedirect = `${basePath}/copsoq?linkId=${encodeURIComponent(linkId)}`;
         }
       } else {
-        // cliente premium, cliente express, ou qualquer outro caso permitido
         finalRedirect = basePath;
       }
 
@@ -254,7 +239,9 @@ export function LoginForm() {
       }
 
       setSuccess("Acesso confirmado. Redirecionando…");
-      window.location.href = finalRedirect;
+
+      // ✅ melhor que href (evita problemas de sessão)
+      window.location.replace(finalRedirect);
     } catch (err) {
       await supabase.auth.signOut();
       setError(

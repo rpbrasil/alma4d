@@ -152,14 +152,14 @@ type SidebarProps = {
   onClose: () => void;
 };
 
-export default function Sidebar({isOpen, onClose}: SidebarProps) {
+export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, loading, signOut, plano, role } = useAuth();
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
-  
+
   const [copsoqStatus, setCopsoqStatus] = useState<{
     status: string;
     href: string | null;
@@ -174,10 +174,25 @@ export default function Sidebar({isOpen, onClose}: SidebarProps) {
     return NAV_BY_PLAN[effectivePlano] ?? [];
   }, [effectivePlano]);
 
-  const items = useMemo<NavItem[]>(() => {
+  const items = useMemo(() => {
     if (!role) return [];
-    return planItems.filter((item) => item.roles.includes(role));
-  }, [planItems, role]);
+
+    return planItems
+      .filter((item) => item.roles.includes(role))
+      .map((item) => {
+        if (item.href === "/dashboard/express/copsoq") {
+          if (copsoqStatus?.status === "pending") {
+            return { ...item, label: "Questionário disponível" };
+          }
+
+          if (copsoqStatus?.status === "answered") {
+            return { ...item, label: "Questionário respondido" };
+          }
+        }
+
+        return item;
+      });
+  }, [planItems, role, copsoqStatus]);
 
   const isActive = (href: string) => {
     if (href === "/dashboard/express" || href === "/dashboard/premium") {
@@ -234,19 +249,6 @@ export default function Sidebar({isOpen, onClose}: SidebarProps) {
 
   if (!user) return null;
 
-  const copsoqNavItem =
-    copsoqStatus?.status === "pending" || copsoqStatus?.status === "answered"
-      ? {
-          href: copsoqStatus.href || "/dashboard/express/acesso-basico?step=3",
-          label:
-            copsoqStatus.status === "pending"
-              ? "Questionário disponível"
-              : "Questionário respondido",
-          icon: QrCode,
-          highlight: copsoqStatus.status === "pending",
-        }
-      : null;
-
   return (
     <div suppressHydrationWarning>
       {/* ✅ OVERLAY FORA DO ASIDE */}
@@ -288,28 +290,6 @@ export default function Sidebar({isOpen, onClose}: SidebarProps) {
           </div>
 
           <nav className="flex-1 px-3 py-3 space-y-1 overflow-y-auto">
-            {copsoqNavItem?.highlight && (
-              <span className="ml-auto text-xs bg-green-500 px-2 py-0.5 rounded">
-                Novo
-              </span>
-            )}
-
-            {copsoqNavItem && (
-              <Link
-                href={copsoqNavItem.href}
-                onClick={onClose}
-                className={[
-                  "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm",
-                  copsoqNavItem.highlight
-                    ? "bg-green-500/20 text-white animate-pulse"
-                    : "bg-white/10 text-white",
-                ].join(" ")}
-              >
-                <QrCode size={18} />
-                {copsoqNavItem.label}
-              </Link>
-            )}
-
             {items.map((item: NavItem) => {
               const Icon = item.icon;
               const active = isActive(item.href);

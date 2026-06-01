@@ -11,7 +11,7 @@ import {
   type ResponseSet,
   type Question,
   type ResponseOption,
-} from "@/lib/copsoqData";
+} from "@/lib/copsoq/copsoqData";
 import { trackConsent } from "@/lib/trackConsent";
 import Image from "next/image";
 

@@ -789,7 +789,7 @@ export default function RelatorioOcorrenciasPage() {
         {/* Conteúdo com animação suave */}
         <div
           className={`overflow-hidden transition-all duration-300 ${
-            openFilters ? "max-h-[800px] opacity-100 mt-2" : "max-h-0 opacity-0"
+            openFilters ? "max-h-200 opacity-100 mt-2" : "max-h-0 opacity-0"
           }`}
         >
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 border-t pt-4">

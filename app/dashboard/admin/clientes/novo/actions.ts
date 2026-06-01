@@ -1,6 +1,7 @@
 "use server";
 
 import { createServerSupabase } from "@/lib/supabase/server";
+import { seedCopsoqParametrosForCliente } from "@/lib/copsoq/seed";
 
 function onlyDigits(v: string) {
   return (v || "").replace(/\D+/g, "");
@@ -224,6 +225,28 @@ export async function criarClienteEContrato(formData: FormData) {
 
   if (errCliente) throw new Error(friendlyDbError(errCliente));
 
+  try {
+    await seedCopsoqParametrosForCliente(supabase, cliente.id);
+  } catch (seedErr) {
+    // rollback compensatório para não deixar cliente criado sem parâmetros
+    await supabase.from("clientes").delete().eq("id", cliente.id);
+
+    throw new Error(
+      seedErr instanceof Error
+        ? seedErr.message
+        : "Erro ao inicializar parâmetros COPSOQ do cliente.",
+    );
+  }
+
+  if (!errCliente && cliente?.id) {
+    const { error: seedError } = await supabase.rpc("seed_copsoq_parametros", {
+      p_cliente_id: cliente.id,
+    });
+
+    if (seedError) {
+      console.error("[COPSOQ] erro ao seed:", seedError);
+    }
+  }
   // 2) cria contrato vinculado ao cliente
   const { data: contrato, error: errContrato } = await supabase
     .from("contratos")

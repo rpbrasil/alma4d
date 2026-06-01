@@ -685,7 +685,9 @@ export default function DashboardExpressRelatorioCopsoqPage() {
                             <div className="flex justify-between">
                               <span className="text-slate-600">Prioridade</span>
                               <span className="font-semibold">
-                                {r.prioridade ?? "—"}
+                                {r.prioridade !== null
+                                  ? `${Number(r.prioridade).toFixed(0)}%`
+                                  : "—"}
                               </span>
                             </div>
                             <div className="flex justify-between">

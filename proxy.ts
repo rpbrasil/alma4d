@@ -426,17 +426,19 @@ export async function proxy(req: NextRequest) {
       // COPSOQ - controle de acesso rigoroso
       // -----------------------------------------
       if (isExpressCopsoq(pathname)) {
-        // admin pode acessar livremente
-        if (isAdmin) {
+        // ✅ admin E cliente podem acessar direto
+        if ( role === "cliente") {
           return nextWithCookies(res, requestHeaders);
         }
 
-        // precisa de linkId válido
-        if (!hasValidLinkId(search)) {
-          const url = new URL("/dashboard/express/acesso-basico", req.url);
-          url.searchParams.set("step", "3");
+        // ✅ usuario e gestor precisam de linkId
+        if (role === "usuario" || role === "gestor") {
+          if (!hasValidLinkId(search)) {
+            const url = new URL("/dashboard/express/acesso-basico", req.url);
+            url.searchParams.set("step", "3");
 
-          return redirectWithCookies(res, url);
+            return redirectWithCookies(res, url);
+          }
         }
 
         return nextWithCookies(res, requestHeaders);
