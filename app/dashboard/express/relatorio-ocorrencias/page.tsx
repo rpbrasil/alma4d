@@ -11,6 +11,7 @@ import {
   Download,
   Eye,
   Filter,
+  ChevronRight,
   Search,
   X,
   FileText,
@@ -159,8 +160,6 @@ function addFooter(
   doc.text(`Página ${pageNumber}`, pageWidth - 28, pageHeight - 6);
 }
 
-
-
 const STATUS_LABELS: Record<string, string> = {
   recebida: "Recebida",
   em_analise: "Em análise",
@@ -263,7 +262,8 @@ export default function RelatorioOcorrenciasPage() {
   const [arquivos, setArquivos] = useState<DenunciaArquivo[]>([]);
   const [selected, setSelected] = useState<Denuncia | null>(null);
   const [exportingPdf, setExportingPdf] = useState(false);
-
+  const [fileUrls, setFileUrls] = useState<Record<string, string>>({});
+  const [openFilters, setOpenFilters] = useState(false);
   // filtros
   const [search, setSearch] = useState("");
   const [categoriaFilter, setCategoriaFilter] = useState("todas");
@@ -459,6 +459,34 @@ export default function RelatorioOcorrenciasPage() {
     return arquivos.filter((a) => a.denuncia_id === selected.id);
   }, [selected, arquivos]);
 
+  useEffect(() => {
+    if (!selectedArquivos.length) return;
+
+    (async () => {
+      const entries: Record<string, string> = {};
+
+      for (const arquivo of selectedArquivos) {
+        try {
+          const res = await fetch("/api/arquivos/signed-url", {
+            method: "POST",
+            body: JSON.stringify({
+              path: arquivo.storage_path,
+            }),
+          });
+
+          const data = await res.json();
+
+          if (data?.url) {
+            entries[arquivo.id] = data.url;
+          }
+        } catch (e) {
+          console.error("Erro ao gerar URL", e);
+        }
+      }
+      setFileUrls(entries);
+    })();
+  }, [selectedArquivos]);
+
   function addExecutiveHeader(
     doc: JsPDFClass,
     options: {
@@ -503,8 +531,6 @@ export default function RelatorioOcorrenciasPage() {
       );
     }
   }
-
-
 
   async function captureChart(
     ref: React.RefObject<HTMLDivElement | null>,
@@ -559,7 +585,7 @@ export default function RelatorioOcorrenciasPage() {
         title: reportTitle,
         subtitle: reportSubtitle,
         companyName: clienteNome ?? undefined,
-        
+
         companyLogoBase64,
       });
 
@@ -632,7 +658,7 @@ export default function RelatorioOcorrenciasPage() {
             title: reportTitle,
             subtitle: reportSubtitle,
             companyName: clienteNome ?? undefined,
-            
+
             companyLogoBase64,
           });
 
@@ -663,7 +689,7 @@ export default function RelatorioOcorrenciasPage() {
           title: reportTitle,
           subtitle: reportSubtitle,
           companyName: clienteNome ?? undefined,
-          
+
           companyLogoBase64,
         });
 
@@ -706,16 +732,16 @@ export default function RelatorioOcorrenciasPage() {
     return <div className="p-6">Carregando relatório...</div>;
   }
 
-function resetFilters() {
-  setSearch("");
-  setCategoriaFilter("todas");
-  setStatusFilter("todos");
-  setRiscoFilter("todos");
-  setAnonFilter("todos");
-  setDateFrom("");
-  setDateTo("");
+  function resetFilters() {
+    setSearch("");
+    setCategoriaFilter("todas");
+    setStatusFilter("todos");
+    setRiscoFilter("todos");
+    setAnonFilter("todos");
+    setDateFrom("");
+    setDateTo("");
   }
-  
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -742,127 +768,154 @@ function resetFilters() {
 
       {/* Filtros */}
       <section className="rounded-2xl border border-border bg-white p-4 shadow-sm space-y-4">
-        <div className="flex items-center gap-2">
-          <Filter size={18} className="text-slate-500" />
-          <h2 className="font-medium text-slate-900">Filtros avançados</h2>
-        </div>
+        {/* Header accordion */}
+        <button
+          type="button"
+          onClick={() => setOpenFilters((prev) => !prev)}
+          className="w-full flex items-center justify-between rounded-xl border border-border px-4 py-3 text-sm font-medium bg-surface hover:bg-surface-muted transition"
+        >
+          <div className="flex items-center gap-2">
+            <Filter size={18} className="text-slate-500" />
+            <span className="text-slate-900">Filtros avançados</span>
+          </div>
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <div className="space-y-1">
-            <label className="text-sm text-slate-600">Busca</label>
-            <div className="flex items-center gap-2 rounded-xl border px-3 py-2">
-              <Search size={16} className="text-slate-400" />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Protocolo, título, descrição..."
-                className="w-full outline-none text-sm"
-              />
+          <ChevronRight
+            className={`h-4 w-4 transition-transform ${
+              openFilters ? "rotate-90" : ""
+            }`}
+          />
+        </button>
+
+        {/* Conteúdo com animação suave */}
+        <div
+          className={`overflow-hidden transition-all duration-300 ${
+            openFilters ? "max-h-[800px] opacity-100 mt-2" : "max-h-0 opacity-0"
+          }`}
+        >
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 border-t pt-4">
+            {/* Busca */}
+            <div className="space-y-1">
+              <label className="text-sm text-slate-600">Busca</label>
+              <div className="flex items-center gap-2 rounded-xl border px-3 py-2">
+                <Search size={16} className="text-slate-400" />
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Protocolo, título, descrição..."
+                  className="w-full outline-none text-sm"
+                />
+              </div>
+            </div>
+
+            {/* Categoria */}
+            <div className="space-y-1">
+              <label className="text-sm text-slate-600">Categoria</label>
+              <select
+                value={categoriaFilter}
+                onChange={(e) => setCategoriaFilter(e.target.value)}
+                className="w-full rounded-xl border px-3 py-2 text-sm"
+              >
+                <option value="todas">Todas</option>
+                {categorias.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Status */}
+            <div className="space-y-1">
+              <label className="text-sm text-slate-600">Status</label>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="w-full rounded-xl border px-3 py-2 text-sm"
+              >
+                <option value="todos">Todos</option>
+                <option value="recebida">Recebida</option>
+                <option value="em_analise">Em análise</option>
+                <option value="procedente">Procedente</option>
+                <option value="improcedente">Improcedente</option>
+                <option value="encerrada">Encerrada</option>
+              </select>
+            </div>
+
+            {/* Risco */}
+            <div className="space-y-1">
+              <label className="text-sm text-slate-600">Risco iminente</label>
+              <select
+                value={riscoFilter}
+                onChange={(e) =>
+                  setRiscoFilter(e.target.value as "todos" | "sim" | "nao")
+                }
+                className="w-full rounded-xl border px-3 py-2 text-sm"
+              >
+                <option value="todos">Todos</option>
+                <option value="sim">Somente com risco</option>
+                <option value="nao">Sem risco</option>
+              </select>
+            </div>
+
+            {/* Tipo de envio */}
+            <div className="space-y-1">
+              <label className="text-sm text-slate-600">Tipo de envio</label>
+              <select
+                value={anonFilter}
+                onChange={(e) =>
+                  setAnonFilter(
+                    e.target.value as "todos" | "anonimo" | "identificado",
+                  )
+                }
+                className="w-full rounded-xl border px-3 py-2 text-sm"
+              >
+                <option value="todos">Todos</option>
+                <option value="anonimo">Somente anônimos</option>
+                <option value="identificado">Somente identificados</option>
+              </select>
+            </div>
+
+            {/* Data inicial */}
+            <div className="space-y-1">
+              <label className="text-sm text-slate-600">Data inicial</label>
+              <div className="flex items-center gap-2 rounded-xl border px-3 py-2">
+                <CalendarRange size={16} className="text-slate-400" />
+                <input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  className="w-full outline-none text-sm"
+                />
+              </div>
+            </div>
+
+            {/* Data final */}
+            <div className="space-y-1">
+              <label className="text-sm text-slate-600">Data final</label>
+              <div className="flex items-center gap-2 rounded-xl border px-3 py-2">
+                <CalendarRange size={16} className="text-slate-400" />
+                <input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  className="w-full outline-none text-sm"
+                />
+              </div>
             </div>
           </div>
 
-          <div className="space-y-1">
-            <label className="text-sm text-slate-600">Categoria</label>
-            <select
-              value={categoriaFilter}
-              onChange={(e) => setCategoriaFilter(e.target.value)}
-              className="w-full rounded-xl border px-3 py-2 text-sm"
+          {/* Botão limpar */}
+          <div className="flex justify-end pt-4">
+            <button
+              onClick={resetFilters}
+              className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
             >
-              <option value="todas">Todas</option>
-              {categorias.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
-              ))}
-            </select>
+              <X size={16} />
+              Limpar filtros
+            </button>
           </div>
-
-          <div className="space-y-1">
-            <label className="text-sm text-slate-600">Status</label>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full rounded-xl border px-3 py-2 text-sm"
-            >
-              <option value="todos">Todos</option>
-              <option value="recebida">Recebida</option>
-              <option value="em_analise">Em análise</option>
-              <option value="procedente">Procedente</option>
-              <option value="improcedente">Improcedente</option>
-              <option value="encerrada">Encerrada</option>
-            </select>
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-sm text-slate-600">Risco iminente</label>
-            <select
-              value={riscoFilter}
-              onChange={(e) =>
-                setRiscoFilter(e.target.value as "todos" | "sim" | "nao")
-              }
-              className="w-full rounded-xl border px-3 py-2 text-sm"
-            >
-              <option value="todos">Todos</option>
-              <option value="sim">Somente com risco</option>
-              <option value="nao">Sem risco</option>
-            </select>
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-sm text-slate-600">Tipo de envio</label>
-            <select
-              value={anonFilter}
-              onChange={(e) =>
-                setAnonFilter(
-                  e.target.value as "todos" | "anonimo" | "identificado",
-                )
-              }
-              className="w-full rounded-xl border px-3 py-2 text-sm"
-            >
-              <option value="todos">Todos</option>
-              <option value="anonimo">Somente anônimos</option>
-              <option value="identificado">Somente identificados</option>
-            </select>
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-sm text-slate-600">Data inicial</label>
-            <div className="flex items-center gap-2 rounded-xl border px-3 py-2">
-              <CalendarRange size={16} className="text-slate-400" />
-              <input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                className="w-full outline-none text-sm"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-sm text-slate-600">Data final</label>
-            <div className="flex items-center gap-2 rounded-xl border px-3 py-2">
-              <CalendarRange size={16} className="text-slate-400" />
-              <input
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                className="w-full outline-none text-sm"
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="flex justify-end">
-          <button
-            onClick={resetFilters}
-            className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-          >
-            <X size={16} />
-            Limpar filtros
-          </button>
         </div>
       </section>
-
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <KpiCard title="Total de ocorrências" value={stats.total} />
@@ -1110,22 +1163,31 @@ function resetFilters() {
 
             <div>
               <p className="text-xs text-slate-500 mb-2">Arquivos anexados</p>
+
               {selectedArquivos.length > 0 ? (
                 <div className="space-y-2">
-                  {selectedArquivos.map((arquivo) => (
-                    <div
-                      key={arquivo.id}
-                      className="rounded-lg border border-border px-3 py-2 text-sm"
-                    >
-                      <p className="font-medium">
-                        {arquivo.nome_original || "(sem nome original)"}
-                      </p>
-                      <p className="text-xs text-slate-500">
-                        {arquivo.mime_type} •{" "}
-                        {formatBytes(arquivo.tamanho_bytes)}
-                      </p>
-                    </div>
-                  ))}
+                  {selectedArquivos.map((arquivo) => {
+                    const url = fileUrls[arquivo.id];
+
+                    return (
+                      <a
+                        key={arquivo.id}
+                        href={url || "#"}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block rounded-lg border border-border px-3 py-2 text-sm hover:bg-surface-muted transition"
+                      >
+                        <p className="font-medium text-brand underline">
+                          {arquivo.nome_original || "(sem nome original)"}
+                        </p>
+
+                        <p className="text-xs text-slate-500">
+                          {arquivo.mime_type} •{" "}
+                          {formatBytes(arquivo.tamanho_bytes)}
+                        </p>
+                      </a>
+                    );
+                  })}
                 </div>
               ) : (
                 <p className="text-sm text-slate-500">

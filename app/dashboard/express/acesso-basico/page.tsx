@@ -520,8 +520,12 @@ function Step2CanalSeguro({
 
     if (!selected.length) return;
 
-    const merged = [...files, ...selected];
+    const merged = [...files, ...selected].slice(0, MAX_FILES);
     const validationError = validateFiles(merged);
+    
+    if (files.length + selected.length > MAX_FILES) {
+      setError(`Você pode anexar no máximo ${MAX_FILES} arquivos.`);
+    }
 
     if (validationError) {
       setError(validationError);
@@ -1199,7 +1203,6 @@ function ExpressAcessoBasicoContent() {
       }),
     );
   }
-
 
   function validateForm() {
     if (!form.titulo.trim()) {
