@@ -39,7 +39,7 @@ const EmpresaSchema = z.object({
     .string()
     .regex(/^\+\d{10,15}$/, "Telefone deve estar em E.164 (+5511...)"),
   responsavel: z.string().min(2).max(160),
-  funcionarios: z.number().int().min(1).max(200000),
+  funcionarios: z.number().int().min(2).max(200000),
   aceiteLgpd: z.boolean().refine((v) => v === true, "LGPD deve ser aceita"),
   cupom: z.string().trim().min(3).max(40).optional().or(z.literal("")),
   risco: z.enum(["baixo", "medio", "alto"]).optional(),
@@ -118,7 +118,20 @@ export async function POST(req: Request) {
     }
 
     // ✅ calcula preço no server (fonte da verdade)
-    const config = await getPrecificacaoConfig();
+    let config: Awaited<ReturnType<typeof getPrecificacaoConfig>>;
+    try {
+      config = await getPrecificacaoConfig();
+    } catch (e: unknown) {
+      console.error("Falha ao carregar configuração de preço:", e);
+      return NextResponse.json(
+        {
+          error: "Falha ao carregar configuração de preço.",
+          detail: e instanceof Error ? e.message : "unknown_error",
+        },
+        { status: 500 },
+      );
+    }
+
     if (!config) {
       return NextResponse.json(
         { error: "Configuração de preço indisponível." },
@@ -405,9 +418,12 @@ export async function POST(req: Request) {
       { status: 200 },
     );
   } catch (err: unknown) {
-    console.error(err);
+    console.error("Erro ao processar cadastro NR-1:", err);
     return NextResponse.json(
-      { error: "Erro ao processar cadastro NR‑1." },
+      {
+        error: "Erro ao processar cadastro NR‑1.",
+        detail: err instanceof Error ? err.message : "unknown_error",
+      },
       { status: 500 },
     );
   }

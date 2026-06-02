@@ -613,14 +613,23 @@ export default function EmpresaNR1Page() {
       }
 
       if (!res.ok) {
-        console.error("Erro /api/nr1/empresa:", data);
+        console.error("Erro /api/nr1/empresa:", {
+          status: res.status,
+          response: data,
+          rawText: text,
+          payload,
+        });
 
-        if ("error" in data) {
-          throw new Error(data.error);
+        if (data && typeof data === "object" && "error" in data && data.error) {
+          const detail =
+            typeof data === "object" && data && "detail" in data && data.detail
+              ? ` (${String(data.detail)})`
+              : "";
+          throw new Error(`${String(data.error)}${detail}`);
         }
-        throw new Error("Erro desconhecido");
-      }
 
+        throw new Error(`Falha no cadastro NR-1 (HTTP ${res.status}).`);
+      }
 
       if (!("cliente_id" in data) || !("contrato_id" in data)) {
         throw new Error("Resposta incompleta do servidor");
