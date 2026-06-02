@@ -15,12 +15,12 @@ export default function DashboardLayout({
 
   return (
     <AuthProvider>
-      <div className="flex min-h-screen bg-gray-200">
+      <div className="flex min-h-screen bg-gray-200 overflow-x-hidden">
         {/* ✅ SIDEBAR */}
         <Sidebar isOpen={menuOpen} onClose={() => setMenuOpen(false)} />
 
         {/* ✅ CONTEÚDO */}
-        <div className="flex-1 flex flex-col md:ml-64">
+        <div className="flex-1 flex flex-col w-full md:ml-64">
           {/* ✅ HEADER */}
           <DashboardHeader onMenuClick={() => setMenuOpen(true)} />
 

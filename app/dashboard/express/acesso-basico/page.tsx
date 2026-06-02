@@ -208,7 +208,7 @@ function Step1Riscos({
             <Scale className="mt-0.5 h-5 w-5 text-brand-secondary shrink-0" />
             <div>
               <h2 className="font-medium text-foreground">
-                Normas brasileiras citadas de forma simples
+                Legislação brasileira relevante:
               </h2>
               <div className="mt-1 space-y-2 text-sm text-foreground/70 leading-relaxed">
                 <p>
@@ -284,6 +284,19 @@ function Step1Riscos({
         >
           🚨 <span className="truncate">Ver contatos de emergência</span>
         </button>
+
+        <a
+          href="https://heyzine.com/flip-book/4757966bd8"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center justify-center gap-2 rounded-xl
+border border-brand-secondary/30 bg-brand-secondary/10
+px-3 h-10 text-[13px] sm:text-sm
+text-foreground font-medium
+hover:bg-brand-secondary/20"
+        >
+          📘 <span className="truncate">Saiba mais sobre NR-1</span>
+        </a>
 
         <button
           type="button"
