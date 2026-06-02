@@ -976,7 +976,7 @@ export default function EmpresaNR1Page() {
                 {/* Totais */}
                 <div className="mt-3 border-t pt-3 space-y-1">
                   <div className="flex justify-between text-sm text-slate-600">
-                    <span>Total mensal</span>
+                    <span>Total a pagar</span>
 
                     {descontoCents > 0 ? (
                       <span className="line-through text-slate-400">

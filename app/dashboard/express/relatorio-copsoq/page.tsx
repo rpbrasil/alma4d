@@ -66,7 +66,7 @@ export default function DashboardExpressRelatorioCopsoqPage() {
   const [filterDepartamentoId, setFilterDepartamentoId] =
     useState<string>("todos");
   const [filterSetorId, setFilterSetorId] = useState<string>("todos");
-
+  const [totalRespondentes, setTotalRespondentes] = useState(0);
   const normalizedRole = (
     me?.role ??
     (authRole as Role | undefined) ??
@@ -211,6 +211,32 @@ export default function DashboardExpressRelatorioCopsoqPage() {
       mounted = false;
     };
   }, [effectiveClienteId, supabase]);
+
+useEffect(() => {
+  if (!effectiveClienteId) return;
+
+  (async () => {
+    let query = supabase
+      .from("copsoq_aplicacoes")
+      .select("id")
+      .eq("cliente_id", effectiveClienteId)
+      .eq("status", "concluido");
+
+    if (filterDepartamentoId !== "todos") {
+      query = query.eq("departamento_id", filterDepartamentoId);
+    }
+
+    if (filterSetorId !== "todos") {
+      query = query.eq("setor_id", filterSetorId);
+    }
+
+    const { data, error } = await query;
+
+    if (!error) {
+      setTotalRespondentes(data?.length ?? 0);
+    }
+  })();
+}, [effectiveClienteId, filterDepartamentoId, filterSetorId, supabase]);
 
   // opções de depto/setor a partir das rows
   const departamentosOptions = useMemo(() => {
@@ -592,7 +618,7 @@ export default function DashboardExpressRelatorioCopsoqPage() {
             Total de respostas
           </p>
           <p className="mt-1 text-2xl font-extrabold text-slate-900">
-            {resumo.totalRespostas}
+            {totalRespondentes}
           </p>
         </div>
 
