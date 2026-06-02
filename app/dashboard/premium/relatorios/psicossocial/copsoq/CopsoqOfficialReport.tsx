@@ -570,7 +570,7 @@ export const CopsoqOfficialReport = forwardRef<HTMLDivElement, Props>(
                 <th className="center" style={{ width: 70 }}>
                   Nível
                 </th>
-                <th>Medida / ação</th>
+                <th>Código da ação</th>
                 <th style={{ width: 90 }}>Responsável</th>
                 <th style={{ width: 70 }}>Prazo</th>
                 <th style={{ width: 60 }}>Status</th>

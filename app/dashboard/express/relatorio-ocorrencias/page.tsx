@@ -54,7 +54,7 @@ type Denuncia = {
   categoria: string;
   titulo: string;
   descricao: string;
-  status: string;
+  status: StatusDenuncia;
   risco_iminente: boolean;
   created_at: string;
   data_ocorrencia: string | null;
@@ -75,6 +75,14 @@ type DenunciaArquivo = {
   bucket: string;
   created_at: string;
 };
+
+type StatusDenuncia =
+  | "recebida"
+  | "em_analise"
+  | "em_tratamento"
+  | "resolvida"
+  | "encerrada"
+  | "descartada";
 
 async function loadImageAsBase64(url: string): Promise<string | null> {
   try {
@@ -160,20 +168,23 @@ function addFooter(
   doc.text(`Página ${pageNumber}`, pageWidth - 28, pageHeight - 6);
 }
 
-const STATUS_LABELS: Record<string, string> = {
+const STATUS_LABELS: Record<StatusDenuncia, string> = {
   recebida: "Recebida",
   em_analise: "Em análise",
-  procedente: "Procedente",
-  improcedente: "Improcedente",
+  em_tratamento: "Em tratamento",
+  resolvida: "Resolvida",
   encerrada: "Encerrada",
+  descartada: "Descartada",
 };
 
-const STATUS_STYLES: Record<string, string> = {
+
+const STATUS_STYLES: Record<StatusDenuncia, string> = {
   recebida: "bg-gray-100 text-gray-700",
   em_analise: "bg-blue-100 text-blue-700",
-  procedente: "bg-green-100 text-green-700",
-  improcedente: "bg-orange-100 text-orange-700",
+  em_tratamento: "bg-green-100 text-green-700",
+  resolvida: "bg-orange-100 text-orange-700",
   encerrada: "bg-slate-200 text-slate-700",
+  descartada: "bg-red-100 text-red-700",
 };
 
 const PIE_COLORS = [
@@ -212,7 +223,7 @@ function monthLabel(key: string) {
   return `${month}/${year}`;
 }
 
-function StatusBadge({ status }: { status: string }) {
+function StatusBadge({ status }: { status: StatusDenuncia }) {
   return (
     <span
       className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${
@@ -427,7 +438,7 @@ export default function RelatorioOcorrenciasPage() {
   }, [filteredDenuncias]);
 
   const statusData = useMemo(() => {
-    const map = new Map<string, number>();
+    const map = new Map<StatusDenuncia, number>();
     for (const d of filteredDenuncias) {
       map.set(d.status, (map.get(d.status) || 0) + 1);
     }
@@ -1041,7 +1052,40 @@ export default function RelatorioOcorrenciasPage() {
                   <td className="p-3">{d.protocolo}</td>
                   <td className="p-3">{d.categoria}</td>
                   <td className="p-3">
-                    <StatusBadge status={d.status} />
+                    <select
+                      value={d.status}
+                      onChange={async (e) => {
+                        const newStatus = e.target.value as StatusDenuncia;
+
+                        await fetch("/api/denuncias/status", {
+                          method: "POST",
+                          headers: {
+                            "Content-Type": "application/json",
+                          },
+                          body: JSON.stringify({
+                            denunciaId: d.id,
+                            status: newStatus,
+                          }),
+                        });
+
+                        // 🔥 atualiza localmente (rápido)
+                        setDenuncias((prev) =>
+                          prev.map((item) =>
+                            item.id === d.id
+                              ? { ...item, status: newStatus }
+                              : item,
+                          ),
+                        );
+                      }}
+                      className="text-xs border rounded px-2 py-1"
+                    >
+                      <option value="recebida">Recebida</option>
+                      <option value="em_analise">Em análise</option>
+                      <option value="em_tratamento">Em tratamento</option>
+                      <option value="resolvida">Resolvida</option>
+                      <option value="encerrada">Encerrada</option>
+                      <option value="descartada">Descartada</option>
+                    </select>
                   </td>
                   <td className="p-3">
                     {d.risco_iminente ? (
