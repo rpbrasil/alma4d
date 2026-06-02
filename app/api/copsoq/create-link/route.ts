@@ -297,6 +297,52 @@ export async function POST(req: Request) {
       }
     }
 
+    // 🔥 SINCRONIZA VAGAS SEMPRE (IDEMPOTENTE E SEGURA)
+
+    // 1) buscar usuários elegíveis
+    const { data: usuarios, error: usuariosErr } = await supabaseAdmin
+      .from("usuarios")
+      .select("id")
+      .eq("cliente_id", claims.clienteId)
+      .eq("ativo", true)
+      .in("role", ["usuario", "gestor"]);
+
+    if (usuariosErr) {
+      console.error("Erro ao buscar usuários:", usuariosErr);
+    } else if (usuarios?.length) {
+      // 2) buscar vagas já existentes
+      const { data: existingVagas } = await supabaseAdmin
+        .from("questionario_vagas")
+        .select("usuario_id, status")
+        .eq("contrato_id", contratoId);
+
+      const statusMap = new Map(
+        (existingVagas ?? []).map((v) => [v.usuario_id, v.status]),
+      );
+
+      // 3) montar payload preservando quem já respondeu
+      const payload = usuarios.map((u) => {
+        const existingStatus = statusMap.get(u.id);
+
+        return {
+          usuario_id: u.id,
+          contrato_id: contratoId,
+          status: existingStatus === "respondido" ? "respondido" : "elegivel",
+        };
+      });
+
+      // 4) upsert
+      const { error: vagasErr } = await supabaseAdmin
+        .from("questionario_vagas")
+        .upsert(payload, {
+          onConflict: "usuario_id,contrato_id",
+        });
+
+      if (vagasErr) {
+        console.error("Erro ao sincronizar vagas:", vagasErr);
+      }
+    }
+
     // 10) Montar URL final correta
     const envBase = process.env.NEXT_PUBLIC_APP_URL;
     const proto = headerStore.get("x-forwarded-proto") ?? "http";
