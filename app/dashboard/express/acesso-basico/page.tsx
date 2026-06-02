@@ -1261,9 +1261,7 @@ function ExpressAcessoBasicoContent() {
       body.set("riscoIminente", String(form.riscoIminente));
       body.set("contatoRetorno", form.contatoRetorno.trim());
       body.set("consentimentoTratamento", String(form.consentimentoTratamento));
-      body.set(
-        "origem",
-        origem === "questionario"
+      body.set("origem", origem === "questionario"
           ? "questionario_psicossocial"
           : "acesso_basico_express",
       );

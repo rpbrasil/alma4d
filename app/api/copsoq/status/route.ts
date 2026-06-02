@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { buildCopsoqHref } from "@/lib/navigation/copsoq";
 
 type Role = "admin" | "cliente" | "gestor" | "usuario" | null;
 type Plano = "express" | "premium" | null;
@@ -55,6 +54,11 @@ function parseJwtClaims(accessToken: string | null | undefined): JwtClaims {
     return { role: null, plano: null, clienteId: null, ativo: null };
   }
 }
+
+function buildCopsoqResponderHref(linkId: string) {
+  return `/express/copsoq?linkId=${encodeURIComponent(linkId)}`;
+}
+
 
 export async function GET() {
   try {
@@ -241,7 +245,7 @@ export async function GET() {
         ok: true,
         status: "pending",
         canRespond: true,
-        href: buildCopsoqHref(currentLinkId),
+        href: buildCopsoqResponderHref(currentLinkId),
         linkId: currentLinkId,
         message: "Você está apto(a) a responder ao questionário neste ciclo.",
       });
