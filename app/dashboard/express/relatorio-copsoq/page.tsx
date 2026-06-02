@@ -511,13 +511,11 @@ export default function DashboardExpressRelatorioCopsoqPage() {
           </div>
         ) : null}
       </div>
-
       {/* Aviso de sigilo */}
       <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-sm text-slate-700">
         <b>Confidencialidade:</b> resultados agregados (sem identificação
         individual). Uso exclusivo para análise organizacional e preventiva.
       </div>
-
       {/* Filtros */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
         <div>
@@ -587,7 +585,6 @@ export default function DashboardExpressRelatorioCopsoqPage() {
           </div>
         </div>
       </div>
-
       {/* KPIs */}
       <div className="grid sm:grid-cols-4 gap-4">
         <div className="rounded-xl border border-gray-200 bg-white p-4">
@@ -626,7 +623,6 @@ export default function DashboardExpressRelatorioCopsoqPage() {
           </p>
         </div>
       </div>
-
       {/* Conteúdo por departamento/setor */}
       {error ? (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex gap-3">
@@ -719,16 +715,18 @@ export default function DashboardExpressRelatorioCopsoqPage() {
           ))}
         </div>
       )}
-
       {/* Relatório oficial (offscreen) para geração do PDF */}
       <div
+        aria-hidden="true"
         style={{
-          position: "absolute",
-          left: -100000,
+          position: "fixed",
           top: 0,
+          left: 0,
           width: 900,
           opacity: 0,
           pointerEvents: "none",
+          zIndex: -1,
+          transform: "translate(-200vw, -200vh)",
         }}
       >
         <CopsoqOfficialReport
