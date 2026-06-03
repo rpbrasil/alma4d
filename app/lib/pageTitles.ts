@@ -8,7 +8,7 @@ export const PAGE_TITLES: Record<string, string> = {
   "/dashboard/express/relatorio-copsoq": "Relatório NR-1 | Psicossocial",
   "/dashboard/express/acesso-basico": "Canal Seguro",
   "/dashboard/express/relatorio-ocorrencias": "Riscos & Ocorrências",
-"/dashboard/express/acompanhamento": "Acompanhamento",
+"/dashboard/express/acompanhamento": "Acompanhamento de protocolo",
   // 👇 PROFISSIONAIS
   "/dashboard/profissionais": "Profissionais",
   "/dashboard/profissionais/novo": "Novo profissional",

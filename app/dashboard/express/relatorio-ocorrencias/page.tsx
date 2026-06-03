@@ -61,8 +61,8 @@ type Denuncia = {
   local_ocorrencia: string | null;
   contato_retorno: string | null;
   anonimizada: boolean;
-  severidade: string | null;
-  prioridade: string | null;
+  severidade: NivelClassificacao | null;
+  prioridade: NivelClassificacao | null;
 };
 
 type DenunciaArquivo = {
@@ -83,6 +83,8 @@ type StatusDenuncia =
   | "resolvida"
   | "encerrada"
   | "descartada";
+
+  type NivelClassificacao = "alta" | "media" | "baixa";
 
 async function loadImageAsBase64(url: string): Promise<string | null> {
   try {
@@ -186,6 +188,32 @@ const STATUS_STYLES: Record<StatusDenuncia, string> = {
   encerrada: "bg-slate-200 text-slate-700",
   descartada: "bg-red-100 text-red-700",
 };
+
+const NIVEL_LABELS: Record<NivelClassificacao, string> = {
+  alta: "Alta",
+  media: "Média",
+  baixa: "Baixa",
+};
+
+const NIVEL_STYLES: Record<NivelClassificacao, string> = {
+  alta: "bg-red-100 text-red-700",
+  media: "bg-yellow-100 text-yellow-700",
+  baixa: "bg-green-100 text-green-700",
+};
+
+function NivelBadge({ value }: { value: NivelClassificacao | null }) {
+  if (!value) {
+    return <span className="text-slate-400">—</span>;
+  }
+
+  return (
+    <span
+      className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${NIVEL_STYLES[value]}`}
+    >
+      {NIVEL_LABELS[value]}
+    </span>
+  );
+}
 
 const PIE_COLORS = [
   "#030870", // brand
@@ -739,6 +767,46 @@ export default function RelatorioOcorrenciasPage() {
     }
   }
 
+  async function salvarClassificacao(
+    denunciaId: string,
+    field: "severidade" | "prioridade",
+    value: NivelClassificacao,
+  ) {
+    const target = selected ?? denuncias.find((d) => d.id === denunciaId);
+
+    if (!target) return;
+
+    const body = {
+      denunciaId,
+      severidade: field === "severidade" ? value : (target.severidade ?? null),
+      prioridade: field === "prioridade" ? value : (target.prioridade ?? null),
+    };
+
+    const res = await fetch("/api/denuncias/classificacao", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      const json = await res.json().catch(() => null);
+      alert(json?.error ?? "Erro ao atualizar classificação");
+      return;
+    }
+
+    setDenuncias((prev) =>
+      prev.map((item) =>
+        item.id === denunciaId ? { ...item, [field]: value } : item,
+      ),
+    );
+
+    setSelected((prev) =>
+      prev && prev.id === denunciaId ? { ...prev, [field]: value } : prev,
+    );
+  }
+
   if (loading) {
     return <div className="p-6">Carregando relatório...</div>;
   }
@@ -754,7 +822,7 @@ export default function RelatorioOcorrenciasPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="px-2 sm:px-3 md:px-6 py-4 space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
@@ -846,8 +914,8 @@ export default function RelatorioOcorrenciasPage() {
                 <option value="todos">Todos</option>
                 <option value="recebida">Recebida</option>
                 <option value="em_analise">Em análise</option>
-                <option value="procedente">Procedente</option>
-                <option value="improcedente">Improcedente</option>
+                <option value="em_tratamento">Em tratamento</option>
+                <option value="resolvida">Resolvida</option>
                 <option value="encerrada">Encerrada</option>
               </select>
             </div>
@@ -928,7 +996,7 @@ export default function RelatorioOcorrenciasPage() {
         </div>
       </section>
       {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
         <KpiCard title="Total de ocorrências" value={stats.total} />
         <KpiCard title="Em análise" value={stats.emAnalise} />
         <KpiCard title="Risco iminente" value={stats.risco} danger />
@@ -936,10 +1004,10 @@ export default function RelatorioOcorrenciasPage() {
       </div>
 
       {/* Gráficos */}
-      <div className="grid gap-6 xl:grid-cols-2">
+      <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
         <div
           ref={categoryChartRef}
-          className="rounded-2xl border border-border bg-white p-4 shadow-sm"
+          className="rounded-2xl border border-border bg-white p-3 sm:p-4 shadow-sm"
         >
           <div className="flex items-center gap-2 mb-3">
             <ClipboardList size={18} className="text-slate-500" />
@@ -948,7 +1016,7 @@ export default function RelatorioOcorrenciasPage() {
             </h2>
           </div>
 
-          <div className="h-72">
+          <div className="h-96 md:h-96 sm:h-96">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -971,10 +1039,9 @@ export default function RelatorioOcorrenciasPage() {
             </ResponsiveContainer>
           </div>
         </div>
-
         <div
           ref={statusChartRef}
-          className="rounded-2xl border border-border bg-white p-4 shadow-sm"
+          className="rounded-2xl border border-border bg-white p-3 sm:p-4 shadow-sm"
         >
           <div className="flex items-center gap-2 mb-3">
             <CheckCircle2 size={18} className="text-slate-500" />
@@ -983,7 +1050,7 @@ export default function RelatorioOcorrenciasPage() {
             </h2>
           </div>
 
-          <div className="h-72">
+          <div className="h-72 md:h-96 sm:h-96">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={statusData}>
                 <CartesianGrid strokeDasharray="3 3" />
@@ -995,10 +1062,9 @@ export default function RelatorioOcorrenciasPage() {
             </ResponsiveContainer>
           </div>
         </div>
-
         <div
           ref={timelineChartRef}
-          className="rounded-2xl border border-border bg-white p-4 shadow-sm xl:col-span-2"
+          className="rounded-2xl border border-border bg-white p-3 sm:p-4 shadow-sm xl:col-span-2"
         >
           <div className="flex items-center gap-2 mb-3">
             <FileText size={18} className="text-slate-500" />
@@ -1140,50 +1206,79 @@ export default function RelatorioOcorrenciasPage() {
                 <p className="text-xs text-slate-500">Protocolo</p>
                 <p className="font-medium">{selected.protocolo}</p>
               </div>
-
               <div>
                 <p className="text-xs text-slate-500">Status</p>
                 <StatusBadge status={selected.status} />
               </div>
-
               <div>
                 <p className="text-xs text-slate-500">Categoria</p>
                 <p>{selected.categoria}</p>
               </div>
-
               <div>
                 <p className="text-xs text-slate-500">Data do registro</p>
                 <p>{formatDateTime(selected.created_at)}</p>
               </div>
-
               <div>
                 <p className="text-xs text-slate-500">Data da ocorrência</p>
                 <p>{formatDate(selected.data_ocorrencia)}</p>
               </div>
-
               <div>
                 <p className="text-xs text-slate-500">Local</p>
                 <p>{selected.local_ocorrencia || "—"}</p>
               </div>
-
               <div>
                 <p className="text-xs text-slate-500">Tipo de envio</p>
                 <p>{selected.anonimizada ? "Anônimo" : "Identificado"}</p>
               </div>
-
               <div>
                 <p className="text-xs text-slate-500">Contato de retorno</p>
                 <p>{selected.contato_retorno || "—"}</p>
               </div>
-
               <div>
-                <p className="text-xs text-slate-500">Severidade</p>
-                <p>{selected.severidade || "—"}</p>
+                <p className="text-xs text-slate-500 mb-1">Severidade</p>
+                <div className="flex items-center gap-2">
+                  <select
+                    value={selected.severidade ?? ""}
+                    onChange={(e) =>
+                      salvarClassificacao(
+                        selected.id,
+                        "severidade",
+                        e.target.value as NivelClassificacao,
+                      )
+                    }
+                    className="rounded-lg border border-border px-3 py-2 text-sm"
+                  >
+                    <option value="">Selecionar</option>
+                    <option value="alta">Alta</option>
+                    <option value="media">Média</option>
+                    <option value="baixa">Baixa</option>
+                  </select>
+
+                  <NivelBadge value={selected.severidade} />
+                </div>
               </div>
-
               <div>
-                <p className="text-xs text-slate-500">Prioridade</p>
-                <p>{selected.prioridade || "—"}</p>
+                <p className="text-xs text-slate-500 mb-1">Prioridade</p>
+                <div className="flex items-center gap-2">
+                  <select
+                    value={selected.prioridade ?? ""}
+                    onChange={(e) =>
+                      salvarClassificacao(
+                        selected.id,
+                        "prioridade",
+                        e.target.value as NivelClassificacao,
+                      )
+                    }
+                    className="rounded-lg border border-border px-3 py-2 text-sm"
+                  >
+                    <option value="">Selecionar</option>
+                    <option value="alta">Alta</option>
+                    <option value="media">Média</option>
+                    <option value="baixa">Baixa</option>
+                  </select>
+
+                  <NivelBadge value={selected.prioridade} />
+                </div>
               </div>
             </div>
 

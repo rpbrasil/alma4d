@@ -227,33 +227,35 @@ export default function DashboardExpressDocumentosPage() {
   return (
     <div className="px-4 sm:px-5 lg:px-6 overflow-x-hidden">
       <div className="mx-auto w-full max-w-7xl space-y-6">
+        {/* HEADER */}
         <section className="rounded-3xl border border-border bg-white p-4 sm:p-6 lg:p-8 shadow-sm">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div>
+            <div className="min-w-0">
               <span className="inline-flex items-center rounded-full bg-brand/10 px-3 py-1 text-sm font-semibold text-brand">
                 <FileText className="mr-2 h-4 w-4" />
                 Documentos Express
               </span>
-              <h1 className="mt-4 text-3xl font-semibold text-slate-900">
+
+              <h1 className="mt-4 text-2xl sm:text-3xl font-semibold text-slate-900">
                 Contratos e notas fiscais
               </h1>
-              <p className="mt-2 max-w-2xl text-sm text-slate-600 wrap-break-words">
+
+              <p className="mt-2 text-sm text-slate-600 wrap-break-words">
                 Veja seus contratos, notas fiscais e faça download dos
                 documentos.
               </p>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2 min-w-0">
-              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+            <div className="grid gap-3 grid-cols-2 sm:grid-cols-2 w-full sm:w-auto">
+              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4 text-center">
                 <p className="text-sm text-slate-500">Contratos</p>
                 <p className="mt-2 text-2xl font-semibold text-slate-900">
                   {contratos.length}
                 </p>
               </div>
-              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-sm text-slate-500 wrap-break-words">
-                  Notas fiscais
-                </p>
+
+              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4 text-center">
+                <p className="text-sm text-slate-500">Notas fiscais</p>
                 <p className="mt-2 text-2xl font-semibold text-slate-900">
                   {nfse.length}
                 </p>
@@ -262,123 +264,98 @@ export default function DashboardExpressDocumentosPage() {
           </div>
         </section>
 
-        <section
-          id="contratos"
-          className="rounded-3xl border border-border bg-white p-6 shadow-sm"
-        >
-          <div className="flex flex-wrap items-center justify-between gap-4 w-full">
+        {/* CONTRATOS */}
+        <section className="rounded-3xl border border-border bg-white p-6 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
               <h2 className="text-xl font-semibold text-slate-900">
                 Contratos
               </h2>
-              <p className="mt-1 text-sm text-slate-500 wrap-break-words">
-                Acesse os contratos e baixe o PDF quando estiver disponível.
+              <p className="text-sm text-slate-500">
+                Acesse e baixe os contratos disponíveis.
               </p>
             </div>
-            {contratos.length > 0 && (
-              <Link
-                href="#contratos"
-                className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
-              >
-                Ver contratos
-              </Link>
-            )}
           </div>
 
           {contratos.length === 0 ? (
-            <div className="mt-6 rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-4 sm:p-6 lg:p-8 text-center text-slate-500">
+            <div className="mt-6 rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-slate-500">
               <FileText className="mx-auto mb-4 h-8 w-8" />
               <p className="font-semibold">Nenhum contrato encontrado</p>
-              <p className="mt-2 text-sm">
-                Sua empresa ainda não possui contratos cadastrados.
-              </p>
             </div>
           ) : (
-            <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3 min-w-0">
+            <div className="mt-6 grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
               {contratos.map((contrato) => {
                 const temPdf = Boolean(
                   contrato.pdf_assinado_url || contrato.pdf_url,
                 );
+
                 return (
                   <div
                     key={contrato.id}
                     className="rounded-2xl border border-border bg-white p-5 shadow-sm hover:shadow-md transition"
                   >
-                    <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-                      <div className="space-y-3">
-                        <div className="flex flex-wrap items-center gap-3 w-full">
-                          <p className="font-semibold text-slate-900">
+                    <div className="flex flex-col gap-4 min-w-0">
+                      {/* INFO */}
+                      <div className="flex-1 min-w-0 space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="font-semibold text-slate-900 truncate">
                             {contrato.numero_contrato}
                           </p>
+
                           <span
-                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${statusBadge(contrato.status)}`}
+                            className={`text-xs px-2 py-1 rounded-full ${statusBadge(contrato.status)}`}
                           >
                             {statusLabel(contrato.status)}
                           </span>
-                          {contrato.versao > 1 && (
-                            <span className="text-xs text-slate-500">
-                              v{contrato.versao}
+                        </div>
+                        <div className="flex items-center gap-1 text-xs text-slate-500">
+                          <Calendar size={14} />
+                          <span>Criado: {formatDate(contrato.criado_em)}</span>
+                        </div>
+                      </div>
+
+                      {/* BOTÕES ✅ */}
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <button
+                            onClick={() => openContratoPdf(contrato.id)}
+                            disabled={!temPdf}
+                            className={`w-full sm:flex-1 inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold ${temPdf ? "border border-slate-200 hover:bg-slate-50 text-slate-700" : "bg-slate-100 text-slate-400 cursor-not-allowed"}`}
+                          >
+                            <Eye size={16} />
+                            Visualizar
+                          </button>
+
+                          <button
+                            onClick={() =>
+                              downloadContratoPdf(
+                                contrato.id,
+                                contrato.numero_contrato,
+                              )
+                            }
+                            disabled={!temPdf}
+                            className={`w-full sm:flex-1 inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold ${temPdf ? "bg-brand text-white hover:brightness-95" : "bg-slate-200 text-slate-400 cursor-not-allowed"}`}
+                          >
+                            <Download size={16} />
+                            Baixar
+                          </button>
+
+                          {temPdf ? (
+                            <Link
+                              href={`/contrato/${contrato.id}`}
+                              className="w-full sm:flex-1 inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold hover:bg-slate-50"
+                            >
+                              Detalhes
+                            </Link>
+                          ) : (
+                            <span
+                              className="w-full sm:flex-1 inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-400 cursor-not-allowed bg-slate-100"
+                              title="Detalhes disponíveis após geração do contrato"
+                            >
+                              Detalhes
                             </span>
                           )}
                         </div>
-
-                        <div className="grid gap-2 text-sm text-slate-600 sm:grid-cols-2 wrap-break-words min-w-0">
-                          <div className="flex items-center gap-2">
-                            <Calendar size={16} className="text-slate-400" />
-                            <span>
-                              Criado: {formatDate(contrato.criado_em)}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Calendar size={16} className="text-slate-400" />
-                            <span>
-                              Atualizado: {formatDate(contrato.atualizado_em)}
-                            </span>
-                          </div>
-                        </div>
-                        <p className="text-sm text-slate-600">
-                          Tipo: {contrato.tipo_contrato}
-                        </p>
-                      </div>
-
-                      <div className="flex flex-wrap gap-2 max-w-full">
-                        {temPdf ? (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => openContratoPdf(contrato.id)}
-                              className="inline-flex items-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                            >
-                              <Eye size={16} />
-                              Visualizar
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                downloadContratoPdf(
-                                  contrato.id,
-                                  contrato.numero_contrato,
-                                )
-                              }
-                              className="inline-flex items-center gap-2 rounded-lg bg-brand px-3 py-2 text-sm font-semibold text-white hover:bg-brand/90"
-                            >
-                              <Download size={16} />
-                              Baixar
-                            </button>
-                          </>
-                        ) : (
-                          <span className="inline-flex items-center gap-2 rounded-lg bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-500">
-                            <AlertCircle size={16} />
-                            PDF não disponível
-                          </span>
-                        )}
-
-                        <Link
-                          href={`/contrato/${contrato.id}`}
-                          className="inline-flex items-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                        >
-                          Detalhes
-                        </Link>
                       </div>
                     </div>
                   </div>
@@ -388,161 +365,56 @@ export default function DashboardExpressDocumentosPage() {
           )}
         </section>
 
+        {/* NFSe */}
         <section className="rounded-3xl border border-border bg-white p-6 shadow-sm">
-          <div className="flex flex-wrap items-center justify-between gap-4 w-full">
-            <div>
-              <h2 className="text-xl font-semibold text-slate-900">
-                Notas fiscais
-              </h2>
-              <p className="mt-1 text-sm text-slate-500 wrap-break-words">
-                Acompanhe as emissões e acesse o PDF das notas fiscais.
-              </p>
-            </div>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <h2 className="text-xl font-semibold text-slate-900">
+              Notas fiscais
+            </h2>
+
             {nfse.length > 0 && (
               <button
-                type="button"
                 onClick={() => location.reload()}
-                className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm hover:bg-slate-50"
               >
                 <RefreshCw size={16} />
-                Atualizar lista
+                Atualizar
               </button>
             )}
           </div>
 
           {nfse.length === 0 ? (
-            <div className="mt-6 rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-4 sm:p-6 lg:p-8 text-center text-slate-500">
-              <AlertCircle className="mx-auto mb-4 h-8 w-8" />
-              <p className="font-semibold">Nenhuma nota fiscal emitida</p>
-              <p className="mt-2 text-sm">
-                Quando houver emissões, elas aparecerão aqui.
-              </p>
+            <div className="mt-6 text-center text-slate-500">
+              Nenhuma nota fiscal
             </div>
           ) : (
-            <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3 min-w-0">
-              {nfse.map((nota) => {
-                const resposta = nota.resposta;
-                return (
-                  <div
-                    key={nota.id}
-                    className="rounded-2xl border border-border bg-white p-5 shadow-sm"
-                  >
-                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                      <div className="space-y-2">
-                        <div className="flex flex-wrap items-center gap-3 w-full">
-                          <p className="font-semibold text-slate-900">
-                            NFSe #{resposta?.numero ?? "-"}
-                          </p>
-                          <span className="text-xs text-slate-500">
-                            Ref: {nota.ref}
-                          </span>
-                        </div>
-                        <div className="grid gap-2 text-sm text-slate-600 sm:grid-cols-2 wrap-break-words min-w-0">
-                          <span>
-                            Emissão:{" "}
-                            {resposta?.data_emissao
-                              ? formatDate(resposta.data_emissao)
-                              : formatDate(nota.created_at)}
-                          </span>
-                          {resposta?.codigo_verificacao ? (
-                            <span>
-                              Verificação: {resposta.codigo_verificacao}
-                            </span>
-                          ) : null}
-                        </div>
-                        <span
-                          className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-                            nota.status === "autorizado"
-                              ? "bg-green-50 text-green-700"
-                              : nota.status === "erro_autorizacao"
-                                ? "bg-red-50 text-red-700"
-                                : "bg-amber-50 text-amber-700"
-                          }`}
-                        >
-                          {nota.status === "autorizado"
-                            ? "Autorizada"
-                            : nota.status === "processando_autorizacao"
-                              ? "Processando"
-                              : "Erro"}
-                        </span>
-                      </div>
+            <div className="mt-6 grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
+              {nfse.map((nota) => (
+                <div
+                  key={nota.id}
+                  className="rounded-2xl border border-border bg-white p-5"
+                >
+                  <div className="space-y-3">
+                    <p className="font-semibold text-slate-900 truncate">
+                      NFSe #{nota.resposta?.numero ?? "-"}
+                    </p>
 
-                      <div className="flex flex-wrap gap-2 max-w-full">
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            await fetch(`/api/nfse/${nota.ref}`);
-                            location.reload();
-                          }}
-                          className="rounded-lg border border-slate-200 px-3 py-2 text-sm hover:bg-slate-50"
-                        >
-                          Atualizar
-                        </button>
-                        {resposta?.url && (
-                          <button
-                            type="button"
-                            onClick={() => window.open(resposta.url, "_blank")}
-                            className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                          >
-                            Ver nota
-                          </button>
-                        )}
-                        {resposta?.url_danfse && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              window.open(resposta.url_danfse, "_blank")
-                            }
-                            className="rounded-lg bg-brand text-white px-3 py-2 text-sm"
-                          >
-                            PDF
-                          </button>
-                        )}
-                        {resposta?.caminho_xml_nota_fiscal && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              window.open(
-                                resposta.caminho_xml_nota_fiscal!,
-                                "_blank",
-                              )
-                            }
-                            className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                          >
-                            XML
-                          </button>
-                        )}
+                    <div className="flex flex-col gap-2">
+                      <button className="w-full rounded-lg border px-3 py-2 text-sm">
+                        Atualizar
+                      </button>
 
-                        {/* ✅ NOVO BOTÃO EMAIL */}
-                        {nota.status === "autorizado" && (
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              const res = await fetch(
-                                `/api/nfse/email/${nota.ref}/email`,
-                                {
-                                  method: "POST",
-                                  headers: {
-                                    "Content-Type": "application/json",
-                                  },
-                                  body: JSON.stringify({ tipo: "manual" }),
-                                },
-                              );
-                              const j = await res.json().catch(() => ({}));
-                              if (!res.ok)
-                                alert(j.error ?? "Erro ao enviar email");
-                              else alert("E-mail agendado para envio ✅");
-                            }}
-                            className="rounded-lg border border-slate-200 px-3 py-2 text-sm hover:bg-slate-50"
-                          >
-                            Enviar por e-mail
-                          </button>
-                        )}
-                      </div>
+                      <button className="w-full rounded-lg border px-3 py-2 text-sm">
+                        Ver nota
+                      </button>
+
+                      <button className="w-full rounded-lg bg-brand text-white px-3 py-2 text-sm">
+                        PDF
+                      </button>
                     </div>
                   </div>
-                );
-              })}
+                </div>
+              ))}
             </div>
           )}
         </section>
