@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { getPrecificacaoConfig } from "@/lib/precificacao/getConfig";
+import { getConfigInternal } from "@/lib/precificacao/config-core";
 import { calcularPrecificacao } from "@/(nr1)/nr1/_components/ModeloPrecificacaoExpress";
 import { validarCupom } from "@/lib/cupons/validarcupom";
 
@@ -118,9 +118,10 @@ export async function POST(req: Request) {
     }
 
     // ✅ calcula preço no server (fonte da verdade)
-    let config: Awaited<ReturnType<typeof getPrecificacaoConfig>>;
+
+    let config: Awaited<ReturnType<typeof getConfigInternal>>;
     try {
-      config = await getPrecificacaoConfig();
+      config = await getConfigInternal("express");
     } catch (e: unknown) {
       console.error("Falha ao carregar configuração de preço:", e);
       return NextResponse.json(

@@ -1,16 +1,4 @@
-export type PrecificacaoConfig = {
-  k_base: number;
-  decaimento: number;
-  multiplicador_baixo: number;
-  multiplicador_medio: number;
-  multiplicador_alto: number;
-  minimo_usuarios: number;
-  fator_sudeste: number;
-  fator_sul: number;
-  fator_centro_oeste: number;
-  fator_nordeste: number;
-  fator_norte: number;
-};
+import type { PrecificacaoConfig } from "@/lib/precificacao/config-core";
 
 let cachedConfig: PrecificacaoConfig | null = null;
 let pending: Promise<PrecificacaoConfig | null> | null = null;
@@ -26,7 +14,9 @@ function withAbort(ms: number) {
   return { controller, clear: () => clearTimeout(t) };
 }
 
-export async function getPrecificacaoConfig(): Promise<PrecificacaoConfig | null> {
+export async function getPrecificacaoConfig(
+  plano = "express",
+): Promise<PrecificacaoConfig | null> {
   if (cachedConfig) return cachedConfig;
   if (pending) return pending;
 
@@ -34,15 +24,20 @@ export async function getPrecificacaoConfig(): Promise<PrecificacaoConfig | null
     const { controller, clear } = withAbort(8000);
 
     try {
-      const res = await fetch(`/api/precificacao/config?plano=express`, {
-        method: "GET",
-        cache: "no-store",
-        signal: controller.signal,
-      });
+      const res = await fetch(
+        `/api/precificacao/config?plano=${encodeURIComponent(plano)}`,
+        {
+          method: "GET",
+          cache: "no-store",
+          signal: controller.signal,
+        },
+      );
 
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        throw new Error(j?.error || "Erro ao carregar configuração de preço");
+        throw new Error(
+          j?.error || `Erro ao carregar configuração (HTTP ${res.status})`,
+        );
       }
 
       const j = (await res.json().catch(() => null)) as {
@@ -54,7 +49,6 @@ export async function getPrecificacaoConfig(): Promise<PrecificacaoConfig | null
       return cachedConfig;
     } finally {
       clear();
-      // se não tiver cachedConfig, libera pending pra permitir retry
       if (!cachedConfig) pending = null;
     }
   })().catch((e) => {

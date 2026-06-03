@@ -108,7 +108,7 @@ function Stepper({
   const items = [
     { step: 1 as const, label: "Entender o que são riscos" },
     { step: 2 as const, label: "Comunicar riscos e ocorrências" },
-    { step: 3 as const, label: "Acessar mapeamento de riscos" },
+    { step: 3 as const, label: "Responder questionário de riscos" },
   ];
 
   return (

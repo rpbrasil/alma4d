@@ -8,6 +8,7 @@ import Link from "next/link";
 import { PAGE_TITLES } from "@/lib/pageTitles";
 import Image from "next/image";
 import { getSupabaseClient } from "@/lib/supabase/client";
+import PwaInstallButton from "@/components/PwaInstallButton";
 
 type Props = {
   onMenuClick: () => void;
@@ -22,7 +23,7 @@ export default function DashboardHeader({ onMenuClick }: Props) {
   const [clienteNome, setClienteNome] = useState<string>("Painel Corporativo");
   const [clienteLogo, setClienteLogo] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
- 
+
   const menuRef = useRef<HTMLDivElement>(null);
 
   const basePath =
@@ -116,7 +117,8 @@ export default function DashboardHeader({ onMenuClick }: Props) {
           <button
             onClick={onMenuClick}
             className="md:hidden mr-3 p-2 rounded-lg bg-slate-100 hover:bg-slate-200 active:scale-95 transition"
-            aria-label="Abrir menu">
+            aria-label="Abrir menu"
+          >
             <span className="text-2xl">☰</span>
           </button>
 
@@ -144,6 +146,7 @@ export default function DashboardHeader({ onMenuClick }: Props) {
                 Gestão e Indicadores
               </span>
             </div>
+            <PwaInstallButton />
           </div>
           {open && !loading && (
             <div
