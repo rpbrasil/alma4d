@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createServerSupabase } from "@/lib/supabase/server";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getConfigInternal } from "@/lib/precificacao/config-core";
 import { calcularPrecificacao } from "@/(nr1)/nr1/_components/ModeloPrecificacaoExpress";
 import { validarCupom } from "@/lib/cupons/validarcupom";
@@ -66,18 +67,38 @@ function normalizeEmail(v: string) {
 }
 
 function mkNumeroContrato() {
-  // único e legível o suficiente para teste/produção
-  // (se quiser, depois substitui por sequência/numeração oficial)
   return `NR1-${isoDateYYYYMMDD()}-${Date.now()}`;
 }
 
-function isUniqueViolationMsg(msg: string, token: string) {
-  return (msg || "").toLowerCase().includes(token.toLowerCase());
+function serializeDbError(err: unknown) {
+  const e = err as {
+    message?: string;
+    details?: string;
+    hint?: string;
+    code?: string;
+  };
+
+  return {
+    message: e?.message ?? "Erro desconhecido",
+    details: e?.details ?? null,
+    hint: e?.hint ?? null,
+    code: e?.code ?? null,
+  };
+}
+
+function isUniqueViolation(err: unknown) {
+  const e = err as { code?: string; message?: string };
+  return (
+    e?.code === "23505" ||
+    (e?.message ?? "").toLowerCase().includes("duplicate key")
+  );
 }
 
 export async function POST(req: Request) {
   try {
-    const supabase = await createServerSupabase();
+    const authSupabase = await createServerSupabase();
+    const adminDb = getSupabaseAdmin();
+
     const json = (await req.json()) as unknown;
     const parsed = EmpresaSchema.safeParse(json);
 
@@ -90,8 +111,9 @@ export async function POST(req: Request) {
 
     const body: EmpresaPayload = parsed.data;
 
-    // ✅ exige usuário autenticado (OTP já feito no public)
-    const { data: authData, error: authErr } = await supabase.auth.getUser();
+    // ✅ autenticação usa client da sessão
+    const { data: authData, error: authErr } =
+      await authSupabase.auth.getUser();
 
     if (authErr || !authData.user?.id) {
       return NextResponse.json(
@@ -99,12 +121,11 @@ export async function POST(req: Request) {
         { status: 401 },
       );
     }
+
     const userId = authData.user.id;
 
-    // =========================================================
-    // 0) Idempotência: se usuário já tem cliente_id, reutiliza
-    // =========================================================
-    const { data: existingUser, error: existingUserErr } = await supabase
+    // ✅ operações de domínio usam admin
+    const { data: existingUser, error: existingUserErr } = await adminDb
       .from("usuarios")
       .select("id, cliente_id, role")
       .eq("id", userId)
@@ -112,22 +133,22 @@ export async function POST(req: Request) {
 
     if (existingUserErr) {
       return NextResponse.json(
-        { error: "Falha ao verificar usuário.", detail: existingUserErr },
+        {
+          error: "Falha ao verificar usuário.",
+          detail: serializeDbError(existingUserErr),
+        },
         { status: 500 },
       );
     }
-
-    // ✅ calcula preço no server (fonte da verdade)
 
     let config: Awaited<ReturnType<typeof getConfigInternal>>;
     try {
       config = await getConfigInternal("express");
     } catch (e: unknown) {
-      console.error("Falha ao carregar configuração de preço:", e);
       return NextResponse.json(
         {
           error: "Falha ao carregar configuração de preço.",
-          detail: e instanceof Error ? e.message : "unknown_error",
+          detail: serializeDbError(e),
         },
         { status: 500 },
       );
@@ -142,16 +163,12 @@ export async function POST(req: Request) {
 
     const risco = body.risco ?? "medio";
     const uf = body.uf ?? null;
-
-    // calcula quote server-side
     const quote = calcularPrecificacao(body.funcionarios, risco, config, uf);
 
-    // total base
     let totalFinalCents = quote.totalMensalCents;
     let descontoCents = 0;
     let cupomAplicado: string | null = null;
 
-    // aplica cupom (se veio)
     const cupom = (body.cupom ?? "").trim().toUpperCase();
     if (cupom) {
       try {
@@ -165,14 +182,14 @@ export async function POST(req: Request) {
         descontoCents = applied.descontoCents;
         totalFinalCents = applied.totalComDescontoCents;
       } catch (e: unknown) {
-        console.error("Erro no endpoint NR1:", e);
+        // fallback silencioso para não travar compra
+        console.error("Erro ao validar cupom no endpoint NR1:", e);
         cupomAplicado = null;
         descontoCents = 0;
         totalFinalCents = quote.totalMensalCents;
       }
     }
 
-    // log opcional se divergir do client
     if (
       typeof body.preco_client_total_final_cents === "number" &&
       body.preco_client_total_final_cents !== totalFinalCents
@@ -184,9 +201,8 @@ export async function POST(req: Request) {
       });
     }
 
-    // helper: garante que existe um contrato rascunho NR‑1 (ou cria)
     async function ensureContratoRascunho(clienteId: string) {
-      const { data: existingContrato, error: exContrErr } = await supabase
+      const { data: existingContrato, error: exContrErr } = await adminDb
         .from("contratos")
         .select("id, valor_mensal, observacoes, cupom_codigo")
         .eq("cliente_id", clienteId)
@@ -219,7 +235,6 @@ export async function POST(req: Request) {
 
       const valorMensal = totalFinalCents / 100;
 
-      // ✅ Se já existe, atualiza os campos de preço/audit se estiverem vazios ou divergentes
       if (existingContrato?.id) {
         const currentValor =
           existingContrato.valor_mensal == null
@@ -233,7 +248,7 @@ export async function POST(req: Request) {
           existingContrato.observacoes == null;
 
         if (needsUpdate) {
-          const { error: updErr } = await supabase
+          const { error: updErr } = await adminDb
             .from("contratos")
             .update({
               valor_mensal: valorMensal,
@@ -250,8 +265,7 @@ export async function POST(req: Request) {
         return existingContrato.id as string;
       }
 
-      // ✅ Senão, cria novo
-      const { data: contrato, error: contratoError } = await supabase
+      const { data: contrato, error: contratoError } = await adminDb
         .from("contratos")
         .insert({
           cliente_id: clienteId,
@@ -260,9 +274,7 @@ export async function POST(req: Request) {
           status: "rascunho",
           data_inicio: isoDateYYYYMMDD(),
           criado_por: userId,
-
           limite_usuarios: body.funcionarios,
-
           valor_total: null,
           valor_mensal: valorMensal,
           forma_pagamento: "pagarme",
@@ -276,13 +288,11 @@ export async function POST(req: Request) {
       return contrato.id as string;
     }
 
-    // Se já tem cliente_id, apenas garante contrato e retorna
+    // ✅ usuário já vinculado a cliente
     if (existingUser?.cliente_id) {
       const clienteId = existingUser.cliente_id as string;
 
-      // garante que o role seja "cliente" (sem travar se já for)
-      // se suas policies de SELECT dependem do role, isso ajuda bastante
-      await supabase
+      const { error: updateUserError } = await adminDb
         .from("usuarios")
         .update({
           role: "cliente",
@@ -296,6 +306,16 @@ export async function POST(req: Request) {
         })
         .eq("id", userId);
 
+      if (updateUserError) {
+        return NextResponse.json(
+          {
+            error: "Falha ao atualizar vínculo do usuário.",
+            detail: serializeDbError(updateUserError),
+          },
+          { status: 500 },
+        );
+      }
+
       const contratoId = await ensureContratoRascunho(clienteId);
 
       return NextResponse.json(
@@ -303,8 +323,6 @@ export async function POST(req: Request) {
           success: true,
           cliente_id: clienteId,
           contrato_id: contratoId,
-
-          // ✅ devolve para o wizard mostrar certinho
           precificacao: {
             total_final_cents: totalFinalCents,
             desconto_cents: descontoCents,
@@ -316,10 +334,8 @@ export async function POST(req: Request) {
       );
     }
 
-    // =========================================================
-    // 1) cria cliente PJ (empresa) — INATIVO até pagamento
-    // =========================================================
-    const { data: cliente, error: clienteError } = await supabase
+    // ✅ cria cliente
+    const { data: cliente, error: clienteError } = await adminDb
       .from("clientes")
       .insert({
         tipo: "pj",
@@ -333,44 +349,43 @@ export async function POST(req: Request) {
       .single();
 
     if (clienteError) {
-      const msg = clienteError.message ?? "";
+      if (isUniqueViolation(clienteError)) {
+        const msg = (clienteError.message ?? "").toLowerCase();
 
-      if (isUniqueViolationMsg(msg, "clientes_email_unique")) {
-        return NextResponse.json(
-          { error: "E-mail já cadastrado para outro cliente." },
-          { status: 409 },
-        );
-      }
-      if (isUniqueViolationMsg(msg, "clientes_telefone_unique")) {
-        return NextResponse.json(
-          { error: "Telefone já cadastrado para outro cliente." },
-          { status: 409 },
-        );
-      }
-      if (
-        isUniqueViolationMsg(msg, "clientes_cpf_key") ||
-        msg.toLowerCase().includes("documento")
-      ) {
-        return NextResponse.json(
-          { error: "CNPJ já cadastrado para outro cliente." },
-          { status: 409 },
-        );
+        if (msg.includes("email")) {
+          return NextResponse.json(
+            { error: "E-mail já cadastrado para outro cliente." },
+            { status: 409 },
+          );
+        }
+
+        if (msg.includes("telefone")) {
+          return NextResponse.json(
+            { error: "Telefone já cadastrado para outro cliente." },
+            { status: 409 },
+          );
+        }
+
+        if (msg.includes("documento") || msg.includes("cnpj")) {
+          return NextResponse.json(
+            { error: "CNPJ já cadastrado para outro cliente." },
+            { status: 409 },
+          );
+        }
       }
 
-      // 🔎 devolve detalhe para debug (você pode remover depois)
       return NextResponse.json(
-        { error: "Falha ao criar cliente.", detail: clienteError },
+        {
+          error: "Falha ao criar cliente.",
+          detail: serializeDbError(clienteError),
+        },
         { status: 500 },
       );
     }
 
     const clienteId = cliente.id as string;
 
-    // =========================================================
-    // 2) vincula usuário autenticado ao cliente (CRÍTICO p/ RLS de contratos)
-    // =========================================================
-    // Obs: usamos upsert por id (auth.uid) e já setamos cliente_id
-    const { error: usuarioError } = await supabase.from("usuarios").upsert(
+    const { error: usuarioError } = await adminDb.from("usuarios").upsert(
       {
         id: userId,
         cliente_id: clienteId,
@@ -391,21 +406,21 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           error: "Falha ao vincular usuário ao cliente.",
-          detail: usuarioError,
+          detail: serializeDbError(usuarioError),
         },
         { status: 500 },
       );
     }
 
-    // =========================================================
-    // 3) cria (ou garante) contrato NR‑1 rascunho (idempotente)
-    // =========================================================
     let contratoId: string;
     try {
       contratoId = await ensureContratoRascunho(clienteId);
     } catch (e: unknown) {
       return NextResponse.json(
-        { error: "Falha ao criar contrato.", detail: e },
+        {
+          error: "Falha ao criar contrato.",
+          detail: serializeDbError(e),
+        },
         { status: 500 },
       );
     }
@@ -420,10 +435,11 @@ export async function POST(req: Request) {
     );
   } catch (err: unknown) {
     console.error("Erro ao processar cadastro NR-1:", err);
+
     return NextResponse.json(
       {
         error: "Erro ao processar cadastro NR‑1.",
-        detail: err instanceof Error ? err.message : "unknown_error",
+        detail: serializeDbError(err),
       },
       { status: 500 },
     );
