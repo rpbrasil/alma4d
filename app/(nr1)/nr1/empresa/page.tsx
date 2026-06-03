@@ -5,10 +5,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { Mail, CheckCircle2 } from "lucide-react";
 import { supabaseBrowser as supabase } from "@/lib/supabase/browser";
-import {
-  getPrecificacaoConfig,
-  PrecificacaoConfig,
-} from "@/lib/precificacao/getConfig";
+
+import { getPrecificacaoConfig } from "@/lib/precificacao/getConfig";
+import type { PrecificacaoConfig } from "@/lib/precificacao/config-core";
+
 import { calcularPrecificacao } from "../_components/ModeloPrecificacaoExpress";
 import { validarCupom } from "../../../lib/cupons/validarcupom";
 import { Turnstile, TurnstileInstance } from "@marsidev/react-turnstile";

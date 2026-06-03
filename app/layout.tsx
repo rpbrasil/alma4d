@@ -9,8 +9,7 @@ export const metadata = {
 
   // ✅ PWA
   manifest: "/app.webmanifest",
-  themeColor: "#030870",
-
+ 
   icons: {
     icon: "/icons/icon-192.png",
     apple: "/icons/icon-192.png",
@@ -21,6 +20,10 @@ export const metadata = {
     statusBarStyle: "default",
     title: "alma4D Express",
   },
+};
+
+export const viewport = {
+  themeColor: "#030870",
 };
 
 export default function RootLayout({
