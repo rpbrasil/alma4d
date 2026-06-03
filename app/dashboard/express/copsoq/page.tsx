@@ -551,7 +551,7 @@ export default function DashboardExpressCopsoqPage() {
           </div>
           <QrCode className="h-12 w-12 text-brand/20" />
         </div>
-        <div className="mt-4 min-h-4">
+        <div className="mt-2 min-h-3">
           {toast ? (
             <span className="inline-flex items-center rounded-lg bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700">
               {toast}
@@ -560,7 +560,7 @@ export default function DashboardExpressCopsoqPage() {
             <span className="text-xs text-slate-500"> </span>
           )}
         </div>
-        <div className="mt-6 grid gap-3 md:grid-cols-3">
+        <div className="mt-1 grid gap-3 md:grid-cols-3">
           <div className="rounded-2xl border border-border bg-slate-50 p-4">
             <div className="flex items-center gap-2 text-slate-700">
               <Users className="h-4 w-4 text-slate-400" />
@@ -601,7 +601,7 @@ export default function DashboardExpressCopsoqPage() {
           </div>
         </div>
         {/* BOTÃO ATUALIZAR (REFRESH DOS NÚMEROS) */}
-        <div className="mt-4 flex justify-end">
+        <div className="mt-3 flex justify-end">
           <button
             type="button"
             onClick={atualizarContagem}
