@@ -282,14 +282,21 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               className="flex items-center gap-3"
               onClick={onClose}
             >
-              <div className="relative h-12 w-12 rounded-full overflow-hidden">
-                <Image
-                  src="/images/alma4d-round-512.png"
-                  alt="alma4D"
-                  fill
-                  sizes="48px"
-                  className="object-cover"
-                />
+              <div className="relative flex items-center gap-3">
+                {/* LOGO */}
+                <div className="relative h-12 w-12 rounded-full overflow-hidden">
+                  <Image
+                    src="/images/alma4d-round-512.png"
+                    alt="alma4D"
+                    fill
+                    sizes="48px"
+                    className="object-cover"
+                  />
+                </div>
+                {/* EXPRESS */}
+                <span className="absolute left-5 top-8 bottom-0 text-[13px] italic text-brand-accent">
+                  express
+                </span>
               </div>
               <p className="text-sm font-semibold">{displayName}</p>
             </Link>
