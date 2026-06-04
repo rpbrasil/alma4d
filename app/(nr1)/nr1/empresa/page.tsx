@@ -39,6 +39,17 @@ type EmpresaApiResponse = EmpresaSuccess | EmpresaError;
 
 type Risco = "baixo" | "medio" | "alto";
 
+type OtpMethod = "sms" | "email";
+
+function maskEmail(email: string) {
+  const s = email.trim();
+  const [local, domain] = s.split("@");
+  if (!local || !domain) return s;
+
+  if (local.length <= 2) return `${local[0] ?? "*"}***@${domain}`;
+  return `${local.slice(0, 2)}***@${domain}`;
+}
+
 function onlyDigits(v: string) {
   return v.replace(/\D/g, "");
 }
@@ -226,12 +237,13 @@ export default function EmpresaNR1Page() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // OTP state
+  const [authMethod, setAuthMethod] = useState<OtpMethod>("sms");
   const [otpSent, setOtpSent] = useState(false);
   const [otpVerified, setOtpVerified] = useState(false);
   const [otp, setOtp] = useState("");
   const [otpLoading, setOtpLoading] = useState(false);
   const [otpError, setOtpError] = useState<string | null>(null);
-  const [otpPhone, setOtpPhone] = useState("");
+  const [otpTarget, setOtpTarget] = useState(""); // telefone E.164 ou e-mail
   const [resendIn, setResendIn] = useState(0);
 
   const [riscoEmpresa, setRiscoEmpresa] = useState<Risco | null>(null);
@@ -456,44 +468,85 @@ export default function EmpresaNR1Page() {
     if (!f.aceiteLgpd) return "É obrigatório aceitar a LGPD.";
 
     // telefone só fica válido depois que normalizamos
-    if (!isValidE164Phone(f.telefoneE164)) {
-      return "Telefone inválido. Use DDD e número (ex.: 11 99999-9999).";
+    if (authMethod === "sms") {
+      if (!isValidE164Phone(f.telefoneE164)) {
+        return "Telefone inválido. Use DDD e número (ex.: 11 99999-9999).";
+      }
+    }
+
+    if (authMethod === "email") {
+      if (!isValidEmail(f.email)) {
+        return "E-mail inválido.";
+      }
     }
 
     return null;
   }
+
+  const resetOtpState = useCallback((clearTarget = true) => {
+    setOtpSent(false);
+    setOtpVerified(false);
+    setOtp("");
+    setOtpError(null);
+    setResendIn(0);
+
+    if (clearTarget) {
+      setOtpTarget("");
+    }
+  }, []);
 
   async function sendOtp() {
     setOtpError(null);
     setOtpLoading(true);
 
     try {
-      const e164 = normalizePhoneBRToE164(form.telefoneRaw);
-
-      if (!isValidE164Phone(e164)) {
-        throw new Error(
-          "Informe um telefone válido com DDD (ex.: 11 99999-9999).",
-        );
-      }
-
-      // trava o telefone exatamente usado no envio
-      setOtpPhone(e164);
-      update("telefoneE164", e164);
-
-      // limpa estado de verificação anterior
+      // limpa estado anterior
       setOtp("");
       setOtpVerified(false);
 
-      const { error } = await supabase.auth.signInWithOtp({
-        phone: e164,
-        options: { channel: "sms", shouldCreateUser: true }, // permite criar usuário no Supabase Auth se não existir, o que é útil para o fluxo de OTP sem cadastro prévio
-      });
+      if (authMethod === "sms") {
+        const e164 = normalizePhoneBRToE164(form.telefoneRaw);
 
-      if (error) throw new Error(error.message);
+        if (!isValidE164Phone(e164)) {
+          throw new Error(
+            "Informe um telefone válido com DDD (ex.: 11 99999-9999).",
+          );
+        }
+
+        update("telefoneE164", e164);
+        setOtpTarget(e164);
+
+        const { error } = await supabase.auth.signInWithOtp({
+          phone: e164,
+          options: {
+            channel: "sms",
+            shouldCreateUser: true,
+          },
+        });
+
+        if (error) throw new Error(error.message);
+      }
+
+      if (authMethod === "email") {
+        const email = form.email.trim();
+
+        if (!isValidEmail(email)) {
+          throw new Error("Informe um e-mail válido.");
+        }
+
+        setOtpTarget(email);
+
+        const { error } = await supabase.auth.signInWithOtp({
+          email,
+          options: {
+            shouldCreateUser: true,
+          },
+        });
+
+        if (error) throw new Error(error.message);
+      }
 
       setOtpSent(true);
-
-      // evita reenviar em sequência (reenviar gera novo token e invalida o anterior)
       setResendIn(60);
     } catch (e: unknown) {
       setOtpSent(false);
@@ -510,31 +563,55 @@ export default function EmpresaNR1Page() {
     setOtpLoading(true);
 
     try {
-      const phoneLocked = otpPhone || normalizePhoneBRToE164(form.telefoneRaw);
-
-      if (!isValidE164Phone(phoneLocked)) {
-        throw new Error("Telefone inválido.");
-      }
-
       const token = onlyDigits(otp).trim();
+
       if (token.length !== 6) {
         throw new Error("Informe o código de 6 dígitos.");
       }
 
-      // compatibilidade: verifyOtp frequentemente normaliza removendo '+'
-      const phoneForVerify = phoneLocked.startsWith("+")
-        ? phoneLocked.slice(1)
-        : phoneLocked;
+      if (authMethod === "sms") {
+        const phoneLocked =
+          otpTarget || normalizePhoneBRToE164(form.telefoneRaw);
 
-      const { data, error } = await supabase.auth.verifyOtp({
-        phone: phoneForVerify,
-        token,
-        type: "sms",
-      });
+        if (!isValidE164Phone(phoneLocked)) {
+          throw new Error("Telefone inválido.");
+        }
 
-      if (error) throw new Error(error.message);
-      if (!data?.user)
-        throw new Error("Não foi possível autenticar o usuário.");
+        // compatibilidade com verifyOtp do Supabase
+        const phoneForVerify = phoneLocked.startsWith("+")
+          ? phoneLocked.slice(1)
+          : phoneLocked;
+
+        const { data, error } = await supabase.auth.verifyOtp({
+          phone: phoneForVerify,
+          token,
+          type: "sms",
+        });
+
+        if (error) throw new Error(error.message);
+        if (!data?.user) {
+          throw new Error("Não foi possível autenticar o usuário.");
+        }
+      }
+
+      if (authMethod === "email") {
+        const email = otpTarget || form.email.trim();
+
+        if (!isValidEmail(email)) {
+          throw new Error("E-mail inválido.");
+        }
+
+        const { data, error } = await supabase.auth.verifyOtp({
+          email,
+          token,
+          type: "email",
+        });
+
+        if (error) throw new Error(error.message);
+        if (!data?.user) {
+          throw new Error("Não foi possível autenticar o usuário.");
+        }
+      }
 
       setOtpVerified(true);
       setOtpError(null);
@@ -553,7 +630,11 @@ export default function EmpresaNR1Page() {
     setErrorMsg(null);
 
     if (!otpVerified) {
-      setErrorMsg("Valide o telefone via código SMS antes de continuar.");
+      setErrorMsg(
+        authMethod === "sms"
+          ? "Valide o telefone via código SMS antes de continuar."
+          : "Valide o e-mail via código antes de continuar.",
+      );
       return;
     }
 
@@ -1120,72 +1201,145 @@ export default function EmpresaNR1Page() {
               <input
                 type="email"
                 value={form.email}
-                onChange={(e) => update("email", e.target.value)}
+                onChange={(e) => {
+                  update("email", e.target.value);
+                  if (authMethod === "email") {
+                    resetOtpState(true);
+                  }
+                }}
                 className="pl-9 h-11 border rounded-lg px-3 w-full"
                 placeholder="E-mail"
                 required
               />
             </div>
 
-            {/* TELEFONE / OTP — UI alinhada à paleta oficial */}
+            {/* VALIDAÇÃO DE CONTATO / OTP */}
             <div className="rounded-2xl border border-border bg-surface p-4 sm:p-5 space-y-4">
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <label className="text-sm font-medium text-slate-700">
-                  Telefone
+                  Validação de contato
                 </label>
 
-                <input
-                  value={formatPhoneBR(form.telefoneRaw)}
-                  onChange={(e) => {
-                    update("telefoneRaw", e.target.value);
-                    update("telefoneE164", "");
-                    setOtpPhone("");
-                    setOtpVerified(false);
-                    setOtpSent(false);
-                    setOtp("");
-                    setOtpError(null);
-                    setResendIn(0);
-                  }}
-                  placeholder="(11) 99999-9999"
-                  className="h-11 w-full rounded-xl border border-border bg-white px-3 text-sm outline-none
-                 focus:ring-2 focus:ring-brand-highlight/25"
-                />
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthMethod("sms");
+                      resetOtpState(true);
+                    }}
+                    className={`h-11 rounded-xl border text-sm font-semibold transition ${
+                      authMethod === "sms"
+                        ? "border-brand bg-brand-secondary text-white"
+                        : "border-border bg-white text-slate-700 hover:bg-surface-muted"
+                    }`}
+                  >
+                    SMS
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthMethod("email");
+                      resetOtpState(true);
+                    }}
+                    className={`h-11 rounded-xl border text-sm font-semibold transition ${
+                      authMethod === "email"
+                        ? "border-brand bg-brand-secondary text-white"
+                        : "border-border bg-white text-slate-700 hover:bg-surface-muted"
+                    }`}
+                  >
+                    E-mail
+                  </button>
+                </div>
 
                 <p className="text-xs text-slate-500">
-                  Enviaremos um código por SMS para confirmar o número.
+                  Escolha como deseja receber o código de validação.
                 </p>
               </div>
+
+              {authMethod === "sms" ? (
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-slate-700">
+                    Telefone
+                  </label>
+
+                  <input
+                    value={formatPhoneBR(form.telefoneRaw)}
+                    onChange={(e) => {
+                      update("telefoneRaw", e.target.value);
+                      update("telefoneE164", "");
+                      resetOtpState(true);
+                    }}
+                    placeholder="(11) 99999-9999"
+                    className="h-11 w-full rounded-xl border border-border bg-white px-3 text-sm outline-none
+               focus:ring-2 focus:ring-brand-highlight/25"
+                  />
+
+                  <p className="text-xs text-slate-500">
+                    Enviaremos um código por SMS para confirmar o número.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-slate-700">
+                    E-mail para validação
+                  </label>
+
+                  <div className="flex min-h-11 items-center rounded-xl border border-border bg-white px-3 text-sm text-slate-700">
+                    {form.email?.trim()
+                      ? form.email.trim()
+                      : "Preencha o e-mail acima"}
+                  </div>
+
+                  <p className="text-xs text-slate-500">
+                    Enviaremos um código de 6 dígitos para o e-mail informado.
+                  </p>
+                </div>
+              )}
 
               {!otpSent ? (
                 <button
                   type="button"
                   onClick={sendOtp}
-                  disabled={otpLoading}
+                  disabled={
+                    otpLoading ||
+                    (authMethod === "sms"
+                      ? !form.telefoneRaw.trim()
+                      : !form.email.trim())
+                  }
                   className="h-11 w-full rounded-xl bg-brand text-white font-semibold
-                 disabled:opacity-60 disabled:cursor-not-allowed
-                 hover:brightness-95 active:brightness-90"
+               disabled:opacity-60 disabled:cursor-not-allowed
+               hover:brightness-95 active:brightness-90"
                 >
-                  {otpLoading ? "Enviando..." : "Enviar código"}
+                  {otpLoading
+                    ? "Enviando..."
+                    : authMethod === "sms"
+                      ? "Enviar código por SMS"
+                      : "Enviar código por e-mail"}
                 </button>
               ) : (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-sm font-medium text-slate-700">
-                      Digite o código SMS
+                      Digite o código de 6 dígitos
                     </p>
 
                     {otpVerified ? (
                       <span
                         className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold
-                           border border-brand-secondary/20 bg-brand-secondary/10 text-brand-secondary"
+                       border border-brand-secondary/20 bg-brand-secondary/10 text-brand-secondary"
                       >
                         <CheckCircle2 size={14} />
-                        Telefone validado
+                        {authMethod === "sms"
+                          ? "Telefone validado"
+                          : "E-mail validado"}
                       </span>
                     ) : (
                       <span className="text-xs text-slate-500 truncate">
-                        {otpPhone
-                          ? `Enviado para ${otpPhone}`
+                        {otpTarget
+                          ? authMethod === "sms"
+                            ? `Enviado para ${otpTarget}`
+                            : `Enviado para ${maskEmail(otpTarget)}`
                           : "Código enviado"}
                       </span>
                     )}
@@ -1199,18 +1353,17 @@ export default function EmpresaNR1Page() {
                     placeholder="000000"
                     inputMode="numeric"
                     className="h-11 w-full rounded-xl border border-border bg-white px-3 text-sm tracking-widest text-center
-                   outline-none focus:ring-2 focus:ring-brand-highlight/25"
+                 outline-none focus:ring-2 focus:ring-brand-highlight/25"
                   />
 
                   <div className="grid grid-cols-2 gap-3">
-                    {/* Validar (primário) */}
                     <button
                       type="button"
                       onClick={verifyOtp}
                       disabled={otpLoading || otpVerified}
                       className="h-11 rounded-xl bg-brand text-white font-semibold
-                     disabled:opacity-60 disabled:cursor-not-allowed
-                     hover:brightness-95 active:brightness-90"
+                   disabled:opacity-60 disabled:cursor-not-allowed
+                   hover:brightness-95 active:brightness-90"
                     >
                       {otpLoading
                         ? "Validando..."
@@ -1219,14 +1372,13 @@ export default function EmpresaNR1Page() {
                           : "Validar"}
                     </button>
 
-                    {/* Reenviar (secundário) */}
                     <button
                       type="button"
                       onClick={sendOtp}
                       disabled={otpLoading || resendIn > 0}
                       className="h-11 rounded-xl border border-border bg-white font-semibold text-brand
-                     disabled:opacity-60 disabled:cursor-not-allowed
-                     hover:bg-surface-muted active:bg-surface-muted/70"
+                   disabled:opacity-60 disabled:cursor-not-allowed
+                   hover:bg-surface-muted active:bg-surface-muted/70"
                     >
                       {resendIn > 0 ? `Reenviar em ${resendIn}s` : "Reenviar"}
                     </button>
@@ -1234,17 +1386,10 @@ export default function EmpresaNR1Page() {
 
                   <button
                     type="button"
-                    onClick={() => {
-                      setOtpSent(false);
-                      setOtp("");
-                      setOtpError(null);
-                      setOtpVerified(false);
-                      setResendIn(0);
-                      setOtpPhone("");
-                    }}
+                    onClick={() => resetOtpState(true)}
                     className="w-full text-xs text-slate-500 hover:text-brand"
                   >
-                    Trocar número
+                    {authMethod === "sms" ? "Trocar número" : "Alterar e-mail"}
                   </button>
                 </div>
               )}
@@ -1283,21 +1428,20 @@ export default function EmpresaNR1Page() {
               disabled={
                 state === "submitting" || !otpVerified || !quoteComDesconto
               }
-              className={`
-    w-full h-11 rounded-xl font-semibold transition-all
-    ${
-      state === "submitting"
-        ? "bg-brand text-white opacity-70 cursor-wait"
-        : otpVerified
-          ? "bg-brand text-white hover:brightness-95 active:brightness-90"
-          : "bg-border text-slate-400 cursor-not-allowed"
-    }
-            `}
+              className={`w-full h-11 rounded-xl font-semibold transition-all ${
+                state === "submitting"
+                  ? "bg-brand text-white opacity-70 cursor-wait"
+                  : otpVerified
+                    ? "bg-brand text-white hover:brightness-95 active:brightness-90"
+                    : "bg-border text-slate-400 cursor-not-allowed"
+              }`}
             >
               {state === "submitting"
                 ? "Enviando..."
                 : !otpVerified
-                  ? "Valide o telefone para continuar"
+                  ? authMethod === "sms"
+                    ? "Valide o telefone para continuar"
+                    : "Valide o e-mail para continuar"
                   : "Continuar"}
             </button>
           </form>
