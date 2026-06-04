@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { getSupabaseClient } from "@/lib/supabase/client";
 
+type AuthMethod = "sms" | "email";
+
 function formatPhoneBR(value: string): string {
   const digits = value.replace(/\D/g, "");
   if (digits.length <= 2) return `(${digits}`;
@@ -17,10 +19,26 @@ function extractDigits(phone: string): string {
   return phone.replace(/\D/g, "");
 }
 
+function isValidEmail(email: string): boolean {
+  const s = email.trim();
+  if (s.length < 6) return false;
+  return /^[^\s@]+@[^\s@]+\.[A-Za-z]{2,}$/.test(s);
+}
+
+function maskEmail(email: string): string {
+  const s = email.trim();
+  const [local, domain] = s.split("@");
+  if (!local || !domain) return s;
+  if (local.length <= 2) return `${local[0] ?? "*"}***@${domain}`;
+  return `${local.slice(0, 2)}***@${domain}`;
+}
+
 const EXPRESS_BASIC_ROUTE = "/dashboard/express/acesso-basico";
 
 export function LoginForm() {
   const supabase = getSupabaseClient();
+
+  const [authMethod, setAuthMethod] = useState<AuthMethod>("sms");
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -29,22 +47,32 @@ export function LoginForm() {
   // Travado em BR por enquanto, porque toda a regra atual é BR
   const country = "+55";
   const [phoneFormatted, setPhoneFormatted] = useState("");
+  const [email, setEmail] = useState("");
+
   const [otp, setOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
+  const [otpTarget, setOtpTarget] = useState("");
 
   const phoneRef = useRef<HTMLInputElement>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
   const otpRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (!otpSent) {
+    if (otpSent) {
+      otpRef.current?.focus();
+      return;
+    }
+
+    if (authMethod === "sms") {
       phoneRef.current?.focus();
     } else {
-      otpRef.current?.focus();
+      emailRef.current?.focus();
     }
-  }, [otpSent]);
+  }, [otpSent, authMethod]);
 
   const fullPhone = `${country}${extractDigits(phoneFormatted)}`;
   const isPhoneValid = extractDigits(phoneFormatted).length >= 10;
+  const isEmailValid = isValidEmail(email);
 
   const handlePhoneChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -54,12 +82,39 @@ export function LoginForm() {
     [error],
   );
 
+  const handleEmailChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setEmail(e.target.value);
+      if (error) setError(null);
+    },
+    [error],
+  );
+
+  const resetOtpFlow = useCallback(() => {
+    setOtp("");
+    setOtpSent(false);
+    setOtpTarget("");
+    setError(null);
+    setSuccess(null);
+  }, []);
+
+  function changeMethod(method: AuthMethod) {
+    if (loading) return;
+    setAuthMethod(method);
+    resetOtpFlow();
+  }
+
   async function sendOtp() {
     setError(null);
     setSuccess(null);
 
-    if (!isPhoneValid) {
+    if (authMethod === "sms" && !isPhoneValid) {
       setError("Informe um telefone válido com DDD (10–11 dígitos).");
+      return;
+    }
+
+    if (authMethod === "email" && !isEmailValid) {
+      setError("Informe um e-mail válido.");
       return;
     }
 
@@ -67,8 +122,29 @@ export function LoginForm() {
     setLoading(true);
 
     try {
+      if (authMethod === "sms") {
+        const { error } = await supabase.auth.signInWithOtp({
+          phone: fullPhone,
+          options: {
+            shouldCreateUser: false,
+          },
+        });
+
+        if (error) {
+          setError(error.message || "Não foi possível enviar o código.");
+          return;
+        }
+
+        setOtpTarget(fullPhone);
+        setOtpSent(true);
+        setSuccess("Código enviado por SMS.");
+        return;
+      }
+
+      const emailTrimmed = email.trim();
+
       const { error } = await supabase.auth.signInWithOtp({
-        phone: fullPhone,
+        email: emailTrimmed,
         options: {
           shouldCreateUser: false,
         },
@@ -79,8 +155,9 @@ export function LoginForm() {
         return;
       }
 
+      setOtpTarget(emailTrimmed);
       setOtpSent(true);
-      setSuccess("Código enviado por SMS.");
+      setSuccess("Código enviado por e-mail.");
     } catch (err: unknown) {
       setError(
         err instanceof Error
@@ -105,31 +182,57 @@ export function LoginForm() {
     setLoading(true);
 
     try {
-      const { data, error } = await supabase.auth.verifyOtp({
-        phone: fullPhone,
-        token: otp.trim(),
-        type: "sms",
-      });
+      let session:
+        | {
+            access_token: string;
+            refresh_token: string;
+            user: { id?: string | null };
+          }
+        | null
+        | undefined = null;
 
-      if (error || !data?.session) {
-        setError(error?.message || "Código inválido ou expirado.");
-        return;
+      if (authMethod === "sms") {
+        const { data, error } = await supabase.auth.verifyOtp({
+          phone: fullPhone,
+          token: otp.trim(),
+          type: "sms",
+        });
+
+        if (error || !data?.session) {
+          setError(error?.message || "Código inválido ou expirado.");
+          return;
+        }
+
+        session = data.session;
+      } else {
+        const emailTrimmed = email.trim();
+
+        const { data, error } = await supabase.auth.verifyOtp({
+          email: emailTrimmed,
+          token: otp.trim(),
+          type: "email",
+        });
+
+        if (error || !data?.session) {
+          setError(error?.message || "Código inválido ou expirado.");
+          return;
+        }
+
+        session = data.session;
       }
 
-      // ✅ garantir sessão persistida no client
       await supabase.auth.setSession({
-        access_token: data.session.access_token,
-        refresh_token: data.session.refresh_token,
+        access_token: session.access_token,
+        refresh_token: session.refresh_token,
       });
 
-      const user = data.session.user;
+      const user = session.user;
       if (!user?.id) {
         await supabase.auth.signOut();
         setError("Usuário inválido.");
         return;
       }
 
-      // ✅ tipagem correta do perfil
       const { data: perfil, error: perfilErr } = await supabase
         .from("usuarios")
         .select("ativo, tipo_plano, cliente_id, role")
@@ -161,7 +264,6 @@ export function LoginForm() {
       const redirectParam = params.get("redirect");
       const linkId = params.get("linkId");
 
-      // ✅ ADMIN
       if (role === "admin") {
         setSuccess("Acesso confirmado. Redirecionando…");
         window.location.replace("/dashboard/admin/clientes");
@@ -214,7 +316,6 @@ export function LoginForm() {
         return;
       }
 
-      // ✅ redirect seguro
       let finalRedirect: string | null = null;
 
       if (redirectParam && redirectParam.startsWith(basePath)) {
@@ -239,8 +340,6 @@ export function LoginForm() {
       }
 
       setSuccess("Acesso confirmado. Redirecionando…");
-
-      // ✅ melhor que href (evita problemas de sessão)
       window.location.replace(finalRedirect);
     } catch (err) {
       await supabase.auth.signOut();
@@ -253,11 +352,8 @@ export function LoginForm() {
     }
   }
 
-  function backToPhone() {
-    setOtp("");
-    setOtpSent(false);
-    setError(null);
-    setSuccess(null);
+  function backToStart() {
+    resetOtpFlow();
   }
 
   const fieldWrap =
@@ -290,7 +386,7 @@ export function LoginForm() {
                     role="alert"
                     className="rounded-xl border border-border bg-surface-muted px-3 py-2 text-sm text-foreground flex gap-2"
                   >
-                    <span className="mt-3px inline-block h-2 w-2 rounded-full bg-brand-accent" />
+                    <span className="mt-1.5 inline-block h-2 w-2 rounded-full bg-brand-accent" />
                     <span className="leading-snug">{error}</span>
                   </div>
                 )}
@@ -300,7 +396,7 @@ export function LoginForm() {
                     role="status"
                     className="rounded-xl border border-border bg-surface-muted px-3 py-2 text-sm text-foreground flex gap-2"
                   >
-                    <span className="mt-3px inline-block h-2 w-2 rounded-full bg-brand-secondary" />
+                    <span className="mt-1.5 inline-block h-2 w-2 rounded-full bg-brand-secondary" />
                     <span className="leading-snug">{success}</span>
                   </div>
                 )}
@@ -310,43 +406,111 @@ export function LoginForm() {
             <div className="mt-3 space-y-3">
               {!otpSent ? (
                 <>
-                  <div className="space-y-1.5">
-                    <label
-                      htmlFor="phone-input"
-                      className="text-sm font-medium text-foreground"
-                    >
-                      Celular
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-foreground">
+                      Método de acesso
                     </label>
 
-                    <div className={fieldWrap}>
-                      <div className="flex">
-                        <div className="h-10 px-2.5 bg-surface-muted text-sm font-medium text-foreground border-0 border-r border-border outline-none rounded-l-xl flex items-center">
-                          +55
-                        </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => changeMethod("sms")}
+                        disabled={loading}
+                        className={`h-10 rounded-xl border text-sm font-medium transition ${
+                          authMethod === "sms"
+                            ? "border-brand bg-brand-secondary text-white"
+                            : "border-border bg-surface text-foreground hover:bg-surface-muted"
+                        }`}
+                      >
+                        SMS
+                      </button>
 
-                        <input
-                          ref={phoneRef}
-                          id="phone-input"
-                          type="tel"
-                          inputMode="numeric"
-                          placeholder="(11) 99999-9999"
-                          value={phoneFormatted}
-                          onChange={handlePhoneChange}
-                          disabled={loading}
-                          className={`${inputBase} rounded-r-xl`}
-                          aria-label="Número de telefone"
-                        />
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => changeMethod("email")}
+                        disabled={loading}
+                        className={`h-10 rounded-xl border text-sm font-medium transition ${
+                          authMethod === "email"
+                            ? "border-brand bg-brand-secondary text-white"
+                            : "border-border bg-surface text-foreground hover:bg-surface-muted"
+                        }`}
+                      >
+                        E-mail
+                      </button>
                     </div>
-
-                    <p className="text-[11px] text-foreground/50 leading-snug">
-                      Você receberá um código de 6 dígitos por SMS.
-                    </p>
                   </div>
 
+                  {authMethod === "sms" ? (
+                    <div className="space-y-1.5">
+                      <label
+                        htmlFor="phone-input"
+                        className="text-sm font-medium text-foreground"
+                      >
+                        Celular
+                      </label>
+
+                      <div className={fieldWrap}>
+                        <div className="flex">
+                          <div className="h-10 px-2.5 bg-surface-muted text-sm font-medium text-foreground border-0 border-r border-border outline-none rounded-l-xl flex items-center">
+                            +55
+                          </div>
+
+                          <input
+                            ref={phoneRef}
+                            id="phone-input"
+                            type="tel"
+                            inputMode="numeric"
+                            placeholder="(11) 99999-9999"
+                            value={phoneFormatted}
+                            onChange={handlePhoneChange}
+                            disabled={loading}
+                            className={`${inputBase} rounded-r-xl`}
+                            aria-label="Número de telefone"
+                          />
+                        </div>
+                      </div>
+
+                      <p className="text-[11px] text-foreground/50 leading-snug">
+                        Você receberá um código de 6 dígitos por SMS.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      <label
+                        htmlFor="email-input"
+                        className="text-sm font-medium text-foreground"
+                      >
+                        E-mail
+                      </label>
+
+                      <div className={fieldWrap}>
+                        <input
+                          ref={emailRef}
+                          id="email-input"
+                          type="email"
+                          inputMode="email"
+                          placeholder="voce@empresa.com"
+                          value={email}
+                          onChange={handleEmailChange}
+                          disabled={loading}
+                          className={`${inputBase} rounded-xl`}
+                          aria-label="Endereço de e-mail"
+                        />
+                      </div>
+
+                      <p className="text-[11px] text-foreground/50 leading-snug">
+                        Você receberá um código de 6 dígitos por e-mail.
+                      </p>
+                    </div>
+                  )}
+
                   <button
+                    type="button"
                     onClick={sendOtp}
-                    disabled={!isPhoneValid || loading}
+                    disabled={
+                      loading ||
+                      (authMethod === "sms" ? !isPhoneValid : !isEmailValid)
+                    }
                     className={btnPrimary}
                   >
                     {loading ? (
@@ -354,8 +518,10 @@ export function LoginForm() {
                         <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                         Enviando…
                       </span>
+                    ) : authMethod === "sms" ? (
+                      "Enviar código por SMS"
                     ) : (
-                      "Enviar código"
+                      "Enviar código por e-mail"
                     )}
                   </button>
                 </>
@@ -366,7 +532,9 @@ export function LoginForm() {
                       htmlFor="otp-input"
                       className="text-sm font-medium text-foreground"
                     >
-                      Código SMS
+                      {authMethod === "sms"
+                        ? "Código SMS"
+                        : "Código por e-mail"}
                     </label>
 
                     <div className={fieldWrap}>
@@ -391,6 +559,12 @@ export function LoginForm() {
                       />
                     </div>
 
+                    <div className="text-[11px] text-foreground/50 leading-snug">
+                      {authMethod === "sms"
+                        ? `Código enviado para ${otpTarget || fullPhone}`
+                        : `Código enviado para ${maskEmail(otpTarget || email)}`}
+                    </div>
+
                     <div className="flex items-center justify-between">
                       <button
                         type="button"
@@ -402,17 +576,20 @@ export function LoginForm() {
                       </button>
                       <button
                         type="button"
-                        onClick={backToPhone}
+                        onClick={backToStart}
                         disabled={loading}
                         className={link}
                       >
-                        Trocar número
+                        {authMethod === "sms"
+                          ? "Trocar número"
+                          : "Trocar e-mail"}
                       </button>
                     </div>
                   </div>
 
                   <div className="flex gap-2">
                     <button
+                      type="button"
                       onClick={verifyOtp}
                       disabled={otp.length < 6 || loading}
                       className={`${btnPrimary} flex-1`}
@@ -429,7 +606,7 @@ export function LoginForm() {
 
                     <button
                       type="button"
-                      onClick={backToPhone}
+                      onClick={backToStart}
                       disabled={loading}
                       className={`${btnGhost} px-3`}
                     >

@@ -453,31 +453,33 @@ export default function EmpresaNR1Page() {
   }
 
   function validarFormulario(f: EmpresaForm): string | null {
-    if (!isValidNameLoose(f.razaoSocial))
+    if (!isValidNameLoose(f.razaoSocial)) {
       return "Informe uma razão social válida.";
-    if (!isValidCNPJ(f.cnpjDigits)) return "CNPJ inválido.";
-    if (!isValidEmail(f.email)) return "E‑mail inválido.";
+    }
 
-    if (!isValidNameLoose(f.responsavel))
+    if (!isValidCNPJ(f.cnpjDigits)) {
+      return "CNPJ inválido.";
+    }
+
+    if (!isValidEmail(f.email)) {
+      return "E‑mail inválido.";
+    }
+
+    if (!isValidNameLoose(f.responsavel)) {
       return "Informe um responsável válido.";
+    }
 
     if (!Number.isInteger(f.funcionarios) || f.funcionarios < 2) {
       return "É necessário no mínimo 2 funcionários para contratar.";
     }
 
-    if (!f.aceiteLgpd) return "É obrigatório aceitar a LGPD.";
-
-    // telefone só fica válido depois que normalizamos
-    if (authMethod === "sms") {
-      if (!isValidE164Phone(f.telefoneE164)) {
-        return "Telefone inválido. Use DDD e número (ex.: 11 99999-9999).";
-      }
+    if (!f.aceiteLgpd) {
+      return "É obrigatório aceitar a LGPD.";
     }
 
-    if (authMethod === "email") {
-      if (!isValidEmail(f.email)) {
-        return "E-mail inválido.";
-      }
+    const e164 = normalizePhoneBRToE164(f.telefoneRaw);
+    if (!isValidE164Phone(e164)) {
+      return "Telefone inválido. Use DDD e número (ex.: 11 99999-9999).";
     }
 
     return null;
@@ -500,20 +502,21 @@ export default function EmpresaNR1Page() {
     setOtpLoading(true);
 
     try {
-      // limpa estado anterior
       setOtp("");
       setOtpVerified(false);
 
+      const e164 = normalizePhoneBRToE164(form.telefoneRaw);
+
+      if (!isValidE164Phone(e164)) {
+        throw new Error(
+          "Informe um telefone válido com DDD (ex.: 11 99999-9999).",
+        );
+      }
+
+      // mantém o telefone normalizado sempre atualizado
+      update("telefoneE164", e164);
+
       if (authMethod === "sms") {
-        const e164 = normalizePhoneBRToE164(form.telefoneRaw);
-
-        if (!isValidE164Phone(e164)) {
-          throw new Error(
-            "Informe um telefone válido com DDD (ex.: 11 99999-9999).",
-          );
-        }
-
-        update("telefoneE164", e164);
         setOtpTarget(e164);
 
         const { error } = await supabase.auth.signInWithOtp({
@@ -648,22 +651,19 @@ export default function EmpresaNR1Page() {
       setState("submitting");
 
       const totalFinalCents =
-        quoteComDesconto?.totalFinalCents ?? quote?.totalMensalCents; // ✅ sem null
+        quoteComDesconto?.totalFinalCents ?? quote?.totalMensalCents;
 
-      // ✅ payload "null-safe": só envia risco/uf/preço se existirem
+      const telefoneNormalizado = normalizePhoneBRToE164(form.telefoneRaw);
+
       const payload: Record<string, unknown> = {
         razaoSocial: form.razaoSocial.trim(),
         cnpj: form.cnpjDigits,
         email: form.email.trim(),
-        telefone: form.telefoneE164,
+        telefone: telefoneNormalizado,
         responsavel: form.responsavel.trim(),
         funcionarios: form.funcionarios,
         aceiteLgpd: form.aceiteLgpd,
-
-        // cupom pode ser "" (ok)
         cupom: (cupomValido ?? cupom).trim().toUpperCase() || "",
-
-        // desconto só manda se >0 (evita ruído)
         ...(descontoCents > 0 ? { desconto_client_cents: descontoCents } : {}),
       };
 
@@ -814,6 +814,10 @@ export default function EmpresaNR1Page() {
     loadingCupom,
     aplicarCupom,
   ]);
+
+  const isFormContatoValido =
+    isValidEmail(form.email) &&
+    isValidE164Phone(normalizePhoneBRToE164(form.telefoneRaw));
 
   return (
     <main className="min-h-screen bg-surface-muted">
@@ -993,7 +997,6 @@ export default function EmpresaNR1Page() {
                 disabled
               />
             </div>
-
             {/* CNPJ + Funcionários */}
             <div className="grid sm:grid-cols-2 gap-4">
               <input
@@ -1121,7 +1124,6 @@ export default function EmpresaNR1Page() {
                 )}
               </div>
             )}
-
             {/* Mensagens de status do preço (fora do grid) */}
             <div className="mt-2 space-y-1">
               {loadingConfig && (
@@ -1134,11 +1136,9 @@ export default function EmpresaNR1Page() {
                 <p className="text-xs text-red-600">⚠️ {configError}</p>
               )}
             </div>
-
             {msgCupomSugestao && (
               <p className="text-xs text-green-600">{msgCupomSugestao}</p>
             )}
-
             <div className="mt-5 space-y-2">
               <label className="text-xs text-slate-500 uppercase tracking-wide">
                 Cupom
@@ -1191,220 +1191,224 @@ export default function EmpresaNR1Page() {
               className="h-11 border rounded-lg px-3 w-full"
               required
             />
-
-            {/* Email */}
-            <div className="relative">
-              <Mail
-                size={16}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-              />
-              <input
-                type="email"
-                value={form.email}
-                onChange={(e) => {
-                  update("email", e.target.value);
-                  if (authMethod === "email") {
+            {/* Email + Telefone */}
+            <div className="grid md:grid-cols-2 gap-4">
+              {/* EMAIL */}
+              <div className="relative">
+                <Mail
+                  size={16}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                />
+                <input
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => {
+                    update("email", e.target.value);
                     resetOtpState(true);
-                  }
+                  }}
+                  className="pl-9 h-11 border rounded-lg px-3 w-full"
+                  placeholder="E-mail"
+                  required
+                />
+              </div>
+
+              {/* TELEFONE */}
+              <input
+                value={formatPhoneBR(form.telefoneRaw)}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  update("telefoneRaw", raw);
+                  update("telefoneE164", normalizePhoneBRToE164(raw));
+                  resetOtpState(true);
                 }}
-                className="pl-9 h-11 border rounded-lg px-3 w-full"
-                placeholder="E-mail"
+                placeholder="(11) 99999-9999"
+                className="h-11 border rounded-lg px-3 w-full"
+                inputMode="numeric"
                 required
               />
             </div>
 
             {/* VALIDAÇÃO DE CONTATO / OTP */}
-            <div className="rounded-2xl border border-border bg-surface p-4 sm:p-5 space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700">
-                  Validação de contato
-                </label>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAuthMethod("sms");
-                      resetOtpState(true);
-                    }}
-                    className={`h-11 rounded-xl border text-sm font-semibold transition ${
-                      authMethod === "sms"
-                        ? "border-brand bg-brand-secondary text-white"
-                        : "border-border bg-white text-slate-700 hover:bg-surface-muted"
-                    }`}
-                  >
-                    SMS
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAuthMethod("email");
-                      resetOtpState(true);
-                    }}
-                    className={`h-11 rounded-xl border text-sm font-semibold transition ${
-                      authMethod === "email"
-                        ? "border-brand bg-brand-secondary text-white"
-                        : "border-border bg-white text-slate-700 hover:bg-surface-muted"
-                    }`}
-                  >
-                    E-mail
-                  </button>
-                </div>
-
-                <p className="text-xs text-slate-500">
-                  Escolha como deseja receber o código de validação.
-                </p>
-              </div>
-
-              {authMethod === "sms" ? (
-                <div className="space-y-1">
+            {isFormContatoValido && (
+              <div className="rounded-2xl border border-border bg-surface p-4 sm:p-5 space-y-4">
+                <div className="space-y-2">
                   <label className="text-sm font-medium text-slate-700">
-                    Telefone
+                    Validação de contato
                   </label>
 
-                  <input
-                    value={formatPhoneBR(form.telefoneRaw)}
-                    onChange={(e) => {
-                      update("telefoneRaw", e.target.value);
-                      update("telefoneE164", "");
-                      resetOtpState(true);
-                    }}
-                    placeholder="(11) 99999-9999"
-                    className="h-11 w-full rounded-xl border border-border bg-white px-3 text-sm outline-none
-               focus:ring-2 focus:ring-brand-highlight/25"
-                  />
-
-                  <p className="text-xs text-slate-500">
-                    Enviaremos um código por SMS para confirmar o número.
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-1">
-                  <label className="text-sm font-medium text-slate-700">
-                    E-mail para validação
-                  </label>
-
-                  <div className="flex min-h-11 items-center rounded-xl border border-border bg-white px-3 text-sm text-slate-700">
-                    {form.email?.trim()
-                      ? form.email.trim()
-                      : "Preencha o e-mail acima"}
-                  </div>
-
-                  <p className="text-xs text-slate-500">
-                    Enviaremos um código de 6 dígitos para o e-mail informado.
-                  </p>
-                </div>
-              )}
-
-              {!otpSent ? (
-                <button
-                  type="button"
-                  onClick={sendOtp}
-                  disabled={
-                    otpLoading ||
-                    (authMethod === "sms"
-                      ? !form.telefoneRaw.trim()
-                      : !form.email.trim())
-                  }
-                  className="h-11 w-full rounded-xl bg-brand text-white font-semibold
-               disabled:opacity-60 disabled:cursor-not-allowed
-               hover:brightness-95 active:brightness-90"
-                >
-                  {otpLoading
-                    ? "Enviando..."
-                    : authMethod === "sms"
-                      ? "Enviar código por SMS"
-                      : "Enviar código por e-mail"}
-                </button>
-              ) : (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm font-medium text-slate-700">
-                      Digite o código de 6 dígitos
-                    </p>
-
-                    {otpVerified ? (
-                      <span
-                        className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold
-                       border border-brand-secondary/20 bg-brand-secondary/10 text-brand-secondary"
-                      >
-                        <CheckCircle2 size={14} />
-                        {authMethod === "sms"
-                          ? "Telefone validado"
-                          : "E-mail validado"}
-                      </span>
-                    ) : (
-                      <span className="text-xs text-slate-500 truncate">
-                        {otpTarget
-                          ? authMethod === "sms"
-                            ? `Enviado para ${otpTarget}`
-                            : `Enviado para ${maskEmail(otpTarget)}`
-                          : "Código enviado"}
-                      </span>
-                    )}
-                  </div>
-
-                  <input
-                    value={otp}
-                    onChange={(e) =>
-                      setOtp(onlyDigits(e.target.value).slice(0, 6))
-                    }
-                    placeholder="000000"
-                    inputMode="numeric"
-                    className="h-11 w-full rounded-xl border border-border bg-white px-3 text-sm tracking-widest text-center
-                 outline-none focus:ring-2 focus:ring-brand-highlight/25"
-                  />
-
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
-                      onClick={verifyOtp}
-                      disabled={otpLoading || otpVerified}
-                      className="h-11 rounded-xl bg-brand text-white font-semibold
+                      onClick={() => {
+                        setAuthMethod("sms");
+                        resetOtpState(true);
+                      }}
+                      className={`h-11 rounded-xl border text-sm font-semibold transition ${
+                        authMethod === "sms"
+                          ? "border-brand bg-brand-secondary text-white"
+                          : "border-border bg-white text-slate-700 hover:bg-surface-muted"
+                      }`}
+                    >
+                      SMS
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAuthMethod("email");
+                        resetOtpState(true);
+                      }}
+                      className={`h-11 rounded-xl border text-sm font-semibold transition ${
+                        authMethod === "email"
+                          ? "border-brand bg-brand-secondary text-white"
+                          : "border-border bg-white text-slate-700 hover:bg-surface-muted"
+                      }`}
+                    >
+                      E-mail
+                    </button>
+                  </div>
+
+                  <p className="text-xs text-slate-500">
+                    Escolha como deseja receber o código de validação.
+                  </p>
+                </div>
+                {authMethod === "sms" ? (
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium text-slate-700">
+                      Telefone para validação
+                    </label>
+
+                    <div className="flex min-h-11 items-center rounded-xl border border-border bg-white px-3 text-sm text-slate-700">
+                      {form.telefoneRaw
+                        ? formatPhoneBR(form.telefoneRaw)
+                        : "Preencha o telefone acima"}
+                    </div>
+
+                    <p className="text-xs text-slate-500">
+                      Enviaremos um código por SMS para confirmar o número.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium text-slate-700">
+                      E-mail para validação
+                    </label>
+
+                    <div className="flex min-h-11 items-center rounded-xl border border-border bg-white px-3 text-sm text-slate-700">
+                      {form.email?.trim()
+                        ? form.email.trim()
+                        : "Preencha o e-mail acima"}
+                    </div>
+
+                    <p className="text-xs text-slate-500">
+                      Enviaremos um código de 6 dígitos para o e-mail informado.
+                    </p>
+                  </div>
+                )}
+
+                {!otpSent ? (
+                  <button
+                    type="button"
+                    onClick={sendOtp}
+                    disabled={otpLoading || !isFormContatoValido}
+                    className="h-11 w-full rounded-xl bg-brand text-white 
+                    font-semibold disabled:opacity-60 disabled:cursor-not-allowed hover:brightness-95 active:brightness-90"
+                  >
+                    {otpLoading
+                      ? "Enviando..."
+                      : authMethod === "sms"
+                        ? "Enviar código por SMS"
+                        : "Enviar código por e-mail"}
+                  </button>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm font-medium text-slate-700">
+                        Digite o código de 6 dígitos
+                      </p>
+
+                      {otpVerified ? (
+                        <span
+                          className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold
+                       border border-brand-secondary/20 bg-brand-secondary/10 text-brand-secondary"
+                        >
+                          <CheckCircle2 size={14} />
+                          {authMethod === "sms"
+                            ? "Telefone validado"
+                            : "E-mail validado"}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-slate-500 truncate">
+                          {otpTarget
+                            ? authMethod === "sms"
+                              ? `Enviado para ${otpTarget}`
+                              : `Enviado para ${maskEmail(otpTarget)}`
+                            : "Código enviado"}
+                        </span>
+                      )}
+                    </div>
+
+                    <input
+                      value={otp}
+                      onChange={(e) =>
+                        setOtp(onlyDigits(e.target.value).slice(0, 6))
+                      }
+                      placeholder="000000"
+                      inputMode="numeric"
+                      className="h-11 w-full rounded-xl border border-border bg-white px-3 text-sm tracking-widest text-center
+                 outline-none focus:ring-2 focus:ring-brand-highlight/25"
+                    />
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={verifyOtp}
+                        disabled={otpLoading || otpVerified}
+                        className="h-11 rounded-xl bg-brand text-white font-semibold
                    disabled:opacity-60 disabled:cursor-not-allowed
                    hover:brightness-95 active:brightness-90"
-                    >
-                      {otpLoading
-                        ? "Validando..."
-                        : otpVerified
-                          ? "Validado"
-                          : "Validar"}
-                    </button>
+                      >
+                        {otpLoading
+                          ? "Validando..."
+                          : otpVerified
+                            ? "Validado"
+                            : "Validar"}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={sendOtp}
+                        disabled={otpLoading || resendIn > 0}
+                        className="h-11 rounded-xl border border-border bg-white font-semibold text-brand
+                   disabled:opacity-60 disabled:cursor-not-allowed
+                   hover:bg-surface-muted active:bg-surface-muted/70"
+                      >
+                        {resendIn > 0 ? `Reenviar em ${resendIn}s` : "Reenviar"}
+                      </button>
+                    </div>
 
                     <button
                       type="button"
-                      onClick={sendOtp}
-                      disabled={otpLoading || resendIn > 0}
-                      className="h-11 rounded-xl border border-border bg-white font-semibold text-brand
-                   disabled:opacity-60 disabled:cursor-not-allowed
-                   hover:bg-surface-muted active:bg-surface-muted/70"
+                      onClick={() => resetOtpState(true)}
+                      className="w-full text-xs text-slate-500 hover:text-brand"
                     >
-                      {resendIn > 0 ? `Reenviar em ${resendIn}s` : "Reenviar"}
+                      {authMethod === "sms"
+                        ? "Trocar número"
+                        : "Alterar e-mail"}
                     </button>
                   </div>
-
-                  <button
-                    type="button"
-                    onClick={() => resetOtpState(true)}
-                    className="w-full text-xs text-slate-500 hover:text-brand"
-                  >
-                    {authMethod === "sms" ? "Trocar número" : "Alterar e-mail"}
-                  </button>
-                </div>
-              )}
-
-              {otpError && (
-                <div className="rounded-xl border border-brand-accent/25 bg-brand-accent/10 p-3 text-sm text-brand-accent">
-                  {otpError}
-                  <div className="mt-1 text-xs text-brand-accent/90">
-                    Se você clicou em “Reenviar”, use sempre o último código
-                    recebido.
+                )}
+                {otpError && (
+                  <div className="rounded-xl border border-brand-accent/25 bg-brand-accent/10 p-3 text-sm text-brand-accent">
+                    {otpError}
+                    <div className="mt-1 text-xs text-brand-accent/90">
+                      Se você clicou em “Reenviar”, use sempre o último código
+                      recebido.
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
-
+                )}
+              </div>
+            )}
             {/* LGPD */}
             <label className="flex gap-2 text-sm">
               <input
@@ -1414,14 +1418,12 @@ export default function EmpresaNR1Page() {
               />
               Aceito todas as cláusulas da LGPD
             </label>
-
             {/* ERRO */}
             {errorMsg && (
               <div className="bg-red-50 border border-red-200 text-red-600 p-3 text-sm rounded-lg">
                 {errorMsg}
               </div>
             )}
-
             {/* CTA */}
             <button
               type="submit"
