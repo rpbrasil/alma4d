@@ -6,6 +6,37 @@ import { getConfigInternal } from "@/lib/precificacao/config-core";
 import { calcularPrecificacao } from "@/(nr1)/nr1/_components/ModeloPrecificacaoExpress";
 import { validarCupom } from "@/lib/cupons/validarcupom";
 
+type RpcResult = {
+  cliente_id: string;
+  usuario_id: string;
+  contrato_id: string;
+};
+
+function normalizeRpcResult(u: unknown): string | null {
+  if (u == null) return null;
+  if (typeof u === "string") return u;
+  if (typeof u === "number") return String(u);
+  if (Array.isArray(u) && u.length > 0) {
+    const first = u[0];
+    return (
+      (typeof first === "string" && first) ||
+      first?.usuario_id ||
+      first?.current_usuario_id ||
+      null
+    );
+  }
+  if (typeof u === "object") {
+    const record = u as Record<string, unknown>;
+    return (
+      (typeof record.usuario_id === "string" && record.usuario_id) ||
+      (typeof record.current_usuario_id === "string" &&
+        record.current_usuario_id) ||
+      null
+    );
+  }
+  return null;
+}
+
 function isValidCNPJ(input: string): boolean {
   const cnpj = input.replace(/\D/g, "");
 
@@ -58,18 +89,6 @@ const EmpresaSchema = z.object({
 
 type EmpresaPayload = z.infer<typeof EmpresaSchema>;
 
-function isoDateYYYYMMDD(d = new Date()) {
-  return d.toISOString().slice(0, 10);
-}
-
-function normalizeEmail(v: string) {
-  return v.trim().toLowerCase();
-}
-
-function mkNumeroContrato() {
-  return `NR1-${isoDateYYYYMMDD()}-${Date.now()}`;
-}
-
 function serializeDbError(err: unknown) {
   const e = err as {
     message?: string;
@@ -86,20 +105,12 @@ function serializeDbError(err: unknown) {
   };
 }
 
-function isUniqueViolation(err: unknown) {
-  const e = err as { code?: string; message?: string };
-  return (
-    e?.code === "23505" ||
-    (e?.message ?? "").toLowerCase().includes("duplicate key")
-  );
-}
-
 export async function POST(req: Request) {
   try {
     const authSupabase = await createServerSupabase();
     const adminDb = getSupabaseAdmin();
 
-    const json = (await req.json()) as unknown;
+    const json = await req.json();
     const parsed = EmpresaSchema.safeParse(json);
 
     if (!parsed.success) {
@@ -111,65 +122,57 @@ export async function POST(req: Request) {
 
     const body: EmpresaPayload = parsed.data;
 
-    // ✅ autenticação usa client da sessão
     const { data: authData, error: authErr } =
       await authSupabase.auth.getUser();
 
     if (authErr || !authData.user?.id) {
       return NextResponse.json(
-        { error: "Sessão não encontrada. Valide o telefone novamente." },
+        { error: "Sessão não encontrada." },
         { status: 401 },
       );
     }
 
-    const userId = authData.user.id;
+    // Resolver usuario_id canônico via RPC
+    const { data: usuarioRpcData, error: usuarioRpcErr } =
+      await authSupabase.rpc("current_usuario_id");
 
-    // ✅ operações de domínio usam admin
-    const { data: existingUser, error: existingUserErr } = await adminDb
-      .from("usuarios")
-      .select("id, cliente_id, role")
-      .eq("id", userId)
-      .maybeSingle();
-
-    if (existingUserErr) {
+    if (usuarioRpcErr) {
       return NextResponse.json(
-        {
-          error: "Falha ao verificar usuário.",
-          detail: serializeDbError(existingUserErr),
-        },
-        { status: 500 },
+        { error: "usuario_nao_vinculado" },
+        { status: 403 },
       );
     }
 
-    let config: Awaited<ReturnType<typeof getConfigInternal>>;
-    try {
-      config = await getConfigInternal("express");
-    } catch (e: unknown) {
+    const userId = normalizeRpcResult(usuarioRpcData);
+
+    if (!userId) {
       return NextResponse.json(
-        {
-          error: "Falha ao carregar configuração de preço.",
-          detail: serializeDbError(e),
-        },
-        { status: 500 },
+        { error: "usuario_nao_vinculado" },
+        { status: 403 },
       );
     }
 
+    // ✅ cálculo preço
+    const config = await getConfigInternal("express");
     if (!config) {
       return NextResponse.json(
         { error: "Configuração de preço indisponível." },
         { status: 500 },
       );
     }
-
-    const risco = body.risco ?? "medio";
-    const uf = body.uf ?? null;
-    const quote = calcularPrecificacao(body.funcionarios, risco, config, uf);
+    const quote = calcularPrecificacao(
+      body.funcionarios,
+      body.risco ?? "medio",
+      config,
+      body.uf ?? null,
+    );
 
     let totalFinalCents = quote.totalMensalCents;
     let descontoCents = 0;
     let cupomAplicado: string | null = null;
 
     const cupom = (body.cupom ?? "").trim().toUpperCase();
+
     if (cupom) {
       try {
         const applied = await validarCupom({
@@ -181,264 +184,68 @@ export async function POST(req: Request) {
         cupomAplicado = applied.codigo;
         descontoCents = applied.descontoCents;
         totalFinalCents = applied.totalComDescontoCents;
-      } catch (e: unknown) {
-        // fallback silencioso para não travar compra
-        console.error("Erro ao validar cupom no endpoint NR1:", e);
-        cupomAplicado = null;
-        descontoCents = 0;
-        totalFinalCents = quote.totalMensalCents;
+      } catch {
+        // fallback
       }
     }
 
-    if (
-      typeof body.preco_client_total_final_cents === "number" &&
-      body.preco_client_total_final_cents !== totalFinalCents
-    ) {
-      console.warn("Preço client diverge do server", {
-        client: body.preco_client_total_final_cents,
-        server: totalFinalCents,
-        userId,
-      });
-    }
-
-    async function ensureContratoRascunho(clienteId: string) {
-      const { data: existingContrato, error: exContrErr } = await adminDb
-        .from("contratos")
-        .select("id, valor_mensal, observacoes, cupom_codigo")
-        .eq("cliente_id", clienteId)
-        .eq("tipo_contrato", "nr1_psicossocial")
-        .eq("status", "rascunho")
-        .order("criado_em", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (exContrErr) throw exContrErr;
-
-      const observacoes = JSON.stringify({
-        origem: "nr1",
-        responsavel: body.responsavel.trim(),
-        funcionarios: body.funcionarios,
-        aceite_lgpd: true,
-        cupom: cupomAplicado,
-        created_via: "self_service",
-        precificacao: {
-          risco,
-          uf,
-          total_base_cents: quote.totalMensalCents,
-          desconto_cents: descontoCents,
-          total_final_cents: totalFinalCents,
-          preco_por_usuario_cents: Math.round(
-            totalFinalCents / Math.max(quote.n, 1),
-          ),
-        },
-      });
-
-      const valorMensal = totalFinalCents / 100;
-
-      if (existingContrato?.id) {
-        const currentValor =
-          existingContrato.valor_mensal == null
-            ? null
-            : Number(existingContrato.valor_mensal);
-
-        const needsUpdate =
-          currentValor == null ||
-          Math.abs(currentValor - valorMensal) > 0.00001 ||
-          existingContrato.cupom_codigo !== cupomAplicado ||
-          existingContrato.observacoes == null;
-
-        if (needsUpdate) {
-          const { error: updErr } = await adminDb
-            .from("contratos")
-            .update({
-              valor_mensal: valorMensal,
-              cupom_codigo: cupomAplicado,
-              observacoes,
-              limite_usuarios: body.funcionarios,
-              atualizado_em: new Date().toISOString(),
-            })
-            .eq("id", existingContrato.id);
-
-          if (updErr) throw updErr;
-        }
-
-        return existingContrato.id as string;
-      }
-
-      const { data: contrato, error: contratoError } = await adminDb
-        .from("contratos")
-        .insert({
-          cliente_id: clienteId,
-          numero_contrato: mkNumeroContrato(),
-          tipo_contrato: "nr1_psicossocial",
-          status: "rascunho",
-          data_inicio: isoDateYYYYMMDD(),
-          criado_por: userId,
-          limite_usuarios: body.funcionarios,
-          valor_total: null,
-          valor_mensal: valorMensal,
-          forma_pagamento: "pagarme",
-          cupom_codigo: cupomAplicado,
-          observacoes,
-        })
-        .select("id")
-        .single();
-
-      if (contratoError) throw contratoError;
-      return contrato.id as string;
-    }
-
-    // ✅ usuário já vinculado a cliente
-    if (existingUser?.cliente_id) {
-      const clienteId = existingUser.cliente_id as string;
-
-      const { error: updateUserError } = await adminDb
-        .from("usuarios")
-        .update({
-          role: "cliente",
-          telefone: body.telefone,
-          email: normalizeEmail(body.email),
-          nome_completo: body.responsavel.trim(),
-          ativo: false,
-          aceitou_termos: true,
-          premium_origem: "pagarme",
-          tipo_plano: "express",
-        })
-        .eq("id", userId);
-
-      if (updateUserError) {
-        return NextResponse.json(
-          {
-            error: "Falha ao atualizar vínculo do usuário.",
-            detail: serializeDbError(updateUserError),
-          },
-          { status: 500 },
-        );
-      }
-
-      const contratoId = await ensureContratoRascunho(clienteId);
-
-      return NextResponse.json(
-        {
-          success: true,
-          cliente_id: clienteId,
-          contrato_id: contratoId,
-          precificacao: {
-            total_final_cents: totalFinalCents,
-            desconto_cents: descontoCents,
-            cupom: cupomAplicado,
-            total_base_cents: quote.totalMensalCents,
-          },
-        },
-        { status: 200 },
-      );
-    }
-
-    // ✅ cria cliente
-    const { data: cliente, error: clienteError } = await adminDb
-      .from("clientes")
-      .insert({
-        tipo: "pj",
-        nome: body.razaoSocial.trim(),
-        documento: body.cnpj,
-        email: normalizeEmail(body.email),
-        telefone: body.telefone,
-        ativo: false,
-      })
-      .select("id")
-      .single();
-
-    if (clienteError) {
-      if (isUniqueViolation(clienteError)) {
-        const msg = (clienteError.message ?? "").toLowerCase();
-
-        if (msg.includes("email")) {
-          return NextResponse.json(
-            { error: "E-mail já cadastrado para outro cliente." },
-            { status: 409 },
-          );
-        }
-
-        if (msg.includes("telefone")) {
-          return NextResponse.json(
-            { error: "Telefone já cadastrado para outro cliente." },
-            { status: 409 },
-          );
-        }
-
-        if (msg.includes("documento") || msg.includes("cnpj")) {
-          return NextResponse.json(
-            { error: "CNPJ já cadastrado para outro cliente." },
-            { status: 409 },
-          );
-        }
-      }
-
-      return NextResponse.json(
-        {
-          error: "Falha ao criar cliente.",
-          detail: serializeDbError(clienteError),
-        },
-        { status: 500 },
-      );
-    }
-
-    const clienteId = cliente.id as string;
-
-    const { error: usuarioError } = await adminDb.from("usuarios").upsert(
-      {
-        id: userId,
-        cliente_id: clienteId,
-        role: "cliente",
-        ativo: false,
-        telefone: body.telefone,
-        email: normalizeEmail(body.email),
-        nome_completo: body.responsavel.trim(),
-        aceitou_termos: true,
-        premium_origem: "pagarme",
-        tipo_plano: "express",
-        data_inicio_plano: new Date().toISOString(),
+    const observacoes = {
+      origem: "nr1",
+      responsavel: body.responsavel,
+      funcionarios: body.funcionarios,
+      cupom: cupomAplicado,
+      precificacao: {
+        base: quote.totalMensalCents,
+        desconto: descontoCents,
+        final: totalFinalCents,
       },
-      { onConflict: "id" },
-    );
+    };
 
-    if (usuarioError) {
+    // ✅ RPC CHAMADA
+    const { data, error } = (await adminDb.rpc("nr1_criar_cliente", {
+      p_auth_user_id: userId,
+      p_razao_social: body.razaoSocial,
+      p_cnpj: body.cnpj,
+      p_email: body.email,
+      p_telefone: body.telefone,
+      p_responsavel: body.responsavel,
+      p_funcionarios: body.funcionarios,
+      p_valor_mensal: totalFinalCents / 100,
+      p_observacoes: observacoes,
+    })) as { data: RpcResult[] | null; error: unknown };
+
+    if (error) {
+      console.error("RPC ERROR:", error);
       return NextResponse.json(
         {
-          error: "Falha ao vincular usuário ao cliente.",
-          detail: serializeDbError(usuarioError),
+          error: "Erro ao processar cadastro.",
+          detail: serializeDbError(error),
         },
         { status: 500 },
       );
     }
 
-    let contratoId: string;
-    try {
-      contratoId = await ensureContratoRascunho(clienteId);
-    } catch (e: unknown) {
-      return NextResponse.json(
-        {
-          error: "Falha ao criar contrato.",
-          detail: serializeDbError(e),
-        },
-        { status: 500 },
-      );
+    if (!data || data.length === 0) {
+      throw new Error("RPC retornou vazio");
     }
+
+    const result = data[0];
 
     return NextResponse.json(
       {
         success: true,
-        cliente_id: clienteId,
-        contrato_id: contratoId,
+        cliente_id: result.cliente_id,
+        contrato_id: result.contrato_id,
+        usuario_id: result.usuario_id,
       },
       { status: 200 },
     );
-  } catch (err: unknown) {
-    console.error("Erro ao processar cadastro NR-1:", err);
+  } catch (err) {
+    console.error("Erro NR1:", err);
 
     return NextResponse.json(
       {
-        error: "Erro ao processar cadastro NR‑1.",
+        error: "Erro interno",
         detail: serializeDbError(err),
       },
       { status: 500 },

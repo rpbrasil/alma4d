@@ -1,4 +1,29 @@
-import { SupabaseClient } from "@supabase/supabase-js";
+import { SupabaseClient, createClient } from "@supabase/supabase-js";
+
+function normalizeRpcResult(u: unknown): string | null {
+  if (u == null) return null;
+  if (typeof u === "string") return u;
+  if (typeof u === "number") return String(u);
+  if (Array.isArray(u) && u.length > 0) {
+    const first = u[0];
+    return (
+      (typeof first === "string" && first) ||
+      first?.usuario_id ||
+      first?.current_usuario_id ||
+      null
+    );
+  }
+  if (typeof u === "object") {
+    const record = u as Record<string, unknown>;
+    return (
+      (typeof record.usuario_id === "string" && record.usuario_id) ||
+      (typeof record.current_usuario_id === "string" &&
+        record.current_usuario_id) ||
+      null
+    );
+  }
+  return null;
+}
 
 type Caller = {
   id: string;
@@ -27,7 +52,25 @@ export async function getCaller(
     throw new Error("INVALID_TOKEN");
   }
 
-  const callerId = userWrap.user.id;
+  // Create a user-scoped client to call RPC in the caller's context
+  const userClient = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { global: { headers: { Authorization: `Bearer ${token}` } } },
+  );
+
+  const { data: usuarioRpcData, error: usuarioRpcErr } =
+    await userClient.rpc("current_usuario_id");
+
+  if (usuarioRpcErr) {
+    throw new Error("INVALID_TOKEN");
+  }
+
+  const callerId = normalizeRpcResult(usuarioRpcData);
+
+  if (!callerId) {
+    throw new Error("INVALID_TOKEN");
+  }
 
   const { data: caller } = await supabaseAdmin
     .from("usuarios")

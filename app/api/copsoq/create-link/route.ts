@@ -41,31 +41,65 @@ function parseJwtClaims(accessToken: string | null | undefined): {
       Buffer.from(parts[1], "base64url").toString("utf-8"),
     ) as Record<string, unknown>;
 
+    // Prefer app_metadata (where Supabase stores custom claims).
+    const appMetadata = (payload.app_metadata ?? payload) as Record<
+      string,
+      unknown
+    >;
+
     const role =
-      payload.user_role === "admin" ||
-      payload.user_role === "cliente" ||
-      payload.user_role === "gestor" ||
-      payload.user_role === "usuario"
-        ? (payload.user_role as Role)
+      appMetadata.user_role === "admin" ||
+      appMetadata.user_role === "cliente" ||
+      appMetadata.user_role === "gestor" ||
+      appMetadata.user_role === "usuario"
+        ? (appMetadata.user_role as Role)
         : null;
 
     const plano =
-      payload.user_plano === "express" || payload.user_plano === "premium"
-        ? (payload.user_plano as Plano)
+      appMetadata.user_plano === "express" ||
+      appMetadata.user_plano === "premium"
+        ? (appMetadata.user_plano as Plano)
         : null;
 
     const clienteId =
-      typeof payload.user_cliente_id === "string"
-        ? payload.user_cliente_id
+      typeof appMetadata.user_cliente_id === "string"
+        ? appMetadata.user_cliente_id
         : null;
 
     const ativo =
-      typeof payload.user_ativo === "boolean" ? payload.user_ativo : null;
+      typeof appMetadata.user_ativo === "boolean"
+        ? appMetadata.user_ativo
+        : null;
 
     return { role, plano, clienteId, ativo };
   } catch {
     return { role: null, plano: null, clienteId: null, ativo: null };
   }
+}
+
+function normalizeRpcResult(u: unknown): string | null {
+  if (u == null) return null;
+  if (typeof u === "string") return u;
+  if (typeof u === "number") return String(u);
+  if (Array.isArray(u) && u.length > 0) {
+    const first = u[0];
+    return (
+      (typeof first === "string" && first) ||
+      first?.usuario_id ||
+      first?.current_usuario_id ||
+      null
+    );
+  }
+  if (typeof u === "object") {
+    const record = u as Record<string, unknown>;
+    return (
+      (typeof record.usuario_id === "string" && record.usuario_id) ||
+      (typeof record.current_usuario_id === "string" &&
+        record.current_usuario_id) ||
+      null
+    );
+  }
+  return null;
 }
 
 function normalizeBaseUrl(raw: string) {
@@ -102,7 +136,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "not_authenticated" }, { status: 401 });
     }
 
-    const user = session.user;
     const claims = parseJwtClaims(session.access_token);
 
     // 2) Validações básicas de claims
@@ -126,12 +159,32 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "forbidden" }, { status: 403 });
     }
 
-    // 3) Confirma ativo no cadastro de usuários
+    // 3) Resolver `usuario_id` canônico via RPC (regra do sistema)
+    const { data: usuarioRpcData, error: usuarioRpcErr } =
+      await supabaseAuth.rpc("current_usuario_id");
+
+    if (usuarioRpcErr) {
+      return NextResponse.json(
+        { error: usuarioRpcErr.message },
+        { status: 500 },
+      );
+    }
+
+    const usuarioId = normalizeRpcResult(usuarioRpcData);
+
+    if (!usuarioId) {
+      return NextResponse.json(
+        { error: "usuario_nao_vinculado" },
+        { status: 403 },
+      );
+    }
+
+    // Conferir status do usuário no domínio (usa `usuarioId` canônico)
     const { data: profile, error: profErr } = await supabaseAuth
       .from("usuarios")
       .select("ativo")
-      .eq("id", user.id)
-      .single();
+      .eq("id", usuarioId)
+      .maybeSingle();
 
     if (profErr) {
       return NextResponse.json({ error: profErr.message }, { status: 500 });
@@ -243,7 +296,7 @@ export async function POST(req: Request) {
       const rotateResult = await supabaseAdmin.rpc("rotate_copsoq_cycle", {
         p_contrato_id: contratoId,
         p_cliente_id: claims.clienteId,
-        p_created_by: user.id,
+        p_created_by: usuarioId,
         p_max_respostas: limiteUsuarios,
         p_campanha: campaign || null,
       });
@@ -270,7 +323,7 @@ export async function POST(req: Request) {
           max_respostas: limiteUsuarios,
           usadas: 0,
           ativo: true,
-          created_by: user.id,
+          created_by: usuarioId,
           campanha: campaign || null,
         })
         .select("*")

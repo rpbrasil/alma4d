@@ -50,13 +50,15 @@ export async function POST(req: Request) {
         );
       }
 
-      parceiroIds = (oldData ?? [])
-        .map((x: any) => x.parceiro_id)
-        .filter(Boolean);
+      const oldRows = (oldData ?? []) as Array<{ parceiro_id: string | null }>;
+      parceiroIds = oldRows
+        .map((x) => x.parceiro_id)
+        .filter((x): x is string => typeof x === "string" && x.length > 0);
     } else {
-      parceiroIds = (elegiveis ?? [])
-        .map((x: any) => x.parceiro_id)
-        .filter(Boolean);
+      const rows = (elegiveis ?? []) as Array<{ parceiro_id: string | null }>;
+      parceiroIds = rows
+        .map((x) => x.parceiro_id)
+        .filter((x): x is string => typeof x === "string" && x.length > 0);
     }
 
     if (!parceiroIds.length) {

@@ -6,7 +6,7 @@ import { getSupabaseClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 
 export default function RelatoriosPsicossocial() {
-  const { user, role } = useAuth();
+  const { usuarioId, role } = useAuth();
   const [clienteId, setClienteId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const supabase = useMemo(() => getSupabaseClient(), []);
@@ -18,19 +18,19 @@ export default function RelatoriosPsicossocial() {
 
   useEffect(() => {
     const init = async () => {
-      if (!user?.id) return;
-      
+      if (!usuarioId) return;
+
       const { data: usuario } = await supabase
         .from("usuarios")
         .select("cliente_id")
-        .eq("id", user.id)
+        .eq("id", usuarioId)
         .single();
 
       setClienteId(usuario?.cliente_id || null);
       setLoading(false);
     };
     init();
-  }, [user, supabase]);
+  }, [usuarioId, supabase]);
 
   if (loading) {
     return (

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { getCaller } from "../../importacao-usuarios/_shared/getCaller";
 
 // Tipagem para os campos que podem ser atualizados
 interface ParceiroUpdate {
@@ -31,20 +32,17 @@ export async function PATCH(
     const token = auth.split(" ")[1];
     const supabaseAdmin = getSupabaseAdmin();
 
-    const { data: userWrap, error: authErr } =
-      await supabaseAdmin.auth.getUser(token);
-    if (authErr || !userWrap?.user) {
-      return NextResponse.json({ error: "Token inválido" }, { status: 401 });
+    let caller;
+    try {
+      caller = await getCaller(req, supabaseAdmin);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg === "NO_TOKEN" || msg === "INVALID_TOKEN")
+        return NextResponse.json({ error: "Token inválido" }, { status: 401 });
+      return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
     }
 
-    const callerId = userWrap.user.id;
-    const { data: perfil, error: perfilErr } = await supabaseAdmin
-      .from("usuarios")
-      .select("id, role")
-      .eq("id", callerId)
-      .maybeSingle();
-
-    if (perfilErr || !perfil || perfil.role !== "admin") {
+    if (caller.role !== "admin") {
       return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
     }
 
@@ -91,20 +89,17 @@ export async function DELETE(
     const token = auth.split(" ")[1];
     const supabaseAdmin = getSupabaseAdmin();
 
-    const { data: userWrap, error: authErr } =
-      await supabaseAdmin.auth.getUser(token);
-    if (authErr || !userWrap?.user) {
-      return NextResponse.json({ error: "Token inválido" }, { status: 401 });
+    let caller2;
+    try {
+      caller2 = await getCaller(req, supabaseAdmin);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg === "NO_TOKEN" || msg === "INVALID_TOKEN")
+        return NextResponse.json({ error: "Token inválido" }, { status: 401 });
+      return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
     }
 
-    const callerId = userWrap.user.id;
-    const { data: perfil, error: perfilErr } = await supabaseAdmin
-      .from("usuarios")
-      .select("id, role")
-      .eq("id", callerId)
-      .maybeSingle();
-
-    if (perfilErr || !perfil || perfil.role !== "admin") {
+    if (caller2.role !== "admin") {
       return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
     }
 

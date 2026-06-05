@@ -22,7 +22,7 @@ function isValidEmailLoose(email: string) {
 }
 
 export default function PerfilPage() {
-  const { user, role, plano } = useAuth();
+  const { user, usuarioId, role, plano } = useAuth();
   const supabase = useMemo(() => getSupabaseClient(), []);
   const [perfil, setPerfil] = useState<PerfilRow | null>(null);
   const [clienteNome, setClienteNome] = useState<string | null>(null);
@@ -39,7 +39,7 @@ export default function PerfilPage() {
   }, [perfil?.nome_completo]);
 
   useEffect(() => {
-    if (!user?.id) return;
+    if (!usuarioId) return;
 
     (async () => {
       setMsg(null);
@@ -47,7 +47,7 @@ export default function PerfilPage() {
       const { data, error } = await supabase
         .from("usuarios")
         .select("nome_completo, email, cliente_id")
-        .eq("id", user.id)
+        .eq("id", usuarioId)
         .single();
 
       if (error || !data) {
@@ -58,7 +58,7 @@ export default function PerfilPage() {
       const row = data as PerfilRow;
 
       setPerfil(row);
-      setEmail(row.email ?? user.email ?? "");
+      setEmail(row.email ?? user?.email ?? "");
 
       if (row.cliente_id) {
         const { data: cli } = (await supabase
@@ -70,7 +70,7 @@ export default function PerfilPage() {
         setClienteNome(cli?.nome ?? null);
       }
     })();
-  }, [user?.id, supabase, user?.email]);
+  }, [usuarioId, supabase, user?.email]);
 
   async function onSave() {
     setMsg(null);
@@ -82,7 +82,7 @@ export default function PerfilPage() {
       return;
     }
 
-    if (!user?.id) return;
+    if (!usuarioId) return;
 
     setSaving(true);
 
@@ -92,7 +92,7 @@ export default function PerfilPage() {
         .update({
           email: emailTrim || null,
         })
-        .eq("id", user.id);
+        .eq("id", usuarioId);
 
       if (error) throw error;
 

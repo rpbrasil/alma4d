@@ -4,6 +4,31 @@ import { cookies } from "next/headers";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { randomUUID } from "crypto";
 
+function normalizeRpcResult(u: unknown): string | null {
+  if (u == null) return null;
+  if (typeof u === "string") return u;
+  if (typeof u === "number") return String(u);
+  if (Array.isArray(u) && u.length > 0) {
+    const first = u[0];
+    return (
+      (typeof first === "string" && first) ||
+      first?.usuario_id ||
+      first?.current_usuario_id ||
+      null
+    );
+  }
+  if (typeof u === "object") {
+    const record = u as Record<string, unknown>;
+    return (
+      (typeof record.usuario_id === "string" && record.usuario_id) ||
+      (typeof record.current_usuario_id === "string" &&
+        record.current_usuario_id) ||
+      null
+    );
+  }
+  return null;
+}
+
 export const runtime = "nodejs";
 
 type Role = "admin" | "cliente" | "gestor" | "usuario" | null;
@@ -48,26 +73,34 @@ function parseJwtClaims(accessToken: string | null | undefined): {
       Buffer.from(parts[1], "base64url").toString("utf-8"),
     ) as Record<string, unknown>;
 
+    const appMetadata = (payload.app_metadata ?? payload) as Record<
+      string,
+      unknown
+    >;
+
     const role =
-      payload.user_role === "admin" ||
-      payload.user_role === "cliente" ||
-      payload.user_role === "gestor" ||
-      payload.user_role === "usuario"
-        ? (payload.user_role as Role)
+      appMetadata.user_role === "admin" ||
+      appMetadata.user_role === "cliente" ||
+      appMetadata.user_role === "gestor" ||
+      appMetadata.user_role === "usuario"
+        ? (appMetadata.user_role as Role)
         : null;
 
     const plano =
-      payload.user_plano === "express" || payload.user_plano === "premium"
-        ? (payload.user_plano as Plano)
+      appMetadata.user_plano === "express" ||
+      appMetadata.user_plano === "premium"
+        ? (appMetadata.user_plano as Plano)
         : null;
 
     const clienteId =
-      typeof payload.user_cliente_id === "string"
-        ? payload.user_cliente_id
+      typeof appMetadata.user_cliente_id === "string"
+        ? appMetadata.user_cliente_id
         : null;
 
     const ativo =
-      typeof payload.user_ativo === "boolean" ? payload.user_ativo : null;
+      typeof appMetadata.user_ativo === "boolean"
+        ? appMetadata.user_ativo
+        : null;
 
     return { role, plano, clienteId, ativo };
   } catch {
@@ -229,6 +262,12 @@ export async function POST(req: Request) {
     const adminDb = getSupabaseAdmin();
     const protocolo = `ALM-${Date.now().toString().slice(-8)}`;
 
+    // Resolver usuario_id canônico via RPC (usa o client com cookies)
+    const { data: usuarioRpcData, error: usuarioRpcErr } =
+      await supabase.rpc("current_usuario_id");
+
+    const usuarioId = usuarioRpcErr ? null : normalizeRpcResult(usuarioRpcData);
+
     const { data: denuncia, error: insertError } = await adminDb
       .from("denuncias")
       .insert({
@@ -246,7 +285,7 @@ export async function POST(req: Request) {
         contato_retorno: anonimizada ? null : contatoRetorno,
         consentimento_tratamento: consentimentoTratamento,
         status: "recebida",
-        created_by_user_id: anonimizada ? null : session.user.id,
+        created_by_user_id: anonimizada ? null : usuarioId,
         created_by_role: anonimizada ? null : claims.role,
       })
       .select("id")
@@ -287,9 +326,7 @@ export async function POST(req: Request) {
           console.error("Erro ao enviar arquivo:", uploadError);
 
           if (uploadedPaths.length > 0) {
-            await adminDb.storage
-              .from("denuncias")
-              .remove(uploadedPaths);
+            await adminDb.storage.from("denuncias").remove(uploadedPaths);
           }
 
           return NextResponse.json(
@@ -321,9 +358,7 @@ export async function POST(req: Request) {
         console.error("Erro ao inserir metadados dos arquivos:", evidenceError);
 
         if (uploadedPaths.length > 0) {
-          await adminDb.storage
-            .from("denuncias")
-            .remove(uploadedPaths);
+          await adminDb.storage.from("denuncias").remove(uploadedPaths);
         }
 
         return NextResponse.json(

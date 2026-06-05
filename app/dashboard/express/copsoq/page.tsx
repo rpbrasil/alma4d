@@ -155,42 +155,43 @@ export default function DashboardExpressCopsoqPage() {
 
         const session = sessionData.session;
 
-        if (!session || !session.user) {
+        if (!session) {
           setError("Usuário não autenticado.");
           return;
         }
 
-        const userId = session.user.id;
+        // Resolve canonical usuario via server
+        const who = await fetch("/api/auth/whoami");
+        if (!who.ok) {
+          setError("Usuário não autenticado.");
+          return;
+        }
 
-        // ✅ salvar user
+        const perfil = await who.json();
+
+        if (!perfil?.usuario_id) {
+          setError("Usuário não autenticado.");
+          return;
+        }
+
+        const userId = perfil.usuario_id;
         setUser({
-          id: session.user.id,
-          email: session.user.email ?? "",
-          nome: session.user.user_metadata?.full_name ?? "",
-          documento: "", // se tiver campo depois, vem aqui
+          id: userId,
+          email: perfil?.email ?? "",
+          nome: perfil?.nome_completo ?? "",
+          documento: "",
         });
-        if (!userId) {
-          setError("Usuário não autenticado.");
-          return;
-        }
 
-        setPhase("usuario");
-        const { data: usuario, error: userError } = await supabase
-          .from("usuarios")
-          .select("cliente_id")
-          .eq("id", userId)
-          .single();
-
-        if (userError || !usuario?.cliente_id) {
+        if (!perfil?.cliente_id) {
           setError("Cliente não associado.");
           return;
         }
-        setClienteId(usuario.cliente_id);
+        setClienteId(perfil.cliente_id);
         setPhase("cliente");
         const { data: cliente, error: clienteError } = await supabase
           .from("clientes")
           .select("ativo, nome") // <-- se você já adicionou nome
-          .eq("id", usuario.cliente_id)
+          .eq("id", perfil.cliente_id)
           .single();
 
         if (clienteError) {
@@ -210,7 +211,7 @@ export default function DashboardExpressCopsoqPage() {
         const { data: contratosData, error: contratosError } = await supabase
           .from("contratos")
           .select("id,numero_contrato,status,limite_usuarios,preco_unitario")
-          .eq("cliente_id", usuario.cliente_id)
+          .eq("cliente_id", perfil.cliente_id)
           .order("criado_em", { ascending: false });
 
         if (contratosError) throw contratosError;
@@ -442,7 +443,6 @@ export default function DashboardExpressCopsoqPage() {
     window.print();
   }
 
- 
   // ----------- estados -----------
 
   if (loading) {
@@ -582,17 +582,13 @@ export default function DashboardExpressCopsoqPage() {
             <p className="mt-2 text-2xl font-semibold text-slate-900">
               {respondidos ?? "—"}
             </p>
-            <p className="mt-1 text-xs text-slate-500">
-              Licenças utilizadas
-            </p>
+            <p className="mt-1 text-xs text-slate-500">Licenças utilizadas</p>
           </div>
 
           <div className="rounded-2xl border border-border bg-slate-50 p-4">
             <div className="flex items-center gap-2 text-slate-700">
               <AlertCircle className="h-4 w-4 text-slate-400" />
-              <span className="text-sm font-semibold">
-                Disponiveis
-              </span>
+              <span className="text-sm font-semibold">Disponiveis</span>
             </div>
             <p className="mt-2 text-2xl font-semibold text-slate-900">
               {restantes ?? "—"}
@@ -618,7 +614,7 @@ export default function DashboardExpressCopsoqPage() {
           </button>
         </div>
       </section>
-      
+
       {/* 🔥 BLOCO NOVO: EXPANSÃO */}
       <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5">
         <div className="flex items-start justify-between gap-4">
@@ -629,7 +625,10 @@ export default function DashboardExpressCopsoqPage() {
 
             <p className="mt-1 text-xs text-amber-800">
               Ao atingir o limite de respostas, você pode ampliar a quantidade
-              de participantes adquirindo novas licenças para o ciclo atual. A licença é válida por um ano, caso nao haja renovação do contrato. Os precos podem flutuar a cada ciclo, entao recomendamos adquirir o necessário para seu objetivo.
+              de participantes adquirindo novas licenças para o ciclo atual. A
+              licença é válida por um ano, caso nao haja renovação do contrato.
+              Os precos podem flutuar a cada ciclo, entao recomendamos adquirir
+              o necessário para seu objetivo.
             </p>
           </div>
 

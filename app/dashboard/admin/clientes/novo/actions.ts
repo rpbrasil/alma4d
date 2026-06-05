@@ -140,8 +140,15 @@ export async function criarClienteEContrato(formData: FormData) {
   // precisa de usuário logado para contratos.criado_por
   const { data: auth, error: authErr } = await supabase.auth.getUser();
   if (authErr) throw new Error(authErr.message);
-  const userId = auth?.user?.id;
-  if (!userId) throw new Error("Sessão expirada. Faça login novamente.");
+  if (!auth?.user) throw new Error("Sessão expirada. Faça login novamente.");
+
+  const { data: usuarioId, error: usuarioIdErr } =
+    await supabase.rpc("current_usuario_id");
+
+  if (usuarioIdErr || !usuarioId)
+    throw new Error("Usuário não associado ao sistema.");
+
+  const userId = usuarioId as string;
 
   // ----- Cliente -----
   const tipo = normalizeTipo(String(formData.get("tipo") || ""));

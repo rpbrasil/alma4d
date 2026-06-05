@@ -17,7 +17,7 @@ type Props = {
 <Image src="/logo.png" width={500} height={500} alt="Descrição" />;
 
 export default function DashboardHeader({ onMenuClick }: Props) {
-  const { user, signOut, loading, plano } = useAuth();
+  const { user, usuarioId, signOut, loading, plano } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
   const [clienteNome, setClienteNome] = useState<string>("Painel Corporativo");
@@ -63,7 +63,7 @@ export default function DashboardHeader({ onMenuClick }: Props) {
   // ✅ placeholders ESTÁVEIS (server === client)
 
   useEffect(() => {
-    if (loading || !user?.id) return;
+    if (loading || !usuarioId) return;
 
     let mounted = true;
 
@@ -74,7 +74,7 @@ export default function DashboardHeader({ onMenuClick }: Props) {
         const { data: usuario } = await supabase
           .from("usuarios")
           .select("cliente_id")
-          .eq("id", user.id)
+          .eq("id", usuarioId)
           .single();
 
         if (!usuario?.cliente_id || !mounted) return;
@@ -104,7 +104,7 @@ export default function DashboardHeader({ onMenuClick }: Props) {
     return () => {
       mounted = false;
     };
-  }, [loading, user?.id]);
+  }, [loading, usuarioId]);
 
   return (
     <header

@@ -774,108 +774,109 @@ function AtivacaoWizardContent() {
     let mounted = true;
 
     (async () => {
-      const { data, error } = await supabase.auth.getUser();
-      if (!mounted) return;
+      // Use server-side whoami to obtain canonical usuario profile
+      try {
+        const who = await fetch("/api/auth/whoami");
+        if (!who.ok) {
+          window.location.href = `/login?redirect=${encodeURIComponent(
+            window.location.pathname + window.location.search,
+          )}`;
+          return;
+        }
 
-      if (error || !data.user?.id) {
+        const perfil = await who.json();
+
+        if (!perfil?.usuario_id) {
+          window.location.href = `/login?redirect=${encodeURIComponent(
+            window.location.pathname + window.location.search,
+          )}`;
+          return;
+        }
+
+        const isOnboarding =
+          perfil.ativo === false &&
+          (perfil.tipo_plano === "trial" || perfil.tipo_plano === "express");
+
+        if (!perfil.ativo && !isOnboarding) {
+          window.location.href = "/login";
+          return;
+        }
+
+        if (!contratoId) {
+          window.location.href = "/login";
+          return;
+        }
+
+        // ✅ carrega contrato COM os campos necessários para autorização
+        const { data: contratoData } = await supabase
+          .from("contratos")
+          .select(
+            "id, cliente_id, status, valor_mensal, observacoes, limite_usuarios, aceite_termos",
+          )
+          .eq("id", contratoId)
+          .maybeSingle<Contrato>();
+
+        if (!contratoData) {
+          window.location.href = "/login";
+          return;
+        }
+
+        // ✅ Admin pode seguir sempre, mas ainda carrega contrato
+        if (perfil.role !== "admin") {
+          // ✅ trava reuso da URL por outro usuário (IDOR): contrato precisa ser do mesmo cliente
+          if (
+            String(contratoData.cliente_id ?? "") !==
+            String(perfil.cliente_id ?? "")
+          ) {
+            window.location.href = "/login";
+            return;
+          }
+
+          // ✅ se contrato já estiver ativo, não faz sentido seguir wizard
+          if ((contratoData.status ?? "").toLowerCase() === "ativo") {
+            window.location.href = "/dashboard";
+            return;
+          }
+        }
+
+        // ✅ valida cliente (mantém sua regra)
+        const { data: cliente } = await supabase
+          .from("clientes")
+          .select("ativo")
+          .eq("id", perfil.cliente_id)
+          .single();
+
+        if (!cliente) {
+          window.location.href = "/login";
+          return;
+        }
+
+        if (!cliente.ativo && !isOnboarding && perfil.role !== "admin") {
+          window.location.href = "/login";
+          return;
+        }
+
+        // ✅ estado local do wizard
+        setContrato(contratoData);
+        setContratoLoading(false);
+
+        const limite = contratoData.limite_usuarios ?? funcionariosParam ?? 1;
+        setFuncionarios(limite);
+
+        setUserId(perfil.usuario_id);
+      } catch (e) {
+        console.error("Erro ao validar whoami:", e);
         window.location.href = `/login?redirect=${encodeURIComponent(
           window.location.pathname + window.location.search,
         )}`;
         return;
       }
-
-      const user = data.user;
-
-      // ✅ busca perfil
-      const { data: perfil } = await supabase
-        .from("usuarios")
-        .select("ativo, tipo_plano, cliente_id, role")
-        .eq("id", user.id)
-        .single();
-
-      if (!perfil) {
-        window.location.href = "/login";
-        return;
-      }
-
-      const isOnboarding =
-        perfil.ativo === false &&
-        (perfil.tipo_plano === "trial" || perfil.tipo_plano === "express");
-
-      if (!perfil.ativo && !isOnboarding) {
-        window.location.href = "/login";
-        return;
-      }
-
-      if (!contratoId) {
-        window.location.href = "/login";
-        return;
-      }
-
-      // ✅ carrega contrato COM os campos necessários para autorização
-      const { data: contratoData } = await supabase
-        .from("contratos")
-        .select(
-          "id, cliente_id, status, valor_mensal, observacoes, limite_usuarios, aceite_termos",
-        )
-        .eq("id", contratoId)
-        .maybeSingle<Contrato>();
-
-      if (!contratoData) {
-        window.location.href = "/login";
-        return;
-      }
-
-      // ✅ Admin pode seguir sempre, mas ainda carrega contrato
-      if (perfil.role !== "admin") {
-        // ✅ trava reuso da URL por outro usuário (IDOR): contrato precisa ser do mesmo cliente
-        if (
-          String(contratoData.cliente_id ?? "") !==
-          String(perfil.cliente_id ?? "")
-        ) {
-          window.location.href = "/login";
-          return;
-        }
-
-        // ✅ se contrato já estiver ativo, não faz sentido seguir wizard
-        if ((contratoData.status ?? "").toLowerCase() === "ativo") {
-          window.location.href = "/dashboard";
-          return;
-        }
-      }
-
-      // ✅ valida cliente (mantém sua regra)
-      const { data: cliente } = await supabase
-        .from("clientes")
-        .select("ativo")
-        .eq("id", perfil.cliente_id)
-        .single();
-
-      if (!cliente) {
-        window.location.href = "/login";
-        return;
-      }
-
-      if (!cliente.ativo && !isOnboarding && perfil.role !== "admin") {
-        window.location.href = "/login";
-        return;
-      }
-
-      // ✅ estado local do wizard
-      setContrato(contratoData);
-      setContratoLoading(false);
-
-      const limite = contratoData.limite_usuarios ?? funcionariosParam ?? 1;
-      setFuncionarios(limite);
-
-      setUserId(user.id);
     })();
 
     return () => {
       mounted = false;
     };
   }, [contratoId, funcionariosParam]);
-
 
   /** Tracking de “leu o contrato” (mesma origem: /api/contrato/preview) */
   useEffect(() => {
@@ -978,7 +979,7 @@ function AtivacaoWizardContent() {
       }
 
       // Atualiza o estado local para não depender de refetch imediato
-      setContrato((prev) => prev ? {...prev, aceite_termos:true,} : prev);
+      setContrato((prev) => (prev ? { ...prev, aceite_termos: true } : prev));
 
       // ----------------------------
       // 2) (Opcional) Log client-side

@@ -37,24 +37,37 @@ const supabase = getSupabaseClient();
 
 // ✅ Valida sessão + admin no CLIENT
 async function assertAdminClient() {
-  const { data: auth, error } = await supabase.auth.getUser();
-  if (error || !auth.user) {
-    throw new Error("Sessão expirada. Faça login novamente.");
+    const { data: auth, error } = await supabase.auth.getUser();
+
+    if (error || !auth.user) {
+      throw new Error("Sessão expirada. Faça login novamente.");
+    }
+
+    // ✅ pegar usuario_id canônico
+    const { data: usuarioId, error: usuarioIdErr } =
+      await supabase.rpc("current_usuario_id");
+
+    if (usuarioIdErr || !usuarioId) {
+      throw new Error("Usuário não associado.");
+    }
+
+    // ✅ buscar role correta
+    const { data: usuario, error: usuarioErr } = await supabase
+      .from("usuarios")
+      .select("role")
+      .eq("id", usuarioId)
+      .single();
+
+    if (usuarioErr || !usuario) {
+      throw new Error("Erro ao validar permissões.");
+    }
+
+    if (asRole(usuario.role) !== "admin") {
+      throw new Error("Acesso restrito a administradores.");
+    }
+
+    return usuarioId;
   }
-
-  const { data: me, error: errMe } = await supabase
-    .from("usuarios")
-    .select("role")
-    .eq("id", auth.user.id)
-    .single();
-
-  if (errMe) throw new Error("Erro ao validar permissões.");
-  if (asRole(me?.role) !== "admin") {
-    throw new Error("Acesso restrito a administradores.");
-  }
-
-  return auth.user.id;
-}
 
 /**
  * Lista clientes + métricas reais via contratos:

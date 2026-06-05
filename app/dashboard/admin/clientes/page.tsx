@@ -101,7 +101,7 @@ function Badge({
 }
 
 export default function ClientesPage() {
-  const { role } = useAuth();
+  const { role, loading: authLoading } = useAuth();
   const isAdmin = role === "admin";
 
   const [loading, setLoading] = useState(true);
@@ -121,14 +121,14 @@ export default function ClientesPage() {
   }>({ open: false });
 
   // ✅ Hooks NUNCA podem ser condicionais.
-  // A lógica condicional fica DENTRO do efeito.
   useEffect(() => {
     let mounted = true;
 
     async function load() {
+      if (authLoading) return;
+
       if (!isAdmin) {
-        // se não for admin, não busca nada
-        setLoading(false);
+        if (mounted) setLoading(false);
         return;
       }
 
@@ -147,11 +147,14 @@ export default function ClientesPage() {
       }
     }
 
-    load();
+    if (!authLoading) {
+      load();
+    }
+
     return () => {
       mounted = false;
     };
-  }, [isAdmin]);
+  }, [isAdmin, authLoading]);
 
   const filteredClientes = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
@@ -248,9 +251,19 @@ export default function ClientesPage() {
       }
     });
   }
+if (authLoading) {
+  return (
+    <div className="flex items-center justify-center h-96">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#019499] mx-auto mb-4" />
+        <p className="text-gray-600">Carregando autenticação...</p>
+      </div>
+    </div>
+  );
+}
 
   // ✅ Agora sim pode retornar condicionalmente, porque TODOS os hooks já rodaram.
-  if (!isAdmin) {
+  if (role !== "admin") {
     return (
       <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
         <AlertCircle className="mx-auto text-yellow-600 mb-2" size={24} />

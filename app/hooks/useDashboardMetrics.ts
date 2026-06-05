@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/auth";
-import {getSupabaseClient} from "@/lib/supabase/client"
+import { getSupabaseClient } from "@/lib/supabase/client";
 
 export interface DashboardMetric {
   label: string;
@@ -22,7 +22,7 @@ export interface UsuariosKpis {
 }
 
 export function useDashboardMetrics() {
-  const { user, role } = useAuth();
+  const { usuarioId, role } = useAuth();
   const [metrics, setMetrics] = useState<DashboardMetric[]>([]);
   const [usuariosKpis, setUsuariosKpis] = useState<UsuariosKpis>({
     total: 0,
@@ -36,14 +36,14 @@ export function useDashboardMetrics() {
 
   useEffect(() => {
     const loadMetrics = async () => {
-      if (!user?.id) {
+      if (!usuarioId) {
         setMetrics([]);
         setLoading(false);
         return;
       }
 
       try {
-        const supabase = getSupabaseClient();        
+        const supabase = getSupabaseClient();
         const normalizedRole = role?.toLowerCase();
 
         let clientesCount = 0;
@@ -285,7 +285,7 @@ export function useDashboardMetrics() {
     };
 
     loadMetrics();
-  }, [user, role]);
+  }, [usuarioId, role]);
 
   return { metrics, usuariosKpis, loading, error };
 }

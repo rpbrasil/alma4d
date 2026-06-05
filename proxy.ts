@@ -5,6 +5,14 @@ import { createServerClient } from "@supabase/ssr";
 type Role = "admin" | "cliente" | "gestor" | "usuario" | null;
 type Plano = "express" | "premium" | null;
 
+type AppMetadata = {
+  user_role?: Role;
+  user_plano?: Plano;
+  user_cliente_id?: string;
+  user_gestor_id?: string;
+  user_ativo?: boolean;
+};
+
 const ADMIN_TENANT_COOKIE = "alma4d_admin_tenant_id";
 
 function hasValidLinkId(search: string) {
@@ -107,29 +115,29 @@ function parseJwtClaims(accessToken: string | null | undefined): {
     };
   }
 
+  // ✅ CORREÇÃO AQUI (ESSA LINHA MUDA TUDO)
+  const meta = payload.app_metadata as AppMetadata | undefined;
+
   const role =
-    payload.user_role === "admin" ||
-    payload.user_role === "cliente" ||
-    payload.user_role === "gestor" ||
-    payload.user_role === "usuario"
-      ? (payload.user_role as Role)
+    meta?.user_role === "admin" ||
+    meta?.user_role === "cliente" ||
+    meta?.user_role === "gestor" ||
+    meta?.user_role === "usuario"
+      ? (meta.user_role as Role)
       : null;
 
   const plano =
-    payload.user_plano === "express" || payload.user_plano === "premium"
-      ? (payload.user_plano as Plano)
+    meta?.user_plano === "express" || meta?.user_plano === "premium"
+      ? (meta.user_plano as Plano)
       : null;
 
   const clienteId =
-    typeof payload.user_cliente_id === "string"
-      ? payload.user_cliente_id
-      : null;
+    typeof meta?.user_cliente_id === "string" ? meta.user_cliente_id : null;
 
   const gestorId =
-    typeof payload.user_gestor_id === "string" ? payload.user_gestor_id : null;
+    typeof meta?.user_gestor_id === "string" ? meta.user_gestor_id : null;
 
-  const ativo =
-    typeof payload.user_ativo === "boolean" ? payload.user_ativo : null;
+  const ativo = typeof meta?.user_ativo === "boolean" ? meta.user_ativo : null;
 
   return {
     role,
@@ -215,7 +223,6 @@ function allowExpressRouteForRole(pathname: string, role: Role) {
   if (isExpressCopsoq(pathname)) {
     return false; // 🚨 bloqueia aqui, vamos tratar no middleware principal
   }
-
 
   // home express
   if (isExpressHome(pathname)) {
@@ -427,7 +434,7 @@ export async function proxy(req: NextRequest) {
       // -----------------------------------------
       if (isExpressCopsoq(pathname)) {
         // ✅ admin E cliente podem acessar direto
-        if ( role === "cliente") {
+        if (role === "cliente") {
           return nextWithCookies(res, requestHeaders);
         }
 

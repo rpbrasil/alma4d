@@ -84,7 +84,7 @@ type StatusDenuncia =
   | "encerrada"
   | "descartada";
 
-  type NivelClassificacao = "alta" | "media" | "baixa";
+type NivelClassificacao = "alta" | "media" | "baixa";
 
 async function loadImageAsBase64(url: string): Promise<string | null> {
   try {
@@ -178,7 +178,6 @@ const STATUS_LABELS: Record<StatusDenuncia, string> = {
   encerrada: "Encerrada",
   descartada: "Descartada",
 };
-
 
 const STATUS_STYLES: Record<StatusDenuncia, string> = {
   recebida: "bg-gray-100 text-gray-700",
@@ -293,7 +292,7 @@ function KpiCard({
 
 export default function RelatorioOcorrenciasPage() {
   const supabase = useMemo(() => getSupabaseClient(), []);
-  const { role } = useAuth();
+  const { role, usuarioId } = useAuth();
   const router = useRouter();
 
   const [loading, setLoading] = useState(true);
@@ -359,17 +358,11 @@ export default function RelatorioOcorrenciasPage() {
         setArquivos((arquivosData as DenunciaArquivo[]) || []);
 
         // tenta descobrir o cliente atual via sessão -> usuarios -> clientes
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-
-        const uid = session?.user?.id;
-
-        if (uid) {
+        if (usuarioId) {
           const { data: usuario } = await supabase
             .from("usuarios")
             .select("cliente_id")
-            .eq("id", uid)
+            .eq("id", usuarioId)
             .maybeSingle();
 
           if (usuario?.cliente_id) {
@@ -388,7 +381,7 @@ export default function RelatorioOcorrenciasPage() {
     }
 
     load();
-  }, [supabase, role]);
+  }, [supabase, role, usuarioId]);
 
   const categorias = useMemo(() => {
     return Array.from(new Set(denuncias.map((d) => d.categoria))).sort();

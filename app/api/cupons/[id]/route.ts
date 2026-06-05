@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { getCaller } from "../../importacao-usuarios/_shared/getCaller";
 
 export async function PATCH(
   req: Request,
@@ -19,30 +20,34 @@ export async function PATCH(
       { auth: { persistSession: false } },
     );
 
-    const { data: userWrap, error: authErr } =
-      await supabaseAdmin.auth.getUser(token);
-    if (authErr || !userWrap?.user) {
-      return NextResponse.json({ error: "Token inválido" }, { status: 401 });
-    }
-
-    const callerId = userWrap.user.id;
-    const { data: perfil, error: perfilErr } = await supabaseAdmin
-      .from("usuarios")
-      .select("id, role")
-      .eq("id", callerId)
-      .maybeSingle();
-
-    if (perfilErr || !perfil || perfil.role !== "admin") {
+    let caller;
+    try {
+      caller = await getCaller(req, supabaseAdmin);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg === "NO_TOKEN" || msg === "INVALID_TOKEN")
+        return NextResponse.json({ error: "Token inválido" }, { status: 401 });
       return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
     }
 
-    const body = await req.json();
-    const updates: any = {};
-    if (body.codigo !== undefined) updates.codigo = body.codigo;
-    if (body.ativo !== undefined) updates.ativo = body.ativo;
-    if (body.valor !== undefined) updates.valor = body.valor;
-    if (body.tipo !== undefined) updates.tipo = body.tipo;
-    if (body.comissao_percentual !== undefined)
+    if (caller.role !== "admin") {
+      return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
+    }
+
+    const body = (await req.json()) as Record<string, unknown>;
+    const updates: Partial<{
+      codigo: string;
+      ativo: boolean;
+      valor: number;
+      tipo: string;
+      comissao_percentual: number;
+    }> = {};
+
+    if (typeof body.codigo === "string") updates.codigo = body.codigo;
+    if (typeof body.ativo === "boolean") updates.ativo = body.ativo;
+    if (typeof body.valor === "number") updates.valor = body.valor;
+    if (typeof body.tipo === "string") updates.tipo = body.tipo;
+    if (typeof body.comissao_percentual === "number")
       updates.comissao_percentual = body.comissao_percentual;
 
     const { data, error } = await supabaseAdmin
@@ -82,20 +87,17 @@ export async function DELETE(
       { auth: { persistSession: false } },
     );
 
-    const { data: userWrap, error: authErr } =
-      await supabaseAdmin.auth.getUser(token);
-    if (authErr || !userWrap?.user) {
-      return NextResponse.json({ error: "Token inválido" }, { status: 401 });
+    let caller2;
+    try {
+      caller2 = await getCaller(req, supabaseAdmin);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg === "NO_TOKEN" || msg === "INVALID_TOKEN")
+        return NextResponse.json({ error: "Token inválido" }, { status: 401 });
+      return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
     }
 
-    const callerId = userWrap.user.id;
-    const { data: perfil, error: perfilErr } = await supabaseAdmin
-      .from("usuarios")
-      .select("id, role")
-      .eq("id", callerId)
-      .maybeSingle();
-
-    if (perfilErr || !perfil || perfil.role !== "admin") {
+    if (caller2.role !== "admin") {
       return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
     }
 

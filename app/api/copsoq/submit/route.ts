@@ -3,6 +3,31 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createServerClient } from "@supabase/ssr";
 
+function normalizeRpcResult(u: unknown): string | null {
+  if (u == null) return null;
+  if (typeof u === "string") return u;
+  if (typeof u === "number") return String(u);
+  if (Array.isArray(u) && u.length > 0) {
+    const first = u[0];
+    return (
+      (typeof first === "string" && first) ||
+      first?.usuario_id ||
+      first?.current_usuario_id ||
+      null
+    );
+  }
+  if (typeof u === "object") {
+    const record = u as Record<string, unknown>;
+    return (
+      (typeof record.usuario_id === "string" && record.usuario_id) ||
+      (typeof record.current_usuario_id === "string" &&
+        record.current_usuario_id) ||
+      null
+    );
+  }
+  return null;
+}
+
 type Body = {
   linkId: string;
   answers: Record<string, string>;
@@ -34,11 +59,28 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "not_authenticated" }, { status: 401 });
   }
 
+  // Resolver usuario_id canônico via RPC
+  const { data: usuarioRpcData, error: usuarioRpcErr } =
+    await supabaseAuth.rpc("current_usuario_id");
+
+  if (usuarioRpcErr) {
+    return NextResponse.json({ error: usuarioRpcErr.message }, { status: 500 });
+  }
+
+  const usuarioId = normalizeRpcResult(usuarioRpcData);
+
+  if (!usuarioId) {
+    return NextResponse.json(
+      { error: "usuario_nao_vinculado" },
+      { status: 403 },
+    );
+  }
+
   const { data: usuario, error: usuarioError } = await supabaseAuth
     .from("usuarios")
     .select("id, cliente_id, ativo")
-    .eq("id", user.id)
-    .single();
+    .eq("id", usuarioId)
+    .maybeSingle();
 
   if (usuarioError) {
     return NextResponse.json({ error: usuarioError.message }, { status: 500 });
@@ -139,7 +181,7 @@ export async function POST(req: Request) {
     .from("copsoq_aplicacoes_links")
     .select("id, aplicacao_id")
     .eq("link_id", linkId)
-    .eq("usuario_id", user.id)
+    .eq("usuario_id", usuarioId)
     .maybeSingle();
 
   if (bindError) {
@@ -182,7 +224,7 @@ export async function POST(req: Request) {
     .from("questionario_vagas")
     .select("id, status")
     .eq("contrato_id", contrato.id)
-    .eq("usuario_id", user.id)
+    .eq("usuario_id", usuarioId)
     .in("status", ["elegivel", "respondido"])
     .maybeSingle();
 
@@ -227,7 +269,7 @@ export async function POST(req: Request) {
   const { data: org, error: orgError } = await supabaseAdmin
     .from("usuario_organizacao")
     .select("departamento_id, setor_id")
-    .eq("usuario_id", user.id)
+    .eq("usuario_id", usuarioId)
     .eq("ativo", true)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -248,7 +290,7 @@ export async function POST(req: Request) {
   );
 
   const payload = {
-    usuario_id: user.id,
+    usuario_id: usuarioId,
     cliente_id: usuario.cliente_id,
     departamento_id: org?.departamento_id ?? null,
     setor_id: null,
@@ -256,7 +298,7 @@ export async function POST(req: Request) {
     respostas: answers,
     scores_itens: itemScores,
     scores_escalas: scaleScores,
-    created_by: user.id,
+    created_by: usuarioId,
   };
 
   let aplicacaoId: string | null = null;
@@ -267,7 +309,7 @@ export async function POST(req: Request) {
       .from("copsoq_aplicacoes")
       .update({
         ...payload,
-        updated_by: user.id,
+        updated_by: usuarioId,
       })
       .eq("id", existingAppId);
 
@@ -300,7 +342,7 @@ export async function POST(req: Request) {
     .upsert(
       {
         link_id: linkId,
-        usuario_id: user.id,
+        usuario_id: usuarioId,
         aplicacao_id: aplicacaoId,
       },
       { onConflict: "link_id,usuario_id" },

@@ -14,7 +14,7 @@ export interface Usuario {
 }
 
 export function useUsuarios() {
-  const { user } = useAuth();
+  const { usuarioId } = useAuth();
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -23,7 +23,7 @@ export function useUsuarios() {
     let isMounted = true;
 
     const loadUsuarios = async () => {
-      if (!user?.id) {
+      if (!usuarioId) {
         if (isMounted) {
           setUsuarios([]);
           setLoading(false);
@@ -83,7 +83,7 @@ export function useUsuarios() {
     return () => {
       isMounted = false;
     };
-  },[user?.id, supabase]);
+  }, [usuarioId, supabase]);
 
   return {
     usuarios,

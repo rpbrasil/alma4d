@@ -19,7 +19,7 @@ type Usuario = {
 
 export default function AdminDeleteUserPage() {
   const router = useRouter();
-  const { user, loading } = useAuth();
+  const { user, usuarioId, loading } = useAuth();
   const supabase = useMemo(() => getSupabaseClient(), []);
   const role = user?.app_metadata?.claims?.role?.toLowerCase();
 
@@ -81,7 +81,7 @@ export default function AdminDeleteUserPage() {
   // DELETE
   // ====================
   async function handleDelete(userItem: Usuario) {
-    if (userItem.id === user?.id) {
+    if (userItem.id === usuarioId) {
       alert("Você não pode se deletar aqui.");
       return;
     }

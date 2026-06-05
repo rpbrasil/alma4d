@@ -149,19 +149,16 @@ export default function DashboardExpressDocumentosPage() {
       try {
         setLoading(true);
 
-        const { data } = await supabase.auth.getSession();
-        if (!data.session?.user?.id) {
+        // Resolve canonical usuario via server
+        const who = await fetch("/api/auth/whoami");
+        if (!who.ok) {
           setError("Usuário não autenticado.");
           return;
         }
 
-        const { data: usuario, error: usuarioError } = await supabase
-          .from("usuarios")
-          .select("cliente_id")
-          .eq("id", data.session.user.id)
-          .single();
+        const perfil = await who.json();
 
-        if (usuarioError || !usuario?.cliente_id) {
+        if (!perfil?.usuario_id || !perfil?.cliente_id) {
           setError("Cliente não associado.");
           return;
         }
@@ -175,12 +172,12 @@ export default function DashboardExpressDocumentosPage() {
             .select(
               "id,numero_contrato,versao,status,criado_em,atualizado_em,pdf_url,pdf_assinado_url,tipo_contrato",
             )
-            .eq("cliente_id", usuario.cliente_id)
+            .eq("cliente_id", perfil.cliente_id)
             .order("criado_em", { ascending: false }),
           supabase
             .from("nfse_emissoes")
             .select("id, ref, status, resposta, created_at")
-            .eq("cliente_id", usuario.cliente_id)
+            .eq("cliente_id", perfil.cliente_id)
             .order("created_at", { ascending: false }),
         ]);
 

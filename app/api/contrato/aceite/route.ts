@@ -2,6 +2,7 @@ export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { getCaller } from "../../importacao-usuarios/_shared/getCaller";
 import { generateContratoHTML } from "@/lib/contratoTemplate";
 
 function getClientIp(req: Request): string {
@@ -54,14 +55,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
     }
 
-    const { data: userData, error: userErr } =
-      await supabase.auth.getUser(token);
-
-    if (userErr || !userData?.user?.id) {
-      return NextResponse.json({ error: "Sessão inválida" }, { status: 401 });
+    let caller;
+    try {
+      caller = await getCaller(req, supabase);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg === "NO_TOKEN" || msg === "INVALID_TOKEN")
+        return NextResponse.json({ error: "Sessão inválida" }, { status: 401 });
+      return NextResponse.json(
+        { error: "Usuário não encontrado" },
+        { status: 403 },
+      );
     }
 
-    const userId = userData.user.id;
+    const userId = caller.id;
 
     // ✅ PERFIL
     const { data: perfil, error: perfilErr } = await supabase
@@ -141,7 +148,7 @@ export async function POST(req: Request) {
       .from("usuarios")
       .select("*")
       .eq("id", userId)
-      .single();
+      .maybeSingle();
 
     // ✅ GERA EXATAMENTE O MESMO HTML DO PREVIEW
     const termosHtmlSnapshot = generateContratoHTML({

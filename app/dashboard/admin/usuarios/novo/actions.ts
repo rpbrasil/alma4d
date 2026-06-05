@@ -50,20 +50,36 @@ function createAdminClient() {
 
 async function assertAdmin() {
   const supa = await createServerSupabase();
+
   const { data: auth, error: authErr } = await supa.auth.getUser();
+
   if (authErr) throw new Error(authErr.message);
   if (!auth?.user) throw new Error("Sessão expirada.");
 
-  const { data: me, error } = await supa
+  // ✅ pegar usuario_id canônico via RPC
+  const { data: usuarioId, error: usuarioIdErr } =
+    await supa.rpc("current_usuario_id");
+
+  if (usuarioIdErr || !usuarioId) {
+    throw new Error("Usuário não associado.");
+  }
+
+  // ✅ buscar role correta no domínio
+  const { data: usuario, error: usuarioErr } = await supa
     .from("usuarios")
     .select("role")
-    .eq("id", auth.user.id)
+    .eq("id", usuarioId)
     .single();
-  if (error) throw new Error("Sem permissão para validar role.");
-  if ((me?.role || "").toLowerCase() !== "admin")
-    throw new Error("Acesso restrito a administradores.");
 
-  return auth.user.id;
+  if (usuarioErr || !usuario) {
+    throw new Error("Sem permissão para validar role.");
+  }
+
+  if ((usuario.role || "").toLowerCase() !== "admin") {
+    throw new Error("Acesso restrito a administradores.");
+  }
+
+  return usuarioId;
 }
 
 export async function criarUsuarioAdmin(formData: FormData) {

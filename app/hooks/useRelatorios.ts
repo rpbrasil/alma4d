@@ -22,7 +22,7 @@ export interface MetricaDashboard {
 }
 
 export function useRelatorios() {
-  const { user } = useAuth();
+  const { usuarioId } = useAuth();
   const [relatorios, setRelatorios] = useState<Relatorio[]>([]);
   const [metricas, setMetricas] = useState<MetricaDashboard[]>([]);
   const [loading, setLoading] = useState(true);
@@ -32,7 +32,7 @@ export function useRelatorios() {
     let isMounted = true;
 
     const loadData = async () => {
-      if (!user?.id) {
+      if (!usuarioId) {
         if (isMounted) {
           setRelatorios([]);
           setMetricas([]);
@@ -42,7 +42,7 @@ export function useRelatorios() {
       }
 
       try {
-        const supabase = getSupabaseClient();        
+        const supabase = getSupabaseClient();
         // Carregar relatórios
         const { data: relatoriosData, error: relErr } = await supabase
           .from("relatorios")
@@ -99,7 +99,7 @@ export function useRelatorios() {
     return () => {
       isMounted = false;
     };
-  }, [user?.id]);
+  }, [usuarioId]);
 
   return {
     relatorios,

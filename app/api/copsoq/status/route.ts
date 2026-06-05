@@ -13,6 +13,13 @@ type JwtClaims = {
   ativo: boolean | null;
 };
 
+type AppMetadata = {
+  user_role?: Role;
+  user_plano?: Plano;
+  user_cliente_id?: string;
+  user_ativo?: boolean;
+};
+
 function parseJwtClaims(accessToken: string | null | undefined): JwtClaims {
   if (!accessToken) {
     return { role: null, plano: null, clienteId: null, ativo: null };
@@ -28,26 +35,26 @@ function parseJwtClaims(accessToken: string | null | undefined): JwtClaims {
       Buffer.from(parts[1], "base64url").toString("utf-8"),
     ) as Record<string, unknown>;
 
+    const meta = payload.app_metadata as AppMetadata | undefined;
+
     const role =
-      payload.user_role === "admin" ||
-      payload.user_role === "cliente" ||
-      payload.user_role === "gestor" ||
-      payload.user_role === "usuario"
-        ? (payload.user_role as Role)
+      meta?.user_role === "admin" ||
+      meta?.user_role === "cliente" ||
+      meta?.user_role === "gestor" ||
+      meta?.user_role === "usuario"
+        ? meta.user_role
         : null;
 
     const plano =
-      payload.user_plano === "express" || payload.user_plano === "premium"
-        ? (payload.user_plano as Plano)
+      meta?.user_plano === "express" || meta?.user_plano === "premium"
+        ? meta.user_plano
         : null;
 
     const clienteId =
-      typeof payload.user_cliente_id === "string"
-        ? payload.user_cliente_id
-        : null;
+      typeof meta?.user_cliente_id === "string" ? meta.user_cliente_id : null;
 
     const ativo =
-      typeof payload.user_ativo === "boolean" ? payload.user_ativo : null;
+      typeof meta?.user_ativo === "boolean" ? meta.user_ativo : null;
 
     return { role, plano, clienteId, ativo };
   } catch {
@@ -58,7 +65,6 @@ function parseJwtClaims(accessToken: string | null | undefined): JwtClaims {
 function buildCopsoqResponderHref(linkId: string) {
   return `/express/copsoq?linkId=${encodeURIComponent(linkId)}`;
 }
-
 
 export async function GET() {
   try {
@@ -95,12 +101,11 @@ export async function GET() {
       data: { session },
     } = await supabase.auth.getSession();
 
-    // ✅ parse continua funcionando
     const claims = parseJwtClaims(session?.access_token);
 
-    if (claims.ativo === false) {
+    if (claims.ativo !== true) {
       return NextResponse.json(
-        { ok: false, error: "user_inactive" },
+        { ok: false, error: "user_inactive_or_unresolved" },
         { status: 403 },
       );
     }
@@ -115,6 +120,21 @@ export async function GET() {
     if (!claims.clienteId) {
       return NextResponse.json(
         { ok: false, error: "tenant_not_resolved" },
+        { status: 403 },
+      );
+    }
+
+    // ✅ resolve o usuario canônico (NÃO use mais user.id aqui)
+    const { data: usuarioId, error: usuarioIdErr } =
+      await supabase.rpc("current_usuario_id");
+
+    if (usuarioIdErr || !usuarioId) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "usuario_not_resolved",
+          detail: usuarioIdErr?.message ?? null,
+        },
         { status: 403 },
       );
     }
@@ -158,7 +178,7 @@ export async function GET() {
       .from("questionario_vagas")
       .select("id, status")
       .eq("contrato_id", currentContratoId)
-      .eq("usuario_id", user.id)
+      .eq("usuario_id", usuarioId)
       .in("status", ["elegivel", "respondido"])
       .maybeSingle();
 
@@ -174,7 +194,7 @@ export async function GET() {
     const { data: currentUserLink, error: userLinkError } = await adminDb
       .from("copsoq_aplicacoes_links")
       .select("id, usuario_id, link_id, aplicacao_id, created_at")
-      .eq("usuario_id", user.id)
+      .eq("usuario_id", usuarioId)
       .eq("link_id", currentLinkId)
       .maybeSingle();
 
@@ -223,7 +243,7 @@ export async function GET() {
           .upsert(
             {
               link_id: currentLinkId,
-              usuario_id: user.id,
+              usuario_id: usuarioId,
               aplicacao_id: null,
             },
             { onConflict: "link_id,usuario_id" },

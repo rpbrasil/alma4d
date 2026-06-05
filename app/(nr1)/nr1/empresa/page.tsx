@@ -616,6 +616,11 @@ export default function EmpresaNR1Page() {
         }
       }
 
+      await fetch("/api/auth/bootstrap", {
+        method: "POST",
+        credentials: "include",
+      });
+
       setOtpVerified(true);
       setOtpError(null);
     } catch (e: unknown) {
@@ -667,13 +672,9 @@ export default function EmpresaNR1Page() {
         ...(descontoCents > 0 ? { desconto_client_cents: descontoCents } : {}),
       };
 
-      // riscoEmpresa pode ser null -> só envia se tiver
       if (riscoEmpresa) payload.risco = riscoEmpresa;
-
-      // ufEmpresa pode ser null -> só envia se tiver
       if (ufEmpresa) payload.uf = ufEmpresa;
 
-      // totalFinalCents pode ser undefined -> só envia se tiver número
       if (typeof totalFinalCents === "number") {
         payload.preco_client_total_final_cents = totalFinalCents;
       }
@@ -687,12 +688,16 @@ export default function EmpresaNR1Page() {
 
       const text = await res.text();
       let data: EmpresaApiResponse;
+
       try {
-        data = text ? JSON.parse(text) : null;
+        data = text
+          ? JSON.parse(text)
+          : (null as unknown as EmpresaApiResponse);
       } catch {
         data = { error: text || "Resposta não-JSON do servidor" };
       }
 
+      // ✅ TRATAMENTO CORRETO DE ERRO (SEM DUPLICAÇÃO)
       if (!res.ok) {
         console.error("Erro /api/nr1/empresa:", {
           status: res.status,
@@ -702,11 +707,26 @@ export default function EmpresaNR1Page() {
         });
 
         if (data && typeof data === "object" && "error" in data && data.error) {
-          const detail =
-            typeof data === "object" && data && "detail" in data && data.detail
-              ? ` (${String(data.detail)})`
-              : "";
-          throw new Error(`${String(data.error)}${detail}`);
+          let detailMsg = "";
+
+          if (
+            "detail" in data &&
+            data.detail &&
+            typeof data.detail === "object" &&
+            "message" in data.detail
+          ) {
+            detailMsg = String(
+              (data.detail as { message?: unknown }).message ?? "",
+            );
+          } else if ("detail" in data && data.detail) {
+            detailMsg = String(data.detail);
+          }
+
+          throw new Error(
+            detailMsg
+              ? `${String(data.error)} (${detailMsg})`
+              : String(data.error),
+          );
         }
 
         throw new Error(`Falha no cadastro NR-1 (HTTP ${res.status}).`);
@@ -715,6 +735,7 @@ export default function EmpresaNR1Page() {
       if (!("cliente_id" in data) || !("contrato_id" in data)) {
         throw new Error("Resposta incompleta do servidor");
       }
+
       setState("success");
 
       window.location.href =
@@ -726,6 +747,7 @@ export default function EmpresaNR1Page() {
         `&email=${encodeURIComponent(form.email)}`;
     } catch (err) {
       console.error(err);
+
       setState("error");
       setErrorMsg(
         err instanceof Error

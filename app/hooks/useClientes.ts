@@ -17,7 +17,7 @@ export interface Cliente {
 }
 
 export function useClientes() {
-  const { user, role } = useAuth();
+  const { usuarioId, role } = useAuth();
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -26,7 +26,7 @@ export function useClientes() {
     let isMounted = true;
 
     const loadClientes = async () => {
-      if (!user?.id || role !== "admin") {
+      if (!usuarioId || role !== "admin") {
         if (isMounted) {
           setClientes([]);
           setLoading(false);
@@ -35,7 +35,7 @@ export function useClientes() {
       }
 
       try {
-        const supabase = getSupabaseClient();        
+        const supabase = getSupabaseClient();
         // Carregar clientes
         const { data: clientesData, error: err } = await supabase
           .from("clientes")
@@ -89,7 +89,7 @@ export function useClientes() {
     return () => {
       isMounted = false;
     };
-  }, [user?.id, role]);
+  }, [usuarioId, role]);
 
   return {
     clientes,

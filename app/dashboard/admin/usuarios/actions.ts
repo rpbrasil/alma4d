@@ -19,33 +19,47 @@ export type UsuarioRow = {
 
 function asRole(value: string | null | undefined): Role {
   const v = (value || "").trim().toLowerCase();
-  if (v === "admin" || v === "cliente" || v === "gestor" || v === "usuario")
+  if (v === "admin" || v === "cliente" || v === "gestor" || v === "usuario") {
     return v;
+  }
   return "usuario";
 }
 
-// ✅ Supabase client do browser (usa localStorage)
+// ✅ Supabase client do browser
 const supabase = getSupabaseClient();
 
-// ✅ Helper: valida sessão e role admin (client)
+// ✅ Helper: valida sessão + admin
 async function assertAdminClient() {
   const { data: auth, error } = await supabase.auth.getUser();
+
   if (error || !auth.user) {
     throw new Error("Sessão expirada. Faça login novamente.");
   }
 
-  const { data: me, error: errMe } = await supabase
+  // ✅ usuario_id canônico
+  const { data: usuarioId, error: usuarioIdErr } =
+    await supabase.rpc("current_usuario_id");
+
+  if (usuarioIdErr || !usuarioId) {
+    throw new Error("Usuário não associado.");
+  }
+
+  // ✅ buscar role correta
+  const { data: usuario, error: usuarioErr } = await supabase
     .from("usuarios")
     .select("role")
-    .eq("id", auth.user.id)
+    .eq("id", usuarioId)
     .single();
 
-  if (errMe) throw new Error("Erro ao validar permissões.");
-  if (asRole(me?.role) !== "admin") {
+  if (usuarioErr || !usuario) {
+    throw new Error("Erro ao validar permissões.");
+  }
+
+  if (asRole(usuario.role) !== "admin") {
     throw new Error("Acesso restrito a administradores.");
   }
 
-  return auth.user.id;
+  return usuarioId;
 }
 
 // =====================================================
@@ -65,11 +79,13 @@ export async function listarUsuariosAdmin(): Promise<UsuarioRow[]> {
 
   const usuarios = users ?? [];
   const clienteMap = new Map<string, string>();
-  // 🔹 buscar nomes dos clientes em lote
+
+  // ✅ coletar cliente_ids únicos
   const clienteIds = Array.from(
     new Set(usuarios.map((u) => u.cliente_id).filter(Boolean)),
   ) as string[];
 
+  // ✅ buscar nomes dos clientes
   if (clienteIds.length > 0) {
     const { data: clientes, error: errClientes } = await supabase
       .from("clientes")
@@ -109,6 +125,7 @@ export async function listarClientesParaFiltro() {
     .order("nome");
 
   if (error) throw new Error(error.message);
+
   return data ?? [];
 }
 

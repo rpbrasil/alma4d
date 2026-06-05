@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { getCaller } from "../../importacao-usuarios/_shared/getCaller";
 
 type ContratoDbRow = {
   id: string;
@@ -107,27 +108,17 @@ export async function GET(req: Request) {
 
     const supabase = getSupabaseAdmin();
 
-    // ✅ valida token
-    const { data: userWrap, error: authErr } =
-      await supabase.auth.getUser(token);
-
-    if (authErr || !userWrap?.user?.id) {
-      return NextResponse.json(
-        { error: "Token inválido", contrato: null, pagamento: null },
-        { status: 401 },
-      );
-    }
-
-    const callerId = userWrap.user.id;
-
-    // ✅ perfil do usuário
-    const { data: caller } = await supabase
-      .from("usuarios")
-      .select("id, role, cliente_id")
-      .eq("id", callerId)
-      .maybeSingle();
-
-    if (!caller) {
+    // Resolver e validar chamador (usuario domínio)
+    let caller;
+    try {
+      caller = await getCaller(req, supabase);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg === "NO_TOKEN" || msg === "INVALID_TOKEN")
+        return NextResponse.json(
+          { error: "Token inválido", contrato: null, pagamento: null },
+          { status: 401 },
+        );
       return NextResponse.json(
         { error: "Sem permissão", contrato: null, pagamento: null },
         { status: 403 },
@@ -199,7 +190,7 @@ export async function GET(req: Request) {
         : contrato.valor_total != null
           ? Number(contrato.valor_total)
           : null;
-   
+
     const pagamento: PagamentoInfo | null = contrato.pagarme_order_id
       ? {
           order_id: contrato.pagarme_order_id,

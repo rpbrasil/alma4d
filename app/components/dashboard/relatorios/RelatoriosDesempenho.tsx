@@ -109,7 +109,7 @@ function clamp01to10(v: number) {
 ========================= */
 
 export default function RelatoriosDesempenho() {
-  const { user, role: authRole } = useAuth();
+  const { usuarioId: authUsuarioId, role: authRole } = useAuth();
   const supabase = useMemo(() => getSupabaseClient(), []);
   const [loading, setLoading] = useState(true);
   const [me, setMe] = useState<UsuarioMe | null>(null);
@@ -126,7 +126,7 @@ export default function RelatoriosDesempenho() {
     let mounted = true;
 
     async function loadMe() {
-      if (!user?.id) {
+      if (!authUsuarioId) {
         if (mounted) setLoading(false);
         return;
       }
@@ -135,7 +135,7 @@ export default function RelatoriosDesempenho() {
         const { data, error } = await supabase
           .from("usuarios")
           .select("id, role, cliente_id")
-          .eq("id", user.id)
+          .eq("id", authUsuarioId)
           .single();
 
         if (!mounted) return;
@@ -168,7 +168,7 @@ export default function RelatoriosDesempenho() {
     return () => {
       mounted = false;
     };
-  }, [supabase, user?.id]);
+  }, [supabase, authUsuarioId]);
 
   const role: Role | null = (me?.role ??
     (authRole as Role | undefined) ??

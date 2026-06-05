@@ -2,7 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabaseBrowser as supabase } from "@/lib/supabase/browser";
+
+/**
+ * Client-side guard should call server whoami to obtain canonical usuario profile.
+ */
 
 type GuardOptions = {
   requirePlano?: "express" | "premium";
@@ -24,57 +27,46 @@ export function useAccessGuard(options?: GuardOptions) {
     let cancelled = false;
 
     (async () => {
-      const { data, error } = await supabase.auth.getUser();
+      try {
+        const res = await fetch("/api/auth/whoami");
+        if (!res.ok) {
+          router.replace("/login");
+          return;
+        }
 
-      if (error || !data.user?.id) {
-        router.replace("/login");
-        return;
-      }
+        const perfil = await res.json();
 
-      const user = data.user;
+        if (!perfil?.usuario_id) {
+          router.replace("/login");
+          return;
+        }
 
-      const { data: perfil } = await supabase
-        .from("usuarios")
-        .select("ativo, tipo_plano, cliente_id, role")
-        .eq("id", user.id)
-        .single();
+        // admin bypass
+        if (allowAdmin && perfil.role === "admin") {
+          if (!cancelled) setLoading(false);
+          return;
+        }
 
-      if (!perfil) {
-        router.replace("/login");
-        return;
-      }
+        if (!perfil.ativo) {
+          router.replace(redirectIfFail);
+          return;
+        }
 
-      // ✅ admin bypass
-      if (allowAdmin && perfil.role === "admin") {
+        if (requirePlano && perfil.tipo_plano !== requirePlano) {
+          router.replace(redirectIfFail);
+          return;
+        }
+
+        const clienteAtivo = perfil.cliente_id ? perfil.cliente_id : null;
+        if (!clienteAtivo) {
+          router.replace(redirectIfFail);
+          return;
+        }
+
         if (!cancelled) setLoading(false);
-        return;
+      } catch (e) {
+        router.replace("/login");
       }
-
-      // ✅ valida usuário
-      if (!perfil.ativo) {
-        router.replace(redirectIfFail);
-        return;
-      }
-
-      // ✅ valida plano
-      if (requirePlano && perfil.tipo_plano !== requirePlano) {
-        router.replace(redirectIfFail);
-        return;
-      }
-
-      // ✅ valida cliente
-      const { data: cliente } = await supabase
-        .from("clientes")
-        .select("ativo")
-        .eq("id", perfil.cliente_id)
-        .single();
-
-      if (!cliente?.ativo) {
-        router.replace(redirectIfFail);
-        return;
-      }
-
-      if (!cancelled) setLoading(false);
     })();
 
     return () => {

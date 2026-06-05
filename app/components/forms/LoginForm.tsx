@@ -126,7 +126,7 @@ export function LoginForm() {
         const { error } = await supabase.auth.signInWithOtp({
           phone: fullPhone,
           options: {
-            shouldCreateUser: false,
+            shouldCreateUser: true,
           },
         });
 
@@ -146,7 +146,7 @@ export function LoginForm() {
       const { error } = await supabase.auth.signInWithOtp({
         email: emailTrimmed,
         options: {
-          shouldCreateUser: false,
+          shouldCreateUser: true,
         },
       });
 
@@ -226,17 +226,58 @@ export function LoginForm() {
         refresh_token: session.refresh_token,
       });
 
-      const user = session.user;
+      const bootstrapRes = await fetch("/api/auth/bootstrap", {
+        method: "POST",
+        credentials: "include",
+      });
+
+      if (!bootstrapRes.ok) {
+        const bootstrapText = await bootstrapRes.text();
+        await supabase.auth.signOut();
+        setError(`Falha no bootstrap: ${bootstrapText}`);
+        return;
+      }
+
+      const { data: refreshed, error: refreshErr } =
+        await supabase.auth.refreshSession();
+
+      if (refreshErr) {
+        await supabase.auth.signOut();
+        setError(`Falha ao atualizar sessão: ${refreshErr.message}`);
+        return;
+      }
+
+      // usa o usuário da sessão atualizada; fallback para getUser
+      const user =
+        refreshed?.session?.user ?? (await supabase.auth.getUser()).data.user;
+
       if (!user?.id) {
         await supabase.auth.signOut();
         setError("Usuário inválido.");
         return;
       }
 
+      // ✅ resolve o usuario_id canônico
+      const { data: usuarioId, error: usuarioIdErr } =
+        await supabase.rpc("current_usuario_id");
+
+      if (usuarioIdErr) {
+        await supabase.auth.signOut();
+        setError(`Erro ao resolver identidade: ${usuarioIdErr.message}`);
+        return;
+      }
+
+      if (!usuarioId) {
+        await supabase.auth.signOut();
+        setError("Usuário não vinculado.");
+        return;
+      }
+
+      // ✅ agora usa o usuario correto
       const { data: perfil, error: perfilErr } = await supabase
         .from("usuarios")
         .select("ativo, tipo_plano, cliente_id, role")
-        .eq("id", user.id)
+        .eq("id", usuarioId)
         .maybeSingle();
 
       if (perfilErr) {
@@ -264,14 +305,16 @@ export function LoginForm() {
       const redirectParam = params.get("redirect");
       const linkId = params.get("linkId");
 
-      if (role === "admin") {
+      if (role.includes("admin")) {
         setSuccess("Acesso confirmado. Redirecionando…");
         window.location.replace("/dashboard/admin/clientes");
         return;
       }
 
       const isTenantRole =
-        role === "cliente" || role === "gestor" || role === "usuario";
+        role.includes("cliente") ||
+        role.includes("gestor") ||
+        role.includes("usuario");
 
       if (!isTenantRole) {
         await supabase.auth.signOut();
@@ -279,12 +322,11 @@ export function LoginForm() {
         return;
       }
 
-      const basePath =
-        plano === "express"
-          ? "/dashboard/express"
-          : plano === "premium"
-            ? "/dashboard/premium"
-            : null;
+      const basePath = plano.includes("express")
+        ? "/dashboard/express"
+        : plano.includes("premium")
+          ? "/dashboard/premium"
+          : null;
 
       if (!basePath) {
         await supabase.auth.signOut();
@@ -315,14 +357,16 @@ export function LoginForm() {
         setError("Cliente inativo.");
         return;
       }
-
       let finalRedirect: string | null = null;
+      console.log("[LoginForm] usuarioId:", usuarioId);
+      console.log("[LoginForm] perfil:", perfil);
+      console.log("[LoginForm] redirect final:", finalRedirect);
 
       if (redirectParam && redirectParam.startsWith(basePath)) {
         finalRedirect = redirectParam;
       } else if (
         plano === "express" &&
-        (role === "usuario" || role === "gestor")
+        (role.includes("usuario") || role.includes("gestor"))
       ) {
         if (!linkId) {
           finalRedirect = EXPRESS_BASIC_ROUTE;
@@ -332,7 +376,8 @@ export function LoginForm() {
       } else {
         finalRedirect = basePath;
       }
-
+      console.log("ROLE:", role);
+      console.log("PLANO:", plano);
       if (!finalRedirect) {
         await supabase.auth.signOut();
         setError("Erro interno de navegação.");

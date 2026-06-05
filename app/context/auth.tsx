@@ -22,6 +22,7 @@ export type Plano = "express" | "premium";
 
 type AuthState = {
   user: AuthUser | null;
+  usuarioId?: string | null;
   role: Role | null;
   plano: Plano | null;
   clienteId: string | null;
@@ -38,11 +39,13 @@ type AuthContextValue = AuthState & {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 type AppJwtClaims = {
-  user_role?: Role | null;
-  user_plano?: Plano | null;
-  user_cliente_id?: string | null;
-  user_gestor_id?: string | null;
-  user_ativo?: boolean | null;
+  app_metadata?: {
+    user_role?: Role | null;
+    user_plano?: Plano | null;
+    user_cliente_id?: string | null;
+    user_gestor_id?: string | null;
+    user_ativo?: boolean | null;
+  };
 };
 
 function isRole(value: unknown): value is Role {
@@ -72,19 +75,16 @@ function parseClaims(token: string | null | undefined) {
   try {
     const decoded = jwtDecode<AppJwtClaims>(token);
 
+    const meta = decoded.app_metadata;
+
     return {
-      role: isRole(decoded.user_role) ? decoded.user_role : null,
-      plano: isPlano(decoded.user_plano) ? decoded.user_plano : null,
+      role: isRole(meta?.user_role) ? meta.user_role : null,
+      plano: isPlano(meta?.user_plano) ? meta.user_plano : null,
       clienteId:
-        typeof decoded.user_cliente_id === "string"
-          ? decoded.user_cliente_id
-          : null,
+        typeof meta?.user_cliente_id === "string" ? meta.user_cliente_id : null,
       gestorId:
-        typeof decoded.user_gestor_id === "string"
-          ? decoded.user_gestor_id
-          : null,
-      ativo:
-        typeof decoded.user_ativo === "boolean" ? decoded.user_ativo : null,
+        typeof meta?.user_gestor_id === "string" ? meta.user_gestor_id : null,
+      ativo: typeof meta?.user_ativo === "boolean" ? meta.user_ativo : null,
     };
   } catch (error) {
     console.warn("Erro ao decodificar access_token JWT:", error);
@@ -154,39 +154,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Busca nome separadamente, sem travar loading global
-  const hydrateUserName = useCallback(
-    async (userId: string) => {
-      try {
-        const { data, error } = await supabase
-          .from("usuarios")
-          .select("nome_completo")
-          .eq("id", userId)
-          .single();
+  const hydrateUserName = useCallback(async (userId: string) => {
+    // Deprecated: kept for compatibility but no longer queries DB directly.
+    // New flow: use /api/auth/whoami to obtain usuario_id and nome_completo.
+    try {
+      const res = await fetch("/api/auth/whoami");
+      if (!res.ok) return;
+      const j = await res.json();
+      const nome = j?.nome_completo ?? null;
+      const usuarioId = j?.usuario_id ?? null;
 
-        if (error) {
-          console.warn("Erro ao buscar nome do usuário:", error.message);
-          return;
-        }
+      setState((prev) => {
+        if (!prev.user || prev.user.id !== userId) return prev;
 
-        const nome = data?.nome_completo ?? null;
-
-        setState((prev) => {
-          if (!prev.user || prev.user.id !== userId) return prev;
-
-          return {
-            ...prev,
-            user: {
-              ...prev.user,
-              nome,
-            },
-          };
-        });
-      } catch (e) {
-        console.warn("Erro inesperado ao buscar nome do usuário:", e);
-      }
-    },
-    [supabase],
-  );
+        return {
+          ...prev,
+          usuarioId,
+          user: {
+            ...prev.user,
+            nome,
+          },
+        };
+      });
+    } catch (e) {
+      console.warn("Erro ao obter whoami:", e);
+    }
+  }, []);
 
   const syncFromSession = useCallback(
     async (session: Session | null) => {

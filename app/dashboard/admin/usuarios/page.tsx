@@ -67,7 +67,7 @@ export default function UsuariosAdminPage() {
 
   const [usuarios, setUsuarios] = useState<UsuarioRow[]>([]);
   const [clientes, setClientes] = useState<ClienteOption[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(isAdmin);
   const [error, setError] = useState("");
 
   const [search, setSearch] = useState("");
@@ -87,7 +87,6 @@ export default function UsuariosAdminPage() {
 
   useEffect(() => {
     if (!isAdmin) {
-      setLoading(false);
       return;
     }
 
@@ -155,7 +154,6 @@ export default function UsuariosAdminPage() {
     showSystemAccounts,
   ]);
 
-  
   function handleToggleAtivo(id: string, next: boolean) {
     startTransition(async () => {
       try {

@@ -48,16 +48,21 @@ function parseJwtClaims(accessToken: string | null | undefined): {
 
   if (!payload) return { role: null, ativo: null };
 
+  const appMetadata = (payload.app_metadata ?? payload) as Record<
+    string,
+    unknown
+  >;
+
   const role =
-    payload.user_role === "admin" ||
-    payload.user_role === "cliente" ||
-    payload.user_role === "gestor" ||
-    payload.user_role === "usuario"
-      ? (payload.user_role as Role)
+    appMetadata.user_role === "admin" ||
+    appMetadata.user_role === "cliente" ||
+    appMetadata.user_role === "gestor" ||
+    appMetadata.user_role === "usuario"
+      ? (appMetadata.user_role as Role)
       : null;
 
   const ativo =
-    typeof payload.user_ativo === "boolean" ? payload.user_ativo : null;
+    typeof appMetadata.user_ativo === "boolean" ? appMetadata.user_ativo : null;
 
   return { role, ativo };
 }

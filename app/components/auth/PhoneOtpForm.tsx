@@ -43,64 +43,55 @@ export default function PhoneOtpForm() {
       return;
     }
 
-    // ✅ pega role do JWT
-    const role =
-      user?.app_metadata?.claims?.role ||
-      user?.app_metadata?.role ||
-      user?.user_metadata?.role;
+    // CHECK: preferir validar via servidor (whoami) para obter usuario_id
+    try {
+      const who = await fetch("/api/auth/whoami");
+      if (!who.ok) {
+        setError("Erro ao validar usuário.");
+        return;
+      }
 
-    // ✅ admin entra sempre
-    if (role === "admin") {
-      router.replace("/dashboard");
-      router.refresh();
+      const perfil = await who.json();
+
+      const role =
+        perfil?.role ||
+        user?.app_metadata?.claims?.role ||
+        user?.app_metadata?.role ||
+        user?.user_metadata?.role;
+
+      if (role === "admin") {
+        router.replace("/dashboard");
+        router.refresh();
+        return;
+      }
+
+      if (!perfil?.usuario_id) {
+        setError("Usuário não vinculado.");
+        return;
+      }
+
+      if (!perfil?.ativo) {
+        setError("Usuário inativo.");
+        return;
+      }
+
+      if (!perfil?.cliente_id) {
+        setError("Cliente não encontrado.");
+        return;
+      }
+
+      if (role === "cliente" && perfil.tipo_plano === "premium") {
+        router.replace("/dashboard");
+        router.refresh();
+        return;
+      }
+
+      setError("Acesso não permitido.");
+      return;
+    } catch (e) {
+      setError("Erro ao validar usuário.");
       return;
     }
-
-    // ✅ busca perfil do usuário
-    const { data: perfil, error: perfilError } = await supabase
-      .from("usuarios")
-      .select("ativo, tipo_plano, cliente_id")
-      .eq("id", user.id)
-      .single();
-
-    if (perfilError || !perfil) {
-      setError("Erro ao localizar dados do usuário.");
-      return;
-    }
-
-    // ✅ usuário ativo?
-    if (!perfil.ativo) {
-      setError("Usuário inativo.");
-      return;
-    }
-
-    // ✅ busca cliente
-    const { data: cliente, error: clienteError } = await supabase
-      .from("clientes")
-      .select("ativo")
-      .eq("id", perfil.cliente_id)
-      .single();
-
-    if (clienteError || !cliente) {
-      setError("Cliente não encontrado.");
-      return;
-    }
-
-    // ✅ cliente ativo?
-    if (!cliente.ativo) {
-      setError("Cliente inativo.");
-      return;
-    }
-
-    // ✅ regra de acesso premium
-    if (role === "cliente" && perfil.tipo_plano === "premium") {
-      router.replace("/dashboard");
-      router.refresh();
-      return;
-    }
-
-    // ❌ qualquer outro caso bloqueado
-    setError("Acesso não permitido.");
   }
 
   return sent ? (

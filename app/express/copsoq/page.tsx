@@ -117,14 +117,25 @@ function CopsoqPageContent() {
         if (sessionError) throw sessionError;
         const session = sessionData.session;
 
-        if (!session || !session.user?.id) {
+        if (!session) {
           setError(
             "Usuário não autenticado. Faça login pelo seu celular com OTP.",
           );
           return;
         }
 
-        const uid = session.user.id;
+        // Obtem perfil canônico do servidor (inclui usuario_id, cliente_id, ativo)
+        const whoamiRes = await fetch("/api/auth/whoami");
+        if (!whoamiRes.ok) {
+          setError(
+            "Não foi possível validar seu usuário. Faça login novamente.",
+          );
+          return;
+        }
+
+        const perfil = await whoamiRes.json();
+        const uid = perfil?.usuario_id;
+
         if (!uid) {
           setError(
             "Usuário não autenticado. Faça login pelo seu celular com OTP.",
@@ -132,15 +143,7 @@ function CopsoqPageContent() {
           return;
         }
 
-        const [
-          { data: usuario, error: usuarioError },
-          { data: link, error: linkError },
-        ] = await Promise.all([
-          supabase
-            .from("usuarios")
-            .select("id, cliente_id, ativo")
-            .eq("id", uid)
-            .maybeSingle(),
+        const [{ data: link, error: linkError }] = await Promise.all([
           supabase
             .from("copsoq_links")
             .select("id, contrato_id, max_respostas, usadas, ativo")
@@ -148,17 +151,16 @@ function CopsoqPageContent() {
             .maybeSingle(),
         ]);
 
-        if (usuarioError) throw usuarioError;
         if (linkError) throw linkError;
 
-        if (!usuario || !usuario.cliente_id) {
+        if (!perfil?.cliente_id) {
           setError(
             "Seu usuário não está vinculado a um cliente ativo. Contate o administrador.",
           );
           return;
         }
 
-        if (usuario.ativo === false) {
+        if (perfil.ativo === false) {
           setError("Seu usuário está inativo. Contate o administrador.");
           return;
         }
@@ -181,7 +183,7 @@ function CopsoqPageContent() {
           return;
         }
 
-        if (contrato.cliente_id !== usuario.cliente_id) {
+        if (contrato.cliente_id !== perfil.cliente_id) {
           setError("Este link não pertence ao cliente associado ao seu login.");
           return;
         }
@@ -189,7 +191,7 @@ function CopsoqPageContent() {
         const { data: cliente, error: clienteError } = await supabase
           .from("clientes")
           .select("nome, ativo, documento")
-          .eq("id", usuario.cliente_id)
+          .eq("id", perfil.cliente_id)
           .maybeSingle();
 
         if (clienteError) throw clienteError;

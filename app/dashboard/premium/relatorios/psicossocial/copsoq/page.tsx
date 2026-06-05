@@ -65,7 +65,7 @@ function riskClass(nivel: RowRisco["nivel_risco"]) {
 }
 
 export default function CopsoqDashboardPage() {
-  const { user, role: authRole, loading: authLoading } = useAuth();
+  const { usuarioId, role: authRole, loading: authLoading } = useAuth();
   const supabase = useMemo(() => getSupabaseClient(), []);
   const [loading, setLoading] = useState(true);
   const [clienteNome, setClienteNome] = useState<string>("—");
@@ -119,7 +119,7 @@ export default function CopsoqDashboardPage() {
     let mounted = true;
 
     (async () => {
-      if (!user?.id) {
+      if (!usuarioId) {
         if (mounted) {
           setLoading(false);
           setMe(null);
@@ -134,7 +134,7 @@ export default function CopsoqDashboardPage() {
         const { data: usuario, error: uErr } = await supabase
           .from("usuarios")
           .select("id, role, cliente_id")
-          .eq("id", user.id)
+          .eq("id", usuarioId)
           .single();
 
         if (uErr || !usuario?.role) {
@@ -187,7 +187,7 @@ export default function CopsoqDashboardPage() {
     return () => {
       mounted = false;
     };
-  }, [user?.id, supabase]);
+  }, [usuarioId, supabase]);
 
   // 2) carrega rows agregadas quando cliente muda
   useEffect(() => {
