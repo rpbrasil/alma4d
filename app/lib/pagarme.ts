@@ -5,7 +5,7 @@ export type PagarmeWebhook = {
   id?: string;
   type?: string;
   created_at?: string;
-  data?: { object?: unknown };
+  data?: PagarmeOrder;
 };
 
 export type ExtractedGatewayData = {
@@ -129,25 +129,19 @@ export function extractGatewayData(evt: PagarmeWebhook): ExtractedGatewayData {
   const eventType = norm(evt.type)?.toLowerCase() ?? "";
   const eventId = norm(evt.id);
 
-  const objUnknown = evt.data?.object ?? null;
-  const objRecord = isRecord(objUnknown) ? objUnknown : null;
+  // ✅ CORREÇÃO AQUI
+  const objUnknown = evt.data ?? null;
+
+  const objRecord = objUnknown as Record<string, unknown> | null;
 
   const chargesUnknown = objRecord?.["charges"];
   const chargesArr = Array.isArray(chargesUnknown) ? chargesUnknown : [];
   const firstCharge = asChargeLike(chargesArr[0]);
 
-  // order pode estar dentro do charge
-  const orderMaybe = asOrderLike(objRecord?.["order"]);
-  const orderRoot = asOrderLike(objUnknown);
+  const order = asOrderLike(objUnknown);
 
-  const order = orderMaybe ?? orderRoot;
-  const amountRaw: number | null =
+  const amountRaw =
     (order && typeof order.amount === "number" ? order.amount : null) ??
-    (objRecord &&
-    "amount" in objRecord &&
-    typeof objRecord["amount"] === "number"
-      ? (objRecord["amount"] as number)
-      : null) ??
     (firstCharge && typeof firstCharge.amount === "number"
       ? firstCharge.amount
       : null) ??
@@ -158,34 +152,20 @@ export function extractGatewayData(evt: PagarmeWebhook): ExtractedGatewayData {
       ? amountRaw
       : null;
 
-  const cupomCodigo =
-    norm(order?.metadata?.["cupom_codigo"]) ??
-    norm(
-      objRecord?.["metadata"] && isRecord(objRecord["metadata"])
-        ? (objRecord["metadata"] as Record<string, unknown>)["cupom_codigo"]
-        : null,
-    ) ??
-    null;
-
-  // IDs
-  const orderId = norm(order?.id) ?? norm(objRecord?.["id"]);
-  const chargeId = orderMaybe ? norm(objRecord?.["id"]) : null;
-
-  // Método/status priorizando charge[0]
-  const paymentMethod =
-    norm(firstCharge?.payment_method) ??
-    norm(objRecord?.["payment_method"]) ??
-    null;
-
-  const paymentStatus =
-    norm(firstCharge?.status) ?? norm(objRecord?.["status"]) ?? null;
-  const metadata =
-    order?.metadata ??
-    (isRecord(objRecord?.["metadata"])
-      ? (objRecord["metadata"] as Record<string, unknown>)
-      : null);
+  // ✅ metadata correto
+  const metadata = firstCharge?.metadata ?? order?.metadata ?? null;
 
   const contratoId = norm(metadata?.["contrato_id"]) ?? null;
+
+  const paymentMethod = norm(firstCharge?.payment_method) ?? null;
+
+  const paymentStatus =
+    norm(firstCharge?.status) ?? norm(order?.status) ?? null;
+
+  const orderId = norm(order?.id);
+  const chargeId = norm(firstCharge?.id);
+
+  const cupomCodigo = norm(metadata?.["cupom_codigo"]) ?? null;
 
   return {
     eventId,
