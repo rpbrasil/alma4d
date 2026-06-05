@@ -131,6 +131,7 @@ export function LoginForm() {
         });
 
         if (error) {
+          setLoading(false);
           setError(error.message || "Não foi possível enviar o código.");
           return;
         }
@@ -138,6 +139,7 @@ export function LoginForm() {
         setOtpTarget(fullPhone);
         setOtpSent(true);
         setSuccess("Código enviado por SMS.");
+        setLoading(false);
         return;
       }
 
@@ -151,6 +153,7 @@ export function LoginForm() {
       });
 
       if (error) {
+        setLoading(false);
         setError(error.message || "Não foi possível enviar o código.");
         return;
       }
@@ -158,14 +161,14 @@ export function LoginForm() {
       setOtpTarget(emailTrimmed);
       setOtpSent(true);
       setSuccess("Código enviado por e-mail.");
+      setLoading(false);
     } catch (err: unknown) {
+      setLoading(false);
       setError(
         err instanceof Error
           ? err.message
           : "Erro inesperado ao enviar código.",
       );
-    } finally {
-      setLoading(false);
     }
   }
 

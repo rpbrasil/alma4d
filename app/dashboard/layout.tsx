@@ -22,20 +22,20 @@ export default function DashboardLayout({
         }`}
       >
         {/* ✅ SIDEBAR */}
-        {/* 👉 Oculta automaticamente no modo app em mobile */}
-        {!isStandalone && (
-          <Sidebar isOpen={menuOpen} onClose={() => setMenuOpen(false)} />
-        )}
+        <Sidebar isOpen={menuOpen} onClose={() => setMenuOpen(false)} />
 
         {/* ✅ CONTEÚDO */}
         <div
           className={`
             flex-1 flex flex-col w-full
-            ${isStandalone ? "" : "md:ml-64"}
+            md:ml-64
           `}
         >
           {/* ✅ HEADER */}
-          <DashboardHeader onMenuClick={() => setMenuOpen(true)} />
+          <DashboardHeader
+            onMenuClick={() => setMenuOpen(true)}
+            isMenuOpen={menuOpen}
+          />
 
           {/* ✅ MAIN */}
           <main

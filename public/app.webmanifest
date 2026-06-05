@@ -9,6 +9,39 @@
     "orientation": "portrait",
     "background_color": "#ffffff",
     "theme_color": "#030870",
+    "categories": [
+        "business",
+        "productivity"
+    ],
+    "prefer_related_applications": false,
+    "shortcuts": [
+        {
+            "name": "Painel",
+            "short_name": "Painel",
+            "description": "Abrir o painel principal",
+            "url": "/dashboard",
+            "icons": [
+                {
+                    "src": "/icons/icon-192.png",
+                    "sizes": "192x192",
+                    "type": "image/png"
+                }
+            ]
+        },
+        {
+            "name": "Riscos e Ocorrências",
+            "short_name": "Ocorrências",
+            "description": "Abrir o relatório de ocorrências",
+            "url": "/dashboard/express/relatorio-ocorrencias",
+            "icons": [
+                {
+                    "src": "/icons/icon-192.png",
+                    "sizes": "192x192",
+                    "type": "image/png"
+                }
+            ]
+        }
+    ],
     "icons": [
         {
             "src": "/icons/icon-192.png",

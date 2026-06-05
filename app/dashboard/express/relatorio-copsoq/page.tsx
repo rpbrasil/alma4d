@@ -89,16 +89,6 @@ export default function DashboardExpressRelatorioCopsoqPage() {
   }, [me?.cliente_id]);
 
   const [reportId] = useState(() => `COPSOQ_${Date.now()}`);
- 
-
-useEffect(() => {
-  (async () => {
-    const { data } = await supabase.from("usuarios").select("id").limit(1);
-    console.log("query test:", data);
-  })();
-}, []);
-
-
 
   // 1) carrega me
   useEffect(() => {

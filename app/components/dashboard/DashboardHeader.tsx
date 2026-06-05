@@ -12,11 +12,12 @@ import PwaInstallButton from "@/components/PwaInstallButton";
 
 type Props = {
   onMenuClick: () => void;
+  isMenuOpen: boolean;
 };
 // Uso:
 <Image src="/logo.png" width={500} height={500} alt="Descrição" />;
 
-export default function DashboardHeader({ onMenuClick }: Props) {
+export default function DashboardHeader({ onMenuClick, isMenuOpen }: Props) {
   const { user, usuarioId, signOut, loading, plano } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
@@ -118,6 +119,8 @@ export default function DashboardHeader({ onMenuClick }: Props) {
             onClick={onMenuClick}
             className="md:hidden mr-3 p-2 rounded-lg bg-slate-100 hover:bg-slate-200 active:scale-95 transition"
             aria-label="Abrir menu"
+            aria-controls="dashboard-sidebar"
+            aria-expanded={isMenuOpen}
           >
             <span className="text-2xl">☰</span>
           </button>

@@ -9,15 +9,22 @@ export const metadata = {
 
   // ✅ PWA
   manifest: "/app.webmanifest",
- 
-  icons: {
-    icon: "/icons/icon-192.png",
-    apple: "/icons/icon-192.png",
-  },
+
+  icons: [
+    {
+      rel: "icon",
+      url: "/icons/icon-192.png",
+      type: "image/png",
+      sizes: "192x192",
+    },
+    { rel: "apple-touch-icon", url: "/icons/icon-192.png", sizes: "192x192" },
+    { rel: "apple-touch-startup-image", url: "/icons/icon-512.png" },
+    { rel: "mask-icon", url: "/icons/icon-512-maskable.png", color: "#030870" },
+  ],
 
   appleWebApp: {
     capable: true,
-    statusBarStyle: "default",
+    statusBarStyle: "black-translucent",
     title: "alma4D Express",
   },
 };

@@ -74,7 +74,7 @@ const NAV_BY_PLAN: Record<Plano, NavItem[]> = {
       href: "/dashboard/express/acompanhamento",
       label: "Acompanhamento",
       icon: ClipboardList,
-      roles: ["admin", "cliente", "gestor","usuario"],
+      roles: ["admin", "cliente", "gestor", "usuario"],
     },
     {
       href: "/dashboard/express/parceiros",
@@ -267,6 +267,8 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
       {/* ✅ SIDEBAR */}
       <aside
+        id="dashboard-sidebar"
+        role="navigation"
         className={[
           "bg-brand text-white w-64 shrink-0",
           "fixed inset-y-0 left-0 z-50",

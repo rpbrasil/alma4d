@@ -508,6 +508,7 @@ export default function EmpresaNR1Page() {
       const e164 = normalizePhoneBRToE164(form.telefoneRaw);
 
       if (!isValidE164Phone(e164)) {
+        setOtpLoading(false);
         throw new Error(
           "Informe um telefone válido com DDD (ex.: 11 99999-9999).",
         );
@@ -527,13 +528,17 @@ export default function EmpresaNR1Page() {
           },
         });
 
-        if (error) throw new Error(error.message);
+        if (error) {
+          setOtpLoading(false);
+          throw new Error(error.message);
+        }
       }
 
       if (authMethod === "email") {
         const email = form.email.trim();
 
         if (!isValidEmail(email)) {
+          setOtpLoading(false);
           throw new Error("Informe um e-mail válido.");
         }
 
@@ -546,17 +551,20 @@ export default function EmpresaNR1Page() {
           },
         });
 
-        if (error) throw new Error(error.message);
+        if (error) {
+          setOtpLoading(false);
+          throw new Error(error.message);
+        }
       }
 
       setOtpSent(true);
       setResendIn(60);
+      setOtpLoading(false);
     } catch (e: unknown) {
       setOtpSent(false);
       setOtpError(
         e instanceof Error ? e.message : "Não foi possível enviar o código.",
       );
-    } finally {
       setOtpLoading(false);
     }
   }

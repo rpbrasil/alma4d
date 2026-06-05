@@ -5,16 +5,16 @@ const STATIC_ASSETS = [
     "/dashboard",
     "/app.webmanifest",
     "/icons/icon-192.png",
-    "/icons/icon-512.png"
+    "/icons/icon-512.png",
+    "/icons/icon-512-maskable.png"
 ];
 
 // ✅ INSTALAR
 self.addEventListener("install", (event) => {
     event.waitUntil(
-        caches.open(CACHE_NAME).then((cache) => {
-            return cache.addAll(STATIC_ASSETS);
-        })
+        caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
     );
+    self.skipWaiting();
 });
 
 // ✅ ATIVAR
@@ -24,34 +24,52 @@ self.addEventListener("activate", (event) => {
             Promise.all(
                 keys.map((key) => {
                     if (key !== CACHE_NAME) return caches.delete(key);
+                    return Promise.resolve();
                 })
             )
         )
     );
+    self.clients.claim();
 });
 
 // ✅ FETCH (controle de requisições)
 self.addEventListener("fetch", (event) => {
-    const url = new URL(event.request.url);
+    const request = event.request;
 
-    // 🔒 NÃO INTERFERE EM API (muito importante)
+    if (request.method !== "GET") return;
+
+    const url = new URL(request.url);
+
+    if (url.origin !== self.location.origin) return;
     if (url.pathname.startsWith("/api")) return;
-
-    // 🔒 NÃO CACHEAR SUPABASE
     if (url.hostname.includes("supabase")) return;
 
     // 🔥 Estratégia: network first
     event.respondWith(
-        fetch(event.request)
+        fetch(request)
             .then((response) => {
-                const copy = response.clone();
+                const responseClone = response.clone();
 
                 caches.open(CACHE_NAME).then((cache) => {
-                    cache.put(event.request, copy);
+                    cache.put(request, responseClone);
                 });
 
                 return response;
             })
-            .catch(() => caches.match(event.request))
+            .catch(async () => {
+                const cachedResponse =
+                    (await caches.match(request)) ||
+                    (request.mode === "navigate" && (await caches.match("/dashboard"))) ||
+                    (await caches.match("/"));
+
+                return (
+                    cachedResponse ||
+                    new Response("Service Unavailable", {
+                        status: 503,
+                        statusText: "Service Unavailable",
+                        headers: { "Content-Type": "text/plain" },
+                    })
+                );
+            })
     );
 });
