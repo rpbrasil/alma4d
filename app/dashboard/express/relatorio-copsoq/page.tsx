@@ -89,6 +89,16 @@ export default function DashboardExpressRelatorioCopsoqPage() {
   }, [me?.cliente_id]);
 
   const [reportId] = useState(() => `COPSOQ_${Date.now()}`);
+ 
+
+useEffect(() => {
+  (async () => {
+    const { data } = await supabase.from("usuarios").select("id").limit(1);
+    console.log("query test:", data);
+  })();
+}, []);
+
+
 
   // 1) carrega me
   useEffect(() => {
@@ -147,12 +157,9 @@ export default function DashboardExpressRelatorioCopsoqPage() {
     let mounted = true;
 
     (async () => {
-      if (!canViewDashboard) return;
-
-      if (!effectiveClienteId) {
-        if (mounted) setRows([]);
-        return;
-      }
+     if (!canViewDashboard || !effectiveClienteId) {
+       return;
+     }
 
       setLoading(true);
       setError("");

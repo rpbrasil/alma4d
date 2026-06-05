@@ -8,6 +8,7 @@ import { User, Mail, Building2, Save, X } from "lucide-react";
 type PerfilRow = {
   nome_completo: string | null;
   email: string | null;
+  telefone: string | null;
   cliente_id: string | null;
 };
 
@@ -46,7 +47,7 @@ export default function PerfilPage() {
 
       const { data, error } = await supabase
         .from("usuarios")
-        .select("nome_completo, email, cliente_id")
+        .select("nome_completo, email, cliente_id, telefone")
         .eq("id", usuarioId)
         .single();
 
@@ -250,7 +251,7 @@ export default function PerfilPage() {
             </label>
 
             <div className="mt-1 h-10 rounded-lg border bg-slate-50 px-3 text-sm flex items-center">
-              {user?.phone ?? "—"}
+              {perfil?.telefone ?? "—"}
             </div>
           </div>
         </div>
