@@ -134,7 +134,50 @@ export function NR1PaymentPanel(props: {
     setLoading(true);
 
     try {
-      if (!email.trim()) {
+      // try to resolve email from props first, then from authenticated session
+      const { data: sessionData, error: sessionErr } =
+        await supabase.auth.getSession();
+
+      if (sessionErr) {
+        // non-fatal for email resolution, but keep for token later
+        // we'll still try to proceed if email is available from props
+        // setErr will be handled below if token is missing
+      }
+
+      const sessionEmail = sessionData?.session?.user?.email ?? "";
+      const emailValue = email && email.trim() ? email.trim() : sessionEmail;
+
+      // resolve documento (CPF) from props or from user profile if missing
+      const documentoDigitsProp = onlyDigits(documento || "");
+      let documentoValue =
+        documentoDigitsProp && documentoDigitsProp.length === 11
+          ? documentoDigitsProp
+          : "";
+
+      if (!documentoValue) {
+        try {
+          // whoami returns usuario_id for application user mapping
+          const whoRes = await fetch("/api/auth/whoami");
+          if (whoRes.ok) {
+            const perfil = await whoRes.json().catch(() => null);
+            const usuarioId = perfil?.usuario_id ?? null;
+            if (usuarioId) {
+              const { data: usuario, error: usuarioErr } = await supabase
+                .from("usuarios")
+                .select("documento")
+                .eq("id", usuarioId)
+                .maybeSingle();
+              if (!usuarioErr && usuario?.documento) {
+                documentoValue = onlyDigits(String(usuario.documento));
+              }
+            }
+          }
+        } catch (e) {
+          // ignore; we'll validate below and show error if missing
+        }
+      }
+
+      if (!emailValue) {
         throw new Error("E-mail é obrigatório para o pagamento.");
       }
 
@@ -142,7 +185,7 @@ export function NR1PaymentPanel(props: {
         throw new Error("Nome completo é obrigatório.");
       }
 
-      if (!onlyDigits(documento)) {
+      if (!documentoValue) {
         throw new Error("CPF é obrigatório.");
       }
 
@@ -150,14 +193,7 @@ export function NR1PaymentPanel(props: {
         throw new Error("Funcionários inválidos.");
       }
 
-      const { data: sessionData, error: sessionErr } =
-        await supabase.auth.getSession();
-
-      if (sessionErr) {
-        throw new Error("Falha ao obter sessão para pagamento.");
-      }
-
-      const accessToken = sessionData.session?.access_token;
+      const accessToken = sessionData?.session?.access_token;
 
       if (!accessToken) {
         throw new Error(
@@ -179,9 +215,9 @@ export function NR1PaymentPanel(props: {
           funcionarios,
           payment_method: method,
           total_amount_cents: precoTotalCents,
-          email: email.trim(),
+          email: email && email.trim() ? email.trim() : sessionEmail,
           nome_completo: nomeCompleto.trim(),
-          documento: onlyDigits(documento),
+          documento: documentoValue,
           origem: origem || null,
           campanha: campanha || null,
           operation_type: operationType,

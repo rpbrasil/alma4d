@@ -107,7 +107,6 @@ export async function POST(req: Request) {
     if (!authHeader?.startsWith("Bearer ")) {
       return NextResponse.json({ error: "Token ausente" }, { status: 401 });
     }
-    const token = authHeader.split(" ")[1];
 
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -428,12 +427,16 @@ export async function POST(req: Request) {
       }
     }
     // ✅ payload para Azure (limpo)
+    const productIdActivation =
+      process.env.AZURE_NR1_PRODUCT_ACTIVATION ?? "nr1_psicossocial";
+    const productIdUpgrade =
+      process.env.AZURE_NR1_PRODUCT_UPGRADE ?? "nr1_psicossocial";
+    const chosenProductId =
+      operation_type === "upgrade" ? productIdUpgrade : productIdActivation;
+
     const payloadToAzure = {
       user_id: callerId,
-      product_id:
-        operation_type === "upgrade"
-          ? "nr1_upgrade_usuarios"
-          : "nr1_psicossocial",
+      product_id: chosenProductId,
       cliente_id,
       contrato_id,
       funcionarios: funcionariosParaPagamento,
@@ -451,16 +454,64 @@ export async function POST(req: Request) {
       operation_type,
     };
 
-    const resp = await fetch(AZURE_NR1_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payloadToAzure),
-    });
+    // POST to Azure Function with simple retry/backoff for transient failures
+    async function postToAzureWithRetries(payload: unknown) {
+      const maxAttempts = 3;
+      let attempt = 0;
+      let lastError: unknown = null;
 
-    const text = await resp.text();
+      while (attempt < maxAttempts) {
+        attempt++;
+        try {
+          const r = await fetch(AZURE_NR1_URL!, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+
+          const txt = await r.text();
+
+          // return full response info for inspection
+          return { resp: r, text: txt };
+        } catch (err) {
+          lastError = err;
+          // exponential backoff
+          if (attempt < maxAttempts) {
+            const delay = 200 * Math.pow(2, attempt);
+            await new Promise((res) => setTimeout(res, delay));
+            continue;
+          }
+          throw err;
+        }
+      }
+
+      throw lastError;
+    }
+
+    let resp;
+    let text;
+    try {
+      const result = await postToAzureWithRetries(payloadToAzure);
+      resp = result.resp;
+      text = result.text;
+    } catch (err) {
+      console.error("[api/nr1/pagamento] erro ao chamar Azure Function:", err);
+      if (cupom_codigo) {
+        await supabaseAdmin.rpc("cancelar_reserva_cupom", {
+          p_contrato_id: contrato_id,
+          p_codigo: cupom_codigo,
+        });
+      }
+      return NextResponse.json(
+        { error: "Erro ao chamar Azure Function", detail: String(err) },
+        { status: 502 },
+      );
+    }
+
     const parsed = safeJsonParse(text);
 
     if (!resp.ok) {
+      // on non-ok responses cancel coupon reservation and surface detailed info
       if (cupom_codigo) {
         await supabaseAdmin.rpc("cancelar_reserva_cupom", {
           p_contrato_id: contrato_id,
@@ -468,8 +519,18 @@ export async function POST(req: Request) {
         });
       }
 
+      console.error(
+        `[api/nr1/pagamento] Azure Function retornou status=${resp.status} body=`,
+        parsed,
+      );
+
       return NextResponse.json(
-        { error: "Azure Function recusou", detail: parsed },
+        {
+          error: "Azure Function recusou",
+          status: resp.status,
+          detail: parsed,
+          raw: text,
+        },
         { status: resp.status },
       );
     }
@@ -559,35 +620,80 @@ export async function POST(req: Request) {
         const limiteAnterior = Number(contratoAtual?.limite_usuarios ?? 0);
         const limiteNovo = limiteAnterior + quantidade_adicional;
 
-        const { error: upgradeInsertErr } = await supabaseAdmin
-          .from("contratos_upgrades")
-          .insert({
-            contrato_id,
-            cliente_id,
-            created_by_user_id: callerId,
-            quantidade_adicional,
-            limite_anterior: limiteAnterior,
-            limite_novo: limiteNovo,
-            preco_unitario: precoUnitarioEfetivo,
-            total_cents: totalAmountCents,
-            pagarme_order_id: orderId,
-            pagarme_payment_status: orderStatus,
-            payment_method: paymentMethodFromAzure,
-            metadata: {
-              origem,
-              campanha,
-              operation_type: "upgrade",
-            },
-          });
+        const subtotalCents = totalAmountCents;
+        const totalFinalCents = totalAmountCents;
+
+        const upgradeRow: Record<string, unknown> = {
+          contrato_id,
+          cliente_id,
+          created_by_user_id: callerId,
+
+          quantidade_adicional,
+          limite_anterior: limiteAnterior,
+          limite_novo: limiteNovo,
+
+          // ✅ opcionais mas importantes
+          preco_unitario: precoUnitarioEfetivo,
+          uf: cliente?.uf ?? null,
+          risco: cliente?.risco_nr1 ?? "medio",
+
+          // ✅ obrigatórios do schema
+          subtotal_cents: subtotalCents,
+          total_cents: totalFinalCents,
+
+          // ✅ payment
+          pagarme_order_id: orderId,
+          pagarme_payment_status: orderStatus,
+          payment_method: paymentMethodFromAzure,
+
+          // ✅ contexto
+          metadata: {
+            origem,
+            campanha,
+            operation_type: "upgrade",
+          },
+        };
+
+        let upgradeInsertErr = (
+          await supabaseAdmin.from("contratos_upgrades").insert(upgradeRow)
+        ).error;
+
+        if (upgradeInsertErr) {
+          const msg = String(upgradeInsertErr.message || "").toLowerCase();
+          if (
+            msg.includes("metadata") ||
+            msg.includes("column") ||
+            msg.includes("does not exist") ||
+            msg.includes("type mismatch")
+          ) {
+            console.warn(
+              "[api/nr1/pagamento] fallback contratos_upgrades insert without metadata",
+              upgradeInsertErr,
+            );
+            const retryRow = { ...upgradeRow };
+            delete retryRow.metadata;
+            upgradeInsertErr = (
+              await supabaseAdmin.from("contratos_upgrades").insert(retryRow)
+            ).error;
+          }
+        }
 
         if (upgradeInsertErr) {
           console.error(
             "Erro ao inserir contratos_upgrades:",
             upgradeInsertErr,
+            { upgradeRow },
           );
 
           return NextResponse.json(
-            { error: "Não foi possível registrar o upgrade." },
+            {
+              error: "Não foi possível registrar o upgrade.",
+              detail: {
+                message: upgradeInsertErr.message,
+                details: upgradeInsertErr.details,
+                hint: (upgradeInsertErr as { hint?: string }).hint,
+              },
+            },
             { status: 500 },
           );
         }

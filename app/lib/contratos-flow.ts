@@ -180,9 +180,12 @@ export async function applyContratoUpgrade(params: {
     throw new Error("orderId ausente para upgrade.");
   }
 
+  // 🔒 1. Busca upgrade
   const { data: upgrade, error: upgradeErr } = await supabase
     .from("contratos_upgrades")
-    .select("*")
+    .select(
+      "id, contrato_id, quantidade_adicional, limite_anterior, limite_novo, pagarme_payment_status, paid_at",
+    )
     .eq("pagarme_order_id", orderId)
     .maybeSingle();
 
@@ -190,7 +193,11 @@ export async function applyContratoUpgrade(params: {
     throw new Error("Upgrade não encontrado.");
   }
 
-  if (String(upgrade.pagarme_payment_status).toLowerCase() === "paid") {
+  // ✅ 2. Idempotência (CRÍTICO)
+  if (
+    upgrade.paid_at ||
+    String(upgrade.pagarme_payment_status).toLowerCase() === "paid"
+  ) {
     return { updated: true, alreadyPaid: true };
   }
 
@@ -200,39 +207,57 @@ export async function applyContratoUpgrade(params: {
     throw new Error("Quantidade inválida no upgrade.");
   }
 
-  const { data: contrato } = await supabase
+  // 🔒 3. Buscar contrato atual
+  const { data: contrato, error: contratoErr } = await supabase
     .from("contratos")
     .select("limite_usuarios")
     .eq("id", contratoId)
     .maybeSingle();
 
+  if (contratoErr) {
+    throw new Error("Erro ao buscar contrato.");
+  }
+
   const limiteAnterior = Number(contrato?.limite_usuarios ?? 0);
   const limiteNovo = limiteAnterior + quantidade;
 
-  await supabase
+  const now = new Date().toISOString();
+
+  // ✅ 4. Atualiza contrato (incremento real)
+  const { error: contratoUpdateErr } = await supabase
     .from("contratos")
     .update({
       limite_usuarios: limiteNovo,
-      atualizado_em: nowISO(),
+      atualizado_em: now,
     })
     .eq("id", contratoId);
 
-  await supabase
+  if (contratoUpdateErr) {
+    throw new Error("Erro ao atualizar contrato.");
+  }
+
+  // ✅ 5. Atualiza upgrade (marca como pago)
+  const { error: upgradeUpdateErr } = await supabase
     .from("contratos_upgrades")
     .update({
       limite_anterior: limiteAnterior,
       limite_novo: limiteNovo,
       pagarme_payment_status: "paid",
-      paid_at: nowISO(),
+      paid_at: now,
     })
     .eq("id", upgrade.id);
 
+  if (upgradeUpdateErr) {
+    throw new Error("Erro ao atualizar upgrade.");
+  }
+
+  // ✅ 6. Log de evento (audit trail)
   await insertContratoEvento(supabase, {
     contrato_id: contratoId,
     tipo: "upgrade_confirmado",
-    descricao: "Upgrade confirmado",
+    descricao: "Upgrade confirmado via pagamento",
     dados: {
-      orderId,
+      order_id: orderId,
       quantidade,
       limiteAnterior,
       limiteNovo,

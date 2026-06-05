@@ -18,7 +18,6 @@ function expectedCentsFromContrato(c: {
   valor_total?: number | string | null;
 }): number | null {
   const base = c.valor_mensal ?? c.valor_total ?? null;
-
   if (base == null) return null;
 
   const n = typeof base === "string" ? Number(base) : base;
@@ -30,7 +29,7 @@ function expectedCentsFromContrato(c: {
 export async function POST(req: Request) {
   const raw = Buffer.from(await req.arrayBuffer());
 
-  // ✅ assinatura (se configurado)
+  // ✅ assinatura
   if (process.env.PAGARME_WEBHOOK_SECRET) {
     const sig = verifySignature({ rawBody: raw, headers: req.headers });
     if (!sig.ok) {
@@ -41,7 +40,6 @@ export async function POST(req: Request) {
     }
   }
 
-  // ✅ parse
   let evt: PagarmeWebhook;
   try {
     evt = JSON.parse(raw.toString("utf8"));
@@ -52,20 +50,41 @@ export async function POST(req: Request) {
   const g = extractGatewayData(evt);
   const supabase = supabaseAdmin();
 
+  // 🔎 log estruturado (importante)
+  console.log("[webhook:pagarme]", {
+    event: evt.type,
+    eventId: g.eventId,
+    orderId: g.orderId,
+    contratoId: g.contratoId,
+    amount: g.amountCents,
+    method: g.paymentMethod,
+  });
+
   if (!g.contratoId) {
     return NextResponse.json({ ok: true, ignored: true });
   }
 
-  // ✅ detecta upgrade via order_id
+  // ✅ detecta upgrade
   const { data: upgradeRow } = g.orderId
     ? await supabase
         .from("contratos_upgrades")
-        .select("id, total_cents")
+        .select(
+          "id, contrato_id, quantidade_adicional, limite_anterior, limite_novo, total_cents, pagarme_payment_status, paid_at",
+        )
         .eq("pagarme_order_id", g.orderId)
         .maybeSingle()
     : { data: null };
 
   const isUpgrade = !!upgradeRow;
+
+  // ✅ idempotência upgrade
+  if (upgradeRow?.paid_at) {
+    return NextResponse.json({
+      ok: true,
+      ignored: true,
+      reason: "upgrade already processed",
+    });
+  }
 
   // ✅ FAIL / CANCEL
   if (
@@ -92,9 +111,14 @@ export async function POST(req: Request) {
   const got = g.amountCents ?? null;
 
   if (isUpgrade) {
-    const expected = Number(upgradeRow?.total_cents ?? 0);
+    const expected = upgradeRow?.total_cents ?? null;
 
-    if (expected > 0 && got != null && expected !== got) {
+    if (expected != null && got != null && expected !== got) {
+      console.warn("[webhook] upgrade amount mismatch", {
+        expected,
+        got,
+      });
+
       return NextResponse.json({
         ok: true,
         ignored: true,
@@ -106,6 +130,11 @@ export async function POST(req: Request) {
     const expected = expectedCentsFromContrato(contrato ?? {});
 
     if (expected != null && got != null && expected !== got) {
+      console.warn("[webhook] contrato amount mismatch", {
+        expected,
+        got,
+      });
+
       return NextResponse.json({
         ok: true,
         ignored: true,
@@ -132,6 +161,17 @@ export async function POST(req: Request) {
     }
 
     // 🟢 ATIVAÇÃO
+    const contrato = await getContrato(supabase, g.contratoId);
+
+    // ✅ idempotência extra (contrato)
+    if (contrato?.status === "ativo") {
+      return NextResponse.json({
+        ok: true,
+        ignored: true,
+        reason: "already activated",
+      });
+    }
+
     await activateContratoFull({
       supabase,
       contratoId: g.contratoId,
@@ -143,7 +183,6 @@ export async function POST(req: Request) {
       cupomFromGateway: g.cupomCodigo ?? null,
     });
 
-    // 🔥 NOVO BLOCO
     await gerarContratoPdfInterno({
       supabase,
       contratoId: g.contratoId,
@@ -155,6 +194,5 @@ export async function POST(req: Request) {
     });
   }
 
-  // fallback
   return NextResponse.json({ ok: true });
 }
