@@ -715,6 +715,7 @@ export async function POST(req: Request) {
             origem,
             campanha,
           },
+          gateway_event_id: null,
         });
       } else {
         // fluxo original de ativação
@@ -759,6 +760,7 @@ export async function POST(req: Request) {
                 ? { boleto_url: boletoUrl, line }
                 : null,
           },
+          gateway_event_id: null,
         });
       }
     } else {

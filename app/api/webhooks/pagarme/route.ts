@@ -9,7 +9,6 @@ import {
   getContrato,
   markFailOrCancel,
   supabaseAdmin,
-  applyContratoUpgrade,
 } from "@/lib/contratos-flow";
 import { gerarContratoPdfInterno } from "@/lib/contrato-pdf";
 
@@ -78,12 +77,12 @@ export async function POST(req: Request) {
   const isUpgrade = !!upgradeRow;
 
   // ✅ idempotência upgrade
-  if (upgradeRow?.paid_at) {
-    return NextResponse.json({
-      ok: true,
-      ignored: true,
-      reason: "upgrade already processed",
-    });
+  if (isUpgrade && upgradeRow?.paid_at) {
+   return NextResponse.json({
+     ok: true,
+     ignored: true,
+     reason: "upgrade already processed",
+   });
   }
 
   // ✅ FAIL / CANCEL
@@ -147,12 +146,27 @@ export async function POST(req: Request) {
   if (g.eventType === "charge.paid" || g.eventType === "order.paid") {
     // 🔵 UPGRADE
     if (isUpgrade) {
-      await applyContratoUpgrade({
-        supabase,
-        contratoId: g.contratoId,
-        orderId: g.orderId,
-        paymentStatus: g.paymentStatus ?? "paid",
-      });
+      try {
+        await supabase.from("contrato_eventos").insert({
+          contrato_id: g.contratoId,
+          tipo: "upgrade_confirmado",
+          descricao: "Upgrade confirmado via webhook",
+          dados: {
+            orderId: g.orderId,
+            paymentStatus: g.paymentStatus,
+            amount: g.amountCents,
+          },
+          gateway_event_id: g.eventId,
+        });
+      } catch (e) {
+        const msg = String(e);
+
+        if (msg.includes("duplicate") || msg.includes("uq_contrato_eventos")) {
+          console.log("[webhook] evento duplicado ignorado");
+        } else {
+          throw e;
+        }
+      }
 
       return NextResponse.json({
         ok: true,
@@ -182,6 +196,23 @@ export async function POST(req: Request) {
       eventId: g.eventId,
       cupomFromGateway: g.cupomCodigo ?? null,
     });
+
+    try {
+      await supabase.from("contrato_eventos").insert({
+        contrato_id: g.contratoId,
+        tipo: "contrato_ativado",
+        descricao: "Contrato ativado via webhook",
+        dados: {
+          orderId: g.orderId,
+          paymentStatus: g.paymentStatus,
+          amount: g.amountCents,
+        },
+        gateway_event_id: g.eventId,
+      });
+    } catch (e) {
+      const msg = String(e);
+      if (!msg.includes("duplicate")) throw e;
+    }
 
     await gerarContratoPdfInterno({
       supabase,
