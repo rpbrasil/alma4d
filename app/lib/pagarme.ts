@@ -5,7 +5,7 @@ export type PagarmeWebhook = {
   id?: string;
   type?: string;
   created_at?: string;
-  data?: PagarmeOrder;
+  data?: unknown; // ✅ importante: payload varia (charge/order)
 };
 
 export type ExtractedGatewayData = {
@@ -43,6 +43,8 @@ export function nowISO() {
   return new Date().toISOString();
 }
 
+/* ================= SIGNATURE ================= */
+
 function getSignatureHeader(headers: Headers) {
   return (
     headers.get("x-hub-signature-256") ||
@@ -60,24 +62,19 @@ export function verifySignature(params: {
   const isProd = process.env.NODE_ENV === "production";
   const sigHeader = getSignatureHeader(params.headers);
 
-  if (!secret)
-    return { ok: true };
+  if (!secret) return { ok: true };
   if (!sigHeader)
     return isProd ? { ok: false, reason: "Header ausente" } : { ok: true };
 
   let provided: string | undefined;
-  let hmacAlgo: "sha256" | "sha1" = "sha1"; // default
+  let hmacAlgo: "sha256" | "sha1" = "sha256";
 
   if (sigHeader.includes("=")) {
     const [algoPart, sigPart] = sigHeader.split("=", 2);
-
     provided = sigPart;
     hmacAlgo = algoPart?.toLowerCase().includes("sha256") ? "sha256" : "sha1";
   } else {
     provided = sigHeader;
-
-    // ✅ normalmente assume sha256 (mais comum hoje)
-    hmacAlgo = "sha256";
   }
 
   const expected = crypto
@@ -97,6 +94,8 @@ export function verifySignature(params: {
   return match ? { ok: true } : { ok: false, reason: "Assinatura inválida" };
 }
 
+/* ================= HELPERS ================= */
+
 function norm(v: unknown): string | null {
   if (v === null || v === undefined) return null;
   const s = String(v).trim();
@@ -111,22 +110,18 @@ function isRecord(x: unknown): x is Record<string, unknown> {
   return typeof x === "object" && x !== null;
 }
 
-/**
- * Extrai dados do payload:
- *
- */
+/* ================= EXTRACTOR ================= */
+
 export function extractGatewayData(evt: PagarmeWebhook): ExtractedGatewayData {
   const eventType = norm(evt.type)?.toLowerCase() ?? "";
   const eventId = norm(evt.id);
 
-  // ✅ DEBUG CRÍTICO
-  console.log("[EXTRACT] raw evt:", JSON.stringify(evt, null, 2));
+  console.log("🔥 [EXTRACT] raw evt:", JSON.stringify(evt, null, 2));
 
-  const data = evt.data ?? null;
+  const data = evt.data;
 
   if (!isRecord(data)) {
-    console.warn("[EXTRACT] data não é objeto válido");
-
+    console.warn("[EXTRACT] data inválido");
     return {
       eventId,
       eventType,
@@ -140,74 +135,78 @@ export function extractGatewayData(evt: PagarmeWebhook): ExtractedGatewayData {
     };
   }
 
-  const order = data as PagarmeOrder;
+  const raw = data;
 
-  console.log("[EXTRACT] order keys:", Object.keys(order));
+  const rawId = isRecord(raw) ? norm(raw["id"]) : null;
+  const isChargeEvent = rawId?.startsWith("ch_") ?? false;
 
-  // ✅ charges
-  const chargesArr = Array.isArray(order.charges) ? order.charges : [];
-  const firstCharge = chargesArr.length > 0 ? chargesArr[0] : null;
+  // ✅ charges seguro
+  const chargesArr =
+    isRecord(raw) && Array.isArray(raw["charges"])
+      ? (raw["charges"] as unknown[])
+      : [];
 
-  console.log("[EXTRACT] charges length:", chargesArr.length);
+  const firstCharge =
+    chargesArr.length > 0 && isRecord(chargesArr[0])
+      ? (chargesArr[0] as Record<string, unknown>)
+      : null;
 
-  if (firstCharge) {
-    console.log(
-      "[EXTRACT] firstCharge.metadata:",
-      JSON.stringify(firstCharge.metadata, null, 2),
-    );
-  }
+  // ✅ charge e order resolvidos corretamente
+  const charge = isChargeEvent ? raw : firstCharge;
 
-  // ✅ metadata (com debug)
-  const metadata = firstCharge?.metadata ?? order?.metadata ?? null;
+  const order =
+    isChargeEvent && isRecord(raw["order"])
+      ? (raw["order"] as Record<string, unknown>)
+      : raw;
 
-  console.log(
-    "[EXTRACT] metadata selected:",
-    JSON.stringify(metadata, null, 2),
-  );
+  // ✅ metadata seguro
+  const metadata =
+    (isRecord(charge) && isRecord(charge["metadata"])
+      ? (charge["metadata"] as Record<string, unknown>)
+      : null) ??
+    (isRecord(order) && isRecord(order["metadata"])
+      ? (order["metadata"] as Record<string, unknown>)
+      : null);
 
-  // ✅ IDs
-  const orderId = norm(order?.id) ?? null;
-  const chargeId = norm(firstCharge?.id) ?? null;
+  console.log("[EXTRACT] metadata:", metadata);
+
+  // ✅ IDs seguros
+  const orderId = isRecord(order) ? norm(order["id"]) : null;
+
+  const chargeId = isRecord(charge) ? norm(charge["id"]) : null;
 
   console.log("[EXTRACT] orderId:", orderId);
   console.log("[EXTRACT] chargeId:", chargeId);
 
-  // ✅ valores
-  const amountRaw =
-    (typeof order.amount === "number" ? order.amount : null) ??
-    (typeof firstCharge?.amount === "number" ? firstCharge.amount : null) ??
-    null;
+  // ✅ amount seguro
+  const orderAmount =
+    isRecord(order) && typeof order["amount"] === "number"
+      ? order["amount"]
+      : null;
+
+  const chargeAmount =
+    isRecord(charge) && typeof charge["amount"] === "number"
+      ? charge["amount"]
+      : null;
+
+  const amountRaw = orderAmount ?? chargeAmount ?? null;
 
   const amountCents =
     typeof amountRaw === "number" && Number.isFinite(amountRaw)
       ? amountRaw
       : null;
 
-  console.log("[EXTRACT] amountCents:", amountCents);
+  // ✅ dados
+  const contratoId = norm(metadata?.contrato_id);
+  const cupomCodigo = norm(metadata?.cupom_codigo);
 
-  // ✅ metadata safe access com debug
-  let contratoId: string | null = null;
-  let cupomCodigo: string | null = null;
+  const paymentMethod = norm(charge?.payment_method ?? raw?.payment_method);
 
-  if (metadata && typeof metadata === "object") {
-    const meta = metadata as Record<string, unknown>;
+  const paymentStatus = norm(charge?.status ?? order?.status ?? raw?.status);
 
-    contratoId = norm(meta["contrato_id"]);
-    cupomCodigo = norm(meta["cupom_codigo"]);
-
-    console.log("[EXTRACT] contrato_id extraído:", contratoId);
-  } else {
-    console.warn("[EXTRACT] metadata inválido ou ausente");
-  }
-
-  // ✅ payment
-  const paymentMethod = norm(firstCharge?.payment_method) ?? null;
-
-  const paymentStatus =
-    norm(firstCharge?.status) ?? norm(order?.status) ?? null;
-
-  console.log("[EXTRACT] paymentMethod:", paymentMethod);
+  console.log("[EXTRACT] contratoId:", contratoId);
   console.log("[EXTRACT] paymentStatus:", paymentStatus);
+  console.log("[EXTRACT] amount:", amountCents);
 
   return {
     eventId,
@@ -222,6 +221,8 @@ export function extractGatewayData(evt: PagarmeWebhook): ExtractedGatewayData {
   };
 }
 
+/* ================= API ================= */
+
 export function pagarmeAuthHeader(secretKey: string) {
   const basic = Buffer.from(`${secretKey}:`).toString("base64");
   return `Basic ${basic}`;
@@ -234,10 +235,8 @@ export async function fetchPagarmeOrder(
   if (!secretKey) throw new Error("PAGARME_API_KEY ausente");
 
   const base = process.env.PAGARME_API_URL ?? "https://api.pagar.me/core/v5";
+
   const url = `${base}/orders/${encodeURIComponent(orderId)}`;
-  console.log(
-    `Consultando Pagar.me order ${orderId} via ${url} com API key ${secretKey ? "****" : "(ausente)"}`,
-  );
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 8000);
