@@ -119,9 +119,14 @@ export function extractGatewayData(evt: PagarmeWebhook): ExtractedGatewayData {
   const eventType = norm(evt.type)?.toLowerCase() ?? "";
   const eventId = norm(evt.id);
 
+  // ✅ DEBUG CRÍTICO
+  console.log("[EXTRACT] raw evt:", JSON.stringify(evt, null, 2));
+
   const data = evt.data ?? null;
 
   if (!isRecord(data)) {
+    console.warn("[EXTRACT] data não é objeto válido");
+
     return {
       eventId,
       eventType,
@@ -137,16 +142,35 @@ export function extractGatewayData(evt: PagarmeWebhook): ExtractedGatewayData {
 
   const order = data as PagarmeOrder;
 
+  console.log("[EXTRACT] order keys:", Object.keys(order));
+
   // ✅ charges
   const chargesArr = Array.isArray(order.charges) ? order.charges : [];
   const firstCharge = chargesArr.length > 0 ? chargesArr[0] : null;
 
-  // ✅ metadata (prioridade correta)
+  console.log("[EXTRACT] charges length:", chargesArr.length);
+
+  if (firstCharge) {
+    console.log(
+      "[EXTRACT] firstCharge.metadata:",
+      JSON.stringify(firstCharge.metadata, null, 2),
+    );
+  }
+
+  // ✅ metadata (com debug)
   const metadata = firstCharge?.metadata ?? order?.metadata ?? null;
+
+  console.log(
+    "[EXTRACT] metadata selected:",
+    JSON.stringify(metadata, null, 2),
+  );
 
   // ✅ IDs
   const orderId = norm(order?.id) ?? null;
   const chargeId = norm(firstCharge?.id) ?? null;
+
+  console.log("[EXTRACT] orderId:", orderId);
+  console.log("[EXTRACT] chargeId:", chargeId);
 
   // ✅ valores
   const amountRaw =
@@ -159,21 +183,31 @@ export function extractGatewayData(evt: PagarmeWebhook): ExtractedGatewayData {
       ? amountRaw
       : null;
 
-  // ✅ metadata safe access
-  const contratoId =
-    metadata && typeof metadata === "object"
-      ? norm((metadata as Record<string, unknown>)["contrato_id"])
-      : null;
+  console.log("[EXTRACT] amountCents:", amountCents);
 
-  const cupomCodigo =
-    metadata && typeof metadata === "object"
-      ? norm((metadata as Record<string, unknown>)["cupom_codigo"])
-      : null;
+  // ✅ metadata safe access com debug
+  let contratoId: string | null = null;
+  let cupomCodigo: string | null = null;
 
+  if (metadata && typeof metadata === "object") {
+    const meta = metadata as Record<string, unknown>;
+
+    contratoId = norm(meta["contrato_id"]);
+    cupomCodigo = norm(meta["cupom_codigo"]);
+
+    console.log("[EXTRACT] contrato_id extraído:", contratoId);
+  } else {
+    console.warn("[EXTRACT] metadata inválido ou ausente");
+  }
+
+  // ✅ payment
   const paymentMethod = norm(firstCharge?.payment_method) ?? null;
 
   const paymentStatus =
     norm(firstCharge?.status) ?? norm(order?.status) ?? null;
+
+  console.log("[EXTRACT] paymentMethod:", paymentMethod);
+  console.log("[EXTRACT] paymentStatus:", paymentStatus);
 
   return {
     eventId,
