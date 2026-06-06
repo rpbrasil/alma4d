@@ -47,6 +47,12 @@ const NAV_BY_PLAN: Record<Plano, NavItem[]> = {
       roles: ["admin"],
     },
     {
+      href: "/dashboard/admin/contratos",
+      label: "Contratos",
+      icon: FileText,
+      roles: ["admin"],
+    },
+    {
       href: "/dashboard/express/documentos",
       label: "Documentos",
       icon: FileText,

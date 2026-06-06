@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { supabaseBrowser as supabase } from "@/lib/supabase/browser";
 import {
   AlertCircle,
   Calendar,
@@ -45,6 +44,14 @@ type NFSeRow = {
   status: string;
   resposta: NFSeResposta | null;
   created_at: string;
+};
+type Perfil = {
+  usuario_id: string | null;
+  nome_completo: string | null;
+  role: string | null;
+  tipo_plano: string | null;
+  cliente_id: string | null;
+  ativo: boolean | null;
 };
 
 function statusBadge(status: ContratoRow["status"]) {
@@ -141,6 +148,7 @@ function formatDate(value: string) {
 export default function DashboardExpressDocumentosPage() {
   const [contratos, setContratos] = useState<ContratoRow[]>([]);
   const [nfse, setNfse] = useState<NFSeRow[]>([]);
+  const [perfil, setPerfil] = useState<Perfil | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -150,39 +158,29 @@ export default function DashboardExpressDocumentosPage() {
         setLoading(true);
 
         // Resolve canonical usuario via server
-        const who = await fetch("/api/auth/whoami");
+        const who = await fetch("/api/auth/whoami", {
+          credentials: "include",
+        });
         if (!who.ok) {
           setError("Usuário não autenticado.");
           return;
         }
 
-        const perfil = await who.json();
+        const perfilData = await who.json();
 
-        if (!perfil?.usuario_id || !perfil?.cliente_id) {
+        if (!perfilData?.usuario_id || !perfilData?.cliente_id) {
           setError("Cliente não associado.");
           return;
         }
+        setPerfil(perfilData);
 
-        const [
-          { data: contratosData, error: contratosError },
-          { data: nfseData, error: nfseError },
-        ] = await Promise.all([
-          supabase
-            .from("contratos")
-            .select(
-              "id,numero_contrato,versao,status,criado_em,atualizado_em,pdf_url,pdf_assinado_url,tipo_contrato",
-            )
-            .eq("cliente_id", perfil.cliente_id)
-            .order("criado_em", { ascending: false }),
-          supabase
-            .from("nfse_emissoes")
-            .select("id, ref, status, resposta, created_at")
-            .eq("cliente_id", perfil.cliente_id)
-            .order("created_at", { ascending: false }),
+        const [contratosRes, nfseRes] = await Promise.all([
+          fetch(`/api/contrato/by-cliente?cliente_id=${perfilData.cliente_id}`),
+          fetch(`/api/nfse/by-cliente?cliente_id=${perfilData.cliente_id}`),
         ]);
 
-        if (contratosError) throw contratosError;
-        if (nfseError) throw nfseError;
+        const contratosData = await contratosRes.json();
+        const nfseData = await nfseRes.json();
 
         setContratos(contratosData || []);
         setNfse(nfseData || []);
@@ -194,7 +192,32 @@ export default function DashboardExpressDocumentosPage() {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [perfil?.cliente_id, perfil?.usuario_id]);
+
+  useEffect(() => {
+    const pendentes = nfse.filter(
+      (n) => n.status === "enviando" || n.status === "processando_autorizacao",
+    );
+
+    if (pendentes.length === 0) return;
+
+    const timer = setTimeout(async () => {
+      for (const nota of pendentes) {
+        const res = await fetch(`/api/nfse/${nota.ref}`);
+        const atualizado = await res.json();
+
+        setNfse((prev) =>
+          prev.map((n) =>
+            n.ref === nota.ref
+              ? { ...n, status: atualizado.status, resposta: atualizado }
+              : n,
+          ),
+        );
+      }
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, [nfse]);
 
   if (loading) {
     return (
@@ -371,7 +394,13 @@ export default function DashboardExpressDocumentosPage() {
 
             {nfse.length > 0 && (
               <button
-                onClick={() => location.reload()}
+                onClick={async () => {
+                  const res = await fetch(
+                    `/api/nfse/by-cliente?cliente_id=${perfil?.cliente_id}`,
+                  );
+                  const data = await res.json();
+                  setNfse(data);
+                }}
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm hover:bg-slate-50"
               >
                 <RefreshCw size={16} />
@@ -395,7 +424,21 @@ export default function DashboardExpressDocumentosPage() {
                     <p className="font-semibold text-slate-900 truncate">
                       NFSe #{nota.resposta?.numero ?? "-"}
                     </p>
-
+                    <p className="text-sm">
+                      Status:{" "}
+                      <span
+                        className={
+                          nota.status === "autorizado"
+                            ? "text-green-600"
+                            : nota.status === "erro" ||
+                                nota.status === "erro_autorizacao"
+                              ? "text-red-600"
+                              : "text-yellow-600"
+                        }
+                      >
+                        {nota.status}
+                      </span>
+                    </p>
                     <div className="flex flex-col gap-2">
                       <button className="w-full rounded-lg border px-3 py-2 text-sm">
                         Atualizar

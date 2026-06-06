@@ -55,6 +55,10 @@ export async function GET() {
       .eq("id", usuarioId)
       .maybeSingle();
 
+    console.log("auth user:", authData.user?.id);
+    console.log("rpc usuario:", usuarioRpcData);
+    console.log("usuario final:", usuario);
+    
     return NextResponse.json({
       usuario_id: usuario?.id ?? null,
       nome_completo: usuario?.nome_completo ?? null,

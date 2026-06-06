@@ -219,6 +219,19 @@ export async function POST(req: Request) {
       contratoId: g.contratoId,
     });
 
+    // ✅ DISPARA EMISSÃO NFSE
+    try {
+      await fetch(`${process.env.BASE_URL}/api/nfse/emitir`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contrato_id: g.contratoId,
+        }),
+      });
+    } catch (err) {
+      console.error("Erro ao disparar NFSe:", err);
+    }
+
     return NextResponse.json({
       ok: true,
       activated: true,

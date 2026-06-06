@@ -174,7 +174,7 @@ export async function applyContratoUpgrade(params: {
   orderId: string | null;
   paymentStatus: string;
 }) {
-  const { supabase, contratoId, orderId, paymentStatus } = params;
+  const { supabase, contratoId, orderId } = params;
 
   if (!orderId) {
     throw new Error("orderId ausente para upgrade.");
@@ -237,7 +237,7 @@ export async function applyContratoUpgrade(params: {
   }
 
   // ✅ 5. Atualiza upgrade (marca como pago)
-  const { error: upgradeUpdateErr } = await supabase
+  const { data: updatedRows, error: upgradeUpdateErr } = await supabase
     .from("contratos_upgrades")
     .update({
       limite_anterior: limiteAnterior,
@@ -245,25 +245,21 @@ export async function applyContratoUpgrade(params: {
       pagarme_payment_status: "paid",
       paid_at: now,
     })
-    .eq("id", upgrade.id);
+    .eq("pagarme_order_id", orderId) // ✅ MUITO MAIS SEGURO
+    .select();
 
   if (upgradeUpdateErr) {
+    console.error("❌ Erro ao atualizar upgrade:", upgradeUpdateErr);
     throw new Error("Erro ao atualizar upgrade.");
   }
 
-  // ✅ 6. Log de evento (audit trail)
-  await insertContratoEvento(supabase, {
-    contrato_id: contratoId,
-    tipo: "upgrade_confirmado",
-    descricao: "Upgrade confirmado via pagamento",
-    dados: {
-      order_id: orderId,
-      quantidade,
-      limiteAnterior,
-      limiteNovo,
-      paymentStatus,
-    },
-  });
+  if (!updatedRows || updatedRows.length === 0) {
+    console.error("❌ Nenhuma linha atualizada no upgrade", {
+      orderId,
+      upgradeId: upgrade.id,
+    });
+    throw new Error("Upgrade não foi atualizado.");
+  }
 
   return { updated: true };
 }
