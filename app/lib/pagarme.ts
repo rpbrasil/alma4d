@@ -111,40 +111,47 @@ function isRecord(x: unknown): x is Record<string, unknown> {
   return typeof x === "object" && x !== null;
 }
 
-function asChargeLike(x: unknown): PagarmeCharge | null {
-  if (!isRecord(x)) return null;
-  return x as PagarmeCharge;
-}
-
-function asOrderLike(x: unknown): PagarmeOrder | null {
-  if (!isRecord(x)) return null;
-  return x as PagarmeOrder;
-}
-
 /**
  * Extrai dados do payload:
- * - evt.data.object pode ser ORDER ou CHARGE (que aponta para order)
+ *
  */
 export function extractGatewayData(evt: PagarmeWebhook): ExtractedGatewayData {
   const eventType = norm(evt.type)?.toLowerCase() ?? "";
   const eventId = norm(evt.id);
 
-  // ✅ CORREÇÃO AQUI
-  const objUnknown = evt.data ?? null;
+  const data = evt.data ?? null;
 
-  const objRecord = objUnknown as Record<string, unknown> | null;
+  if (!isRecord(data)) {
+    return {
+      eventId,
+      eventType,
+      contratoId: null,
+      orderId: null,
+      chargeId: null,
+      paymentMethod: null,
+      paymentStatus: null,
+      cupomCodigo: null,
+      amountCents: null,
+    };
+  }
 
-  const chargesUnknown = objRecord?.["charges"];
-  const chargesArr = Array.isArray(chargesUnknown) ? chargesUnknown : [];
-  const firstCharge = asChargeLike(chargesArr[0]);
+  const order = data as PagarmeOrder;
 
-  const order = asOrderLike(objUnknown);
+  // ✅ charges
+  const chargesArr = Array.isArray(order.charges) ? order.charges : [];
+  const firstCharge = chargesArr.length > 0 ? chargesArr[0] : null;
 
+  // ✅ metadata (prioridade correta)
+  const metadata = firstCharge?.metadata ?? order?.metadata ?? null;
+
+  // ✅ IDs
+  const orderId = norm(order?.id) ?? null;
+  const chargeId = norm(firstCharge?.id) ?? null;
+
+  // ✅ valores
   const amountRaw =
-    (order && typeof order.amount === "number" ? order.amount : null) ??
-    (firstCharge && typeof firstCharge.amount === "number"
-      ? firstCharge.amount
-      : null) ??
+    (typeof order.amount === "number" ? order.amount : null) ??
+    (typeof firstCharge?.amount === "number" ? firstCharge.amount : null) ??
     null;
 
   const amountCents =
@@ -152,20 +159,21 @@ export function extractGatewayData(evt: PagarmeWebhook): ExtractedGatewayData {
       ? amountRaw
       : null;
 
-  // ✅ metadata correto
-  const metadata = firstCharge?.metadata ?? order?.metadata ?? null;
+  // ✅ metadata safe access
+  const contratoId =
+    metadata && typeof metadata === "object"
+      ? norm((metadata as Record<string, unknown>)["contrato_id"])
+      : null;
 
-  const contratoId = norm(metadata?.["contrato_id"]) ?? null;
+  const cupomCodigo =
+    metadata && typeof metadata === "object"
+      ? norm((metadata as Record<string, unknown>)["cupom_codigo"])
+      : null;
 
   const paymentMethod = norm(firstCharge?.payment_method) ?? null;
 
   const paymentStatus =
     norm(firstCharge?.status) ?? norm(order?.status) ?? null;
-
-  const orderId = norm(order?.id);
-  const chargeId = norm(firstCharge?.id);
-
-  const cupomCodigo = norm(metadata?.["cupom_codigo"]) ?? null;
 
   return {
     eventId,
