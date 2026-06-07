@@ -7,18 +7,16 @@ export default function LoginPage() {
   return (
     <section className="max-w-md mx-auto px-4 pt-16 pb-12">
       {/* Header */}
-      <header className="text-center space-y-2 mb-6">
+      <header className="text-center space-y-4 mb-8">
         <div className="flex justify-center">
-          <div className="relative h-20 w-36 sm:h-11 sm:w-40">
-            <Image
-              src="/icons/icon-512.png"
-              alt="alma4D"
-              fill
-              sizes="(max-width: 640px) 160px, (max-width: 768px) 176px, 192px"
-              className="object-contain"
-              priority
-            />
-          </div>
+          <Image
+            src="/images/alma4d-bicolor-nobground-128.png"
+            alt="alma4D"
+            width={72}
+            height={72}
+            className="object-contain"
+            priority
+          />
         </div>
 
         <h1 className="text-2xl font-semibold text-foreground">

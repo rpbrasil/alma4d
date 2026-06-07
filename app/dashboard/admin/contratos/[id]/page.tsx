@@ -2,7 +2,6 @@ export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import Graficos from "./Graficos";
-
 import { createClient } from "@supabase/supabase-js";
 
 export default async function ContratoDetalhePage({
@@ -11,6 +10,11 @@ export default async function ContratoDetalhePage({
   params: Promise<{ id: string }>;
 }) {
   const { id: contratoId } = await params;
+
+  if (!contratoId) {
+    console.error("ID não recebido na rota");
+    return <div>ID inválido</div>;
+  }
 
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -21,23 +25,26 @@ export default async function ContratoDetalhePage({
     .from("contratos")
     .select(
       `
-  id,
-  numero_contrato,
-  status,
-  tipo_contrato,
-  limite_usuarios,
-  valor_total,
-  pagarme_payment_status,
-  forma_pagamento,
-  cliente_id
-`,
+      id,
+      numero_contrato,
+      status,
+      tipo_contrato,
+      limite_usuarios,
+      valor_total,
+      pagarme_payment_status,
+      forma_pagamento,
+      cliente_id,
+      criado_em
+    `,
     )
     .eq("id", contratoId)
     .maybeSingle();
   
+  if (!contrato) return <div>Contrato não encontrado</div>;
+
   let clienteNome = "-";
 
-  if (contrato?.cliente_id) {
+  if (contrato.cliente_id) {
     const { data: cliente } = await supabase
       .from("clientes")
       .select("nome")
@@ -51,7 +58,7 @@ export default async function ContratoDetalhePage({
     .from("contratos_upgrades")
     .select("*")
     .eq("contrato_id", contratoId)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: true });
 
   const { data: eventos } = await supabase
     .from("contrato_eventos")
@@ -59,7 +66,36 @@ export default async function ContratoDetalhePage({
     .eq("contrato_id", contratoId)
     .order("created_at", { ascending: false });
 
-  if (!contrato) return <div>Contrato não encontrado</div>;
+  // ✅ TIMELINE
+  const timeline: {
+    date: Date;
+    usuarios: number;
+    receita: number;
+  }[] = [];
+
+  let usuarios = contrato.limite_usuarios || 0;
+  let receita = Number(contrato.valor_total ?? 0);
+
+  // ponto inicial
+  timeline.push({
+    date: new Date(contrato.criado_em),
+    usuarios,
+    receita,
+  });
+
+  // ✅ aplica upgrades UMA vez e na ordem correta
+  upgrades?.forEach((u) => {
+    if (u.pagarme_payment_status === "paid") {
+      usuarios += u.quantidade_adicional;
+      receita += u.total_cents / 100;
+
+      timeline.push({
+        date: new Date(u.created_at),
+        usuarios,
+        receita,
+      });
+    }
+  });
 
   return (
     <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-6">
@@ -147,9 +183,8 @@ export default async function ContratoDetalhePage({
           </div>
         </div>
 
-        {/* LADO DIREITO */}
+        {/* DIREITA */}
         <div className="space-y-6">
-          {/* FINANCEIRO */}
           <div className="bg-white border rounded-lg p-4 sm:p-6 space-y-2">
             <h2 className="font-semibold">Financeiro</h2>
 
@@ -170,29 +205,56 @@ export default async function ContratoDetalhePage({
             </p>
           </div>
 
-          {/* TIMELINE */}
           <div className="bg-white border rounded-lg p-4 sm:p-6">
-            <h2 className="font-semibold mb-3">Histórico</h2>
+            <h2 className="font-semibold mb-4">Histórico</h2>
 
-            <div className="max-h-100 overflow-y-auto space-y-3">
-              {eventos?.map((e) => (
-                <div key={e.id} className="border rounded p-3 text-sm">
-                  <p className="font-medium">{e.tipo}</p>
-                  <p className="text-gray-500">{e.descricao}</p>
-                  <p className="text-xs text-gray-400">
-                    {new Date(e.created_at).toLocaleString()}
-                  </p>
+            {eventos?.length ? (
+              <div className="overflow-x-auto">
+                <div className="flex gap-4 min-w-max">
+                  {eventos.map((e, index) => (
+                    <div
+                      key={e.id}
+                      className="relative min-w-55 max-w-55 bg-gray-50 border rounded-lg p-3 text-sm"
+                    >
+                      {/* linha conectando */}
+                      {index !== 0 && (
+                        <div className="absolute -left-2 top-6 w-4 h-0.5 bg-gray-300" />
+                      )}
+
+                      {/* tipo */}
+                      <p className="font-medium text-gray-800">{e.tipo}</p>
+
+                      {/* descrição */}
+                      <p className="text-gray-500 text-xs mt-1 line-clamp-3">
+                        {e.descricao}
+                      </p>
+
+                      {/* data */}
+                      <p className="text-[11px] text-gray-400 mt-2">
+                        {new Date(e.created_at).toLocaleString()}
+                      </p>
+                    </div>
+                  ))}
                 </div>
-              )) ?? <p className="text-sm">Sem eventos</p>}
-            </div>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500">Sem eventos</p>
+            )}
           </div>
         </div>
       </div>
 
-      {/* GRÁFICOS FULL */}
+      {/* GRÁFICOS */}
       <div className="bg-white border rounded-lg p-4 sm:p-6">
         <h2 className="font-semibold mb-4">Gráficos</h2>
-        <Graficos upgrades={upgrades ?? []} />
+        <Graficos
+          contrato={{
+            created_at: contrato.criado_em,
+            limite_usuarios: contrato.limite_usuarios ?? 0,
+            valor_total: Number(contrato.valor_total ?? 0),
+          }}
+          upgrades={upgrades ?? []}
+        />
       </div>
     </div>
   );
