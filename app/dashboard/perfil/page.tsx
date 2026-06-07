@@ -169,7 +169,7 @@ export default function PerfilPage() {
             <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
               <p className="text-sm text-slate-500">Empresa</p>
               <p className="mt-2 text-2xl font-semibold">
-                {clienteNome ?? "—"}
+                {clienteNome ? clienteNome.split(" ").slice(0, 2).join(" ") : "—"}
               </p>
             </div>
           </div>
@@ -241,7 +241,7 @@ export default function PerfilPage() {
             </label>
 
             <div className="mt-1 h-10 rounded-lg border bg-slate-50 px-3 text-sm flex items-center">
-              {clienteNome ?? "—"}
+              {clienteNome ? clienteNome.split(" ").slice(0, 2).join(" ") : "—"}
             </div>
           </div>
 

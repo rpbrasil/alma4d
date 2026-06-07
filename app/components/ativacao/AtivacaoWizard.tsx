@@ -371,7 +371,7 @@ function Step1Servico({
           <li>Mapear riscos psicossociais</li>
           <li>Classificar pelo grau de risco</li>
           <li>Gerar relatório técnico</li>
-          <li>Registrar ações corretivas</li>
+          <li>Registrar riscos e ocorrências</li>
         </ul>
       </div>
 
@@ -709,7 +709,7 @@ function AtivacaoWizardContent() {
   const clienteId = searchParams.get("cliente_id") ?? "";
   // aceita os dois formatos para não quebrar links antigos
   const contratoId =
-    searchParams.get("contrato_id") ?? searchParams.get("contrato_Id") ?? "";
+    searchParams.get("contrato_id") ?? searchParams.get("contratoId") ?? "";
 
   const funcionariosParam = Number(searchParams.get("funcionarios") || "0");
   const origem = searchParams.get("origem") ?? "site";
@@ -772,7 +772,6 @@ function AtivacaoWizardContent() {
   /** Captura usuário autenticado */
   useEffect(() => {
     let mounted = true;
-
     (async () => {
       // Use server-side whoami to obtain canonical usuario profile
       try {
