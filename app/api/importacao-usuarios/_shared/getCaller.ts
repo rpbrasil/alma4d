@@ -78,8 +78,8 @@ export async function getCaller(
     .eq("id", callerId)
     .maybeSingle();
 
-  if (!caller || !caller.ativo) {
-    throw new Error("NO_PERMISSION");
+  if (!caller) {
+    throw new Error("NO_USER");
   }
 
   const plano = String(caller.tipo_plano ?? "");

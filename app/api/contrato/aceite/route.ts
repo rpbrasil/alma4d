@@ -67,8 +67,21 @@ export async function POST(req: Request) {
         { status: 403 },
       );
     }
+    console.log("caller:", caller);
+    const { data: identity } = await supabase
+      .from("usuario_auth_identities")
+      .select("usuario_id")
+      .eq("auth_user_id", caller.id)
+      .maybeSingle();
 
-    const userId = caller.id;
+    if (!identity || !identity.usuario_id) {
+      return NextResponse.json(
+        { error: "Usuário não encontrado" },
+        { status: 403 },
+      );
+    }
+
+    const userId = identity.usuario_id;
 
     // ✅ PERFIL
     const { data: perfil, error: perfilErr } = await supabase
