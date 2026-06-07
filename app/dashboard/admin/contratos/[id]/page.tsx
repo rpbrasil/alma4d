@@ -21,19 +21,31 @@ export default async function ContratoDetalhePage({
     .from("contratos")
     .select(
       `
-      id,
-      numero_contrato,
-      status,
-      tipo_contrato,
-      limite_usuarios,
-      valor_total,
-      pagarme_payment_status,
-      forma_pagamento,
-      clientes!inner ( nome )
-    `,
+  id,
+  numero_contrato,
+  status,
+  tipo_contrato,
+  limite_usuarios,
+  valor_total,
+  pagarme_payment_status,
+  forma_pagamento,
+  cliente_id
+`,
     )
     .eq("id", contratoId)
     .maybeSingle();
+  
+  let clienteNome = "-";
+
+  if (contrato?.cliente_id) {
+    const { data: cliente } = await supabase
+      .from("clientes")
+      .select("nome")
+      .eq("id", contrato.cliente_id)
+      .maybeSingle();
+
+    clienteNome = cliente?.nome ?? "-";
+  }
 
   const { data: upgrades } = await supabase
     .from("contratos_upgrades")
@@ -72,7 +84,10 @@ export default async function ContratoDetalhePage({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
               <p>
-                <b>Cliente:</b> {contrato.clientes?.[0]?.nome ?? "-"}
+                <b>Cliente:</b>{" "}
+                {clienteNome
+                  ? clienteNome.split(" ").slice(0, 2).join(" ")
+                  : "-"}
               </p>
               <p>
                 <b>Status:</b> {contrato.status}

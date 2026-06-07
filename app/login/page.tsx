@@ -9,9 +9,9 @@ export default function LoginPage() {
       {/* Header */}
       <header className="text-center space-y-2 mb-6">
         <div className="flex justify-center">
-          <div className="relative h-10 w-36 sm:h-11 sm:w-40">
+          <div className="relative h-20 w-36 sm:h-11 sm:w-40">
             <Image
-              src="/images/alma4d-bicolor-nobground-256.webp"
+              src="/icons/icon-512.png"
               alt="alma4D"
               fill
               sizes="(max-width: 640px) 160px, (max-width: 768px) 176px, 192px"
