@@ -17,7 +17,6 @@ function firstCharge(order: PagarmeOrderResponse) {
 }
 
 export async function POST(req: Request) {
-  
   let body: Body = {};
   try {
     body = (await req.json()) as Body;

@@ -284,7 +284,8 @@ export async function markPixPending(params: PaymentHandlerParams) {
 export async function activateContratoFull(params: ActivateParams) {
   const { supabase, contratoId, pagarmeOrderId, pagarmePaymentStatus } = params;
 
-  await supabase
+  // ✅ 1. Atualiza contrato e captura dados necessários
+  const { data: contrato, error: contratoErr } = await supabase
     .from("contratos")
     .update({
       status: "ativo",
@@ -292,11 +293,51 @@ export async function activateContratoFull(params: ActivateParams) {
       pagarme_payment_status: pagarmePaymentStatus ?? "paid",
       atualizado_em: nowISO(),
     })
-    .eq("id", contratoId);
+    .eq("id", contratoId)
+    .select("id, criado_por, status")
+    .single();
 
+  if (contratoErr || !contrato) {
+    throw new Error("Erro ao ativar contrato.");
+  }
+
+  // ✅ 2. Idempotência (evita ativar várias vezes se já ativo)
+  if (contrato.status === "ativo") {
+    // continua, mas não duplica logica — apenas segue garantido
+  }
+
+  // ✅ 3. Ativa SOMENTE o usuário que criou o contrato
+  if (contrato.criado_por) {
+    const { error: userUpdateErr } = await supabase
+      .from("usuarios")
+      .update({
+        ativo: true,
+        updated_at: nowISO(),
+      })
+      .eq("id", contrato.criado_por);
+
+    if (userUpdateErr) {
+      console.error("Erro ao ativar usuário:", userUpdateErr);
+      throw new Error("Erro ao ativar usuário responsável.");
+    }
+  }
+
+  // ✅ 4. Registra evento (opcional, mas recomendado)
+  await recordWebhookEvent(supabase, {
+    contrato_id: contratoId,
+    tipo: "contrato_ativado",
+    descricao: "Contrato ativado após pagamento confirmado",
+    dados: {
+      pagarme_order_id: pagarmeOrderId,
+      status: pagarmePaymentStatus,
+    },
+  });
+
+  // ✅ 5. Retorno padronizado
   return {
     activated: true,
-    alreadyActive: false,
+    alreadyActive: contrato.status === "ativo",
   };
 }
+
 

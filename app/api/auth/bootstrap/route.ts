@@ -7,7 +7,16 @@ function normalizeEmail(v: string | null | undefined) {
 }
 
 function normalizePhone(v: string | null | undefined) {
-  return v?.trim() || null;
+  if (!v) return null;
+
+  const digits = v.replace(/\D/g, "");
+
+  // garante formato +55XXXXXXXXXXX
+  if (digits.startsWith("55")) {
+    return `+${digits}`;
+  }
+
+  return `+55${digits}`;
 }
 
 export async function POST() {
@@ -39,26 +48,52 @@ export async function POST() {
 
     // 2) se não achou, tenta achar por email/telefone em usuarios
     if (!usuarioId) {
-      const clauses = [
-        email ? `email.ilike.${email}` : null,
-        telefone ? `telefone.eq.${telefone}` : null,
-      ].filter(Boolean);
+      let usuarioExistente: { id: string } | null = null;
 
-      if (clauses.length > 0) {
-        const { data: usuarioExistente } = await admin
+      if (email && telefone) {
+        const { data } = await admin
           .from("usuarios")
           .select("id")
-          .or(clauses.join(","))
+          .or(`email.ilike.${email},telefone.eq.${telefone}`)
           .limit(1)
           .maybeSingle();
 
-        usuarioId = usuarioExistente?.id ?? null;
+        usuarioExistente = data;
+      } else if (email) {
+        const { data } = await admin
+          .from("usuarios")
+          .select("id")
+          .ilike("email", email)
+          .limit(1)
+          .maybeSingle();
+
+        usuarioExistente = data;
+      } else if (telefone) {
+        const { data } = await admin
+          .from("usuarios")
+          .select("id")
+          .eq("telefone", telefone)
+          .limit(1)
+          .maybeSingle();
+
+        usuarioExistente = data;
       }
+
+      usuarioId = usuarioExistente?.id ?? null;
     }
 
     // 3) se ainda não achou, usa o próprio auth_user_id como usuario_id
     if (!usuarioId) {
-      usuarioId = authUserId;
+      return NextResponse.json(
+        {
+          error: "Usuário não encontrado para vinculação.",
+          detail: {
+            email,
+            telefone,
+          },
+        },
+        { status: 404 },
+      );
     }
 
     // 4) garante vínculo auth_user_id -> usuario_id

@@ -771,11 +771,15 @@ function AtivacaoWizardContent() {
 
   /** Captura usuário autenticado */
   useEffect(() => {
-    let mounted = true;
-    (async () => {
-      // Use server-side whoami to obtain canonical usuario profile
+    const controller = new AbortController();
+
+    const run = async () => {
       try {
-        const who = await fetch("/api/auth/whoami");
+        // ✅ WHOAMI
+        const who = await fetch("/api/auth/whoami", {
+          signal: controller.signal,
+        });
+
         if (!who.ok) {
           window.location.href = `/login?redirect=${encodeURIComponent(
             window.location.pathname + window.location.search,
@@ -806,7 +810,7 @@ function AtivacaoWizardContent() {
           return;
         }
 
-        // ✅ carrega contrato COM os campos necessários para autorização
+        // ✅ CONTRATO
         const { data: contratoData } = await supabase
           .from("contratos")
           .select(
@@ -820,9 +824,8 @@ function AtivacaoWizardContent() {
           return;
         }
 
-        // ✅ Admin pode seguir sempre, mas ainda carrega contrato
+        // ✅ AUTORIZAÇÃO
         if (perfil.role !== "admin") {
-          // ✅ trava reuso da URL por outro usuário (IDOR): contrato precisa ser do mesmo cliente
           if (
             String(contratoData.cliente_id ?? "") !==
             String(perfil.cliente_id ?? "")
@@ -831,14 +834,13 @@ function AtivacaoWizardContent() {
             return;
           }
 
-          // ✅ se contrato já estiver ativo, não faz sentido seguir wizard
           if ((contratoData.status ?? "").toLowerCase() === "ativo") {
             window.location.href = "/dashboard";
             return;
           }
         }
 
-        // ✅ valida cliente (mantém sua regra)
+        // ✅ CLIENTE
         const { data: cliente } = await supabase
           .from("clientes")
           .select("ativo")
@@ -855,7 +857,10 @@ function AtivacaoWizardContent() {
           return;
         }
 
-        // ✅ estado local do wizard
+        // ✅ evita setState após unmount
+        if (controller.signal.aborted) return;
+
+        // ✅ STATE FINAL
         setContrato(contratoData);
         setContratoLoading(false);
 
@@ -864,16 +869,20 @@ function AtivacaoWizardContent() {
 
         setUserId(perfil.usuario_id);
       } catch (e) {
+        if (controller.signal.aborted) return;
+
         console.error("Erro ao validar whoami:", e);
+
         window.location.href = `/login?redirect=${encodeURIComponent(
           window.location.pathname + window.location.search,
         )}`;
-        return;
       }
-    })();
+    };
+
+    run();
 
     return () => {
-      mounted = false;
+      controller.abort(); // ✅ cancela requisições pendentes
     };
   }, [contratoId, funcionariosParam]);
 
