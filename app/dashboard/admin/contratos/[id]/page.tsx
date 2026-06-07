@@ -1,10 +1,9 @@
-//import { cookies } from "next/headers";
-//import { createServerSupabase } from "@/lib/supabase/server";
+export const dynamic = "force-dynamic";
+
 import Link from "next/link";
 import Graficos from "./Graficos";
 
 import { createClient } from "@supabase/supabase-js";
-
 
 export default async function ContratoDetalhePage({
   params,
@@ -30,7 +29,7 @@ export default async function ContratoDetalhePage({
       valor_total,
       pagarme_payment_status,
       forma_pagamento,
-      clientes ( nome )
+      clientes!inner ( nome )
     `,
     )
     .eq("id", contratoId)

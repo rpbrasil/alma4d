@@ -4,6 +4,7 @@ import PwaRegister from "./PwaRegister";
 import PwaIosBanner from "@/components/PwaIosBanner";
 
 export const metadata = {
+  metadataBase: new URL("https://alma4d.com"),
   title: "alma4D Express",
   description: "Gestão de riscos, documentos e questionários",
 

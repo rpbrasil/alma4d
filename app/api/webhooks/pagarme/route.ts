@@ -78,11 +78,11 @@ export async function POST(req: Request) {
 
   // ✅ idempotência upgrade
   if (isUpgrade && upgradeRow?.paid_at) {
-   return NextResponse.json({
-     ok: true,
-     ignored: true,
-     reason: "upgrade already processed",
-   });
+    return NextResponse.json({
+      ok: true,
+      ignored: true,
+      reason: "upgrade already processed",
+    });
   }
 
   // ✅ FAIL / CANCEL
@@ -141,11 +141,21 @@ export async function POST(req: Request) {
       });
     }
   }
-
+  
   // ✅ PAGAMENTO CONFIRMADO
   if (g.eventType === "charge.paid" || g.eventType === "order.paid") {
     // 🔵 UPGRADE
     if (isUpgrade) {
+      // ✅ atualizar upgrade corretamente
+      await supabase
+        .from("contratos_upgrades")
+        .update({
+          pagarme_payment_status: g.paymentStatus ?? "paid",
+          paid_at: new Date().toISOString(),
+        })
+        .eq("id", upgradeRow.id);
+
+      // ✅ log evento
       try {
         await supabase.from("contrato_eventos").insert({
           contrato_id: g.contratoId,
@@ -160,12 +170,7 @@ export async function POST(req: Request) {
         });
       } catch (e) {
         const msg = String(e);
-
-        if (msg.includes("duplicate") || msg.includes("uq_contrato_eventos")) {
-          console.log("[webhook] evento duplicado ignorado");
-        } else {
-          throw e;
-        }
+        if (!msg.includes("duplicate")) throw e;
       }
 
       return NextResponse.json({
