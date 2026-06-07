@@ -143,7 +143,7 @@ export default function DashboardHeader({ onMenuClick, isMenuOpen }: Props) {
             </div>
             <div className="hidden sm:flex flex-col leading-tight">
               <span className="text-sm font-semibold text-foreground">
-                {clienteNome}
+                {clienteNome?.trim().split(" ").slice(0, 2).join(" ")}
               </span>
               <span className="text-xs text-foreground/60">
                 Gestão e Indicadores

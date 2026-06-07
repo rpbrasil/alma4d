@@ -603,7 +603,7 @@ export default function DashboardExpressRelatorioCopsoqPage() {
               Cliente
             </p>
             <p className="text-lg font-extrabold text-slate-900">
-              {clienteNome}
+              {clienteNome?.trim().split(" ").slice(0, 2).join(" ")}
             </p>
           </div>
         </div>

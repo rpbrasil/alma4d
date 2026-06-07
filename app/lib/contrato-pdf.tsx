@@ -9,7 +9,7 @@ type ContratoDb = {
   criado_por: string | null;
   numero_contrato: string | null;
   versao: number | null;
-  data_aceite_termos: string | null;
+  aceite_termos_em: string | null;
   ip_aceite: string | null;
   user_agent: string | null;
   pdf_url: string | null;
@@ -87,7 +87,7 @@ export async function gerarContratoPdfInterno({
   const contratoPdf = {
     numero: contratoRow.numero_contrato ?? "",
     versao: contratoRow.versao ?? 1,
-    dataAceite: contratoRow.data_aceite_termos ?? new Date().toISOString(),
+    dataAceite: contratoRow.aceite_termos_em ?? new Date().toISOString(),
     ip: contratoRow.ip_aceite ?? "",
     userAgent: contratoRow.user_agent ?? "",
   };
