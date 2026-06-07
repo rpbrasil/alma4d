@@ -110,17 +110,15 @@ export async function POST(req: Request) {
       pdf_url: fileName,
     });
   } catch (err) {
-    console.error("[GERAR-PDF] Erro geral:", {
-      contratoId,
-      error: err instanceof Error ? err.message : String(err),
-      stack: err instanceof Error ? err.stack : undefined,
-    });
+    console.error("[GERAR-PDF] ERRO DETALHADO:", err);
 
     return NextResponse.json(
       {
         error: "Erro ao gerar contrato",
         debug: {
-          msg: err instanceof Error ? err.message : "Erro desconhecido",
+          type: typeof err,
+          msg:
+            err instanceof Error ? err.message : JSON.stringify(err, null, 2),
         },
       },
       { status: 500 },
