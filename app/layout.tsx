@@ -4,15 +4,15 @@ import PwaRegister from "./PwaRegister";
 import PwaIosBanner from "@/components/PwaIosBanner";
 
 export const metadata = {
-  metadataBase: new URL("https://alma4d.com"),
+  metadataBase: new URL("https://alma4d.com.br"),
 
   title: "alma4D Express",
-  description: "Gestão de riscos, NR1, riscos psicossociais",
+  description: "Gestão de riscos | NR1 | Riscos psicossociais",
 
   openGraph: {
     title: "alma4D Express",
-    description: "Gestão de riscos, NR1, riscos psicossociais",
-    url: "https://alma4d.com",
+    description: "Gestão de riscos | NR1 | Riscos psicossociais",
+    url: "https://alma4d.com.br",
     siteName: "alma4D",
     images: [
       {
@@ -29,7 +29,7 @@ export const metadata = {
   twitter: {
     card: "summary_large_image",
     title: "alma4D Express",
-    description: "Gestão de riscos, documentos e questionários",
+    description: "Gestão de riscos | NR1 | riscos psicossociais",
     images: ["/og-image.png"],
   },
 
