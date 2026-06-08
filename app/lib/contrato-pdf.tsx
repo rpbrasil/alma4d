@@ -10,8 +10,8 @@ type ContratoDb = {
   numero_contrato: string | null;
   versao: number | null;
   aceite_termos_em: string | null;
-  ip_aceite: string | null;
-  user_agent: string | null;
+  aceite_ip: string | null;
+  aceite_user_agent: string | null;
   pdf_url: string | null;
 };
 
@@ -39,7 +39,7 @@ export async function gerarContratoPdfInterno({
   const { data: contratoRow, error: contratoError } = await supabase
     .from("contratos")
     .select(
-      "id, cliente_id, criado_por, numero_contrato, versao, data_aceite_termos, ip_aceite, user_agent, pdf_url",
+      "id, cliente_id, criado_por, numero_contrato, versao, aceite_termos_em, aceite_ip, aceite_user_agent, pdf_url",
     )
     .eq("id", contratoId)
     .single<ContratoDb>();
@@ -88,8 +88,8 @@ export async function gerarContratoPdfInterno({
     numero: contratoRow.numero_contrato ?? "",
     versao: contratoRow.versao ?? 1,
     dataAceite: contratoRow.aceite_termos_em ?? new Date().toISOString(),
-    ip: contratoRow.ip_aceite ?? "",
-    userAgent: contratoRow.user_agent ?? "",
+    ip: contratoRow.aceite_ip ?? "",
+    userAgent: contratoRow.aceite_user_agent ?? "",
   };
 
   // 5) Hash simples por enquanto
@@ -116,8 +116,8 @@ export async function gerarContratoPdfInterno({
       numero: contratoRow.numero_contrato ?? "",
       versao: contratoRow.versao ?? 1,
       dataAceite: contratoRow.aceite_termos_em ?? "",
-      ip: contratoRow.ip_aceite ?? "",
-      userAgent: contratoRow.user_agent ?? "",
+      ip: contratoRow.aceite_ip ?? "",
+      userAgent: contratoRow.aceite_user_agent ?? "",
     },
     termosHtml: "", // você pode conectar depois
     privacidadeHtml: "",
@@ -166,6 +166,7 @@ export async function gerarContratoPdfInterno({
     });
 
   if (uploadError) {
+    console.error("[PDF] ❌ upload falhou:", uploadError.message);
     throw new Error(uploadError.message);
   }
 
@@ -178,6 +179,7 @@ export async function gerarContratoPdfInterno({
     .eq("id", contratoId);
 
   if (updateError) {
+    console.error("[PDF] ❌ falha ao atualizar contrato:", updateError.message);
     throw new Error(updateError.message);
   }
 

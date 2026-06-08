@@ -1,16 +1,22 @@
 import { NextResponse } from "next/server";
+import crypto from "crypto";
+
 import {
   extractGatewayData,
   PagarmeWebhook,
   verifySignature,
 } from "@/lib/pagarme";
+
 import {
   activateContratoFull,
   getContrato,
   markFailOrCancel,
   supabaseAdmin,
 } from "@/lib/contratos-flow";
+
 import { gerarContratoPdfInterno } from "@/lib/contrato-pdf";
+
+/* ================= HELPERS ================= */
 
 function expectedCentsFromContrato(c: {
   valor_mensal?: number | string | null;
@@ -24,6 +30,14 @@ function expectedCentsFromContrato(c: {
 
   return Math.round(n * 100);
 }
+
+function buildEventHash(g: ReturnType<typeof extractGatewayData>) {
+  const base = [g.eventType, g.orderId, g.chargeId].filter(Boolean).join("|");
+
+  return crypto.createHash("sha256").update(base).digest("hex");
+}
+
+/* ================= HANDLER ================= */
 
 export async function POST(req: Request) {
   const raw = Buffer.from(await req.arrayBuffer());
@@ -62,6 +76,30 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, ignored: true });
   }
 
+  // ✅ IDPOTÊNCIA (webhook_logs)
+  const eventHash = buildEventHash(g);
+
+  const { error: logInsertError } = await supabase.from("webhook_logs").insert({
+    provider: "pagarme",
+    event_type: g.eventType,
+    order_id: g.orderId,
+    contrato_id: g.contratoId,
+    raw_event: evt,
+    event_hash: eventHash,
+  });
+
+  if (logInsertError) {
+    if (logInsertError.code === "23505") {
+      return NextResponse.json({ ok: true, ignored: true });
+    }
+    throw logInsertError;
+  }
+
+  // ✅ evita duplicação lógica (IMPORTANTE)
+  if (g.eventType === "charge.paid") {
+    return NextResponse.json({ ok: true, ignored: true });
+  }
+
   // ✅ detecta upgrade
   const { data: upgradeRow } = g.orderId
     ? await supabase
@@ -73,7 +111,6 @@ export async function POST(req: Request) {
 
   const isUpgrade = !!upgradeRow;
 
-  // ✅ idempotência upgrade
   if (isUpgrade && upgradeRow?.paid_at) {
     return NextResponse.json({ ok: true, ignored: true });
   }
@@ -81,9 +118,7 @@ export async function POST(req: Request) {
   // ✅ FAIL / CANCEL
   if (
     g.eventType === "order.payment_failed" ||
-    g.eventType === "charge.payment_failed" ||
-    g.eventType === "order.canceled" ||
-    g.eventType === "checkout.canceled"
+    g.eventType === "order.canceled"
   ) {
     await markFailOrCancel({
       supabase,
@@ -104,7 +139,6 @@ export async function POST(req: Request) {
 
   if (isUpgrade) {
     const expected = upgradeRow?.total_cents ?? null;
-
     if (expected != null && got != null && expected !== got) {
       return NextResponse.json({ ok: true, ignored: true });
     }
@@ -117,9 +151,8 @@ export async function POST(req: Request) {
     }
   }
 
-  // ✅ PAGAMENTO CONFIRMADO
-  if (g.eventType === "charge.paid" || g.eventType === "order.paid") {
-    // 🔵 UPGRADE
+  // ✅ PAGAMENTO CONFIRMADO (APENAS order.paid)
+  if (g.eventType === "order.paid") {
     if (isUpgrade) {
       await supabase
         .from("contratos_upgrades")
@@ -132,7 +165,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, upgrade: true });
     }
 
-    // 🟢 ATIVAÇÃO
     const contrato = await getContrato(supabase, g.contratoId);
 
     if (contrato?.status === "ativo") {
@@ -148,9 +180,7 @@ export async function POST(req: Request) {
       userId: g.userId,
     });
 
-    // ✅ pegar versão correta
     const contratoAtual = await getContrato(supabase, g.contratoId);
-
     const ref = `nfse_${g.contratoId}_v${contratoAtual?.versao ?? 1}`;
 
     const { data: nfseExistente } = await supabase
@@ -161,7 +191,6 @@ export async function POST(req: Request) {
 
     const precisaEmitirNFSe = !nfseExistente || nfseExistente.status === "erro";
 
-    // ✅ execução paralela (correta)
     await Promise.all([
       gerarContratoPdfInterno({
         supabase,
@@ -171,9 +200,7 @@ export async function POST(req: Request) {
       precisaEmitirNFSe
         ? fetch(`${process.env.BASE_URL}/api/nfse/emitir`, {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
+            headers: { "Content-Type": "application/json" },
             signal: AbortSignal.timeout(10000),
             body: JSON.stringify({
               contrato_id: g.contratoId,
@@ -181,6 +208,12 @@ export async function POST(req: Request) {
           })
         : Promise.resolve(),
     ]);
+
+    // ✅ marcar como processado
+    await supabase
+      .from("webhook_logs")
+      .update({ processado: true })
+      .eq("event_hash", eventHash);
 
     return NextResponse.json({
       ok: true,
