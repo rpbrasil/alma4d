@@ -20,8 +20,13 @@ type FailOrCancelParams = PaymentHandlerParams & {
   kind: "failed" | "canceled";
 };
 
-type ActivateParams = PaymentHandlerParams & {
+type ActivateParams = {
+  supabase: SupabaseClient;
+  contratoId: string;
+  pagarmeOrderId: string | null;
+  pagarmePaymentStatus: string | null;
   cupomFromGateway?: string | null;
+  userId?: string | null; 
 };
 
 
@@ -282,7 +287,7 @@ export async function markPixPending(params: PaymentHandlerParams) {
 }
 
 export async function activateContratoFull(params: ActivateParams) {
-  const { supabase, contratoId, pagarmeOrderId, pagarmePaymentStatus } = params;
+  const { supabase, contratoId, pagarmeOrderId, pagarmePaymentStatus} = params;
 
   // ✅ 1. Atualiza contrato e captura dados necessários
   const { data: contrato, error: contratoErr } = await supabase
@@ -307,14 +312,16 @@ export async function activateContratoFull(params: ActivateParams) {
   }
 
   // ✅ 3. Ativa SOMENTE o usuário que criou o contrato
-  if (contrato.criado_por) {
+  const targetUserId = params.userId ?? contrato.criado_por;
+
+  if (targetUserId) {
     const { error: userUpdateErr } = await supabase
       .from("usuarios")
       .update({
         ativo: true,
         updated_at: nowISO(),
       })
-      .eq("id", contrato.criado_por);
+      .eq("id", targetUserId);
 
     if (userUpdateErr) {
       console.error("Erro ao ativar usuário:", userUpdateErr);

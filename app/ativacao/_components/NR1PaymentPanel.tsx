@@ -172,7 +172,7 @@ export function NR1PaymentPanel(props: {
               }
             }
           }
-        } catch (e) {
+        } catch {
           // ignore; we'll validate below and show error if missing
         }
       }

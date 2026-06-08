@@ -18,6 +18,7 @@ export type ExtractedGatewayData = {
   amountCents: number | null;
   orderId: string | null;
   chargeId: string | null;
+  userId: string | null;
 };
 
 export type PagarmeCharge = {
@@ -132,6 +133,7 @@ export function extractGatewayData(evt: PagarmeWebhook): ExtractedGatewayData {
       paymentStatus: null,
       cupomCodigo: null,
       amountCents: null,
+      userId: null,
     };
   }
 
@@ -218,6 +220,7 @@ export function extractGatewayData(evt: PagarmeWebhook): ExtractedGatewayData {
     paymentStatus: paymentStatus?.toLowerCase() ?? null,
     cupomCodigo: upper(cupomCodigo),
     amountCents,
+    userId: norm(metadata?.user_id),
   };
 }
 

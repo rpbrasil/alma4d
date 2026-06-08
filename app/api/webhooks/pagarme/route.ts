@@ -144,10 +144,8 @@ export async function POST(req: Request) {
       contratoId: g.contratoId,
       pagarmeOrderId: g.orderId,
       pagarmePaymentStatus: g.paymentStatus ?? "paid",
-      paymentMethod: g.paymentMethod,
-      eventType: g.eventType,
-      eventId: g.eventId,
       cupomFromGateway: g.cupomCodigo ?? null,
+      userId: g.userId,
     });
 
     // ✅ pegar versão correta

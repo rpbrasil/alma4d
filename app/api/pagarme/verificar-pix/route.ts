@@ -123,17 +123,18 @@ export async function POST(req: Request) {
   const cupomFromGateway = cupomFromGatewayRaw
     ? String(cupomFromGatewayRaw).trim().toUpperCase()
     : null;
+  const userIdRaw = order.metadata?.["user_id"];
+  const userId = userIdRaw ? String(userIdRaw) : null;
 
   await activateContratoFull({
     supabase,
     contratoId,
     pagarmeOrderId,
     pagarmePaymentStatus: status,
-    paymentMethod,
-    eventType: "manual.pix.verify",
-    eventId: null,
     cupomFromGateway,
+    userId,
   });
+
 
   return NextResponse.json({
     ok: true,
