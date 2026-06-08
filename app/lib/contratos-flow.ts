@@ -324,7 +324,7 @@ export async function activateContratoFull(params: ActivateParams) {
       .eq("id", targetUserId);
 
     if (userUpdateErr) {
-      console.error("Erro ao ativar usuário:", userUpdateErr);
+      console.error("[ATIVACAO] user:", targetUserId,"Erro ao ativar usuário:", userUpdateErr);
       throw new Error("Erro ao ativar usuário responsável.");
     }
   }

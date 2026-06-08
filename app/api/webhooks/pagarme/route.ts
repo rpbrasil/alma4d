@@ -179,7 +179,7 @@ export async function POST(req: Request) {
       cupomFromGateway: g.cupomCodigo ?? null,
       userId: g.userId,
     });
-
+    
     const contratoAtual = await getContrato(supabase, g.contratoId);
     const ref = `nfse_${g.contratoId}_v${contratoAtual?.versao ?? 1}`;
 
@@ -195,6 +195,8 @@ export async function POST(req: Request) {
       gerarContratoPdfInterno({
         supabase,
         contratoId: g.contratoId,
+      }).catch((err) => {
+        console.error("[PDF] erro:", err);
       }),
 
       precisaEmitirNFSe

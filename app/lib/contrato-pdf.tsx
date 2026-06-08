@@ -16,8 +16,8 @@ type ContratoDb = {
 };
 
 type ClienteDb = {
-  razao_social: string | null;
-  cnpj: string | null;
+  nome: string | null;
+  documento: string | null;
 };
 
 type UsuarioDb = {
@@ -53,7 +53,7 @@ export async function gerarContratoPdfInterno({
   // 2) Buscar cliente
   const { data: clienteRow, error: clienteError } = await supabase
     .from("clientes")
-    .select("razao_social, cnpj")
+    .select("nome, documento")
     .eq("id", contratoRow.cliente_id)
     .single<ClienteDb>();
 
@@ -104,8 +104,8 @@ export async function gerarContratoPdfInterno({
   // ✅ gerar HTML com seu template real
   const html = generateContratoHTML({
     empresa: {
-      razaoSocial: clienteRow.razao_social ?? "",
-      cnpj: clienteRow.cnpj ?? "",
+      razaoSocial: clienteRow.nome ?? "",
+      cnpj: clienteRow.documento ?? "",
     },
     usuario: {
       nome: usuarioRow?.nome_completo ?? "",
