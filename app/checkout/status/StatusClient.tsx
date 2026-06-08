@@ -3,6 +3,8 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { useContratoStatus } from "@/hooks/useContratoStatus";
+import { useRouter } from "next/navigation";
+import { supabaseBrowser as supabase } from "@/lib/supabase/browser";
 
 type Pagamento = {
   order_id?: string | null;
@@ -51,11 +53,11 @@ export default function StatusClient({
 }) {
   const { data, loading, checking, verificarPix } =
     useContratoStatus(contratoId);
-
+  const router = useRouter();
+  const [sessionReady, setSessionReady] = useState(false);
   const contrato = data?.contrato as Contrato | null;
   const pagamento = data?.pagamento as Pagamento | null;
   const artifacts = data?.payment_artifacts as Artifacts;
-
 
   const contratoStatus = contrato?.status ?? null;
   const pagamentoStatus = pagamento?.status ?? null;
@@ -70,13 +72,43 @@ export default function StatusClient({
   const expiresAt = pix?.expires_at ? new Date(pix.expires_at).getTime() : null;
   const [remainingMs, setRemainingMs] = useState<number | null>(null);
 
+ useEffect(() => {
+   (async () => {
+     try {
+       await supabase.auth.refreshSession();
+
+       const { data } = await supabase.auth.getUser();
+
+       if (!data.user) {
+         console.warn("⚠️ sem sessão no checkout/status");
+       }
+     } catch (err) {
+       console.warn("⚠️ erro ao validar sessão", err);
+     } finally {
+       setSessionReady(true);
+     }
+   })();
+ }, []);
+  
   useEffect(() => {
     if (!expiresAt) return;
+
     const tick = () => setRemainingMs(expiresAt - Date.now());
+
     tick();
     const id = setInterval(tick, 1000);
+
     return () => clearInterval(id);
   }, [expiresAt]);
+  
+if (!sessionReady) {
+  return (
+    <div className="min-h-[60vh] grid place-items-center">
+      Carregando sessão...
+    </div>
+  );
+}
+
 
   const pixExpired = remainingMs !== null && remainingMs <= 0;
 
@@ -167,12 +199,12 @@ export default function StatusClient({
 
             <p className="mt-2 text-slate-600">Seu acesso já foi liberado.</p>
 
-            <a
-              href="/dashboard"
-              className="mt-6 inline-block bg-brand text-white px-6 py-3 rounded"
+            <button
+              onClick={() => router.push("/dashboard")}
+              className="mt-6 bg-brand text-white px-6 py-3 rounded"
             >
               Acessar sistema
-            </a>
+            </button>
 
             <p className="mt-4 text-sm text-slate-500">
               Você também recebeu instruções por email.

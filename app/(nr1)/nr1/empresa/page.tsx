@@ -12,6 +12,7 @@ import type { PrecificacaoConfig } from "@/lib/precificacao/config-core";
 import { calcularPrecificacao } from "../_components/ModeloPrecificacaoExpress";
 import { validarCupom } from "../../../lib/cupons/validarcupom";
 import { Turnstile, TurnstileInstance } from "@marsidev/react-turnstile";
+import { useRouter } from "next/navigation";
 
 type FormState = "idle" | "submitting" | "success" | "error";
 
@@ -198,7 +199,7 @@ function usePrecificacaoConfig() {
     for (let i = 0; i < attempts.length; i++) {
       try {
         if (attempts[i] > 0) {
-          await new Promise((r) => setTimeout(r, attempts[i]));
+          await new Promise((r) => setTimeout(r, 150));
         }
 
         const cfg = await getPrecificacaoConfig();
@@ -235,7 +236,7 @@ function usePrecificacaoConfig() {
 export default function EmpresaNR1Page() {
   const [state, setState] = useState<FormState>("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-
+  const router = useRouter();
   // OTP state
   const [authMethod, setAuthMethod] = useState<OtpMethod>("sms");
   const [otpSent, setOtpSent] = useState(false);
@@ -243,7 +244,7 @@ export default function EmpresaNR1Page() {
   const [otp, setOtp] = useState("");
   const [otpLoading, setOtpLoading] = useState(false);
   const [otpError, setOtpError] = useState<string | null>(null);
-  const [otpTarget, setOtpTarget] = useState(""); // telefone E.164 ou e-mail
+  const [otpTarget, setOtpTarget] = useState("");
   const [resendIn, setResendIn] = useState(0);
 
   const [riscoEmpresa, setRiscoEmpresa] = useState<Risco | null>(null);
@@ -624,13 +625,21 @@ export default function EmpresaNR1Page() {
         }
       }
 
-      await fetch("/api/auth/bootstrap", {
+      const bootstrapRes = await fetch("/api/auth/bootstrap", {
         method: "POST",
         credentials: "include",
       });
 
+      if (!bootstrapRes.ok) {
+        throw new Error("Falha no bootstrap de autenticação");
+      }
+
+
       setOtpVerified(true);
       setOtpError(null);
+
+      const { data: userCheck } = await supabase.auth.getUser();
+      console.log("✅ sessão após bootstrap:", userCheck);
     } catch (e: unknown) {
       setOtpVerified(false);
       setOtpError(
@@ -746,13 +755,20 @@ export default function EmpresaNR1Page() {
 
       setState("success");
 
-      window.location.href =
+      const { data: refreshed } = await supabase.auth.refreshSession();
+
+      if (!refreshed.session) {
+        console.warn("⚠️ sessão não refrescada");
+      }
+
+      router.push(
         `/ativacao?tipo=empresa&origem=nr1` +
-        `&cliente_id=${data.cliente_id}` +
-        `&contrato_id=${data.contrato_id}` +
-        `&funcionarios=${form.funcionarios}` +
-        `&nome=${encodeURIComponent(form.responsavel)}` +
-        `&email=${encodeURIComponent(form.email)}`;
+          `&cliente_id=${data.cliente_id}` +
+          `&contrato_id=${data.contrato_id}` +
+          `&funcionarios=${form.funcionarios}` +
+          `&nome=${encodeURIComponent(form.responsavel)}` +
+          `&email=${encodeURIComponent(form.email)}`,
+      );
     } catch (err) {
       console.error(err);
 

@@ -30,26 +30,27 @@ export function useContratoStatus(contratoId: string | null) {
   const [loading, setLoading] = useState(!!contratoId);
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
   const fetchStatus = useCallback(async () => {
     if (!contratoId) return;
-    setError(null);
-    try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
 
-      const token = session?.access_token;
-      if (!token) {
-        setLoading(false);
-        return;
-      }
+    setError(null);
+    setLoading(true);
+
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+
+      if (!userData.user) return;
+
+      const token = (await supabase.auth.getSession()).data.session
+        ?.access_token;
 
       const res = await fetch(`/api/contrato/status?contratoId=${contratoId}`, {
-        method: "GET",
         headers: {
-          Authorization: `Bearer ${token}`,
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
       });
+
       if (!res.ok) {
         setError("Erro ao carregar status do contrato.");
         return;
@@ -69,13 +70,11 @@ export function useContratoStatus(contratoId: string | null) {
     if (!contratoId) return;
 
     setChecking(true);
+    setError(null);
 
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      const token = session?.access_token;
+      const token = (await supabase.auth.getSession()).data.session
+        ?.access_token;
 
       const res = await fetch("/api/pagarme/verificar-pix", {
         method: "POST",
@@ -88,33 +87,27 @@ export function useContratoStatus(contratoId: string | null) {
 
       if (!res.ok) {
         const text = await res.text();
-        console.error("Erro verificarPix:", text);
-        setError("Erro ao verificar status do PIX.");
+        throw new Error(text || "Erro ao verificar PIX");
       }
 
       await fetchStatus();
     } catch (error) {
       console.error("Erro verificarPix:", error);
+      setError("Erro ao verificar status do PIX.");
     } finally {
       setChecking(false);
     }
   }
 
   useEffect(() => {
-    if (!contratoId) {
-      return;
-    }
-    let cancelled = false;
-
-    (async () => {
-      if (cancelled) return;
+    if (!contratoId) return;
+    const run = async () => {
       await fetchStatus();
-    })();
-
-    return () => {
-      cancelled = true;
     };
-  }, [contratoId, fetchStatus]);
+    run();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contratoId]);
+
 
   return {
     data,
