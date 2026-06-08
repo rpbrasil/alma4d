@@ -5,7 +5,17 @@ type WebhookLogInsertError = {
   code?: string;
   message?: string;
 };
-
+type FocusNFSePayload = {
+  status?: string;
+  numero_nfse?: string;
+  numero?: string;
+  codigo_verificacao?: string;
+  codigo?: string;
+  ref: string;
+  servico?: {
+    valor_servicos?: number;
+  };
+};
 function nowISO() {
   return new Date().toISOString();
 }
@@ -37,6 +47,18 @@ function createSupabaseAdmin(): SupabaseClient {
   });
 }
 
+function normalizeStatus(status: string) {
+  switch (status) {
+    case "autorizado":
+      return "emitida";
+    case "cancelado":
+      return "cancelada";
+    case "rejeitado":
+      return "erro";
+    default:
+      return status;
+  }
+}
 export async function POST(req: Request) {
   let supabase: SupabaseClient | null = null;
   let eventHash: string | null = null;
@@ -58,13 +80,10 @@ export async function POST(req: Request) {
     /* ===================== PAYLOAD RAW + HASH ===================== */
 
     const raw = await req.text();
+    const payload: FocusNFSePayload = JSON.parse(raw);
 
-    let payload: Record<string, unknown>;
-    try {
-      payload = JSON.parse(raw) as Record<string, unknown>;
-    } catch {
-      return NextResponse.json({ error: "JSON inválido" }, { status: 400 });
-    }
+    
+    
 
     eventHash = await crypto.subtle
       .digest("SHA-256", new TextEncoder().encode(raw))
@@ -80,7 +99,8 @@ export async function POST(req: Request) {
     // ref = referência da emissão
     // status = autorizado, cancelado, rejeitado etc.
     const ref = getString(payload.ref);
-    const status = getString(payload.status)?.toLowerCase() ?? null;
+    const rawStatus = getString(payload.status)?.toLowerCase() ?? null;
+    const status = rawStatus ? normalizeStatus(rawStatus) : null;
 
     if (!ref || !status) {
       return NextResponse.json({ error: "Payload inválido" }, { status: 400 });
@@ -131,7 +151,7 @@ export async function POST(req: Request) {
 
     const { data: nfseAtual, error: nfseSelectErr } = await supabase
       .from("nfse_emissoes")
-      .select("id, ref, email_enviado")
+      .select("id, ref, status, email_enviado")
       .eq("ref", ref)
       .maybeSingle();
 
@@ -164,7 +184,12 @@ export async function POST(req: Request) {
       .from("nfse_emissoes")
       .update({
         status,
+        valor: payload.servico?.valor_servicos ?? null,
+
         resposta: payload,
+        numero_nfse: payload.numero_nfse ?? payload.numero ?? null,
+        codigo_verificacao:
+          payload.codigo_verificacao ?? payload.codigo ?? null,
         updated_at: nowISO(),
       })
       .eq("ref", ref);
@@ -173,6 +198,22 @@ export async function POST(req: Request) {
       await markWebhookLogFinal({
         processado: false,
         erro: nfseUpdateErr.message,
+      });
+      await supabase.from("logs").insert({
+        source: "api",
+        level: "info",
+        event_type: "NFSE_STATUS_UPDATE",
+        entity: "nfse",
+        message: {
+          ref,
+          from: nfseAtual?.status ?? null,
+          to: status,
+        },
+        metadata: {
+          ref,
+          status,
+          at: nowISO(),
+        },
       });
 
       return NextResponse.json(
@@ -183,7 +224,7 @@ export async function POST(req: Request) {
 
     /* ===================== ENVIO DE EMAIL ===================== */
 
-    if (status === "autorizado" && !nfseAtual.email_enviado) {
+    if (status === "emitida" && !nfseAtual.email_enviado) {
       try {
         const baseUrl = getBaseUrl();
 
@@ -217,7 +258,8 @@ export async function POST(req: Request) {
             email_enviado: true,
             updated_at: nowISO(),
           })
-          .eq("ref", ref);
+          .eq("ref", ref)
+          .eq("email_enviado", false);
 
         if (emailFlagErr) {
           throw new Error(
@@ -232,10 +274,7 @@ export async function POST(req: Request) {
           erro: String(err),
         });
 
-        return NextResponse.json({
-          ok: true,
-          email_error: true,
-        });
+        console.error("Erro ao enviar email NFSe:", err);
       }
     }
 

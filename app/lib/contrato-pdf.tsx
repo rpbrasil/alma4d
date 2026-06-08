@@ -96,8 +96,8 @@ export async function gerarContratoPdfInterno({
   // Depois você pode trocar por SHA256 real
   const hash = `${contratoRow.id}-${contratoPdf.versao}-${contratoPdf.dataAceite}`;
 
-  // 6) QR Code de validação
-  const verifyUrl = `${process.env.BASE_URL}/contrato/${contratoId}`;
+  // // 6) QR Code de validação
+  const verifyUrl = `${process.env.BASE_URL}/contrato/validar/${contratoId}`;
   const qrCode = await QRCode.toDataURL(verifyUrl);
 
   // 7) Renderizar PDF

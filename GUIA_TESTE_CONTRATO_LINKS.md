@@ -123,7 +123,7 @@ Procure por:
 
 - O arquivo foi deletado do Supabase?
 - Verifique no console de diagnóstico: `"arquivo_existe": false`
-- Gere novo PDF via `/api/contrato/gerar-pdf`
+- Gere novo PDF via `/api/contrato/gerar-pdf` ###MUDOU!!! PUPPETEER
 
 ### "Erro ao gerar URL assinada"
 

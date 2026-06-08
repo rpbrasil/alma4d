@@ -49,7 +49,6 @@ export async function POST(req: Request) {
   const g = extractGatewayData(evt);
   const supabase = supabaseAdmin();
 
-  // 🔎 log estruturado (importante)
   console.log("[webhook:pagarme]", {
     event: evt.type,
     eventId: g.eventId,
@@ -67,9 +66,7 @@ export async function POST(req: Request) {
   const { data: upgradeRow } = g.orderId
     ? await supabase
         .from("contratos_upgrades")
-        .select(
-          "id, contrato_id, quantidade_adicional, limite_anterior, limite_novo, total_cents, pagarme_payment_status, paid_at",
-        )
+        .select("*")
         .eq("pagarme_order_id", g.orderId)
         .maybeSingle()
     : { data: null };
@@ -78,11 +75,7 @@ export async function POST(req: Request) {
 
   // ✅ idempotência upgrade
   if (isUpgrade && upgradeRow?.paid_at) {
-    return NextResponse.json({
-      ok: true,
-      ignored: true,
-      reason: "upgrade already processed",
-    });
+    return NextResponse.json({ ok: true, ignored: true });
   }
 
   // ✅ FAIL / CANCEL
@@ -103,7 +96,7 @@ export async function POST(req: Request) {
       eventId: g.eventId,
     });
 
-    return NextResponse.json({ ok: true, updated: true });
+    return NextResponse.json({ ok: true });
   }
 
   // ✅ valida valor
@@ -113,40 +106,21 @@ export async function POST(req: Request) {
     const expected = upgradeRow?.total_cents ?? null;
 
     if (expected != null && got != null && expected !== got) {
-      console.warn("[webhook] upgrade amount mismatch", {
-        expected,
-        got,
-      });
-
-      return NextResponse.json({
-        ok: true,
-        ignored: true,
-        reason: "upgrade amount mismatch",
-      });
+      return NextResponse.json({ ok: true, ignored: true });
     }
   } else {
     const contrato = await getContrato(supabase, g.contratoId);
     const expected = expectedCentsFromContrato(contrato ?? {});
 
     if (expected != null && got != null && expected !== got) {
-      console.warn("[webhook] contrato amount mismatch", {
-        expected,
-        got,
-      });
-
-      return NextResponse.json({
-        ok: true,
-        ignored: true,
-        reason: "amount mismatch",
-      });
+      return NextResponse.json({ ok: true, ignored: true });
     }
   }
-  
+
   // ✅ PAGAMENTO CONFIRMADO
   if (g.eventType === "charge.paid" || g.eventType === "order.paid") {
     // 🔵 UPGRADE
     if (isUpgrade) {
-      // ✅ atualizar upgrade corretamente
       await supabase
         .from("contratos_upgrades")
         .update({
@@ -155,40 +129,14 @@ export async function POST(req: Request) {
         })
         .eq("id", upgradeRow.id);
 
-      // ✅ log evento
-      try {
-        await supabase.from("contrato_eventos").insert({
-          contrato_id: g.contratoId,
-          tipo: "upgrade_confirmado",
-          descricao: "Upgrade confirmado via webhook",
-          dados: {
-            orderId: g.orderId,
-            paymentStatus: g.paymentStatus,
-            amount: g.amountCents,
-          },
-          gateway_event_id: g.eventId,
-        });
-      } catch (e) {
-        const msg = String(e);
-        if (!msg.includes("duplicate")) throw e;
-      }
-
-      return NextResponse.json({
-        ok: true,
-        upgrade: true,
-      });
+      return NextResponse.json({ ok: true, upgrade: true });
     }
 
     // 🟢 ATIVAÇÃO
     const contrato = await getContrato(supabase, g.contratoId);
 
-    // ✅ idempotência extra (contrato)
     if (contrato?.status === "ativo") {
-      return NextResponse.json({
-        ok: true,
-        ignored: true,
-        reason: "already activated",
-      });
+      return NextResponse.json({ ok: true, ignored: true });
     }
 
     await activateContratoFull({
@@ -202,44 +150,44 @@ export async function POST(req: Request) {
       cupomFromGateway: g.cupomCodigo ?? null,
     });
 
-    try {
-      await supabase.from("contrato_eventos").insert({
-        contrato_id: g.contratoId,
-        tipo: "contrato_ativado",
-        descricao: "Contrato ativado via webhook",
-        dados: {
-          orderId: g.orderId,
-          paymentStatus: g.paymentStatus,
-          amount: g.amountCents,
-        },
-        gateway_event_id: g.eventId,
-      });
-    } catch (e) {
-      const msg = String(e);
-      if (!msg.includes("duplicate")) throw e;
-    }
+    // ✅ pegar versão correta
+    const contratoAtual = await getContrato(supabase, g.contratoId);
 
-    await gerarContratoPdfInterno({
-      supabase,
-      contratoId: g.contratoId,
-    });
+    const ref = `nfse_${g.contratoId}_v${contratoAtual?.versao ?? 1}`;
 
-    // ✅ DISPARA EMISSÃO NFSE
-    try {
-      await fetch(`${process.env.BASE_URL}/api/nfse/emitir`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contrato_id: g.contratoId,
-        }),
-      });
-    } catch (err) {
-      console.error("Erro ao disparar NFSe:", err);
-    }
+    const { data: nfseExistente } = await supabase
+      .from("nfse_emissoes")
+      .select("id, status")
+      .eq("ref", ref)
+      .maybeSingle();
+
+    const precisaEmitirNFSe = !nfseExistente || nfseExistente.status === "erro";
+
+    // ✅ execução paralela (correta)
+    await Promise.all([
+      gerarContratoPdfInterno({
+        supabase,
+        contratoId: g.contratoId,
+      }),
+
+      precisaEmitirNFSe
+        ? fetch(`${process.env.BASE_URL}/api/nfse/emitir`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            signal: AbortSignal.timeout(10000),
+            body: JSON.stringify({
+              contrato_id: g.contratoId,
+            }),
+          })
+        : Promise.resolve(),
+    ]);
 
     return NextResponse.json({
       ok: true,
       activated: true,
+      nfse: precisaEmitirNFSe ? "emitindo" : "skipped",
     });
   }
 
