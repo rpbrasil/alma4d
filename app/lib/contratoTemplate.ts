@@ -23,6 +23,7 @@ type ContratoHTMLParams = {
   termosHtml: string; // HTML integral (Terms)
   privacidadeHtml: string; // HTML integral (Privacy)
   hash: string; // preview-hash ou hash real
+  qrCode?: string;
 };
 
 function escapeHtml(input: string) {
@@ -394,6 +395,10 @@ export function generateContratoHTML(params: ContratoHTMLParams) {
             : `<span class="placeholder"><span class="pill pending">REGISTRADO NO ACEITE</span> Identificação do dispositivo será registrada</span>`
         }
       </div>
+      <div class="qrblock">
+        <span>Validação do documento</span>  ${params.qrCode ? `<img src="${params.qrCode}" alt="QR Code de validação" class="qrimg"/>` : `<span class="placeholder">QR Code será gerado no momento do aceite</span>`} 
+        <div class="qrhint">Escaneie para validar este contrato na plataforma alma4D</div>
+        </div>
     </section>
   `;
 
@@ -692,7 +697,32 @@ export function generateContratoHTML(params: ContratoHTMLParams) {
         text-align:center;
       }
       .end{height:1px;}
-    </style>
+      
+      .qrblock{
+        margin-top:16px;
+          padding:12px;
+            border:1px solid var(--border);
+              border-radius:12px;
+                text-align:center;
+                  background:#fff;
+                  }
+                  .qrblock span{
+                    display:block;
+                      font-size:11px;
+                        color:#64748b;
+                          margin-bottom:8px;
+                          }
+                          .qrimg{
+                            width:120px;
+                              height:120px;
+                                margin:8px auto;
+                                }
+                                .qrhint{
+                                  font-size:11px;
+                                    color:#64748b;
+                                      margin-top:6px;
+                                      }
+                                      </style>
   `;
 
   // ====== Conteúdo do painel lateral (contexto) ======

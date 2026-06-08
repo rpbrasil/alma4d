@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { renderToBuffer } from "@react-pdf/renderer";
 import QRCode from "qrcode";
-import { ContratoNR1PDF } from "@/lib/pdf/contratoNR1";
+import puppeteer from "puppeteer";
+import { generateContratoHTML } from "@/lib/contratoTemplate";
 
 type ContratoDb = {
   id: string;
@@ -101,24 +101,57 @@ export async function gerarContratoPdfInterno({
   const qrCode = await QRCode.toDataURL(verifyUrl);
 
   // 7) Renderizar PDF
-  const pdfElement = (
-    <ContratoNR1PDF
-      empresa={{
-        razaoSocial: clienteRow.razao_social ?? "",
-        cnpj: clienteRow.cnpj ?? "",
-      }}
-      usuario={{
-        nome: usuarioRow?.nome_completo ?? "",
-        email: usuarioRow?.email ?? "",
-        documento: usuarioRow?.documento ?? "",
-      }}
-      contrato={contratoPdf}
-      hash={hash}
-      qrCode={qrCode}
-    />
-  );
+  // ✅ gerar HTML com seu template real
+  const html = generateContratoHTML({
+    empresa: {
+      razaoSocial: clienteRow.razao_social ?? "",
+      cnpj: clienteRow.cnpj ?? "",
+    },
+    usuario: {
+      nome: usuarioRow?.nome_completo ?? "",
+      email: usuarioRow?.email ?? "",
+      documento: usuarioRow?.documento ?? "",
+    },
+    contrato: {
+      numero: contratoRow.numero_contrato ?? "",
+      versao: contratoRow.versao ?? 1,
+      dataAceite: contratoRow.aceite_termos_em ?? "",
+      ip: contratoRow.ip_aceite ?? "",
+      userAgent: contratoRow.user_agent ?? "",
+    },
+    termosHtml: "", // você pode conectar depois
+    privacidadeHtml: "",
+    hash,
+    qrCode, // passa o QR code para o template
+  });
 
-  const pdfBuffer = await renderToBuffer(pdfElement);
+  // ✅ iniciar browser
+  const browser = await puppeteer.launch({
+    args: ["--no-sandbox", "--disable-setuid-sandbox"],
+  });
+
+  // ✅ criar página
+  const page = await browser.newPage();
+
+  // ✅ carregar HTML
+  await page.setContent(html, {
+    waitUntil: "load",
+  });
+
+  // ✅ gerar PDF
+  const pdfBuffer = await page.pdf({
+    format: "A4",
+    printBackground: true,
+    margin: {
+      top: "20mm",
+      bottom: "20mm",
+      left: "15mm",
+      right: "15mm",
+    },
+  });
+
+  // ✅ fechar browser
+  await browser.close();
 
   // 8) Caminho no bucket
   const filePath = `clientes/${contratoRow.cliente_id}/contratos/${contratoRow.id}/v${contratoPdf.versao}/contrato-gerado.pdf`;
