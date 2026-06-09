@@ -22,21 +22,22 @@ function log(requestId: string, ...args: unknown[]) {
   console.log(`[api/contrato/aceite][${requestId}]`, ...args);
 }
 
+type Body = {
+  contratoId?: string;
+  versao_termos?: string;
+};
+
 export async function POST(req: Request) {
   const requestId = `req_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 
   try {
     log(requestId, "START");
 
-    const body = await req.json().catch(() => ({}));
+    const body: Body = await req.json().catch(() => ({}));
     log(requestId, "BODY", body);
 
-    const contratoId = String(
-      (body as { contratoId?: string })?.contratoId ?? "",
-    ).trim();
-    const versaoTermos = String(
-      (body as { versao_termos?: string })?.versao_termos ?? "v1.0",
-    ).trim();
+    const contratoId = String(body.contratoId ?? "").trim();
+    const versaoTermos = String(body.versao_termos ?? "v1.0").trim();
 
     if (!contratoId) {
       return NextResponse.json(
@@ -48,40 +49,52 @@ export async function POST(req: Request) {
     const supabase = getSupabaseAdmin();
 
     // ✅ AUTH
-    const authHeader = req.headers.get("authorization") || "";
-    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
-
-    if (!token) {
-      return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
-    }
-
     let caller;
     try {
       caller = await getCaller(req, supabase);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
-      if (msg === "NO_TOKEN" || msg === "INVALID_TOKEN")
+      if (msg === "NO_TOKEN" || msg === "INVALID_TOKEN") {
         return NextResponse.json({ error: "Sessão inválida" }, { status: 401 });
+      }
       return NextResponse.json(
         { error: "Usuário não encontrado" },
         { status: 403 },
       );
     }
-    console.log("caller:", caller);
+
+    const authUserId = caller.id;
+    log(requestId, "auth_user_id:", authUserId);
+
+    // ✅ identity (fonte da verdade)
     const { data: identity } = await supabase
       .from("usuario_auth_identities")
       .select("usuario_id")
-      .eq("auth_user_id", caller.id)
+      .eq("auth_user_id", authUserId)
       .maybeSingle();
 
-    if (!identity || !identity.usuario_id) {
-      return NextResponse.json(
-        { error: "Usuário não encontrado" },
-        { status: 403 },
-      );
-    }
+    let userId = identity?.usuario_id ?? null;
 
-    const userId = identity.usuario_id;
+    if (!userId) {
+      log(requestId, "identity não encontrada - retry");
+
+      await new Promise((r) => setTimeout(r, 120));
+
+      const { data: retry } = await supabase
+        .from("usuario_auth_identities")
+        .select("usuario_id")
+        .eq("auth_user_id", caller.id)
+        .maybeSingle();
+
+      userId = retry?.usuario_id ?? null;
+
+      if (!userId) {
+        return NextResponse.json(
+          { error: "Usuário não encontrado" },
+          { status: 403 },
+        );
+      }
+    }
 
     // ✅ PERFIL
     const { data: perfil, error: perfilErr } = await supabase
@@ -97,7 +110,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // ✅ SCHEMA CHECK (importante para seu erro)
+    // ✅ SCHEMA CHECK
     const { error: schemaCheckError } = await supabase
       .from("contratos")
       .select("termos_html")
@@ -119,7 +132,7 @@ export async function POST(req: Request) {
     // ✅ CONTRATO
     const { data: contrato, error: contratoError } = await supabase
       .from("contratos")
-      .select("id, cliente_id, aceite_termos, termos_html, versao_termos")
+      .select("id, cliente_id, aceite_termos, termos_html")
       .eq("id", contratoId)
       .single();
 
@@ -138,7 +151,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
     }
 
-    if (contrato.aceite_termos === true && contrato.termos_html) {
+    if (contrato.aceite_termos && contrato.termos_html) {
       return NextResponse.json({
         ok: true,
         message: "Contrato já aceito anteriormente",
@@ -163,7 +176,6 @@ export async function POST(req: Request) {
       .eq("id", userId)
       .maybeSingle();
 
-    // ✅ GERA EXATAMENTE O MESMO HTML DO PREVIEW
     const termosHtmlSnapshot = generateContratoHTML({
       empresa: {
         razaoSocial: cliente?.razao_social ?? "",
@@ -181,8 +193,8 @@ export async function POST(req: Request) {
         ip,
         userAgent,
       },
-      termosHtml: contrato.termos_html ?? "", // se quiser manter
-      privacidadeHtml: "", // opcional por enquanto
+      termosHtml: contrato.termos_html ?? "",
+      privacidadeHtml: "",
       hash: `snapshot-${contrato.id}-${Date.now()}`,
     });
 

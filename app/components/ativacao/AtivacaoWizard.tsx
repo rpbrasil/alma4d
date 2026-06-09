@@ -953,15 +953,17 @@ function AtivacaoWizardContent() {
       // ----------------------------
       // 1) Chamar endpoint seguro de aceite (IP real + snapshot no server)
       // ----------------------------
-      const { data: sessionData, error: sessionErr } =
-        await supabase.auth.getSession();
-      if (sessionErr) {
-        throw new Error("Falha ao obter sessão para registrar o aceite.");
+      const { data: refreshed, error: refreshErr } =
+        await supabase.auth.refreshSession();
+
+      if (refreshErr || !refreshed.session) {
+        throw new Error("Não foi possível atualizar a sessão.");
       }
 
-      const accessToken = sessionData.session?.access_token;
+      const accessToken = refreshed.session.access_token;
+
       if (!accessToken) {
-        throw new Error("Sessão inválida para registrar o aceite (sem token).");
+        throw new Error("Sessão inválida para registrar o aceite.");
       }
 
       const aceiteRes = await fetch("/api/contrato/aceite", {
@@ -972,9 +974,7 @@ function AtivacaoWizardContent() {
         },
         body: JSON.stringify({
           contratoId,
-          versao_termos: "v1.0",
-          // opcional: se seu endpoint quiser registrar user no log
-          userId,
+          versao_termos: "v1.0",          
         }),
       });
 

@@ -625,20 +625,29 @@ export default function EmpresaNR1Page() {
         }
       }
 
-      const bootstrapRes = await fetch("/api/auth/bootstrap", {
+      const { data: userCheck } = await supabase.auth.getUser();
+
+      if (!userCheck.user) {
+        throw new Error(
+          "Código inválido ou expirado. Use sempre o último código recebido.",
+        );
+      }
+
+      // pequena proteção
+      await new Promise((r) => setTimeout(r, 200));
+
+      const res = await fetch("/api/auth/bootstrap", {
         method: "POST",
         credentials: "include",
       });
 
-      if (!bootstrapRes.ok) {
-        throw new Error("Falha no bootstrap de autenticação");
+      if (!res.ok) {
+        throw new Error("Erro ao concluir login. Tente novamente.");
       }
-
 
       setOtpVerified(true);
       setOtpError(null);
 
-      const { data: userCheck } = await supabase.auth.getUser();
       console.log("✅ sessão após bootstrap:", userCheck);
     } catch (e: unknown) {
       setOtpVerified(false);
@@ -754,12 +763,6 @@ export default function EmpresaNR1Page() {
       }
 
       setState("success");
-
-      const { data: refreshed } = await supabase.auth.refreshSession();
-
-      if (!refreshed.session) {
-        console.warn("⚠️ sessão não refrescada");
-      }
 
       router.push(
         `/ativacao?tipo=empresa&origem=nr1` +
@@ -1058,16 +1061,40 @@ export default function EmpresaNR1Page() {
                 value={form.funcionarios === 0 ? "" : form.funcionarios}
                 onChange={(e) => {
                   const v = e.target.value;
-                  const num = v === "" ? 0 : Number(v);
+
+                  let num = v === "" ? 0 : Number(v);
+
+                  // ✅ trava mínimo em 2
+                  if (num !== 0 && num < 2) {
+                    setErrorMsg("O número mínimo de funcionários é 2.");
+                    num = 2;
+                  } else {
+                    setErrorMsg(null);
+                  }
+
                   update("funcionarios", num);
+
+                  // reset cupom
                   setCupomValido(null);
                   setDescontoCents(0);
                   setTotalComDescontoCents(null);
+                }}
+                onBlur={() => {
+                  // ✅ garantia extra se o usuário apagar tudo e sair
+                  if (form.funcionarios > 0 && form.funcionarios < 2) {
+                    update("funcionarios", 2);
+                    setErrorMsg("O número mínimo de funcionários é 2.");
+                  }
                 }}
                 className="h-11 border rounded-lg px-3"
                 placeholder="Nº funcionários"
                 required
               />
+              {form.funcionarios > 0 && form.funcionarios < 2 && (
+                <p className="text-xs text-red-600 mt-1">
+                  O mínimo permitido: 2 funcionários.
+                </p>
+              )}
             </div>
             {/* Painel de preço */}
             {quoteComDesconto && (

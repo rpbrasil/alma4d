@@ -200,10 +200,11 @@ export async function POST(req: Request) {
         final: totalFinalCents,
       },
     };
-
+    const authUserId = authData.user.id;
+    console.log("AUTH USER ID:", authUserId);
     // ✅ RPC CHAMADA
     const { data, error } = (await adminDb.rpc("nr1_criar_cliente", {
-      p_auth_user_id: userId,
+      p_auth_user_id: authUserId,
       p_razao_social: body.razaoSocial,
       p_cnpj: body.cnpj,
       p_email: body.email,

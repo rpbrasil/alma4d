@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { randomUUID } from "crypto";
 
 function normalizeEmail(v: string | null | undefined) {
   return v?.trim().toLowerCase() || null;
@@ -11,7 +12,6 @@ function normalizePhone(v: string | null | undefined) {
 
   const digits = v.replace(/\D/g, "");
 
-  // garante formato +55XXXXXXXXXXX
   if (digits.startsWith("55")) {
     return `+${digits}`;
   }
@@ -37,7 +37,7 @@ export async function POST() {
     const email = normalizeEmail(authUser.email);
     const telefone = normalizePhone(authUser.phone);
 
-    // 1) tenta achar um usuario já vinculado por auth_user_id
+    // 1️⃣ tentar achar vínculo existente
     const { data: existingIdentity } = await admin
       .from("usuario_auth_identities")
       .select("usuario_id")
@@ -46,57 +46,53 @@ export async function POST() {
 
     let usuarioId: string | null = existingIdentity?.usuario_id ?? null;
 
-    // 2) se não achou, tenta achar por email/telefone em usuarios
+    // 2️⃣ tentar achar usuário por email/telefone
     if (!usuarioId) {
-      let usuarioExistente: { id: string } | null = null;
+      let query = admin.from("usuarios").select("id").limit(1);
 
       if (email && telefone) {
-        const { data } = await admin
-          .from("usuarios")
-          .select("id")
-          .or(`email.ilike.${email},telefone.eq.${telefone}`)
-          .limit(1)
-          .maybeSingle();
-
-        usuarioExistente = data;
+        query = query.or(`email.ilike.${email},telefone.eq.${telefone}`);
       } else if (email) {
-        const { data } = await admin
-          .from("usuarios")
-          .select("id")
-          .ilike("email", email)
-          .limit(1)
-          .maybeSingle();
-
-        usuarioExistente = data;
+        query = query.ilike("email", email);
       } else if (telefone) {
-        const { data } = await admin
-          .from("usuarios")
-          .select("id")
-          .eq("telefone", telefone)
-          .limit(1)
-          .maybeSingle();
-
-        usuarioExistente = data;
+        query = query.eq("telefone", telefone);
       }
+
+      const { data: usuarioExistente } = await query.maybeSingle();
 
       usuarioId = usuarioExistente?.id ?? null;
     }
 
-    // 3) se ainda não achou, usa o próprio auth_user_id como usuario_id
+    // 3️⃣ se não achar → cria usuário pendente
     if (!usuarioId) {
-      return NextResponse.json(
-        {
-          error: "Usuário não encontrado para vinculação.",
-          detail: {
-            email,
-            telefone,
+      const { data: novoUsuario, error: createErr } = await admin
+        .from("usuarios")
+        .insert({
+          id: randomUUID(),
+          email,
+          telefone,
+          role: "cliente",
+          tipo_plano: "express",
+          ativo: false,
+          created_at: new Date().toISOString(),
+        })
+        .select("id")
+        .single();
+
+      if (createErr || !novoUsuario) {
+        return NextResponse.json(
+          {
+            error: "Erro ao criar usuário.",
+            detail: createErr?.message,
           },
-        },
-        { status: 404 },
-      );
+          { status: 500 },
+        );
+      }
+
+      usuarioId = novoUsuario.id;
     }
 
-    // 4) garante vínculo auth_user_id -> usuario_id
+    // 4️⃣ garante vínculo auth → usuario
     const { error: identityError } = await admin
       .from("usuario_auth_identities")
       .upsert(
@@ -120,51 +116,25 @@ export async function POST() {
       );
     }
 
-    // 5) carrega perfil canônico
+    // 5️⃣ carregar usuário
     const { data: usuario, error: usuarioErr } = await admin
       .from("usuarios")
       .select("id, role, cliente_id, tipo_plano, ativo")
       .eq("id", usuarioId)
       .maybeSingle();
 
-    if (usuarioErr) {
+    if (usuarioErr || !usuario) {
       return NextResponse.json(
         {
-          error: "Falha ao carregar usuário canônico.",
-          detail: usuarioErr.message,
+          error: "Falha ao carregar usuário.",
+          detail: usuarioErr?.message,
         },
         { status: 500 },
       );
     }
 
-    if (!usuario) {
-      return NextResponse.json(
-        { error: "Usuário canônico não encontrado." },
-        { status: 404 },
-      );
-    }
-
-    // ✅ PASSO 1 — LIMPAR TUDO
-    const { error: clearErr } = await admin.auth.admin.updateUserById(
-      authUserId,
-      {
-        app_metadata: {}, // limpa completamente
-      },
-    );
-
-    if (clearErr) {
-      return NextResponse.json(
-        {
-          error: "Falha ao limpar metadata.",
-          detail: clearErr.message,
-        },
-        { status: 500 },
-      );
-    }
-
-    // ✅ PASSO 2 — GRAVAR FORMATO CORRETO
-    // ✅ PASSO 2 — GRAVAR FORMATO CORRETO
-    const { error: updateAuthErr } = await admin.auth.admin.updateUserById(
+    // 6️⃣ atualizar metadata no Supabase Auth
+    const { error: updateErr } = await admin.auth.admin.updateUserById(
       authUserId,
       {
         app_metadata: {
@@ -176,17 +146,24 @@ export async function POST() {
       },
     );
 
-    if (updateAuthErr) {
+    if (updateErr) {
       return NextResponse.json(
         {
-          error: "Falha ao atualizar claims do usuário auth.",
-          detail: updateAuthErr.message,
+          error: "Falha ao atualizar metadata.",
+          detail: updateErr.message,
         },
         { status: 500 },
       );
     }
 
-    // ✅ ✅ ADICIONE ISSO AQUI
+    // ✅ log útil de debug
+    console.log("✅ bootstrap ok", {
+      authUserId,
+      usuarioId,
+      email,
+      telefone,
+    });
+
     return NextResponse.json({
       success: true,
       auth_user_id: authUserId,
