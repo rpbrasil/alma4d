@@ -47,16 +47,6 @@ export function useAccessGuard(options?: GuardOptions) {
           return;
         }
 
-        if (!perfil.ativo) {
-          router.replace(redirectIfFail);
-          return;
-        }
-
-        if (requirePlano && perfil.tipo_plano !== requirePlano) {
-          router.replace(redirectIfFail);
-          return;
-        }
-
         const clienteAtivo = perfil.cliente_id ? perfil.cliente_id : null;
         if (!clienteAtivo) {
           router.replace(redirectIfFail);
@@ -64,7 +54,7 @@ export function useAccessGuard(options?: GuardOptions) {
         }
 
         if (!cancelled) setLoading(false);
-      } catch (e) {
+      } catch {
         router.replace("/login");
       }
     })();

@@ -9,7 +9,7 @@ type CnpjSnapshot = {
   numero: string | null;
   complemento: string | null;
   bairro: string | null;
-  codigo_municipio: string | null;
+  codigo_ibge: string | null;
 };
 
 function onlyDigits(v: string) {
@@ -94,7 +94,7 @@ export async function POST(req: Request) {
     const snapResult = await supabase
       .from("cnpj_consultas")
       .select(
-        "municipio, uf, cep, logradouro, numero, complemento, bairro, codigo_municipio",
+        "municipio, uf, cep, logradouro, numero, complemento, bairro, codigo_ibge",
       )
       .eq("cnpj", doc)
       .order("created_at", { ascending: false })
@@ -106,7 +106,7 @@ export async function POST(req: Request) {
     const TOKEN = process.env.FOCUS_NFE_TOKEN!;
     const PRESTADOR_CNPJ = onlyDigits(process.env.NFSE_PRESTADOR_CNPJ ?? "");
     const PRESTADOR_IM = process.env.NFSE_PRESTADOR_IM!;
-    const COD_MUN = process.env.NFSE_PRESTADOR_CODIGO_MUNICIPIO!;
+    const COD_MUN = process.env.NFSE_PRESTADOR_CODIGO_MUNICIPIO!; //ibge!!
     const ALIQUOTA = Number(process.env.NFSE_ALIQUOTA ?? 2);
     // ✅ 8. VALOR
     const valor = Number(contrato.valor_total ?? contrato.valor_mensal ?? 0);
@@ -121,11 +121,16 @@ export async function POST(req: Request) {
         { status: 400 },
       );
     }
-
+    const numeroRps = String(Date.now());
     // ✅ 9. PAYLOAD FINAL
     const payload = {
       data_emissao: new Date().toISOString(),
       natureza_operacao: "1",
+
+      numero_rps: numeroRps,
+      serie_rps: "A",
+      tipo_rps: "1",
+
       optante_simples_nacional: process.env.NFSE_OPTANTE_SIMPLES === "true",
       incentivador_cultural: false,
 
@@ -145,7 +150,7 @@ export async function POST(req: Request) {
               numero: snap.numero ?? "",
               complemento: snap.complemento ?? "",
               bairro: snap.bairro ?? "",
-              codigo_municipio: snap?.codigo_municipio ?? COD_MUN,
+              codigo_municipio: snap?.codigo_ibge ?? COD_MUN,
               uf: snap.uf ?? "",
               cep: snap.cep ?? "",
             }
@@ -158,7 +163,7 @@ export async function POST(req: Request) {
         aliquota: ALIQUOTA,
         iss: Number((valor * (ALIQUOTA / 100)).toFixed(2)),
         item_lista_servico: process.env.NFSE_ITEM_LISTA_SERVICO ?? "04030",
-        discriminacao: `Serviço de avaliação psicossocial (NR-1) - Contrato ${contrato.numero_contrato || contrato.id}`,
+        discriminacao: `Cessão de direito de uso de programas de computação - Contrato ${contrato.numero_contrato || contrato.id}`,
         codigo_municipio: COD_MUN,
       },
     };
@@ -173,6 +178,11 @@ export async function POST(req: Request) {
         valor,
         payload,
         updated_at: new Date().toISOString(),
+
+        numero_rps: String(Date.now()),
+        serie_rps: "A",
+        tipo_rps: "1",
+        cnpj_prestador: PRESTADOR_CNPJ,
       },
       { onConflict: "ref" },
     );

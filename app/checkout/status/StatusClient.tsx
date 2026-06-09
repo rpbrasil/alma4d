@@ -72,24 +72,27 @@ export default function StatusClient({
   const expiresAt = pix?.expires_at ? new Date(pix.expires_at).getTime() : null;
   const [remainingMs, setRemainingMs] = useState<number | null>(null);
 
- useEffect(() => {
-   (async () => {
-     try {
-       await supabase.auth.refreshSession();
+  useEffect(() => {
+    (async () => {
+      try {
+        await supabase.auth.refreshSession();
 
-       const { data } = await supabase.auth.getUser();
+        const { data } = await supabase.auth.getUser();
 
-       if (!data.user) {
-         console.warn("⚠️ sem sessão no checkout/status");
-       }
-     } catch (err) {
-       console.warn("⚠️ erro ao validar sessão", err);
-     } finally {
-       setSessionReady(true);
-     }
-   })();
- }, []);
-  
+        if (!data.user) {
+          router.replace(
+            `/login?redirect=${encodeURIComponent(window.location.href)}`,
+          );
+          return;
+        }
+      } catch (err) {
+        console.warn("⚠️ erro ao validar sessão", err);
+      } finally {
+        setSessionReady(true);
+      }
+    })();
+  }, [router]);
+
   useEffect(() => {
     if (!expiresAt) return;
 
@@ -100,15 +103,20 @@ export default function StatusClient({
 
     return () => clearInterval(id);
   }, [expiresAt]);
-  
-if (!sessionReady) {
-  return (
-    <div className="min-h-[60vh] grid place-items-center">
-      Carregando sessão...
-    </div>
-  );
-}
 
+  useEffect(() => {
+    if (contratoStatus === "ativo") {
+      router.replace("/dashboard");
+    }
+  }, [contratoStatus, router]);
+
+  if (!sessionReady) {
+    return (
+      <div className="min-h-[60vh] grid place-items-center">
+        Carregando sessão...
+      </div>
+    );
+  }
 
   const pixExpired = remainingMs !== null && remainingMs <= 0;
 

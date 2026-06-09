@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabaseBrowser as supabase } from "@/lib/supabase/browser";
-
+import { useRouter } from "next/navigation";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import {
@@ -735,7 +735,7 @@ function AtivacaoWizardContent() {
   );
   const email = searchParams.get("email") || "";
   const [documento, setDocumento] = useState("");
-
+  const router = useRouter();
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [funcionarios, setFuncionarios] = useState(funcionariosParam || 1);
@@ -788,20 +788,10 @@ function AtivacaoWizardContent() {
         }
 
         const perfil = await who.json();
-
         if (!perfil?.usuario_id) {
           window.location.href = `/login?redirect=${encodeURIComponent(
             window.location.pathname + window.location.search,
           )}`;
-          return;
-        }
-
-        const isOnboarding =
-          perfil.ativo === false &&
-          (perfil.tipo_plano === "trial" || perfil.tipo_plano === "express");
-
-        if (!perfil.ativo && !isOnboarding) {
-          window.location.href = "/login";
           return;
         }
 
@@ -823,7 +813,11 @@ function AtivacaoWizardContent() {
           window.location.href = "/login";
           return;
         }
+        if ((contratoData.status ?? "").toLowerCase() === "ativo") {
+          router.replace("/dashboard");
 
+          return;
+        }
         // ✅ AUTORIZAÇÃO
         if (perfil.role !== "admin") {
           if (
@@ -831,11 +825,6 @@ function AtivacaoWizardContent() {
             String(perfil.cliente_id ?? "")
           ) {
             window.location.href = "/login";
-            return;
-          }
-
-          if ((contratoData.status ?? "").toLowerCase() === "ativo") {
-            window.location.href = "/dashboard";
             return;
           }
         }
@@ -852,7 +841,7 @@ function AtivacaoWizardContent() {
           return;
         }
 
-        if (!cliente.ativo && !isOnboarding && perfil.role !== "admin") {
+        if (!cliente.ativo && perfil.role !== "admin") {
           window.location.href = "/login";
           return;
         }
@@ -884,7 +873,7 @@ function AtivacaoWizardContent() {
     return () => {
       controller.abort(); // ✅ cancela requisições pendentes
     };
-  }, [contratoId, funcionariosParam]);
+  }, [contratoId, funcionariosParam, router]);
 
   /** Tracking de “leu o contrato” (mesma origem: /api/contrato/preview) */
   useEffect(() => {
