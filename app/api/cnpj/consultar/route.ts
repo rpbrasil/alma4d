@@ -3,7 +3,6 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { rateLimit } from "@/lib/rate-limit";
 import { verifyTurnstile } from "@/lib/verify-turnstile";
 
-
 type CnpjConsultaInsert = {
   cnpj: string;
   razao_social?: string;
@@ -15,10 +14,13 @@ type CnpjConsultaInsert = {
   numero?: string | null;
   complemento?: string | null;
   bairro?: string | null;
-  municipio?: string | null;
+  municipio?: string | null; // nome
   uf?: string | null;
   cep?: string | null;
-  raw: unknown;
+  codigo_municipio?: string | null; // IBGE municipal usado na NFSe
+  codigo_ibge?: string | null;
+  codigo_siafi?: string | null;
+  raw: Record<string, unknown>;
 };
 
 export async function POST(req: Request) {
@@ -32,7 +34,10 @@ export async function POST(req: Request) {
   }
 
   try {
-    const body = await req.json();
+    const body = (await req.json()) as {
+      token?: string;
+      cnpj?: string;
+    };
     const token = body?.token;
     const cnpj = body?.cnpj;
 
@@ -61,21 +66,50 @@ export async function POST(req: Request) {
     if (digits.length !== 14) {
       return NextResponse.json({ error: "CNPJ inválido" }, { status: 400 });
     }
-    const focusToken = process.env.FOCUS_NFE_TOKEN!;
+    const focusToken = process.env.FOCUS_NFE_TOKEN;
+
+    if (!focusToken) {
+      return NextResponse.json(
+        { error: "Configuração Focus NFE ausente" },
+        { status: 500 },
+      );
+    }
+
     const auth = Buffer.from(`${focusToken}:`).toString("base64");
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
 
-    const response = await fetch(
-      `https://api.focusnfe.com.br/v2/cnpjs/${digits}`,
-      {
+    const supabase = getSupabaseAdmin();
+    const { data: cached } = await supabase
+      .from("cnpj_consultas")
+      .select("raw")
+      .eq("cnpj", digits)
+      .maybeSingle();
+
+    if (cached?.raw) {
+      console.log("✅ CNPJ vindo do cache");
+      return NextResponse.json(cached.raw);
+    }
+
+    let response;
+
+    try {
+      response = await fetch(`https://api.focusnfe.com.br/v2/cnpjs/${digits}`, {
         headers: { Authorization: `Basic ${auth}` },
         signal: controller.signal,
-      },
-    );
-
-    clearTimeout(timeout);
+      });
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === "AbortError") {
+        return NextResponse.json(
+          { error: "Timeout ao consultar CNPJ" },
+          { status: 504 },
+        );
+      }
+      throw err;
+    } finally {
+      clearTimeout(timeout);
+    }
 
     if (!response.ok) {
       return NextResponse.json(
@@ -86,24 +120,36 @@ export async function POST(req: Request) {
 
     const data = await response.json();
 
-    const supabase = getSupabaseAdmin();
+    //const supabase = getSupabaseAdmin();
 
-    await supabase.from("cnpj_consultas").insert([{
-      cnpj: data.cnpj,
-      razao_social: data.razao_social,
-      situacao_cadastral: data.situacao_cadastral,
-      cnae_principal: data.cnae_principal,
-      optante_simples: data.optante_simples_nacional,
-      optante_mei: data.optante_mei,
-      logradouro: data.endereco?.logradouro,
-      numero: data.endereco?.numero,
-      complemento: data.endereco?.complemento,
-      bairro: data.endereco?.bairro,
-      municipio: data.endereco?.nome_municipio,
-      uf: data.endereco?.uf,
-      cep: data.endereco?.cep,
-      raw: data,
-    } satisfies CnpjConsultaInsert]);
+    const { error: insertErr } = await supabase.from("cnpj_consultas").upsert(
+      [
+        {
+          cnpj: digits,
+          razao_social: data.razao_social,
+          situacao_cadastral: data.situacao_cadastral,
+          cnae_principal: data.cnae_principal,
+          optante_simples: data.optante_simples_nacional,
+          optante_mei: data.optante_mei,
+          logradouro: data.endereco?.logradouro,
+          numero: data.endereco?.numero,
+          complemento: data.endereco?.complemento,
+          bairro: data.endereco?.bairro,
+          municipio: data.endereco?.nome_municipio,
+          uf: data.endereco?.uf,
+          cep: data.endereco?.cep,
+          codigo_municipio: data.endereco?.codigo_municipio,
+          codigo_ibge: data.endereco?.codigo_ibge,
+          codigo_siafi: data.endereco?.codigo_siafi,
+          raw: data,
+        } as CnpjConsultaInsert,
+      ],
+      { onConflict: "cnpj" },
+    );
+
+    if (insertErr) {
+      console.warn("Erro ao salvar cnpj_consultas:", insertErr.message);
+    }
 
     return NextResponse.json(data);
   } catch (err) {

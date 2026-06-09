@@ -78,13 +78,18 @@ export async function POST(req: Request) {
     if (!userId) {
       log(requestId, "identity não encontrada - retry");
 
-      await new Promise((r) => setTimeout(r, 120));
+      const DELAY_IDENTITY_RETRY_MS = 120;
+      await new Promise((r) => setTimeout(r, DELAY_IDENTITY_RETRY_MS));
 
-      const { data: retry } = await supabase
+      const { data: retry, error: retryErr } = await supabase
         .from("usuario_auth_identities")
         .select("usuario_id")
-        .eq("auth_user_id", caller.id)
+        .eq("auth_user_id", authUserId)
         .maybeSingle();
+
+      if (retryErr) {
+        log(requestId, "retry error:", retryErr.message);
+      }
 
       userId = retry?.usuario_id ?? null;
 
