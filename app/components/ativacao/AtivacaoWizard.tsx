@@ -933,14 +933,10 @@ function AtivacaoWizardContent() {
       }
 
       const nome = nomeCompleto.trim();
-      const mail = email.trim().toLowerCase();
       const cpfDigits = onlyDigits(documento);
 
       if (!isValidNameLoose(nome)) {
         throw new Error("Informe um nome completo válido.");
-      }
-      if (!isValidEmailLoose(mail)) {
-        throw new Error("E-mail inválido.");
       }
       if (cpfDigits.length !== 11 || !isValidCPF(cpfDigits)) {
         throw new Error("CPF inválido.");
@@ -974,7 +970,9 @@ function AtivacaoWizardContent() {
         },
         body: JSON.stringify({
           contratoId,
-          versao_termos: "v1.0",          
+          versao_termos: "v1.0",
+          nome: nome,
+          documento: cpfDigits,
         }),
       });
 
@@ -988,66 +986,6 @@ function AtivacaoWizardContent() {
 
       // Atualiza o estado local para não depender de refetch imediato
       setContrato((prev) => (prev ? { ...prev, aceite_termos: true } : prev));
-
-      // ----------------------------
-      // 2) (Opcional) Log client-side
-      //    Se você já está logando no endpoint, pode remover este bloco.
-      // ----------------------------
-      const { error: logErr } = await supabase.from("logs").insert({
-        source: "wizard",
-        level: "info",
-        event_type: "contrato_aceito",
-        user_id: userId,
-        entity: "contratos",
-        message: { contrato_id: contratoId },
-        metadata: { via: "client", versao_termos: "v1.0" },
-      });
-
-      if (logErr) {
-        console.warn(
-          "Falha ao gravar log client-side de aceite:",
-          logErr.message,
-        );
-      }
-
-      // ----------------------------
-      // 3) Atualiza usuário (SEM mexer no email para evitar UNIQUE)
-      // ----------------------------
-      const { data: existingUser, error: fetchErr } = await supabase
-        .from("usuarios")
-        .select(
-          "id, telefone, role, tipo_plano, data_inicio_plano, data_expiracao_plano",
-        )
-        .eq("id", userId)
-        .maybeSingle();
-
-      if (fetchErr) throw new Error(fetchErr.message);
-
-      const nowIso = new Date().toISOString();
-
-      const payload = {
-        id: userId,
-        telefone: existingUser?.telefone ?? null,
-        nome_completo: nome,
-        documento: cpfDigits,
-
-        aceitou_termos: true,
-        data_aceite_termos: nowIso,
-
-        premium_origem: "pagarme" as const,
-        role: existingUser?.role === "admin" ? "admin" : "cliente",
-        tipo_plano: existingUser?.tipo_plano || "express",
-        data_inicio_plano: existingUser?.data_inicio_plano ?? nowIso,
-        data_expiracao_plano:
-          existingUser?.data_expiracao_plano ??
-          new Date(Date.now() + 7 * 864e5).toISOString(),
-      };
-
-      const { error: upsertErr } = await supabase
-        .from("usuarios")
-        .upsert(payload, { onConflict: "id" });
-
-      if (upsertErr) throw new Error(upsertErr.message);
 
       // ----------------------------
       // 4) Avança para pagamento

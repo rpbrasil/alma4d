@@ -2,7 +2,6 @@ export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { getCaller } from "../../importacao-usuarios/_shared/getCaller";
 import { generateContratoHTML } from "@/lib/contratoTemplate";
 
 function getClientIp(req: Request): string {
@@ -25,6 +24,8 @@ function log(requestId: string, ...args: unknown[]) {
 type Body = {
   contratoId?: string;
   versao_termos?: string;
+  nome?: string;
+  documento?: string;
 };
 
 export async function POST(req: Request) {
@@ -38,7 +39,6 @@ export async function POST(req: Request) {
 
     const contratoId = String(body.contratoId ?? "").trim();
     const versaoTermos = String(body.versao_termos ?? "v1.0").trim();
-
     if (!contratoId) {
       return NextResponse.json(
         { error: "contratoId é obrigatório" },
@@ -46,25 +46,35 @@ export async function POST(req: Request) {
       );
     }
 
+    const nome = String(body.nome ?? "").trim();
+    const cpfDigits = String(body.documento ?? "").replace(/\D/g, "");
+
+    if (!nome || cpfDigits.length !== 11) {
+      return NextResponse.json({ error: "Dados inválidos" }, { status: 400 });
+    }
+
     const supabase = getSupabaseAdmin();
 
     // ✅ AUTH
-    let caller;
-    try {
-      caller = await getCaller(req, supabase);
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e);
-      if (msg === "NO_TOKEN" || msg === "INVALID_TOKEN") {
-        return NextResponse.json({ error: "Sessão inválida" }, { status: 401 });
-      }
-      return NextResponse.json(
-        { error: "Usuário não encontrado" },
-        { status: 403 },
-      );
+    const authHeader = req.headers.get("authorization") || "";
+    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+
+    if (!token) {
+      return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
     }
 
-    const authUserId = caller.id;
-    log(requestId, "auth_user_id:", authUserId);
+    const {
+      data: { user },
+      error: userErr,
+    } = await supabase.auth.getUser(token);
+
+    if (userErr || !user) {
+      return NextResponse.json({ error: "Sessão inválida" }, { status: 401 });
+    }
+
+    const authUserId = user.id;
+
+    log(requestId, "REAL auth_user_id:", authUserId);
 
     // ✅ identity (fonte da verdade)
     const { data: identity } = await supabase
@@ -156,7 +166,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
     }
 
-    if (contrato.aceite_termos && contrato.termos_html) {
+    if (contrato.aceite_termos === true && contrato.termos_html) {
       return NextResponse.json({
         ok: true,
         message: "Contrato já aceito anteriormente",
@@ -187,9 +197,9 @@ export async function POST(req: Request) {
         cnpj: cliente?.cnpj ?? "",
       },
       usuario: {
-        nome: usuario?.nome_completo ?? "",
+        nome,
         email: usuario?.email ?? "",
-        documento: usuario?.documento ?? "",
+        documento: cpfDigits,
       },
       contrato: {
         numero: contrato.id,
@@ -231,13 +241,19 @@ export async function POST(req: Request) {
     }
 
     // ✅ USUÁRIO
-    await supabase
+    const { error: updateErr } = await supabase
       .from("usuarios")
       .update({
+        nome_completo: nome,
+        documento: cpfDigits,
         aceitou_termos: true,
         data_aceite_termos: now,
       })
       .eq("id", userId);
+
+    if (updateErr) {
+      log(requestId, "USER UPDATE ERROR", updateErr.message);
+    }
 
     log(requestId, "SUCCESS");
 
