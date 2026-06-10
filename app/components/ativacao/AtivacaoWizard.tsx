@@ -632,6 +632,7 @@ function Step3Pagamento({
   funcionarios,
   nomeCompleto,
   email,
+  telefone,
   documento,
   origem,
   campanha,
@@ -645,6 +646,7 @@ function Step3Pagamento({
 
   nomeCompleto: string;
   email: string;
+  telefone: string;
   documento: string;
   origem: string;
   campanha: string | null;
@@ -670,6 +672,7 @@ function Step3Pagamento({
           funcionarios={funcionarios}
           nomeCompleto={nomeCompleto}
           email={email}
+          telefone={telefone}
           documento={onlyDigits(documento)}
           origem={origem}
           campanha={campanha}
@@ -717,6 +720,7 @@ function AtivacaoWizardContent() {
 
   // Step state
   const [step, setStep] = useState<StepId>(1);
+  const [telefone, setTelefone] = useState("");
 
   // Sessão Supabase (OTP já ocorreu antes)
   const [userId, setUserId] = useState<string | null>(null);
@@ -804,7 +808,8 @@ function AtivacaoWizardContent() {
           )}`;
           return;
         }
-        setEmail(perfil.email ?? perfil.telefone ?? "");
+        setEmail(perfil.email ?? "");
+        setTelefone(perfil.telefone ?? "");
 
         if (!contratoId) {
           window.location.href = "/login";
@@ -1109,6 +1114,7 @@ function AtivacaoWizardContent() {
                   funcionarios={funcionarios}
                   nomeCompleto={nomeCompleto}
                   email={email}
+                  telefone={telefone}
                   documento={documento}
                   origem={origem}
                   campanha={campanha || null}

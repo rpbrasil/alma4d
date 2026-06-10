@@ -68,6 +68,13 @@ function getErrorMessage(e: unknown, fallback: string) {
   return fallback;
 }
 
+function normalizeE164(phone: string) {
+  const digits = (phone || "").replace(/\D/g, "");
+  if (!digits) return "";
+  if (digits.startsWith("55")) return `+${digits}`;
+  return `+55${digits}`;
+}
+
 export function NR1PaymentPanel(props: {
   userId: string;
   clienteId: string;
@@ -75,6 +82,7 @@ export function NR1PaymentPanel(props: {
   funcionarios: number;
   nomeCompleto: string;
   email: string;
+  telefone: string;
   documento: string;
   origem?: string | null;
   campanha?: string | null;
@@ -90,6 +98,7 @@ export function NR1PaymentPanel(props: {
     contratoId,
     nomeCompleto,
     email,
+    telefone,
     documento,
     origem,
     campanha,
@@ -180,6 +189,11 @@ export function NR1PaymentPanel(props: {
       if (!emailValue) {
         throw new Error("E-mail é obrigatório para o pagamento.");
       }
+      const telefoneNormalized = normalizeE164(telefone);
+
+      if (!telefoneNormalized) {
+        throw new Error("Telefone é obrigatório para pagamento.");
+      }
 
       if (!nomeCompleto.trim()) {
         throw new Error("Nome completo é obrigatório.");
@@ -216,6 +230,7 @@ export function NR1PaymentPanel(props: {
           payment_method: method,
           total_amount_cents: precoTotalCents,
           email: email && email.trim() ? email.trim() : sessionEmail,
+          telefone: telefoneNormalized,
           nome_completo: nomeCompleto.trim(),
           documento: documentoValue,
           origem: origem || null,

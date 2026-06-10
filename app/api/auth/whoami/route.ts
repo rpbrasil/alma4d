@@ -51,14 +51,16 @@ export async function GET() {
 
     const { data: usuario } = await supabase
       .from("usuarios")
-      .select("id, nome_completo, role, cliente_id, tipo_plano, ativo")
+      .select(
+        "id, nome_completo, role, cliente_id, tipo_plano, ativo, email, telefone",
+      )
       .eq("id", usuarioId)
       .maybeSingle();
 
     console.log("auth user:", authData.user?.id);
     console.log("rpc usuario:", usuarioRpcData);
     console.log("usuario final:", usuario);
-    
+
     return NextResponse.json({
       usuario_id: usuario?.id ?? null,
       nome_completo: usuario?.nome_completo ?? null,
@@ -66,6 +68,8 @@ export async function GET() {
       tipo_plano: usuario?.tipo_plano ?? null,
       cliente_id: usuario?.cliente_id ?? null,
       ativo: usuario?.ativo ?? null,
+      email: usuario?.email ?? null,
+      telefone: usuario?.telefone ?? null,
     });
   } catch (err) {
     console.error("whoami error:", err);

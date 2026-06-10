@@ -28,7 +28,14 @@ export function useAccessGuard(options?: GuardOptions) {
 
     (async () => {
       try {
-        const res = await fetch("/api/auth/whoami");
+        let res = await fetch("/api/auth/whoami");
+
+        // ✅ retry leve (corrige race condition)
+        if (!res.ok) {
+          await new Promise((r) => setTimeout(r, 300));
+          res = await fetch("/api/auth/whoami");
+        }
+
         if (!res.ok) {
           router.replace("/login");
           return;
@@ -36,25 +43,27 @@ export function useAccessGuard(options?: GuardOptions) {
 
         const perfil = await res.json();
 
-        if (!perfil?.usuario_id) {
-          router.replace("/login");
-          return;
+        if (!perfil || !perfil.usuario_id) {
+          console.warn("perfil inconsistente, aguardando...");
+          return; // 👈 NÃO redireciona ainda
         }
 
-        // admin bypass
+        // ✅ admin bypass
         if (allowAdmin && perfil.role === "admin") {
           if (!cancelled) setLoading(false);
           return;
         }
 
-        const clienteAtivo = perfil.cliente_id ? perfil.cliente_id : null;
+        const clienteAtivo = perfil.cliente_id ?? null;
+
         if (!clienteAtivo) {
           router.replace(redirectIfFail);
           return;
         }
 
         if (!cancelled) setLoading(false);
-      } catch {
+      } catch (err) {
+        console.warn("erro guard:", err);
         router.replace("/login");
       }
     })();

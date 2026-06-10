@@ -16,6 +16,7 @@ type Props = {
   usuario: {
     nome: string;
     email: string;
+    telefone: string;
     documento: string;
   };
   contrato: {
@@ -85,6 +86,7 @@ export function ContratoNR1PDF({
           <Text>RESPONSÁVEL:</Text>
           <Text>{usuario.nome}</Text>
           <Text>Email: {usuario.email}</Text>
+          <Text>Telefone: {usuario.telefone}</Text>
           <Text>CPF: {usuario.documento}</Text>
         </View>
 

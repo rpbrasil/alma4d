@@ -73,26 +73,43 @@ export default function StatusClient({
   const [remainingMs, setRemainingMs] = useState<number | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
+
     (async () => {
       try {
-        await supabase.auth.refreshSession();
+        const { data: first } = await supabase.auth.getUser();
 
-        const { data } = await supabase.auth.getUser();
+        if (first.user) {
+          if (!cancelled) setSessionReady(true);
+          return;
+        }
 
-        if (!data.user) {
+        // retry leve (problema de timing)
+        const { data: retry } = await supabase.auth.getUser();
+
+        if (!retry.user) {
           router.replace(
             `/login?redirect=${encodeURIComponent(window.location.href)}`,
           );
           return;
         }
+
+        if (!cancelled) setSessionReady(true);
       } catch (err) {
         console.warn("⚠️ erro ao validar sessão", err);
-      } finally {
-        setSessionReady(true);
+
+        if (!cancelled) {
+          router.replace(
+            `/login?redirect=${encodeURIComponent(window.location.href)}`,
+          );
+        }
       }
     })();
-  }, [router]);
 
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
   useEffect(() => {
     if (!expiresAt) return;
 
@@ -106,7 +123,7 @@ export default function StatusClient({
 
   useEffect(() => {
     if (contratoStatus === "ativo") {
-      router.replace("/dashboard");
+      router.replace("/dashboard/express");
     }
   }, [contratoStatus, router]);
 
@@ -208,7 +225,7 @@ export default function StatusClient({
             <p className="mt-2 text-slate-600">Seu acesso já foi liberado.</p>
 
             <button
-              onClick={() => router.push("/dashboard")}
+              onClick={() => router.push("/dashboard/express")}
               className="mt-6 bg-brand text-white px-6 py-3 rounded"
             >
               Acessar sistema

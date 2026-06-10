@@ -40,12 +40,16 @@ export function useContratoStatus(contratoId: string | null) {
     try {
       const { data: userData } = await supabase.auth.getUser();
 
-      if (!userData.user) return;
+      if (!userData.user) {
+        setError("Sessão inválida.");
+        return;
+      }
 
       const token = (await supabase.auth.getSession()).data.session
         ?.access_token;
 
       const res = await fetch(`/api/contrato/status?contratoId=${contratoId}`, {
+        credentials: "include",
         headers: {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
@@ -78,6 +82,7 @@ export function useContratoStatus(contratoId: string | null) {
 
       const res = await fetch("/api/pagarme/verificar-pix", {
         method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),

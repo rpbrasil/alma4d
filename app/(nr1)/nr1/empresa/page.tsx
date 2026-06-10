@@ -764,6 +764,12 @@ export default function EmpresaNR1Page() {
 
       setState("success");
 
+      // garante que sessão está sincronizada
+      const { data: check } = await supabase.auth.getSession();
+      console.log("USER ANTES REDIRECT:", check);
+      // pequena pausa para garantir cookies
+      await new Promise((r) => setTimeout(r, 150));
+
       router.push(
         `/ativacao?tipo=empresa&origem=nr1` +
           `&cliente_id=${data.cliente_id}` +

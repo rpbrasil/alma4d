@@ -26,6 +26,11 @@ type PagamentoInfo = {
   amount?: number | null;
   method?: string | null;
 };
+type CallerResolved = {
+  cliente_id: string | null;
+  role: string;
+  usuario_id?: string; // ✅ opcional
+};
 
 /**
  * Normaliza referências de PDF
@@ -96,35 +101,76 @@ export async function GET(req: Request) {
       );
     }
 
-    const authHeader = req.headers.get("authorization") || "";
-    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
-
-    if (!token) {
-      return NextResponse.json(
-        { error: "Token ausente", contrato: null, pagamento: null },
-        { status: 401 },
-      );
-    }
-
     const supabase = getSupabaseAdmin();
 
     // Resolver e validar chamador (usuario domínio)
-    let caller;
+    let caller: CallerResolved | null = null;
+
     try {
       caller = await getCaller(req, supabase);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
-      if (msg === "NO_TOKEN" || msg === "INVALID_TOKEN")
+      console.log("no caller - ", msg);
+
+      // ✅ tenta fallback via sessão cookie
+      try {
+        const { createServerSupabase } = await import("@/lib/supabase/server");
+        const supa = await createServerSupabase();
+
+        const { data } = await supa.auth.getUser();
+
+        if (!data.user) {
+          return NextResponse.json(
+            { error: "Não autenticado", contrato: null, pagamento: null },
+            { status: 401 },
+          );
+        }
+
+        // ✅ resolve usuario via RPC
+        const { data: usuarioId } = await supa.rpc("current_usuario_id");
+        if (!usuarioId) {
+          return NextResponse.json(
+            {
+              error: "Usuário não identificado",
+              contrato: null,
+              pagamento: null,
+            },
+            { status: 401 },
+          );
+        }
+        const { data: usuario } = await supa
+          .from("usuarios")
+          .select("cliente_id, role")
+          .eq("id", usuarioId)
+          .maybeSingle();
+        if (!usuario) {
+          return NextResponse.json(
+            {
+              error: "Usuário não encontrado",
+              contrato: null,
+              pagamento: null,
+            },
+            { status: 401 },
+          );
+        }
+        caller = {
+          cliente_id: usuario?.cliente_id ?? null,
+          role: usuario?.role ?? "cliente",
+          usuario_id: usuarioId,
+        };
+      } catch {
         return NextResponse.json(
-          { error: "Token inválido", contrato: null, pagamento: null },
-          { status: 401 },
+          { error: "Sem permissão", contrato: null, pagamento: null },
+          { status: 403 },
         );
+      }
+    }
+    if (!caller) {
       return NextResponse.json(
-        { error: "Sem permissão", contrato: null, pagamento: null },
-        { status: 403 },
+        { error: "Falha ao resolver usuário", contrato: null, pagamento: null },
+        { status: 401 },
       );
     }
-
     const { data: contrato, error } = await supabase
       .from("contratos")
       .select(
