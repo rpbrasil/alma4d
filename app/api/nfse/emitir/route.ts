@@ -129,7 +129,7 @@ export async function POST(req: Request) {
 
       numero_rps: numeroRps,
       serie_rps: "A",
-      tipo_rps: "1",
+      tipo_rps: "RPS",
 
       optante_simples_nacional: process.env.NFSE_OPTANTE_SIMPLES === "true",
       incentivador_cultural: false,

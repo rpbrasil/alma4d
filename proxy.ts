@@ -336,14 +336,9 @@ export async function proxy(req: NextRequest) {
 
     const role = claims.role;
     const plano = claims.plano;
-    const ativo = claims.ativo;
     const userClienteId = claims.clienteId;
 
-    if (!role || !plano || ativo === null) {
-      return redirectWithCookies(res, new URL("/login", req.url));
-    }
-
-    if (ativo === false) {
+    if (!role) {
       return redirectWithCookies(res, new URL("/login", req.url));
     }
 
@@ -366,7 +361,8 @@ export async function proxy(req: NextRequest) {
     requestHeaders.set("x-alma4d-effective-tenant-id", effectiveTenantId ?? "");
     requestHeaders.set("x-alma4d-admin-scoped", adminIsScoped ? "1" : "0");
 
-    const landing = buildDefaultLanding(role, plano);
+    const landing = buildDefaultLanding(role ?? "cliente", plano ?? "express");
+
 
     // -----------------------------------------
     // /dashboard -> landing por role/plano
