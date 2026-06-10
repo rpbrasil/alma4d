@@ -101,6 +101,7 @@ export default function DashboardExpressCopsoqPage() {
     id: string;
     nome: string;
     email: string;
+    telefone: string;
     documento: string;
   } | null>(null);
 
@@ -178,8 +179,9 @@ export default function DashboardExpressCopsoqPage() {
         setUser({
           id: userId,
           email: perfil?.email ?? "",
+          telefone: perfil?.telefone ?? "",
           nome: perfil?.nome_completo ?? "",
-          documento: "",
+          documento: perfil?.documento ?? "",
         });
 
         if (!perfil?.cliente_id) {
@@ -237,8 +239,10 @@ export default function DashboardExpressCopsoqPage() {
             },
           );
 
-          const vagasData = await vagasRes.json();
-          setResumoVagas(vagasData);
+          if (vagasRes.ok) {
+            const vagasData = await vagasRes.json();
+            setResumoVagas(vagasData);
+          }
         } catch {
           console.warn("Erro ao carregar resumo de vagas");
         }
@@ -985,15 +989,16 @@ export default function DashboardExpressCopsoqPage() {
             </div>
           </div>
         </div>
-        {user && clienteId && contratoId && (
+        {user && clienteId && contratoSelecionado && (
           <UpgradeLicencasModal
             open={openUpgradeModal}
             onClose={() => setOpenUpgradeModal(false)}
             userId={user.id}
             clienteId={clienteId}
-            contratoId={contratoId}
+            contratoId={contratoSelecionado.id}
             nomeCompleto={user.nome}
             email={user.email}
+            telefone={user.telefone || ""}
             documento={user.documento}
             limiteAtual={resumoVagas?.limite ?? 0}
             precoUnitario={contratoSelecionado?.preco_unitario ?? 0}
