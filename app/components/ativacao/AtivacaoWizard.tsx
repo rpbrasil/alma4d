@@ -416,7 +416,7 @@ function Step1Servico({
             checked={aceitouTermos}
             disabled={!contratoLido}
             onChange={(e) => setAceitouTermos(e.target.checked)}
-            className="mt-1 w-5 h-5 accent-(--brand)]"
+            className="mt-1 w-5 h-5 accent-brand"
           />
           <div className="space-y-1">
             <p className="text-sm text-slate-700 font-semibold">
@@ -477,7 +477,8 @@ function Step2Dados({
   error: string | null;
 }) {
   const cpfDigits = onlyDigits(documento);
-  const emailOk = email ? isValidEmailLoose(email) : false;
+  const emailOk = !email || isValidEmailLoose(email);
+
   const nomeOk = isValidNameLoose(nomeCompleto);
   const cpfOk = cpfDigits.length === 11 && isValidCPF(cpfDigits);
   const canContinue = nomeOk && cpfOk && emailOk && aceitouTermos && !loading;
@@ -706,7 +707,6 @@ export default function AtivacaoWizard() {
 function AtivacaoWizardContent() {
   const searchParams = useSearchParams();
 
-  const clienteId = searchParams.get("cliente_id") ?? "";
   // aceita os dois formatos para não quebrar links antigos
   const contratoId =
     searchParams.get("contrato_id") ?? searchParams.get("contratoId") ?? "";
@@ -727,13 +727,15 @@ function AtivacaoWizardContent() {
   const [showTerms, setShowTerms] = useState(false);
   const [showContrato, setShowContrato] = useState(false);
   const [contrato, setContrato] = useState<Contrato | null>(null);
+  const clienteIdReal = contrato?.cliente_id ?? "";
+
   const [contratoLoading, setContratoLoading] = useState(true);
 
   // Step 2: perfil (agora email é editável para não travar)
   const [nomeCompleto, setNomeCompleto] = useState(
     searchParams.get("nome") || "",
   );
-  const email = searchParams.get("email") || "";
+  const [email, setEmail] = useState("");
   const [documento, setDocumento] = useState("");
   const router = useRouter();
   const [profileLoading, setProfileLoading] = useState(false);
@@ -776,15 +778,23 @@ function AtivacaoWizardContent() {
     const run = async () => {
       try {
         // ✅ WHOAMI
-        const who = await fetch("/api/auth/whoami", {
+        let who = await fetch("/api/auth/whoami", {
           signal: controller.signal,
         });
 
         if (!who.ok) {
-          window.location.href = `/login?redirect=${encodeURIComponent(
-            window.location.pathname + window.location.search,
-          )}`;
-          return;
+          await supabase.auth.refreshSession();
+
+          who = await fetch("/api/auth/whoami", {
+            signal: controller.signal,
+          });
+
+          if (!who.ok) {
+            window.location.href = `/login?redirect=${encodeURIComponent(
+              window.location.pathname + window.location.search,
+            )}`;
+            return;
+          }
         }
 
         const perfil = await who.json();
@@ -794,6 +804,7 @@ function AtivacaoWizardContent() {
           )}`;
           return;
         }
+        setEmail(perfil.email ?? perfil.telefone ?? "");
 
         if (!contratoId) {
           window.location.href = "/login";
@@ -814,7 +825,7 @@ function AtivacaoWizardContent() {
           return;
         }
         if ((contratoData.status ?? "").toLowerCase() === "ativo") {
-          router.replace("/dashboard");
+          router.replace("/dashboard/express");
 
           return;
         }
@@ -1089,28 +1100,33 @@ function AtivacaoWizardContent() {
               />
             )}
 
-            {step === 3 && userId && (
-              <Step3Pagamento
-                userId={userId}
-                clienteId={clienteId}
-                contratoId={contratoId}
-                funcionarios={funcionarios}
-                nomeCompleto={nomeCompleto}
-                email={email}
-                documento={documento}
-                origem={origem}
-                campanha={campanha || null}
-                precoTotalCents={precoTotalCents}
-                cupomCodigo={cupomCodigo}
-              />
-            )}
+            {step === 3 &&
+              (userId ? (
+                <Step3Pagamento
+                  userId={userId}
+                  clienteId={clienteIdReal}
+                  contratoId={contratoId}
+                  funcionarios={funcionarios}
+                  nomeCompleto={nomeCompleto}
+                  email={email}
+                  documento={documento}
+                  origem={origem}
+                  campanha={campanha || null}
+                  precoTotalCents={precoTotalCents}
+                  cupomCodigo={cupomCodigo}
+                />
+              ) : (
+                <div className="text-sm text-red-600">
+                  Erro de sessão. Recarregue a página.
+                </div>
+              ))}
           </div>
 
           <SummarySticky
             funcionarios={funcionarios}
             precoPorColab={precoPorColab}
             precoTotal={precoTotal}
-            clienteId={clienteId}
+            clienteId={clienteIdReal}
           />
         </section>
         {showContrato && (
