@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import { NR1PaymentPanel } from "@/ativacao/_components/NR1PaymentPanel";
+import Image from "next/image";
 import { X, CreditCard, ArrowRight } from "lucide-react";
 
 type Props = {
@@ -15,6 +15,7 @@ type Props = {
 
   nomeCompleto: string;
   email: string;
+  telefone: string;
   documento: string;
 
   limiteAtual: number;
@@ -29,6 +30,7 @@ export function UpgradeLicencasModal({
   contratoId,
   nomeCompleto,
   email,
+  telefone,
   documento,
   limiteAtual,
   precoUnitario,
@@ -43,7 +45,7 @@ export function UpgradeLicencasModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl overflow-hidden">
-        {/* ✅ HEADER COM LOGO */}
+        {/* HEADER */}
         <div className="relative border-b border-slate-200 px-5 py-4 bg-slate-50">
           <button
             onClick={() => {
@@ -79,7 +81,7 @@ export function UpgradeLicencasModal({
           </div>
         </div>
 
-        {/* ✅ BODY */}
+        {/* BODY */}
         <div className="p-5 space-y-5">
           {/* RESUMO */}
           <div className="grid grid-cols-2 gap-3">
@@ -94,9 +96,9 @@ export function UpgradeLicencasModal({
             </div>
           </div>
 
+          {/* STEP: FORM */}
           {step === "form" && (
             <>
-              {/* PREÇO */}
               <div className="rounded-xl border border-brand/20 bg-slate-50 p-4">
                 <div className="flex items-center gap-2 text-slate-600 text-sm">
                   <CreditCard size={16} />
@@ -108,7 +110,6 @@ export function UpgradeLicencasModal({
                 </p>
               </div>
 
-              {/* INPUT */}
               <div>
                 <label className="text-sm text-slate-600">
                   Quantidade adicional
@@ -129,15 +130,16 @@ export function UpgradeLicencasModal({
                 </p>
               </div>
 
-              {/* TOTAL */}
               <div className="rounded-xl border border-brand/20 bg-brand/5 p-4">
                 <p className="text-xs text-slate-600">Total a pagar</p>
                 <p className="text-xl font-semibold text-brand">
-                  R$ {(totalCents / 100).toFixed(2)}
+                  R${" "}
+                  {(totalCents / 100).toLocaleString("pt-BR", {
+                    minimumFractionDigits: 2,
+                  })}
                 </p>
               </div>
 
-              {/* CTA */}
               <button
                 onClick={() => setStep("payment")}
                 disabled={qtd < 5}
@@ -149,21 +151,31 @@ export function UpgradeLicencasModal({
             </>
           )}
 
+          {/* STEP: PAYMENT */}
           {step === "payment" && (
-            <NR1PaymentPanel
-              userId={userId}
-              clienteId={clienteId}
-              contratoId={contratoId}
-              funcionarios={qtd}
-              nomeCompleto={nomeCompleto}
-              email={email}
-              documento={documento}
-              precoTotalCents={totalCents}
-              origem="upgrade"
-              operationType="upgrade"
-              quantidadeAdicional={qtd}
-              precoUnitario={precoUnitario}
-            />
+            <>
+              {telefone ? (
+                <NR1PaymentPanel
+                  userId={userId}
+                  clienteId={clienteId}
+                  contratoId={contratoId}
+                  funcionarios={qtd}
+                  nomeCompleto={nomeCompleto || email}
+                  email={email}
+                  telefone={telefone}
+                  documento={documento}
+                  precoTotalCents={totalCents}
+                  origem="upgrade"
+                  operationType="upgrade"
+                  quantidadeAdicional={qtd}
+                  precoUnitario={precoUnitario}
+                />
+              ) : (
+                <div className="text-sm text-red-600">
+                  Telefone não encontrado. Atualize seus dados antes de pagar.
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
