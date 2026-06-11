@@ -98,7 +98,66 @@ export default function LoginUsuarioPage() {
         return;
       }
 
-      window.location.replace("/dashboard/express");
+      // ✅ salvar sessão explicitamente (importante)
+      await supabase.auth.setSession({
+        access_token: data.session.access_token,
+        refresh_token: data.session.refresh_token,
+      });
+
+      // ✅ bootstrap (cria identity se faltar)
+      const bootstrapRes = await fetch("/api/auth/bootstrap", {
+        method: "POST",
+        credentials: "include",
+      });
+
+      if (!bootstrapRes.ok) {
+        const txt = await bootstrapRes.text();
+        setError(`Falha ao preparar acesso: ${txt}`);
+        return;
+      }
+
+      // ✅ resolve usuario_id via RPC
+      const { data: usuarioId, error: usuarioErr } =
+        await supabase.rpc("current_usuario_id");
+
+      if (usuarioErr || !usuarioId) {
+        setError("Usuário não vinculado.");
+        return;
+      }
+
+      // ✅ carregar perfil
+      const { data: perfil, error: perfilErr } = await supabase
+        .from("usuarios")
+        .select("role, tipo_plano, cliente_id, ativo")
+        .eq("id", usuarioId)
+        .single();
+
+      if (perfilErr || !perfil) {
+        setError("Perfil não encontrado.");
+        return;
+      }
+
+      if (!perfil.ativo) {
+        setError("Usuário inativo.");
+        return;
+      }
+
+      const role = (perfil.role ?? "").toLowerCase();
+      const plano = (perfil.tipo_plano ?? "").toLowerCase();
+
+      // ✅ definição de destino
+      let redirect = "/dashboard/express";
+
+      if (role === "usuario" || role === "gestor") {
+        // colaborador → fluxo básico
+        redirect = "/dashboard/express/acesso-basico";
+      } else if (role === "admin") {
+        redirect = "/dashboard/admin/clientes";
+      } else if (plano === "premium") {
+        redirect = "/dashboard/premium";
+      }
+
+      window.location.replace(redirect);
     } catch {
       setError("Erro ao validar código.");
     } finally {

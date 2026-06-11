@@ -45,7 +45,8 @@ export function useAccessGuard(options?: GuardOptions) {
 
         if (!perfil || !perfil.usuario_id) {
           console.warn("perfil inconsistente, aguardando...");
-          return; // 👈 NÃO redireciona ainda
+          if (!cancelled) setLoading(false);
+          return;
         }
 
         // ✅ admin bypass

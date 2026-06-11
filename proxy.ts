@@ -244,6 +244,14 @@ function allowExpressRouteForRole(pathname: string, role: Role) {
     return role === "admin";
   }
 
+if (pathname.startsWith("/dashboard/express/acompanhamento")) {
+  return (
+    role === "admin" ||
+    role === "cliente" ||
+    role === "gestor" ||
+    role === "usuario"
+  );
+}
   // fallback geral express
   return role === "admin" || role === "cliente";
 }
