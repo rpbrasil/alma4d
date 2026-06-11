@@ -1,5 +1,6 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { nowISO } from "./pagarme";
+import { gerarContratoPdfInterno } from "@/lib/contrato-pdf";
 
 type PostgrestLikeError = {
   code?: string;
@@ -19,17 +20,14 @@ type PaymentHandlerParams = {
 type FailOrCancelParams = PaymentHandlerParams & {
   kind: "failed" | "canceled";
 };
-
 type ActivateParams = {
   supabase: SupabaseClient;
   contratoId: string;
   pagarmeOrderId: string | null;
   pagarmePaymentStatus: string | null;
   cupomFromGateway?: string | null;
-  userId?: string | null; 
+  userId?: string | null;
 };
-
-
 function isPostgrestLikeError(e: unknown): e is PostgrestLikeError {
   return typeof e === "object" && e !== null && ("message" in e || "code" in e);
 }
@@ -281,13 +279,12 @@ export async function markFailOrCancel(params: FailOrCancelParams) {
     .eq("id", contratoId);
 }
 
-
 export async function markPixPending(params: PaymentHandlerParams) {
   console.log("PIX pendente", params);
 }
 
 export async function activateContratoFull(params: ActivateParams) {
-  const { supabase, contratoId, pagarmeOrderId, pagarmePaymentStatus} = params;
+  const { supabase, contratoId, pagarmeOrderId, pagarmePaymentStatus } = params;
 
   // ✅ 1. Atualiza contrato e captura dados necessários
   const { data: contrato, error: contratoErr } = await supabase
@@ -299,7 +296,7 @@ export async function activateContratoFull(params: ActivateParams) {
       atualizado_em: nowISO(),
     })
     .eq("id", contratoId)
-    .select("id, criado_por, status")
+    .select("id, criado_por, status, pdf_url")
     .single();
 
   if (contratoErr || !contrato) {
@@ -324,12 +321,11 @@ export async function activateContratoFull(params: ActivateParams) {
       .eq("id", targetUserId);
 
     if (userUpdateErr) {
-      console.error("[ATIVACAO] user:", targetUserId,"Erro ao ativar usuário:", userUpdateErr);
       throw new Error("Erro ao ativar usuário responsável.");
     }
   }
 
-  // ✅ 4. Registra evento (opcional, mas recomendado)
+  // ✅ 3. registra evento
   await recordWebhookEvent(supabase, {
     contrato_id: contratoId,
     tipo: "contrato_ativado",
@@ -340,11 +336,18 @@ export async function activateContratoFull(params: ActivateParams) {
     },
   });
 
+  // ✅ 4. gerar PDF (última etapa)
+  if (!contrato.pdf_url) {
+    try {
+      await gerarContratoPdfInterno({ supabase, contratoId });
+    } catch (err) {
+      console.error("[PDF] erro ao gerar contrato:", err);
+    }
+  }
+
   // ✅ 5. Retorno padronizado
   return {
     activated: true,
     alreadyActive: contrato.status === "ativo",
   };
 }
-
-

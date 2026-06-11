@@ -719,6 +719,14 @@ export async function POST(req: Request) {
         });
       } else {
         // fluxo original de ativação
+        let precoUnitarioAtivacao: number | null = null;
+
+        if (totalAmountBRL != null && funcionariosParaPagamento > 0) {
+          precoUnitarioAtivacao = Number(
+            (totalAmountBRL / funcionariosParaPagamento).toFixed(2),
+          );
+        }
+
         await supabaseAdmin
           .from("contratos")
           .update({
@@ -731,6 +739,11 @@ export async function POST(req: Request) {
                   valor_mensal: totalAmountBRL,
                 }
               : {}),
+
+            ...(precoUnitarioAtivacao != null
+              ? { preco_unitario: precoUnitarioAtivacao }
+              : {}),
+
             ...(cupom_codigo ? { cupom_codigo } : {}),
             atualizado_em: new Date().toISOString(),
           })

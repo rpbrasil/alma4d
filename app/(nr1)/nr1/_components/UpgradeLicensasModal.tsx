@@ -50,7 +50,7 @@ export function UpgradeLicencasModal({
           <button
             onClick={() => {
               if (step === "payment") {
-                if (!confirm("Deseja cancelar o pagamento?")) return;
+                if (!confirm("Escolha [OK] para cancelar o pagamento?")) return;
               }
               setStep("form");
               setQtd(5);

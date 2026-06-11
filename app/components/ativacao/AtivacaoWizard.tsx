@@ -1182,7 +1182,7 @@ function AtivacaoWizardContent() {
 
                 {!contratoLido && (
                   <p className="text-xs text-brand-accent">
-                    Role até o final para habilitar o aceite.
+                    ATENÇÃO: Role até o final para habilitar o aceite.
                   </p>
                 )}
               </div>
