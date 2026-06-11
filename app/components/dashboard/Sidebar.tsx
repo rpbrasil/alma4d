@@ -242,7 +242,11 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       clearAlma4dStorage();
       sessionStorage.clear();
 
-      router.push("/");
+      if (role === "usuario") {
+        router.replace("/login/usuario");
+      } else {
+        router.replace("/login");
+      }
     } catch (e) {
       console.error("Erro ao sair:", e);
     } finally {

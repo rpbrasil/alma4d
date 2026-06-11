@@ -126,7 +126,7 @@ export function LoginForm() {
         const { error } = await supabase.auth.signInWithOtp({
           phone: fullPhone,
           options: {
-            shouldCreateUser: true,
+            shouldCreateUser: false,
           },
         });
 
@@ -148,7 +148,7 @@ export function LoginForm() {
       const { error } = await supabase.auth.signInWithOtp({
         email: emailTrimmed,
         options: {
-          shouldCreateUser: true,
+          shouldCreateUser: false,
         },
       });
 

@@ -34,6 +34,101 @@ type BulkLineError = {
 
 type TabKey = "single" | "bulk";
 
+type ParseResult = {
+  validos: CsvRegistro[];
+  erros: {
+    linha: number;
+    erro: string;
+    raw: string;
+  }[];
+};
+
+function normalizeText(v: string) {
+  if (!v) return "";
+
+  const fixed = v
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\uFFFD/g, ""); // caractere inválido correto
+
+  return fixed.replace(/\s+/g, " ").trim();
+}
+
+function parsePasteDetailed(text: string): ParseResult {
+  const lines = text
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+
+  const validos: CsvRegistro[] = [];
+  const erros: ParseResult["erros"] = [];
+
+  const seenCpf = new Set<string>();
+  const seenPhone = new Set<string>();
+
+  lines.forEach((line, index) => {
+    const linha = index + 1;
+
+    const parts = line.includes(";")
+      ? line.split(";")
+      : line.includes(",")
+        ? line.split(",")
+        : line.split(/\t+/);
+
+    const nome = normalizeText(parts[0] ?? "");
+    const cpf = onlyDigits(parts[1] ?? "");
+    const telefone = normalizePhoneBR(parts[2] ?? "");
+    const dept = normalizeText(parts[3] ?? "");
+
+    // ✅ validações
+    if (normalizeName(nome).length < 3) {
+      erros.push({ linha, erro: "Nome inválido", raw: line });
+      return;
+    }
+
+    if (!isValidCPF(cpf)) {
+      erros.push({ linha, erro: "CPF inválido", raw: line });
+      return;
+    }
+
+    if (!isValidPhone(telefone)) {
+      erros.push({
+        linha,
+        erro: "Telefone inválido (DDD + número)",
+        raw: line,
+      });
+      return;
+    }
+
+    if (!telefone.startsWith("+")) {
+      erros.push({ linha, erro: "Telefone sem +55", raw: line });
+      return;
+    }
+
+    if (seenCpf.has(cpf)) {
+      erros.push({ linha, erro: "CPF duplicado na lista", raw: line });
+      return;
+    }
+    seenCpf.add(cpf);
+
+    if (seenPhone.has(telefone)) {
+      erros.push({ linha, erro: "Telefone duplicado na lista", raw: line });
+      return;
+    }
+    seenPhone.add(telefone);
+
+    validos.push({
+      nome_completo: normalizeName(nome),
+      documento: cpf,
+      telefone,
+      role: "usuario",
+      departamento_nome: dept || null,
+    });
+  });
+
+  return { validos, erros };
+}
+
 function onlyDigits(v: string) {
   return (v ?? "").replace(/\D/g, "");
 }
@@ -114,50 +209,8 @@ function formatPhoneInput(v: string) {
   return d.replace(/^(\d{2})(\d)/, "($1) $2").replace(/(\d{5})(\d)/, "$1-$2");
 }
 
-function parsePaste(text: string): CsvRegistro[] {
-  const lines = text
-    .split(/\r?\n/)
-    .map((l) => l.trim())
-    .filter(Boolean);
-
-  const regs = lines.map((l) => {
-    const parts = l.includes(";")
-      ? l.split(";")
-      : l.includes(",")
-        ? l.split(",")
-        : l.split(/\t+/);
-
-    const nome = (parts[0] ?? "").trim();
-    const cpf = onlyDigits(parts[1] ?? "");
-    const tel = normalizePhoneBR(parts[2] ?? "");
-    const dept = (parts[3] ?? "").trim();
-
-    return {
-      nome_completo: nome,
-      documento: cpf,
-      telefone: tel,
-      role: "usuario" as const,
-      departamento_nome: dept ? normalizeDeptName(dept) : null,
-    };
-  });
-
-  const seenCpf = new Set<string>();
-  const seenPhone = new Set<string>();
-
-  return regs.filter((r) => {
-    if (normalizeName(r.nome_completo).length < 3) return false;
-    if (!isValidCPF(r.documento)) return false;
-    if (!isValidPhone(r.telefone)) return false;
-    if (!r.telefone.startsWith("+")) return false;
-
-    if (seenCpf.has(r.documento)) return false;
-    seenCpf.add(r.documento);
-
-    if (seenPhone.has(r.telefone)) return false;
-    seenPhone.add(r.telefone);
-
-    return true;
-  });
+function hasEncodingIssue(text: string) {
+  return text.includes("�");
 }
 
 async function getAccessToken() {
@@ -178,7 +231,7 @@ export default function DashboardExpress() {
   const [paste, setPaste] = useState("");
   const [bulkPreview, setBulkPreview] = useState<CsvRegistro[]>([]);
   const [bulkError, setBulkError] = useState<string | null>(null);
-
+  const parsed = useMemo(() => parsePasteDetailed(paste), [paste]);
   // departamentos (opcional)
   const [deptEnabled, setDeptEnabled] = useState(false);
   const [departamentoNomePadrao, setDepartamentoNomePadrao] = useState("");
@@ -448,21 +501,26 @@ export default function DashboardExpress() {
 
   async function onBuildPreview() {
     setBulkError(null);
-    const total = paste.split(/\r?\n/).filter(Boolean).length;
-    const regs = parsePaste(paste);
+    const { validos, erros } = parsed;
 
-    if (regs.length < total) {
+    if (!validos.length) {
+      setBulkError("Nenhuma linha válida encontrada.");
+    } else if (erros.length) {
+      setBulkError(`❌ ${erros.length} linhas com erro.`);
+    } else if (hasEncodingIssue(paste)) {
       setBulkError(
-        `${total - regs.length} linhas ignoradas por erro ou duplicidade.`,
+        "⚠️ Detectamos caracteres inválidos. Recomendamos salvar o arquivo como CSV UTF-8.",
       );
     }
-    if (!regs.length) {
-      setBulkError("Nenhuma linha válida. Use: nome;cpf;telefone");
-      setBulkPreview([]);
-      return;
-    }
-    setBulkPreview(regs.slice(0, 20));
-    setMsg(`Prévia pronta: ${regs.length} registros válidos.`);
+    setBulkPreview(validos.slice(0, 20));
+    setJobErrors(
+      erros.slice(0, 5).map((e) => ({
+        linha: e.linha,
+        error: e.erro,
+        payload: { raw: e.raw },
+      })),
+    );
+    setMsg(`✅ ${validos.length} válidos • ❌ ${erros.length} com erro`);
   }
 
   async function onEnqueueBulk() {
@@ -470,15 +528,22 @@ export default function DashboardExpress() {
     setBusy(true);
 
     try {
-      const regs = parsePaste(paste);
+      const { validos, erros } = parsed;
 
-      if (!regs.length) {
+      if (!validos.length) {
+        setJobErrors(
+          erros.slice(0, 5).map((e) => ({
+            linha: e.linha,
+            error: e.erro,
+            payload: { raw: e.raw },
+          })),
+        );
         throw new Error("Nenhuma linha válida para importar.");
       }
 
       if (
         limiteUsuarios !== null &&
-        usuariosAtuais + regs.length > limiteUsuarios
+        usuariosAtuais + validos.length > limiteUsuarios
       ) {
         const restante = limiteUsuarios - usuariosAtuais;
 
@@ -501,7 +566,7 @@ export default function DashboardExpress() {
         : "";
 
       // ✅ regra correta: linha > padrão
-      const regsWithDept: CsvRegistro[] = regs.map((r) => ({
+      const regsWithDept: CsvRegistro[] = validos.map((r) => ({
         ...r,
         departamento_nome:
           r.departamento_nome && r.departamento_nome.trim().length > 0
@@ -608,8 +673,17 @@ export default function DashboardExpress() {
 
     try {
       const text = await file.text();
-      setPaste(text);
-
+      if (text.length > 50000) {
+        setBulkError(
+          "Arquivo muito grande. Limite de processamento excedido. Fale com nossa equipe para forma mais eficiente de upload.",
+        );
+        return;
+      }
+      if (hasEncodingIssue(text)) {
+        setBulkError(
+          "⚠️ Detectamos caracteres inválidos no arquivo. Salve como CSV UTF‑8.",
+        );
+      }
       setMsg(`Arquivo carregado (${file.name})`);
     } catch {
       setMsg("Erro ao ler arquivo.");
@@ -631,9 +705,9 @@ export default function DashboardExpress() {
             </h3>
 
             <p className="mt-3 text-sm text-slate-600 leading-relaxed">
-              O COPSOQ deve garantir <strong>anonimato</strong> e{" "}
-              <strong>confidencialidade</strong>. Evite identificação indireta
-              em grupos pequenos.
+              O Mapeamento de Riscos Psicossociais deve garantir{" "}
+              <strong>anonimato</strong> e <strong>confidencialidade</strong>.
+              Evite identificação indireta em grupos pequenos.
             </p>
 
             <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
@@ -736,7 +810,24 @@ export default function DashboardExpress() {
           ].map((tab) => (
             <button
               key={tab.key}
-              onClick={() => setActiveTab(tab.key as TabKey)}
+              onClick={() => {
+                setActiveTab(tab.key as TabKey);
+
+                // ✅ limpar estados ao trocar
+                setMsg(null);
+
+                if (tab.key === "single") {
+                  setBulkPreview([]);
+                  setJobErrors([]);
+                  setBulkError(null);
+                }
+
+                if (tab.key === "bulk") {
+                  setNome("");
+                  setCpf("");
+                  setTel("");
+                }
+              }}
               className={`px-4 py-2 text-sm font-semibold rounded-t-lg ${
                 activeTab === tab.key
                   ? "bg-white border border-slate-200 border-b-white text-slate-900"
@@ -815,7 +906,18 @@ export default function DashboardExpress() {
             <p className="text-sm text-slate-500">
               Para grandes volumes de usuários
             </p>
-
+            <p className="text-xs text-slate-500">
+              📄 Use arquivos ou textos no padrão Excel/CSV. Caso apareçam
+              caracteres estranhos (�), salve como “CSV UTF-8”.
+            </p>
+            <div className="text-xs text-slate-500 mt-2 space-y-1">
+              <p>⚠️ Problemas com acentos?</p>
+              <ul className="list-disc pl-4">
+                <li>Abra o arquivo no Excel</li>
+                <li>Clique em “Salvar como”</li>
+                <li>Escolha: CSV UTF-8</li>
+              </ul>
+            </div>
             <div className="mt-4">
               <input
                 type="file"
@@ -857,8 +959,9 @@ export default function DashboardExpress() {
             {!!jobErrors.length && (
               <div className="mt-4 text-xs text-red-600">
                 {jobErrors.slice(0, 5).map((e, i) => (
-                  <div key={i}>
-                    Linha {e.linha}: {e.error}
+                  <div key={i} className="flex gap-2">
+                    <span className="font-semibold">Linha {e.linha}:</span>
+                    <span>{e.error}</span>
                   </div>
                 ))}
               </div>
@@ -877,6 +980,18 @@ export default function DashboardExpress() {
                 className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand/90"
               >
                 Importar
+              </button>
+              <button
+                onClick={() => {
+                  setPaste("");
+                  setBulkPreview([]);
+                  setJobErrors([]);
+                  setBulkError(null);
+                  setMsg(null);
+                }}
+                className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                Limpar
               </button>
 
               {jobId && (
