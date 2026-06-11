@@ -34,9 +34,13 @@ function formatNum(n: number | null | undefined) {
 }
 
 function riskLabel(nivel: RowRisco["nivel_risco"]) {
-  if (nivel === "alto") return "Alto";
-  if (nivel === "medio") return "Médio";
-  if (nivel === "baixo") return "Baixo";
+  const n = String(nivel ?? "")
+    .toLowerCase()
+    .trim();
+
+  if (n === "alto") return "Alto";
+  if (n === "medio") return "Médio";
+  if (n === "baixo") return "Baixo";
   return "—";
 }
 
@@ -53,7 +57,6 @@ function riskClass(nivel: RowRisco["nivel_risco"]) {
 export default function DashboardExpressRelatorioCopsoqPage() {
   const { usuarioId, role: authRole, loading: authLoading } = useAuth();
   const supabase = useMemo(() => getSupabaseClient(), []);
-  const [loading, setLoading] = useState(true);
   const [clienteNome, setClienteNome] = useState<string>("—");
   const [pdfLoading, setPdfLoading] = useState(false);
   const [me, setMe] = useState<UsuarioAuth | null>(null);
@@ -61,7 +64,8 @@ export default function DashboardExpressRelatorioCopsoqPage() {
 
   // Dados agregados (view)
   const [rows, setRows] = useState<RowRisco[]>([]);
-
+  const [loadingUser, setLoadingUser] = useState(true);
+  const [loadingRows, setLoadingRows] = useState(true);
   // Filtros de visualização (somente agregados)
   const [filterDepartamentoId, setFilterDepartamentoId] =
     useState<string>("todos");
@@ -92,99 +96,59 @@ export default function DashboardExpressRelatorioCopsoqPage() {
 
   // 1) carrega me
   useEffect(() => {
-    let mounted = true;
-
     (async () => {
       if (!usuarioId) {
-        if (mounted) {
-          setLoading(false);
-          setMe(null);
-        }
+        setLoadingUser(false);
         return;
       }
 
-      setLoading(true);
-      setError("");
-
       try {
-        const { data: usuario, error: uErr } = await supabase
+        const { data: usuario, error } = await supabase
           .from("usuarios")
           .select("id, role, cliente_id")
           .eq("id", usuarioId)
           .single();
 
-        if (uErr || !usuario?.role) {
-          if (mounted)
-            setError("Não foi possível carregar o perfil do usuário.");
+        if (error) {
+          setError("Erro ao carregar usuário");
           return;
         }
 
-        const authUser: UsuarioAuth = {
-          id: usuario.id,
-          role: usuario.role as Role,
-          cliente_id:
-            (usuario as { cliente_id: string | null }).cliente_id ?? null,
-        };
-
-        if (!mounted) return;
-
-        setMe(authUser);
-      } catch (e: unknown) {
-        if (mounted)
-          setError(e instanceof Error ? e.message : "Erro ao carregar.");
+        setMe(usuario);
       } finally {
-        if (mounted) setLoading(false);
+        setLoadingUser(false);
       }
     })();
-
-    return () => {
-      mounted = false;
-    };
   }, [usuarioId, supabase]);
 
   // 2) carrega rows agregadas quando cliente muda
   useEffect(() => {
-    let mounted = true;
-
     (async () => {
-     if (!canViewDashboard || !effectiveClienteId) {
-       return;
-     }
-
-      setLoading(true);
-      setError("");
-
-      const { data, error } = await supabase
-        .from("copsoq_vw_risco_escalas")
-        .select(
-          "cliente_id, departamento_id, departamento_nome, setor_id, setor_nome, escala, n_respostas, media, nivel_risco, prioridade",
-        )
-        .eq("cliente_id", effectiveClienteId)
-        .order("prioridade", { ascending: false });
-
-      if (!mounted) return;
-
-      if (error) {
-        setError("Não foi possível carregar o relatório COPSOQ.");
-        setRows([]);
-      } else {
-        setRows((data ?? []) as RowRisco[]);
+      if (!canViewDashboard || !effectiveClienteId) {
+        setLoadingRows(false);
+        return;
       }
 
-      setLoading(false);
-    })();
+      setLoadingRows(true);
 
-    return () => {
-      mounted = false;
-    };
+      const { data, error } = await supabase.rpc("get_copsoq_risco", {
+        p_cliente_id: effectiveClienteId,
+      });
+
+      console.log("ROWS RAW:", data);
+
+      if (!error) {
+        setRows(data ?? []);
+      }
+
+      setLoadingRows(false);
+    })();
   }, [effectiveClienteId, canViewDashboard, supabase]);
 
   useEffect(() => {
-    let mounted = true;
-
     (async () => {
-      if (!effectiveClienteId) {
-        if (mounted) setClienteNome("—");
+      if (!effectiveClienteId || effectiveClienteId === "null") {
+        setClienteNome("—");
         return;
       }
 
@@ -194,19 +158,12 @@ export default function DashboardExpressRelatorioCopsoqPage() {
         .eq("id", effectiveClienteId)
         .single();
 
-      if (!mounted) return;
-
       if (error) {
         setClienteNome("Cliente");
-        return;
+      } else {
+        setClienteNome(data?.nome ?? "Cliente");
       }
-
-      setClienteNome(data?.nome ?? "Cliente");
     })();
-
-    return () => {
-      mounted = false;
-    };
   }, [effectiveClienteId, supabase]);
 
   useEffect(() => {
@@ -272,27 +229,40 @@ export default function DashboardExpressRelatorioCopsoqPage() {
   }, [rows, filterDepartamentoId]);
 
   // aplica filtros (depto/setor) no agregado
-  const filteredRows = useMemo(() => {
-    return rows.filter((r) => {
-      if (
-        filterDepartamentoId !== "todos" &&
-        r.departamento_id !== filterDepartamentoId
-      )
-        return false;
-      if (filterSetorId !== "todos" && r.setor_id !== filterSetorId)
-        return false;
-      return true;
-    });
-  }, [rows, filterDepartamentoId, filterSetorId]);
+  const filteredRows = rows.filter((r) => {
+    const depOk =
+      filterDepartamentoId === "todos" ||
+      r.departamento_id === filterDepartamentoId;
+
+    const setOk =
+      filterSetorId === "todos" ||
+      r.setor_id === filterSetorId ||
+      r.setor_id === null;
+
+    return depOk && setOk;
+  });
 
   const resumo = useMemo(() => {
     const totalRespostas = filteredRows.reduce(
       (acc, r) => acc + (r.n_respostas ?? 0),
       0,
     );
-    const altos = filteredRows.filter((r) => r.nivel_risco === "alto").length;
-    const medios = filteredRows.filter((r) => r.nivel_risco === "medio").length;
-    const baixos = filteredRows.filter((r) => r.nivel_risco === "baixo").length;
+    const normalize = (v: unknown) =>
+      String(v ?? "")
+        .toLowerCase()
+        .trim();
+
+    const altos = filteredRows.filter(
+      (r) => normalize(r.nivel_risco) === "alto",
+    ).length;
+
+    const medios = filteredRows.filter(
+      (r) => normalize(r.nivel_risco) === "medio",
+    ).length;
+
+    const baixos = filteredRows.filter(
+      (r) => normalize(r.nivel_risco) === "baixo",
+    ).length;
     return {
       totalRespostas,
       altos,
@@ -372,14 +342,27 @@ export default function DashboardExpressRelatorioCopsoqPage() {
     );
   }
 
-  if (authLoading || loading) {
+  if (authLoading || loadingUser || loadingRows) {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#019499]" />
       </div>
     );
   }
-
+  console.log("FILTERS:", filterDepartamentoId, filterSetorId);
+  console.log("ROWS STATE:", rows);
+  console.log("FILTERED:", filteredRows);
+  console.log(
+    "DEBUG LEVELS:",
+    filteredRows.map((r) => r.nivel_risco),
+  );
+  console.log("RESUMO:", resumo);console.log(
+    "NIVEIS:",
+    filteredRows.map((r) => ({
+      valor: r.nivel_risco,
+      raw: JSON.stringify(r.nivel_risco),
+    })),
+  );
   return (
     <div className="space-y-6">
       {/* Header + Export */}
