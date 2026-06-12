@@ -139,349 +139,350 @@ function Step1Riscos({
     setOpenSection((prev) => (prev === section ? null : section));
   }
 
- return (
-   <section className="rounded-2xl border border-border bg-surface shadow-sm p-4 sm:p-6 lg:p-8 space-y-6">
-     <div className="space-y-3">
-       <div className="inline-flex items-center gap-2 rounded-full border border-brand-secondary/20 bg-brand-secondary/5 px-3 py-1 text-xs sm:text-sm text-foreground/70">
-         <ShieldCheck className="h-4 w-4 text-brand-secondary" />
-         Conteúdo de orientação
-       </div>
+  return (
+    <section className="rounded-2xl border border-border bg-surface shadow-sm p-4 sm:p-6 lg:p-8 space-y-6">
+      <div className="space-y-3">
+        <div className="inline-flex items-center gap-2 rounded-full border border-brand-secondary/20 bg-brand-secondary/5 px-3 py-1 text-xs sm:text-sm text-foreground/70">
+          <ShieldCheck className="h-4 w-4 text-brand-secondary" />
+          Conteúdo de orientação
+        </div>
 
-       <h2 className="text-xl sm:text-2xl font-semibold text-foreground">
-         Entender riscos ajuda a proteger pessoas, equipes e a empresa
-       </h2>
+        <h2 className="text-xl sm:text-2xl font-semibold text-foreground">
+          Entender riscos ajuda a proteger pessoas, equipes e a empresa
+        </h2>
 
-       <p className="max-w-3xl text-sm sm:text-base text-foreground/70 leading-relaxed">
-         Antes de registrar uma ocorrência ou responder ao questionário, vale
-         entender de forma simples o que é risco, por que isso importa e como a
-         sua percepção ajuda a prevenir danos e melhorar o ambiente de trabalho.
-       </p>
-     </div>
-     <div className="grid gap-4 lg:grid-cols-2">
-       {/* ✅ COLUNA 1 */}
-       <div className="space-y-3">
-         {/* ACCORDION 1 */}
-         <div className="rounded-2xl border border-border">
-           <button
-             onClick={() => toggle("risco")}
-             className="w-full flex items-start gap-3 p-4 text-left"
-           >
-             <AlertTriangle className="mt-0.5 h-5 w-5 text-brand-secondary shrink-0" />
-             <div className="flex-1">
-               <h2 className="font-medium text-foreground">O que é risco?</h2>
-             </div>
-           </button>
+        <p className="max-w-3xl text-sm sm:text-base text-foreground/70 leading-relaxed">
+          Antes de registrar uma ocorrência ou responder ao questionário, vale
+          entender de forma simples o que é risco, por que isso importa e como a
+          sua percepção ajuda a prevenir danos e melhorar o ambiente de
+          trabalho.
+        </p>
+      </div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        {/* ✅ COLUNA 1 */}
+        <div className="space-y-3">
+          {/* ACCORDION 1 */}
+          <div className="rounded-2xl border border-border">
+            <button
+              onClick={() => toggle("risco")}
+              className="w-full flex items-start gap-3 p-4 text-left"
+            >
+              <AlertTriangle className="mt-0.5 h-5 w-5 text-brand-secondary shrink-0" />
+              <div className="flex-1">
+                <h2 className="font-medium text-foreground">O que é risco?</h2>
+              </div>
+            </button>
 
-           {openSection === "risco" && (
-             <div className="px-4 pb-4 text-sm text-foreground/70">
-               Risco é a chance de um fato causar dano, perda, falha, conflito,
-               adoecimento ou impacto negativo se não for percebido e tratado a
-               tempo.
-             </div>
-           )}
-         </div>
+            {openSection === "risco" && (
+              <div className="px-4 pb-4 text-sm text-foreground/70">
+                Risco é a chance de um fato causar dano, perda, falha, conflito,
+                adoecimento ou impacto negativo se não for percebido e tratado a
+                tempo.
+              </div>
+            )}
+          </div>
 
-         {/* ACCORDION 2 */}
-         <div className="rounded-2xl border border-border">
-           <button
-             onClick={() => toggle("tipos")}
-             className="w-full flex items-start gap-3 p-4 text-left"
-           >
-             <Building2 className="mt-0.5 h-5 w-5 text-brand-secondary shrink-0" />
-             <div className="flex-1">
-               <h2 className="font-medium text-foreground">
-                 Tipos de riscos empresariais
-               </h2>
-             </div>
-           </button>
+          {/* ACCORDION 2 */}
+          <div className="rounded-2xl border border-border">
+            <button
+              onClick={() => toggle("tipos")}
+              className="w-full flex items-start gap-3 p-4 text-left"
+            >
+              <Building2 className="mt-0.5 h-5 w-5 text-brand-secondary shrink-0" />
+              <div className="flex-1">
+                <h2 className="font-medium text-foreground">
+                  Tipos de riscos empresariais
+                </h2>
+              </div>
+            </button>
 
-           {openSection === "tipos" && (
-             <ul className="px-6 pb-4 list-disc text-sm text-foreground/70 space-y-1">
-               <li>Riscos de saúde e segurança no trabalho</li>
-               <li>Riscos operacionais e de processo</li>
-               <li>Riscos éticos, de conduta e integridade</li>
-               <li>Riscos de privacidade e proteção de dados</li>
-               <li>Riscos psicossociais relacionados ao trabalho</li>
-             </ul>
-           )}
-         </div>
+            {openSection === "tipos" && (
+              <ul className="px-6 pb-4 list-disc text-sm text-foreground/70 space-y-1">
+                <li>Riscos de saúde e segurança no trabalho</li>
+                <li>Riscos operacionais e de processo</li>
+                <li>Riscos éticos, de conduta e integridade</li>
+                <li>Riscos de privacidade e proteção de dados</li>
+                <li>Riscos psicossociais relacionados ao trabalho</li>
+              </ul>
+            )}
+          </div>
 
-         {/* ACCORDION 3 */}
-         <div className="rounded-2xl border border-border">
-           <button
-             onClick={() => toggle("legislacao")}
-             className="w-full flex items-start gap-3 p-4 text-left"
-           >
-             <Scale className="mt-0.5 h-5 w-5 text-brand-secondary shrink-0" />
-             <div className="flex-1">
-               <h2 className="font-medium text-foreground">
-                 Legislação brasileira relevante
-               </h2>
-             </div>
-           </button>
+          {/* ACCORDION 3 */}
+          <div className="rounded-2xl border border-border">
+            <button
+              onClick={() => toggle("legislacao")}
+              className="w-full flex items-start gap-3 p-4 text-left"
+            >
+              <Scale className="mt-0.5 h-5 w-5 text-brand-secondary shrink-0" />
+              <div className="flex-1">
+                <h2 className="font-medium text-foreground">
+                  Legislação brasileira relevante
+                </h2>
+              </div>
+            </button>
 
-           {openSection === "legislacao" && (
-             <div className="px-4 pb-4 text-sm text-foreground/70 space-y-2">
-               <p>
-                 <strong>NR-1:</strong> trata das disposições gerais e
-                 gerenciamento de riscos ocupacionais.
-               </p>
-               <p>
-                 <strong>Guia MTE:</strong> inclui fatores psicossociais no
-                 gerenciamento.
-               </p>
-               <p>
-                 <strong>Lei 13.608/2018:</strong> garante anonimato em
-                 denúncias.
-               </p>
-               <p>
-                 <strong>LGPD:</strong> regula o tratamento de dados pessoais.
-               </p>
-             </div>
-           )}
-         </div>
-       </div>
+            {openSection === "legislacao" && (
+              <div className="px-4 pb-4 text-sm text-foreground/70 space-y-2">
+                <p>
+                  <strong>NR-1:</strong> trata das disposições gerais e
+                  gerenciamento de riscos ocupacionais.
+                </p>
+                <p>
+                  <strong>Guia MTE:</strong> inclui fatores psicossociais no
+                  gerenciamento.
+                </p>
+                <p>
+                  <strong>Lei 13.608/2018:</strong> garante anonimato em
+                  denúncias.
+                </p>
+                <p>
+                  <strong>LGPD:</strong> regula o tratamento de dados pessoais.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
 
-       {/* ✅ COLUNA 2 */}
-       <div className="space-y-3">
-         {/* ACCORDION 4 */}
-         <div className="rounded-2xl border border-border">
-           <button
-             onClick={() => toggle("acoes")}
-             className="w-full flex items-start gap-3 p-4 text-left"
-           >
-             <HeartPulse className="mt-0.5 h-5 w-5 text-brand-secondary shrink-0" />
-             <div className="flex-1">
-               <h2 className="font-medium text-foreground">
-                 O que fazer ao perceber um risco
-               </h2>
-             </div>
-           </button>
-           {openSection === "acoes" && (
-             <div className="px-4 pb-4 text-sm text-foreground/70 space-y-2">
-               <p>Observe com calma o que está acontecendo.</p>
-               <p>Evite se expor a perigo desnecessário.</p>
-               <p>Registre informações: local, data, contexto e impacto.</p>
-               <p>Use o canal seguro para relatar ocorrências.</p>
-               <p>Participe do questionário psicossocial.</p>
-             </div>
-           )}
-         </div>
-         {/* ACCORDION 5 */}
-         <div className="rounded-2xl border border-border">
-           <button
-             onClick={() => toggle("guia")}
-             className="w-full flex items-start gap-3 p-4 text-left"
-           >
-             <MessageSquareQuote className="mt-0.5 h-5 w-5 text-brand-secondary shrink-0" />
+        {/* ✅ COLUNA 2 */}
+        <div className="space-y-3">
+          {/* ACCORDION 4 */}
+          <div className="rounded-2xl border border-border">
+            <button
+              onClick={() => toggle("acoes")}
+              className="w-full flex items-start gap-3 p-4 text-left"
+            >
+              <HeartPulse className="mt-0.5 h-5 w-5 text-brand-secondary shrink-0" />
+              <div className="flex-1">
+                <h2 className="font-medium text-foreground">
+                  O que fazer ao perceber um risco
+                </h2>
+              </div>
+            </button>
+            {openSection === "acoes" && (
+              <div className="px-4 pb-4 text-sm text-foreground/70 space-y-2">
+                <p>Observe com calma o que está acontecendo.</p>
+                <p>Evite se expor a perigo desnecessário.</p>
+                <p>Registre informações: local, data, contexto e impacto.</p>
+                <p>Use o canal seguro para relatar ocorrências.</p>
+                <p>Participe do questionário psicossocial.</p>
+              </div>
+            )}
+          </div>
+          {/* ACCORDION 5 */}
+          <div className="rounded-2xl border border-border">
+            <button
+              onClick={() => toggle("guia")}
+              className="w-full flex items-start gap-3 p-4 text-left"
+            >
+              <MessageSquareQuote className="mt-0.5 h-5 w-5 text-brand-secondary shrink-0" />
 
-             <div className="flex-1">
-               <h2 className="font-medium text-foreground">
-                 Como descrever um risco ou ocorrência
-               </h2>
-             </div>
-           </button>
+              <div className="flex-1">
+                <h2 className="font-medium text-foreground">
+                  Como descrever um risco ou ocorrência
+                </h2>
+              </div>
+            </button>
 
-           {openSection === "guia" && (
-             <div className="px-4 pb-4 space-y-3">
-               {/* TEXTO */}
-               <ul className="space-y-1 text-sm text-foreground/70 leading-relaxed list-disc pl-5">
-                 <li>O que aconteceu?</li>
-                 <li>Onde isso aconteceu?</li>
-                 <li>Quando aconteceu?</li>
-                 <li>Quem foi afetado?</li>
-                 <li>Existe risco imediato?</li>
-                 <li>Há algo que ajude a entender o caso?</li>
-               </ul>
-             </div>
-           )}
-         </div>
-         {/* ACCORDION FINAL */}
-         <div className="rounded-2xl border border-border">
-           <button
-             onClick={() => toggle("importancia")}
-             className="w-full flex items-start gap-3 p-4 text-left"
-           >
-             <ShieldCheck className="mt-0.5 h-5 w-5 text-brand-secondary shrink-0" />
+            {openSection === "guia" && (
+              <div className="px-4 pb-4 space-y-3">
+                {/* TEXTO */}
+                <ul className="space-y-1 text-sm text-foreground/70 leading-relaxed list-disc pl-5">
+                  <li>O que aconteceu?</li>
+                  <li>Onde isso aconteceu?</li>
+                  <li>Quando aconteceu?</li>
+                  <li>Quem foi afetado?</li>
+                  <li>Existe risco imediato?</li>
+                  <li>Há algo que ajude a entender o caso?</li>
+                </ul>
+              </div>
+            )}
+          </div>
+          {/* ACCORDION FINAL */}
+          <div className="rounded-2xl border border-border">
+            <button
+              onClick={() => toggle("importancia")}
+              className="w-full flex items-start gap-3 p-4 text-left"
+            >
+              <ShieldCheck className="mt-0.5 h-5 w-5 text-brand-secondary shrink-0" />
 
-             <div className="flex-1">
-               <h2 className="font-medium text-foreground">
-                 Por que relatar um risco é importante
-               </h2>
-             </div>
-           </button>
+              <div className="flex-1">
+                <h2 className="font-medium text-foreground">
+                  Por que relatar um risco é importante
+                </h2>
+              </div>
+            </button>
 
-           {openSection === "importancia" && (
-             <div className="px-4 pb-4 text-sm text-foreground/70 leading-relaxed space-y-2">
-               <p>
-                 Sua percepção ajuda a empresa a identificar problemas antes que
-                 eles cresçam.
-               </p>
+            {openSection === "importancia" && (
+              <div className="px-4 pb-4 text-sm text-foreground/70 leading-relaxed space-y-2">
+                <p>
+                  Sua percepção ajuda a empresa a identificar problemas antes
+                  que eles cresçam.
+                </p>
 
-               <p>
-                 Relatar um risco não é “apontar falhas”, mas contribuir com a
-                 prevenção, proteção das pessoas e melhoria contínua do ambiente
-                 de trabalho.
-               </p>
+                <p>
+                  Relatar um risco não é “apontar falhas”, mas contribuir com a
+                  prevenção, proteção das pessoas e melhoria contínua do
+                  ambiente de trabalho.
+                </p>
 
-               <p>
-                 Quanto mais cedo um risco é identificado, maior a chance de
-                 evitar impactos, reduzir danos e melhorar as condições para
-                 todos.
-               </p>
-             </div>
-           )}
-         </div>
-       </div>
-     </div>
-     {/* ✅ BOTOES */}
-     <div className="flex flex-col gap-2 sm:flex-row">
-       <button
-         type="button"
-         onClick={() => setOpenModal(true)}
-         className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-300 bg-red-50 px-3 h-10 text-[13px] sm:text-sm text-red-700 font-medium hover:bg-red-100"
-       >
-         🚨 <span className="truncate">Ver contatos de emergência</span>
-       </button>
+                <p>
+                  Quanto mais cedo um risco é identificado, maior a chance de
+                  evitar impactos, reduzir danos e melhorar as condições para
+                  todos.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+      {/* ✅ BOTOES */}
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <button
+          type="button"
+          onClick={() => setOpenModal(true)}
+          className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-300 bg-red-50 px-3 h-10 text-[13px] sm:text-sm text-red-700 font-medium hover:bg-red-100"
+        >
+          🚨 <span className="truncate">Ver contatos de emergência</span>
+        </button>
 
-       <a
-         href="https://heyzine.com/flip-book/4757966bd8"
-         target="_blank"
-         rel="noopener noreferrer"
-         className="inline-flex items-center justify-center gap-2 rounded-xl border border-brand-secondary/30 bg-brand-secondary/10 px-3 h-10 text-[13px] sm:text-sm text-foreground font-medium hover:bg-brand-secondary/20"
-       >
-         📘 <span className="truncate">Saiba mais sobre NR-1</span>
-       </a>
+        <a
+          href="https://heyzine.com/flip-book/4757966bd8"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center justify-center gap-2 rounded-xl border border-brand-secondary/30 bg-brand-secondary/10 px-3 h-10 text-[13px] sm:text-sm text-foreground font-medium hover:bg-brand-secondary/20"
+        >
+          📘 <span className="truncate">Saiba mais sobre NR-1</span>
+        </a>
 
-       <button
-         type="button"
-         onClick={onNext}
-         className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand px-3 h-10 text-[13px] sm:text-sm text-white font-medium hover:opacity-95"
-       >
-         <span className="truncate">Entendi. Ir para canal seguro</span>
-         <ChevronRight className="h-4 w-4 shrink-0" />
-       </button>
-     </div>
-     {/* ✅ MODAL permanece igual */}
-     {openModal && (
-       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-         <div className="w-full max-w-5xl rounded-2xl bg-white p-4 sm:p-6 shadow-lg overflow-hidden">
-           <div className="flex items-center justify-between mb-4">
-             <h2 className="text-lg font-semibold text-foreground">
-               📋 Emergência e Resposta a Incidentes
-             </h2>
-             <button
-               onClick={() => setOpenModal(false)}
-               className="text-foreground/60 hover:text-foreground"
-             >
-               ✕
-             </button>
-           </div>
+        <button
+          type="button"
+          onClick={onNext}
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand px-3 h-10 text-[13px] sm:text-sm text-white font-medium hover:opacity-95"
+        >
+          <span className="truncate">Entendi. Ir para canal seguro</span>
+          <ChevronRight className="h-4 w-4 shrink-0" />
+        </button>
+      </div>
+      {/* ✅ MODAL permanece igual */}
+      {openModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-5xl rounded-2xl bg-white p-4 sm:p-6 shadow-lg overflow-hidden">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-foreground">
+                📋 Emergência e Resposta a Incidentes
+              </h2>
+              <button
+                onClick={() => setOpenModal(false)}
+                className="text-foreground/60 hover:text-foreground"
+              >
+                ✕
+              </button>
+            </div>
 
-           <div className="overflow-auto max-h-[60vh]">
-             <table className="w-full text-sm border border-border rounded-lg overflow-hidden">
-               <thead className="bg-surface-muted text-left">
-                 <tr>
-                   <th className="px-3 py-2">Cenário</th>
-                   <th className="px-3 py-2">Autoridade</th>
-                   <th className="px-3 py-2">Contato</th>
-                   <th className="px-3 py-2">Quando Acionar</th>
-                   <th className="px-3 py-2">Concessionárias</th>
-                 </tr>
-               </thead>
+            <div className="overflow-auto max-h-[60vh]">
+              <table className="w-full text-sm border border-border rounded-lg overflow-hidden">
+                <thead className="bg-surface-muted text-left">
+                  <tr>
+                    <th className="px-3 py-2">Cenário</th>
+                    <th className="px-3 py-2">Autoridade</th>
+                    <th className="px-3 py-2">Contato</th>
+                    <th className="px-3 py-2">Quando Acionar</th>
+                    <th className="px-3 py-2">Concessionárias</th>
+                  </tr>
+                </thead>
 
-               <tbody className="divide-y">
-                 <tr>
-                   <td className="px-3 py-2">Incêndio / Explosão</td>
-                   <td className="px-3 py-2">Bombeiros</td>
-                   <td className="px-3 py-2">193</td>
-                   <td className="px-3 py-2">Fogo, fumaça ou cheiro de gás</td>
-                   <td className="px-3 py-2">Energia: 🔌 / Água: 💧</td>
-                 </tr>
+                <tbody className="divide-y">
+                  <tr>
+                    <td className="px-3 py-2">Incêndio / Explosão</td>
+                    <td className="px-3 py-2">Bombeiros</td>
+                    <td className="px-3 py-2">193</td>
+                    <td className="px-3 py-2">Fogo, fumaça ou cheiro de gás</td>
+                    <td className="px-3 py-2">Energia: 🔌 / Água: 💧</td>
+                  </tr>
 
-                 <tr>
-                   <td className="px-3 py-2">Mal súbito / Ferimentos</td>
-                   <td className="px-3 py-2">SAMU</td>
-                   <td className="px-3 py-2">192</td>
-                   <td className="px-3 py-2">
-                     Desmaio, choque, queda com lesão
-                   </td>
-                   <td className="px-3 py-2">Energia: 🔌 / Água: 💧</td>
-                 </tr>
+                  <tr>
+                    <td className="px-3 py-2">Mal súbito / Ferimentos</td>
+                    <td className="px-3 py-2">SAMU</td>
+                    <td className="px-3 py-2">192</td>
+                    <td className="px-3 py-2">
+                      Desmaio, choque, queda com lesão
+                    </td>
+                    <td className="px-3 py-2">Energia: 🔌 / Água: 💧</td>
+                  </tr>
 
-                 <tr>
-                   <td className="px-3 py-2">Assalto / Invasão</td>
-                   <td className="px-3 py-2">Polícia Militar</td>
-                   <td className="px-3 py-2">190</td>
-                   <td className="px-3 py-2">Crime em andamento</td>
-                   <td className="px-3 py-2">—</td>
-                 </tr>
+                  <tr>
+                    <td className="px-3 py-2">Assalto / Invasão</td>
+                    <td className="px-3 py-2">Polícia Militar</td>
+                    <td className="px-3 py-2">190</td>
+                    <td className="px-3 py-2">Crime em andamento</td>
+                    <td className="px-3 py-2">—</td>
+                  </tr>
 
-                 <tr>
-                   <td className="px-3 py-2">Risco de desabamento</td>
-                   <td className="px-3 py-2">Defesa Civil</td>
-                   <td className="px-3 py-2">199</td>
-                   <td className="px-3 py-2">
-                     Rachaduras ou estrutura cedendo
-                   </td>
-                   <td className="px-3 py-2">Energia: 🔌 / Água: 💧</td>
-                 </tr>
+                  <tr>
+                    <td className="px-3 py-2">Risco de desabamento</td>
+                    <td className="px-3 py-2">Defesa Civil</td>
+                    <td className="px-3 py-2">199</td>
+                    <td className="px-3 py-2">
+                      Rachaduras ou estrutura cedendo
+                    </td>
+                    <td className="px-3 py-2">Energia: 🔌 / Água: 💧</td>
+                  </tr>
 
-                 <tr>
-                   <td className="px-3 py-2">Vazamento químico / óleo</td>
-                   <td className="px-3 py-2">Bombeiros / Ambiental</td>
-                   <td className="px-3 py-2">193</td>
-                   <td className="px-3 py-2">Risco de contaminação</td>
-                   <td className="px-3 py-2">Água: 💧</td>
-                 </tr>
+                  <tr>
+                    <td className="px-3 py-2">Vazamento químico / óleo</td>
+                    <td className="px-3 py-2">Bombeiros / Ambiental</td>
+                    <td className="px-3 py-2">193</td>
+                    <td className="px-3 py-2">Risco de contaminação</td>
+                    <td className="px-3 py-2">Água: 💧</td>
+                  </tr>
 
-                 <tr>
-                   <td className="px-3 py-2">Dano estrutural externo</td>
-                   <td className="px-3 py-2">Prefeitura</td>
-                   <td className="px-3 py-2">156</td>
-                   <td className="px-3 py-2">Árvore caída / poste risco</td>
-                   <td className="px-3 py-2">Energia: 🔌</td>
-                 </tr>
+                  <tr>
+                    <td className="px-3 py-2">Dano estrutural externo</td>
+                    <td className="px-3 py-2">Prefeitura</td>
+                    <td className="px-3 py-2">156</td>
+                    <td className="px-3 py-2">Árvore caída / poste risco</td>
+                    <td className="px-3 py-2">Energia: 🔌</td>
+                  </tr>
 
-                 <tr>
-                   <td className="px-3 py-2">Furto / dano patrimonial</td>
-                   <td className="px-3 py-2">Polícia Civil</td>
-                   <td className="px-3 py-2">Delegacia</td>
-                   <td className="px-3 py-2">Após o incidente</td>
-                   <td className="px-3 py-2">—</td>
-                 </tr>
+                  <tr>
+                    <td className="px-3 py-2">Furto / dano patrimonial</td>
+                    <td className="px-3 py-2">Polícia Civil</td>
+                    <td className="px-3 py-2">Delegacia</td>
+                    <td className="px-3 py-2">Após o incidente</td>
+                    <td className="px-3 py-2">—</td>
+                  </tr>
 
-                 <tr>
-                   <td className="px-3 py-2">Acidente com funcionário</td>
-                   <td className="px-3 py-2">RH / SESMT</td>
-                   <td className="px-3 py-2">Interno</td>
-                   <td className="px-3 py-2">CAT em até 24h</td>
-                   <td className="px-3 py-2">—</td>
-                 </tr>
-               </tbody>
-             </table>
+                  <tr>
+                    <td className="px-3 py-2">Acidente com funcionário</td>
+                    <td className="px-3 py-2">RH / SESMT</td>
+                    <td className="px-3 py-2">Interno</td>
+                    <td className="px-3 py-2">CAT em até 24h</td>
+                    <td className="px-3 py-2">—</td>
+                  </tr>
+                </tbody>
+              </table>
 
-             <div className="mt-6 space-y-2 text-sm">
-               <h3 className="font-medium">🛠️ Protocolo rápido</h3>
+              <div className="mt-6 space-y-2 text-sm">
+                <h3 className="font-medium">🛠️ Protocolo rápido</h3>
 
-               <p>
-                 <strong>1. SOCORRER:</strong> Verifique as vítimas e acione
-                 192/193.
-               </p>
-               <p>
-                 <strong>2. ISOLAR:</strong> Retire as pessoas e restrinja o
-                 acesso.
-               </p>
-               <p>
-                 <strong>3. REGISTRAR:</strong> Documente com fotos e horário.
-               </p>
-             </div>
-           </div>
-         </div>
-       </div>
-     )}
-   </section>
- );
+                <p>
+                  <strong>1. SOCORRER:</strong> Verifique as vítimas e acione
+                  192/193.
+                </p>
+                <p>
+                  <strong>2. ISOLAR:</strong> Retire as pessoas e restrinja o
+                  acesso.
+                </p>
+                <p>
+                  <strong>3. REGISTRAR:</strong> Documente com fotos e horário.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </section>
+  );
 }
 
 function Step2CanalSeguro({
@@ -1023,11 +1024,11 @@ function Step3Copsoq({
 
   const secondaryLabel =
     role === "usuario" ? "Voltar para o canal seguro" : "Voltar";
-const [openSection, setOpenSection] = useState<string | null>(null);
+  const [openSection, setOpenSection] = useState<string | null>(null);
 
-function toggle(section: string) {
-  setOpenSection((prev) => (prev === section ? null : section));
-}
+  function toggle(section: string) {
+    setOpenSection((prev) => (prev === section ? null : section));
+  }
 
   return (
     <section className="rounded-2xl border border-border bg-surface shadow-sm p-4 sm:p-6 lg:p-8 space-y-6">
@@ -1254,7 +1255,7 @@ function ExpressAcessoBasicoContent() {
   const [submitting, setSubmitting] = useState(false);
   const [protocol, setProtocol] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-
+  const [openProtocolModal, setOpenProtocolModal] = useState(false);
   const todayISO = useMemo(() => {
     const now = new Date();
     const yyyy = now.getFullYear();
@@ -1373,6 +1374,10 @@ function ExpressAcessoBasicoContent() {
       }
 
       setProtocol(payload?.protocol ?? null);
+
+      if (payload?.protocol) {
+        setOpenProtocolModal(true);
+      }
       setForm(INITIAL_FORM);
       setFiles([]);
 
@@ -1417,6 +1422,66 @@ function ExpressAcessoBasicoContent() {
 
         {step === 3 && <Step3Copsoq onPrev={() => goToStep(2)} role={role} />}
       </div>
+      {openProtocolModal && protocol && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+          onClick={() => setOpenProtocolModal(false)}
+        >
+          <div
+            className="w-full max-w-md bg-surface rounded-2xl p-6 shadow-lg space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* HEADER */}
+            <div className="text-center">
+              <h2 className="text-lg font-semibold text-primary">
+                Protocolo gerado
+              </h2>
+
+              <p className="text-sm text-secondary mt-1">
+                Anote o número abaixo para acompanhar sua ocorrência.
+              </p>
+            </div>
+
+            {/* PROTOCOLO */}
+            <div className="bg-surface-muted rounded-xl p-4 text-center">
+              <span className="text-xs text-secondary block">
+                Seu protocolo
+              </span>
+
+              <span className="text-xl font-bold text-brand tracking-widest block mt-1">
+                {protocol}
+              </span>
+            </div>
+
+            {/* ALERTA */}
+            <p className="text-xs text-secondary text-center">
+              Este código é a única forma de acompanhamento. Guarde com
+              segurança.
+            </p>
+
+            {/* AÇÕES */}
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(protocol);
+                }}
+                className="h-10 rounded-xl bg-brand text-white text-sm font-medium hover:opacity-90"
+              >
+                Copiar protocolo
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setOpenProtocolModal(false)}
+                className="h-10 rounded-xl border border-border text-sm text-primary hover:bg-surface-muted"
+              >
+                Entendido
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

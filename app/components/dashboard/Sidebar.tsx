@@ -83,7 +83,7 @@ const NAV_BY_PLAN: Record<Plano, NavItem[]> = {
       roles: ["admin", "cliente", "gestor", "usuario"],
     },
     {
-      href: "/dashboard/express/parceiros",
+      href: "/dashboard/admin/parceiros",
       label: "Parceiros",
       icon: Users,
       roles: ["admin"],
