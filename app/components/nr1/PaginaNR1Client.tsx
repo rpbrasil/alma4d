@@ -375,8 +375,10 @@ export default function PaginaNR1() {
         </section>
 
         <details className="max-w-3xl mx-auto mt-6 mb-6 px-4 text-left">
-          <summary className="cursor-pointer font-semibold text-brand">
-            Quero entender os detalhes sobre exigências da NR‑1
+          <summary className="cursor-pointer font-semibold text-brand border mt-4 mb-4 border-gray-300 bg-white shadow-sm hover:shadow rounded-lg px-4 py-3 hover:bg-gray-50 transition list-none appearance-none flex items-center justify-between
+          [&::-webkit-details-marker]:hidden">
+            <span>Quero entender os detalhes sobre exigências da NR‑1</span>
+            <span className="text-xs opacity-70">▼</span>
           </summary>
 
           <div className="mt-4 text-slate-600">

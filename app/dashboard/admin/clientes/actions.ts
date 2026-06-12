@@ -37,37 +37,37 @@ const supabase = getSupabaseClient();
 
 // ✅ Valida sessão + admin no CLIENT
 async function assertAdminClient() {
-    const { data: auth, error } = await supabase.auth.getUser();
+  const { data: auth, error } = await supabase.auth.getUser();
 
-    if (error || !auth.user) {
-      throw new Error("Sessão expirada. Faça login novamente.");
-    }
-
-    // ✅ pegar usuario_id canônico
-    const { data: usuarioId, error: usuarioIdErr } =
-      await supabase.rpc("current_usuario_id");
-
-    if (usuarioIdErr || !usuarioId) {
-      throw new Error("Usuário não associado.");
-    }
-
-    // ✅ buscar role correta
-    const { data: usuario, error: usuarioErr } = await supabase
-      .from("usuarios")
-      .select("role")
-      .eq("id", usuarioId)
-      .single();
-
-    if (usuarioErr || !usuario) {
-      throw new Error("Erro ao validar permissões.");
-    }
-
-    if (asRole(usuario.role) !== "admin") {
-      throw new Error("Acesso restrito a administradores.");
-    }
-
-    return usuarioId;
+  if (error || !auth.user) {
+    throw new Error("Sessão expirada. Faça login novamente.");
   }
+
+  // ✅ pegar usuario_id canônico
+  const { data: usuarioId, error: usuarioIdErr } =
+    await supabase.rpc("current_usuario_id");
+
+  if (usuarioIdErr || !usuarioId) {
+    throw new Error("Usuário não associado.");
+  }
+
+  // ✅ buscar role correta
+  const { data: usuario, error: usuarioErr } = await supabase
+    .from("usuarios")
+    .select("role")
+    .eq("id", usuarioId)
+    .single();
+
+  if (usuarioErr || !usuario) {
+    throw new Error("Erro ao validar permissões.");
+  }
+
+  if (asRole(usuario.role) !== "admin") {
+    throw new Error("Acesso restrito a administradores.");
+  }
+
+  return usuarioId;
+}
 
 /**
  * Lista clientes + métricas reais via contratos:
@@ -78,68 +78,10 @@ async function assertAdminClient() {
 export async function listarClientesAdmin(): Promise<ClienteRow[]> {
   await assertAdminClient();
 
-  // 1️⃣ Clientes base
-  const { data: clientes, error: errClientes } = await supabase
-    .from("clientes")
-    .select("id,tipo,nome,documento,email,telefone,ativo,created_at")
-    .order("created_at", { ascending: false });
+  const { data, error } = await supabase.rpc("get_clientes_admin");
 
-  if (errClientes) throw new Error(friendlyDbError(errClientes));
-  if (!clientes) return [];
-
-  const ids = clientes.map((c) => c.id);
-
-  // 2️⃣ Contratos relacionados
-  const { data: contratos, error: errContratos } = await supabase
-    .from("contratos")
-    .select("cliente_id,status,data_inicio,criado_em")
-    .in("cliente_id", ids)
-    .order("criado_em", { ascending: false });
-
-  if (errContratos) throw new Error(friendlyDbError(errContratos));
-
-  const map = new Map<
-    string,
-    { count: number; lastStatus: string | null; lastInicio: string | null }
-  >();
-
-  for (const id of ids) {
-    map.set(id, { count: 0, lastStatus: null, lastInicio: null });
-  }
-
-  if (contratos) {
-    for (const ct of contratos) {
-      const cur = map.get(ct.cliente_id);
-      if (!cur) continue;
-      cur.count += 1;
-      if (!cur.lastStatus) {
-        cur.lastStatus = ct.status ?? null;
-        cur.lastInicio = ct.data_inicio ?? null;
-      }
-    }
-  }
-
-  return clientes.map((c) => {
-    const meta = map.get(c.id) || {
-      count: 0,
-      lastStatus: null,
-      lastInicio: null,
-    };
-
-    return {
-      id: c.id,
-      tipo: c.tipo,
-      nome: c.nome,
-      documento: c.documento,
-      email: c.email,
-      telefone: c.telefone,
-      ativo: c.ativo ?? true,
-      created_at: c.created_at,
-      contratos_count: meta.count,
-      ultimo_status_contrato: meta.lastStatus,
-      ultimo_inicio: meta.lastInicio,
-    };
-  });
+  if (error) throw new Error(friendlyDbError(error));
+  return data ?? [];
 }
 
 // =====================================================
