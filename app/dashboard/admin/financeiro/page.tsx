@@ -11,7 +11,27 @@ export default async function FinanceiroPage() {
   const { data: financeiro } = await supabase
     .from("v_financeiro_base")
     .select("*");
+  
+  //calculo das receitas paga, prevista e perdida
+  const receitaPaga =
+    financeiro
+      ?.filter((f) => f.payment_status === "paid")
+      .reduce((acc, f) => acc + (f.valor_cents ?? 0), 0) ?? 0;
+  
+  const receitaPrevista =
+    financeiro
+      ?.filter((f) => f.payment_status === "pending")
+      .reduce((acc, f) => acc + (f.valor_cents ?? 0), 0) ?? 0;
 
+  const receitaPerdida =
+    financeiro
+      ?.filter((f) => f.payment_status === "failed")
+      .reduce((acc, f) => acc + (f.valor_cents ?? 0), 0) ?? 0;
+
+  const baseConversao = receitaPaga + receitaPrevista;
+  const taxaConversao =
+    baseConversao > 0 ? (receitaPaga / baseConversao) * 100 : 0;
+  
   const mrr =
     financeiro
       ?.filter((f) => f.payment_status === "paid")
@@ -119,9 +139,39 @@ export default async function FinanceiroPage() {
           title="Receita Total"
           value={`R$ ${(totalReceita / 100).toLocaleString("pt-BR")}`}
         />
-        <KpiCard title="MRR" value={`R$ ${(mrr / 100).toLocaleString("pt-BR")}`} />
-        <KpiCard title="Ticket Médio" value={`R$ ${(ticketMedio / 100).toLocaleString("pt-BR")}`} />
-        <KpiCard title="Clientes Ativos" value={clientesAtivos.toString()}/>
+        <KpiCard
+          title="MRR"
+          value={`R$ ${(mrr / 100).toLocaleString("pt-BR")}`}
+        />
+        <KpiCard
+          title="Ticket Médio"
+          value={`R$ ${(ticketMedio / 100).toLocaleString("pt-BR")}`}
+        />
+        <KpiCard title="Clientes Ativos" value={clientesAtivos.toString()} />
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <KpiCard
+          title="Receita Paga"
+          value={`R$ ${(receitaPaga / 100).toLocaleString("pt-BR")}`}
+          valueClass="text-brand-secondary"
+        />
+
+        <KpiCard
+          title="Receita Prevista"
+          value={`R$ ${(receitaPrevista / 100).toLocaleString("pt-BR")}`}
+          valueClass="text-brand-highlight"
+        />
+
+        <KpiCard
+          title="Receita Perdida"
+          value={`R$ ${(receitaPerdida / 100).toLocaleString("pt-BR")}`}
+          valueClass="text-brand-accent"
+        />
+        <KpiCard
+          title="Taxa de Conversao"
+          value={`${taxaConversao.toFixed(1)}%`}
+          valueClass="text-brand"
+        />
       </div>
       <div className="grid md:grid-cols-3 gap-4">
         {/* 🚨 SEM NFSE */}
