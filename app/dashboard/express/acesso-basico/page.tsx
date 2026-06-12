@@ -104,18 +104,33 @@ function Stepper({
               type="button"
               onClick={() => onGoStep(item.step)}
               className={[
-                "rounded-xl border px-3 py-3 text-left transition",
+                "rounded-xl px-4 py-4 text-left transition-all border shadow-sm",
+                "hover:shadow-md",
+
                 active
-                  ? "border-brand bg-brand/10"
+                  ? "border-brand bg-brand text-white shadow-md"
                   : done
-                    ? "border-brand-secondary/30 bg-brand-secondary/5"
-                    : "border-border hover:bg-surface-muted",
+                    ? "border-brand-secondary bg-brand-secondary/10 text-foreground"
+                    : "border-border bg-surface hover:bg-surface-muted text-foreground",
               ].join(" ")}
             >
-              <div className="text-xs text-foreground/55">
+              {/* ETAPA */}
+              <div
+                className={[
+                  "text-xs uppercase tracking-wide",
+                  active ? "text-white/80" : "text-secondary",
+                ].join(" ")}
+              >
                 Etapa {item.step}
               </div>
-              <div className="mt-1 text-sm font-medium text-foreground">
+
+              {/* LABEL */}
+              <div
+                className={[
+                  "mt-1 text-sm font-semibold leading-snug",
+                  active ? "text-white" : "text-primary",
+                ].join(" ")}
+              >
                 {item.label}
               </div>
             </button>
@@ -602,7 +617,7 @@ function Step2CanalSeguro({
 
   const secondaryLabel =
     role === "usuario" ? "Voltar para a etapa anterior" : "Voltar";
-
+  if (protocol) return null;
   return (
     <section className="rounded-2xl border border-border bg-surface shadow-sm p-4 sm:p-6 space-y-4">
       <div className="inline-flex items-center gap-2 rounded-full border border-brand-secondary/20 bg-brand-secondary/5 px-3 py-1 text-xs sm:text-sm text-foreground/70">
