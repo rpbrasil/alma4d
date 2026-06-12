@@ -97,7 +97,7 @@ export default function ParceirosAlma4DPage() {
             </a>
 
             <a
-              href="/mapeamento-riscos-psicossociais"
+              href="/nr1/mapeamento-riscos-psicossociais"
               className="h-11 px-6 rounded-xl border border-border text-brand font-semibold flex items-center justify-center
               hover:bg-surface-muted transition"
             >
