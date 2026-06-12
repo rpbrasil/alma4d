@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { createClient } from "@supabase/supabase-js";
 import FinanceiroCharts from "@/components/financeiro/FinanceiroCharts";
 import { KpiCard } from "@/components/financeiro/KpiCard";
@@ -11,13 +13,13 @@ export default async function FinanceiroPage() {
   const { data: financeiro } = await supabase
     .from("v_financeiro_base")
     .select("*");
-  
+
   //calculo das receitas paga, prevista e perdida
   const receitaPaga =
     financeiro
       ?.filter((f) => f.payment_status === "paid")
       .reduce((acc, f) => acc + (f.valor_cents ?? 0), 0) ?? 0;
-  
+
   const receitaPrevista =
     financeiro
       ?.filter((f) => f.payment_status === "pending")
@@ -31,12 +33,12 @@ export default async function FinanceiroPage() {
   const baseConversao = receitaPaga + receitaPrevista;
   const taxaConversao =
     baseConversao > 0 ? (receitaPaga / baseConversao) * 100 : 0;
-  
+
   const mrr =
     financeiro
       ?.filter((f) => f.payment_status === "paid")
       .reduce((acc, f) => acc + (f.valor_cents ?? 0), 0) ?? 0;
-  
+
   const pagamentosTotal =
     financeiro?.filter((f) => f.payment_status === "paid") ?? [];
 
@@ -45,13 +47,13 @@ export default async function FinanceiroPage() {
       ? pagamentosTotal.reduce((acc, f) => acc + (f.valor_cents ?? 0), 0) /
         pagamentosTotal.length
       : 0;
-  
+
   const clientesAtivos = new Set(
     financeiro
       ?.filter((f) => f.payment_status === "paid")
       .map((f) => f.cliente_id),
   ).size;
-  
+
   const { data } = await supabase
     .from("v_kpi_financeiro_diario")
     .select("*")
@@ -72,7 +74,6 @@ export default async function FinanceiroPage() {
         revenue: (d.receita_paga ?? 0) / 100,
       };
     }) ?? [];
-
 
   // ✅ KPIs básicos (provisório)
   const totalReceita =
@@ -96,7 +97,7 @@ export default async function FinanceiroPage() {
     .select("*")
     .order("receita_paga", { ascending: false })
     .limit(5);
-  
+
   const clienteIds = [
     ...new Set(clientes?.map((c) => c.cliente_id).filter(Boolean)),
   ];
@@ -109,12 +110,12 @@ export default async function FinanceiroPage() {
   const clientesMap = Object.fromEntries(
     (clientesNome ?? []).map((c) => [c.id, c.nome]),
   );
-  
+
   const clientesData =
     clientes?.map((c) => ({
       name:
-  c.cliente_id && clientesMap[c.cliente_id]
-    ? clientesMap[c.cliente_id].split(" ").slice(0, 2).join(" ")
+        c.cliente_id && clientesMap[c.cliente_id]
+          ? clientesMap[c.cliente_id].split(" ").slice(0, 2).join(" ")
           : "—",
       value: (c.receita_paga ?? 0) / 100,
     })) ?? [];
