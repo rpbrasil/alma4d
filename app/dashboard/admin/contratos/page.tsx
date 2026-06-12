@@ -2,6 +2,8 @@ export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { createClient } from "@supabase/supabase-js";
+import { ContratosTable } from "./ContratosTable";
+import { ExportToolbar } from "@/components/dashboard/ExportToolbar";
 
 type Contrato = {
   id: string;
@@ -15,135 +17,106 @@ type Contrato = {
   criado_em: string;
 };
 
-type Cliente = {
-  id: string;
-  nome: string;
-};
-
 export default async function ContratosPage() {
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
   );
 
-  // ✅ 1. buscar contratos
-  const { data, error } = await supabase
+  const { data } = await supabase
     .from("contratos")
-    .select(
-      `
-      id,
-      numero_contrato,
-      versao,
-      status,
-      tipo_contrato,
-      data_inicio,
-      data_fim,
-      cliente_id,
-      criado_em
-    `,
-    )
+    .select("*")
     .order("criado_em", { ascending: false });
-
-  if (error) {
-    console.error("Erro ao buscar contratos:", error);
-  }
 
   const contratos = (data ?? []) as Contrato[];
 
-  // ✅ 2. pegar ids únicos
   const clienteIds = [
-    ...new Set(
-      contratos.map((c) => c.cliente_id).filter((id): id is string => !!id),
-    ),
+    ...new Set(contratos.map((c) => c.cliente_id).filter(Boolean)),
   ];
 
-  // ✅ 3. buscar clientes
   const { data: clientesData } = await supabase
     .from("clientes")
-    .select("id, nome")
+    .select("id,nome")
     .in("id", clienteIds);
 
-  const clientes = (clientesData ?? []) as Cliente[];
+  const clientesMap = Object.fromEntries(
+    (clientesData ?? []).map((c) => [c.id, c.nome]),
+  );
 
-  // ✅ 4. mapear para lookup rápido
-  const clientesMap = Object.fromEntries(clientes.map((c) => [c.id, c.nome]));
+  // ✅ FORMATAÇÃO
+  const contratosFormatados = contratos.map((c) => ({
+    ...c,
+    cliente_nome:
+      c.cliente_id && clientesMap[c.cliente_id]
+        ? clientesMap[c.cliente_id].split(" ").slice(0, 2).join(" ")
+        : "—",
+
+    data_inicio_fmt: c.data_inicio
+      ? new Date(c.data_inicio).toLocaleDateString("pt-BR")
+      : "",
+  }));
+
+  // ✅ KPIs
+  const total = contratos.length;
+  const ativos = contratos.filter((c) => c.status === "ativo").length;
+  const encerrados = contratos.filter((c) => c.status === "encerrado").length;
 
   return (
     <div className="space-y-6">
-      {/* topo */}
-      <div className="flex justify-end">
-        <Link
-          href="/dashboard/admin/contratos/novo"
-          className="bg-brand text-white px-4 py-2 rounded hover:opacity-90"
-        >
-          Novo contrato
-        </Link>
-      </div>
+      {/* KPIs */}
+      <div className="grid sm:grid-cols-3 gap-4">
+        {/* TOTAL */}
+        <div className="rounded-xl bg-surface shadow-sm p-4">
+          <p className="text-xs text-secondary">Total</p>
+          <p className="text-2xl font-bold text-primary">{total}</p>
+        </div>
 
-      {/* tabela */}
-      <div className="bg-white border border-border rounded-lg">
-        <div className="overflow-x-auto">
-          <table className="min-w-175 w-full text-sm">
-            <thead className="border-b bg-surface-muted">
-              <tr>
-                <th className="p-3 text-left">Contrato</th>
-                <th className="p-3 text-left">Cliente</th>
-                <th className="p-3 text-center">Versão</th>
-                <th className="p-3 text-center">Status</th>
-                <th className="p-3 text-center">Início</th>
-                <th className="p-3 text-right"></th>
-              </tr>
-            </thead>
+        {/* ATIVOS */}
+        <div className="rounded-xl bg-surface shadow-sm p-4">
+          <p className="text-xs text-secondary">Ativos</p>
+          <p className="text-2xl font-bold text-brand-secondary">{ativos}</p>
+        </div>
 
-            <tbody>
-              {contratos.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="p-4 text-center text-gray-500">
-                    Nenhum contrato encontrado
-                  </td>
-                </tr>
-              ) : (
-                contratos.map((c) => (
-                  <tr
-                    key={c.id}
-                    className="border-b last:border-0 odd:bg-gray-50"
-                  >
-                    <td className="p-3">{c.numero_contrato}</td>
-
-                    <td className="p-3">
-                      {c.cliente_id && clientesMap[c.cliente_id]
-                        ? clientesMap[c.cliente_id]
-                            .split(" ")
-                            .slice(0, 2)
-                            .join(" ")
-                        : "-"}
-                    </td>
-
-                    <td className="p-3 text-center">{c.versao ?? "-"}</td>
-
-                    <td className="p-3 text-center capitalize">{c.status}</td>
-
-                    <td className="p-3 text-center">
-                      {c.data_inicio
-                        ? new Date(c.data_inicio).toLocaleDateString()
-                        : "-"}
-                    </td>
-
-                    <td className="p-3 text-right">
-                      <Link
-                        href={`/dashboard/admin/contratos/${c.id}`}
-                        className="text-brand-secondary hover:opacity-80"
-                      >
-                        Detalhes
-                      </Link>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+        {/* ENCERRADOS */}
+        <div className="rounded-xl bg-surface shadow-sm p-4">
+          <p className="text-xs text-secondary">Encerrados</p>
+          <p className="text-2xl font-bold text-brand-accent">{encerrados}</p>
         </div>
       </div>
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-lg font-semibold">Contratos</h2>
+          <p className="text-sm text-gray-500">
+            Gestão de contratos por cliente
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <ExportToolbar
+            title="Contratos"
+            rows={contratosFormatados}
+            columns={[
+              { label: "Contrato", key: "numero_contrato" },
+              { label: "Cliente", key: "cliente_nome" },
+              { label: "Versão", key: "versao" },
+              { label: "Status", key: "status" },
+              {
+                label: "Início",
+                key: "data_inicio_fmt"
+              },
+            ]}
+          />
+
+          <Link
+            href="/dashboard/admin/contratos/novo"
+            className="bg-[#019499] text-white px-4 py-2 rounded-lg hover:opacity-90"
+          >
+            Novo contrato
+          </Link>
+        </div>
+      </div>
+      {/* ✅ TABELA COM FILTROS */}
+      <ContratosTable contratos={contratosFormatados} />
     </div>
   );
 }

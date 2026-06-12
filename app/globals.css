@@ -23,6 +23,7 @@
   --surface: #ffffff;
   --surface-muted: #f7f7fb;
   --border: #e7e7f2;
+  --surface-soft: #eef2ff;
 }
 
 /* ========== Tailwind theme variables (v4) ========== */
@@ -38,6 +39,7 @@
 
   --color-surface: var(--surface);
   --color-surface-muted: var(--surface-muted);
+  --color-surface-soft: var(--surface-soft);
   --color-border: var(--border);
 
   --font-sans: var(--font-geist-sans);
