@@ -1,6 +1,27 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { nowISO } from "./pagarme";
 
+type ContratoRow = {
+  id: string;
+  cliente_id: string;
+  criado_por: string;
+  status: string;
+
+  cupom_codigo?: string | null;
+
+  desconto_cents?: number | null;
+  total_com_desconto_cents?: number | null;
+  cupom_percentual?: number | null;
+
+  numero_contrato: string | null;
+  versao: number | null;
+  criado_em: string | null;
+
+  pagarme_order_id?: string | null;
+  valor_mensal?: number | string | null;
+  valor_total?: number | string | null;
+};
+
 type PostgrestLikeError = {
   code?: string;
   message?: string;
@@ -96,20 +117,6 @@ export function supabaseAdmin(): SupabaseClient {
     { auth: { persistSession: false } },
   );
 }
-
-type ContratoRow = {
-  id: string;
-  cliente_id: string;
-  criado_por: string;
-  status: string;
-  cupom_codigo: string | null;
-  numero_contrato: string | null;
-  versao: number | null;
-  criado_em: string | null;
-  pagarme_order_id?: string | null;
-  valor_mensal?: number | string | null;
-  valor_total?: number | string | null;
-};
 
 export async function getContrato(
   supabase: SupabaseClient,

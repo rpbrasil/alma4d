@@ -188,7 +188,40 @@ export async function POST(req: Request) {
       .maybeSingle();
 
     const precisaEmitirNFSe = !nfseExistente || nfseExistente.status === "erro";
+    const { data: contratoCupom } = await supabase
+      .from("contratos")
+      .select("cupom_codigo, desconto_cents, cupom_percentual, cliente_id")
+      .eq("id", g.contratoId)
+      .maybeSingle();
 
+    if (contratoCupom?.cupom_codigo) {
+      const { data: cupom } = await supabase
+        .from("cupons")
+        .select("id, parceiro_id, usos_total, comissao_percentual")
+        .eq("codigo", contratoCupom.cupom_codigo)
+        .maybeSingle();
+
+      if (cupom) {
+        await supabase
+          .from("cupons")
+          .update({
+            usos_total: (cupom.usos_total ?? 0) + 1,
+          })
+          .eq("id", cupom.id);
+
+        // ✅ registra uso
+        await supabase.from("cupons_uso").insert({
+          cupom_id: cupom.id,
+          cliente_id: contratoCupom.cliente_id,
+          contrato_id: g.contratoId,
+          valor_desconto: (contratoCupom.desconto_cents ?? 0) / 100,
+          desconto_percentual: contratoCupom.cupom_percentual,
+          cupom_codigo: contratoCupom.cupom_codigo,
+          parceiro_id: cupom.parceiro_id,
+          comissao_percentual: cupom.comissao_percentual,
+        });
+      }
+    }
     await Promise.all([
       precisaEmitirNFSe
         ? fetch(`${process.env.BASE_URL}/api/nfse/emitir`, {

@@ -1,18 +1,6 @@
+import { CupomAplicado } from "@/types/cupom";
+
 type Plano = "express" | "premium";
-type TipoCupom = "desconto" | "comissao";
-
-export type CupomAplicado = {
-  codigo: string;
-  tipo: TipoCupom;
-
-  percentual: number;
-
-  descontoCents: number;
-  descontoBRL: number;
-
-  totalComDescontoCents: number;
-  totalComDescontoBRL: number;
-};
 
 function round2(n: number) {
   return Math.round(n * 100) / 100;
@@ -25,6 +13,7 @@ function fetchWithTimeout(
 ) {
   const controller = new AbortController();
   const t = setTimeout(() => controller.abort(), ms);
+
   return fetch(input, { ...init, signal: controller.signal }).finally(() =>
     clearTimeout(t),
   );
@@ -38,7 +27,10 @@ export async function validarCupom(params: {
   const codigo = String(params.codigo ?? "")
     .trim()
     .toUpperCase();
-  if (!codigo) throw new Error("Informe um cupom.");
+
+  if (!codigo) {
+    throw new Error("Informe um cupom.");
+  }
 
   if (
     !Number.isFinite(params.totalMensalCents) ||
@@ -66,7 +58,7 @@ export async function validarCupom(params: {
         ok?: boolean;
         error?: string;
         codigo?: string;
-        tipo?: TipoCupom;
+        tipo?: "desconto" | "comissao";
         percentual?: number;
         descontoCents?: number;
         totalComDescontoCents?: number;
@@ -77,15 +69,24 @@ export async function validarCupom(params: {
     throw new Error(json?.error || "Erro ao validar cupom.");
   }
 
-  const descontoCents = Number(json.descontoCents ?? 0);
-  const totalComDescontoCents = Number(
-    json.totalComDescontoCents ?? params.totalMensalCents,
+  // ✅ normalização segura
+  const descontoCents = Math.max(0, Number(json.descontoCents ?? 0));
+
+  const totalComDescontoCents = Math.max(
+    0,
+    Number(json.totalComDescontoCents ?? params.totalMensalCents),
   );
+
+  // ✅ garante tipo válido
+  const tipo: "desconto" | "comissao" =
+    json.tipo === "comissao" ? "comissao" : "desconto";
+
+  const percentual = Number(json.percentual ?? 0);
 
   return {
     codigo: String(json.codigo ?? codigo),
-    tipo: (json.tipo ?? "desconto") as TipoCupom,
-    percentual: Number(json.percentual ?? 0),
+    tipo,
+    percentual,
 
     descontoCents,
     descontoBRL: round2(descontoCents / 100),

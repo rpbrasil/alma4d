@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { CupomSelectAuto } from "@/types/cupom";
 
 function onlyDigits(v: string) {
   return (v || "").replace(/\D/g, "");
@@ -80,17 +81,7 @@ export async function POST(req: Request) {
       );
     }
 
-    type CupomRow = {
-      codigo: string;
-      tipo: "percentual" | "fixo" | "desconto" | "comissao";
-      valor: number;
-      plano: string | null;
-      valido_de: string | null;
-      valido_ate: string | null;
-      ativo: boolean;
-    };
-
-    const validos = (cupons ?? []).filter((c: CupomRow) => {
+    const validos = (cupons ?? []).filter((c: CupomSelectAuto) => {
       if (c.plano && c.plano !== plano) return false;
 
       const now = new Date();

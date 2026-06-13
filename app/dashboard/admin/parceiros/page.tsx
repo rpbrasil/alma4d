@@ -5,6 +5,7 @@ import { supabaseBrowser as supabase } from "@/lib/supabase/browser";
 import { useAuth } from "@/context/auth";
 import { useRouter } from "next/navigation";
 import { Users } from "lucide-react";
+import { Cupom } from "@/types/cupom";
 
 type Parceiro = {
   id: string;
@@ -18,35 +19,6 @@ type Parceiro = {
   created_at: string;
   updated_at: string;
 };
-
-type Cupom = {
-  id: string;
-  codigo: string;
-  parceiro_id: string;
-
-  tipo: "desconto" | "comissao";
-
-  percentual: number; // ✅ principal campo
-  valor: number;
-
-  ativo: boolean;
-
-  plano: string | null;
-  minimo_valor: number | null;
-  maximo_desconto: number | null;
-
-  limite_total: number | null;
-  usos_total: number;
-
-  valido_de: string | null;
-  valido_ate: string | null;
-
-  comissao_percentual: number;
-
-  created_at: string;
-};
-
-type CupomDB = Cupom & { parceiro_id?: string | null };
 
 type Empresa = {
   id: string;
@@ -251,7 +223,7 @@ export default function DashboardExpressParceirosPage() {
       const { data: c } = await supabase.from("cupons").select("*");
 
       const map: Record<string, Cupom[]> = {};
-      (c as CupomDB[] | null)?.forEach((row) => {
+      (c as Cupom[] | null)?.forEach((row) => {
         if (!row.parceiro_id) return;
         if (!map[row.parceiro_id]) map[row.parceiro_id] = [];
         map[row.parceiro_id].push(row);

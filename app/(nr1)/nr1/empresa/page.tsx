@@ -8,7 +8,6 @@ import { supabaseBrowser as supabase } from "@/lib/supabase/browser";
 
 import { getPrecificacaoConfig } from "@/lib/precificacao/getConfig";
 import type { PrecificacaoConfig } from "@/lib/precificacao/config-core";
-
 import { calcularPrecificacao } from "../_components/ModeloPrecificacaoExpress";
 import { validarCupom } from "../../../lib/cupons/validarcupom";
 import { Turnstile, TurnstileInstance } from "@marsidev/react-turnstile";
@@ -822,7 +821,7 @@ export default function EmpresaNR1Page() {
           }),
           8000,
         );
-
+        
         setCupomValido(applied.codigo);
         setDescontoCents(applied.descontoCents);
         setTotalComDescontoCents(applied.totalComDescontoCents);

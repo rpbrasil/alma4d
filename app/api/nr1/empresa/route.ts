@@ -231,7 +231,26 @@ export async function POST(req: Request) {
     }
 
     const result = data[0];
-
+    // ✅ persistir cupom no contrato (SE EXISTIR)
+    if (cupomAplicado && result?.contrato_id) {
+      try {
+        // reusa dados do applied (já confiáveis)
+        await adminDb
+          .from("contratos")
+          .update({
+            cupom_codigo: cupomAplicado,
+            desconto_cents: descontoCents,
+            total_com_desconto_cents: totalFinalCents,
+            cupom_percentual:
+              descontoCents > 0
+                ? (descontoCents / quote.totalMensalCents) * 100
+                : 0,
+          })
+          .eq("id", result.contrato_id);
+      } catch (err) {
+        console.error("[CUPOM] erro ao persistir no contrato:", err);
+      }
+    }
     return NextResponse.json(
       {
         success: true,
