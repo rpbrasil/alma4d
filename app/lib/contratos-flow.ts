@@ -1,6 +1,5 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { nowISO } from "./pagarme";
-import { gerarContratoPdfInterno } from "@/lib/contrato-pdf";
 
 type PostgrestLikeError = {
   code?: string;
@@ -296,19 +295,17 @@ export async function activateContratoFull(params: ActivateParams) {
       atualizado_em: nowISO(),
     })
     .eq("id", contratoId)
-    .select("id, criado_por, status, pdf_url")
+    .select("id, criado_por, status")
     .single();
 
   if (contratoErr || !contrato) {
     throw new Error("Erro ao ativar contrato.");
   }
 
-  // ✅ 2. Idempotência (evita ativar várias vezes se já ativo)
-  if (contrato.status === "ativo") {
-    // continua, mas não duplica logica — apenas segue garantido
-  }
+  // ✅ 2. Idempotência (protege contra webhook duplicado)
+  const alreadyActive = contrato.status === "ativo";
 
-  // ✅ 3. Ativa SOMENTE o usuário que criou o contrato
+  // ✅ 3. Define usuário alvo (melhorável futuramente com campo dedicado)
   const targetUserId = params.userId ?? contrato.criado_por;
 
   if (targetUserId) {
@@ -325,7 +322,7 @@ export async function activateContratoFull(params: ActivateParams) {
     }
   }
 
-  // ✅ 3. registra evento
+  // ✅ 4. Evento: contrato ativado
   await recordWebhookEvent(supabase, {
     contrato_id: contratoId,
     tipo: "contrato_ativado",
@@ -336,18 +333,38 @@ export async function activateContratoFull(params: ActivateParams) {
     },
   });
 
-  // ✅ 4. gerar PDF (última etapa)
-  if (!contrato.pdf_url) {
-    try {
-      await gerarContratoPdfInterno({ supabase, contratoId });
-    } catch (err) {
-      console.error("[PDF] erro ao gerar contrato:", err);
-    }
+  // ✅ 5. Evento: PDF marcado como pendente (gera antes para rastreabilidade)
+  await recordWebhookEvent(supabase, {
+    contrato_id: contratoId,
+    tipo: "pdf_pending",
+    descricao: "PDF marcado para geração",
+  });
+
+  // ✅ 6. Atualiza status do PDF (processo assíncrono)
+  const { error: pdfUpdateErr } = await supabase
+    .from("contratos")
+    .update({
+      pdf_status: "pending",
+      pdf_error: null,
+      pdf_attempts: 0,
+    })
+    .eq("id", contratoId);
+
+  if (pdfUpdateErr) {
+    console.error("[PDF] erro ao marcar como pending:", pdfUpdateErr);
+
+    // ✅ registra falha de flag
+    await recordWebhookEvent(supabase, {
+      contrato_id: contratoId,
+      tipo: "pdf_flag_failed",
+      descricao: pdfUpdateErr.message,
+    });
   }
 
-  // ✅ 5. Retorno padronizado
+  // ✅ 7. Retorno padronizado
   return {
     activated: true,
-    alreadyActive: contrato.status === "ativo",
+    alreadyActive,
+    status: pagarmePaymentStatus,
   };
 }

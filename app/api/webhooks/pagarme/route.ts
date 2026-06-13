@@ -14,8 +14,6 @@ import {
   supabaseAdmin,
 } from "@/lib/contratos-flow";
 
-import { gerarContratoPdfInterno } from "@/lib/contrato-pdf";
-
 /* ================= HELPERS ================= */
 
 function expectedCentsFromContrato(c: {
@@ -179,7 +177,7 @@ export async function POST(req: Request) {
       cupomFromGateway: g.cupomCodigo ?? null,
       userId: g.userId,
     });
-    
+
     const contratoAtual = await getContrato(supabase, g.contratoId);
     const ref = `nfse_${g.contratoId}_v${contratoAtual?.versao ?? 1}`;
 
@@ -192,13 +190,6 @@ export async function POST(req: Request) {
     const precisaEmitirNFSe = !nfseExistente || nfseExistente.status === "erro";
 
     await Promise.all([
-      gerarContratoPdfInterno({
-        supabase,
-        contratoId: g.contratoId,
-      }).catch((err) => {
-        console.error("[PDF] erro:", err);
-      }),
-
       precisaEmitirNFSe
         ? fetch(`${process.env.BASE_URL}/api/nfse/emitir`, {
             method: "POST",

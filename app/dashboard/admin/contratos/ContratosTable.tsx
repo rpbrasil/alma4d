@@ -10,6 +10,7 @@ type ContratoUI = {
   status: string;
   data_inicio: string;
   cliente_nome: string;
+  pdf_status?: "pending" | "processing" | "done" | "error";
 };
 
 type Props = {
@@ -56,6 +57,12 @@ export function ContratosTable({ contratos }: Props) {
     if (status === "suspenso") return "bg-yellow-100 text-yellow-800";
     if (status === "encerrado") return "bg-red-100 text-red-800";
     return "bg-gray-100 text-gray-600";
+  };
+  const statusPdfColor = {
+    pending: "text-yellow-600",
+    processing: "text-blue-600",
+    done: "text-green-600",
+    error: "text-red-600",
   };
   const clientes = Array.from(new Set(contratos.map((c) => c.cliente_nome)));
 
@@ -112,9 +119,7 @@ export function ContratosTable({ contratos }: Props) {
             {filtered.map((c) => (
               <tr
                 key={c.id}
-                className={`bg-surface-muted focus:ring-2 focus:ring-brand-secondary/30-b hover:bg-surface-soft ${
-                  isVencendo(c.data_inicio) ? "bg-yellow-50" : ""
-                }`}
+                className={`bg-surface-muted focus:ring-2 focus:ring-brand-secondary/30-b hover:bg-surface-soft ${isVencendo(c.data_inicio) ? "bg-yellow-50" : "bg-surface-muted"} hover:bg-surface-soft`}
               >
                 <td className="p-3 font-medium">{c.numero_contrato}</td>
                 <td className="p-3">{c.cliente_nome}</td>
@@ -125,6 +130,15 @@ export function ContratosTable({ contratos }: Props) {
                   >
                     {c.status}
                   </span>
+                  {c.pdf_status && (
+                    <span
+                      className={`block text-xs mt-1 ${
+                        statusPdfColor[c.pdf_status] || "text-gray-500"
+                      }`}
+                    >
+                      PDF: {c.pdf_status}
+                    </span>
+                  )}
                 </td>
                 <td className="p-3 text-center">
                   {new Date(c.data_inicio).toLocaleDateString()}
