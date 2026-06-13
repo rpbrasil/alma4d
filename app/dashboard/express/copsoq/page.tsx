@@ -1000,7 +1000,7 @@ export default function DashboardExpressCopsoqPage() {
             email={user.email}
             telefone={user.telefone || ""}
             documento={user.documento}
-            limiteAtual={resumoVagas?.limite ?? 0}
+            licencasContratadas={resumoVagas?.limite ?? 0}
             precoUnitario={contratoSelecionado?.preco_unitario ?? 0}
           />
         )}
