@@ -5,6 +5,7 @@ import { supabaseBrowser as supabase } from "@/lib/supabase/browser";
 import { trackConsent } from "@/lib/trackConsent";
 import { useAccessGuard } from "@/hooks/useAccessGuard";
 import { setStorageItem } from "@/lib/storage";
+import { UpgradeLicencasModal } from "@/(nr1)/nr1/_components/UpgradeLicensasModal";
 
 type JobStatus = {
   id: string;
@@ -41,6 +42,14 @@ type ParseResult = {
     erro: string;
     raw: string;
   }[];
+};
+type UsuarioPerfil = {
+  id: string;
+  nome: string;
+  email: string;
+  telefone: string;
+  documento: string;
+  cliente_id: string;
 };
 
 function normalizeText(v: string) {
@@ -223,15 +232,22 @@ export default function DashboardExpress() {
   const [nome, setNome] = useState("");
   const [cpf, setCpf] = useState("");
   const [tel, setTel] = useState("");
-
+  const [showLicencaModal, setShowLicencaModal] = useState(false);
+  
   const [limiteUsuarios, setLimiteUsuarios] = useState<number | null>(null);
   const [usuariosAtuais, setUsuariosAtuais] = useState<number>(0);
+
+  const [user, setUser] = useState<UsuarioPerfil | null>(null);
+  const [clienteId, setClienteId] = useState<string | null>(null);
+  const [contratoId, setContratoId] = useState<string | null>(null);
+  const [precoUnitario, setPrecoUnitario] = useState<number>(0);
 
   // bulk
   const [paste, setPaste] = useState("");
   const [bulkPreview, setBulkPreview] = useState<CsvRegistro[]>([]);
   const [bulkError, setBulkError] = useState<string | null>(null);
   const parsed = useMemo(() => parsePasteDetailed(paste), [paste]);
+  const [previewGenerated, setPreviewGenerated] = useState(false);
   // departamentos (opcional)
   const [deptEnabled, setDeptEnabled] = useState(false);
   const [departamentoNomePadrao, setDepartamentoNomePadrao] = useState("");
@@ -330,6 +346,56 @@ export default function DashboardExpress() {
     };
   }, [showDeptModal]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const res = await fetch("/api/auth/whoami");
+
+        if (!res.ok) return;
+
+        const data = await res.json();
+
+        if (!data?.usuario_id) return;
+
+        if (!cancelled) {
+          setUser({
+            id: data.usuario_id,
+            nome: data.nome_completo ?? "",
+            email: data.email ?? "",
+            telefone: data.telefone ?? "",
+            documento: data.documento ?? "",
+            cliente_id: data.cliente_id,
+          });
+
+          setClienteId(data.cliente_id ?? null);
+        }
+
+        // ✅ buscar contrato ativo
+        const { data: contrato } = await supabase
+          .from("contratos")
+          .select("id, preco_unitario")
+          .eq("cliente_id", data.cliente_id)
+          .eq("status", "ativo")
+          .order("criado_em", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (contrato && !cancelled) {
+          setContratoId(contrato.id);
+          setPrecoUnitario(Number(contrato.preco_unitario ?? 0));
+        }
+      } catch {
+        // silencioso
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const progress = useMemo(() => {
     if (!job) return 0;
     if (!job.total) return 0;
@@ -395,7 +461,7 @@ export default function DashboardExpress() {
         throw new Error("Endpoint de cadastro não configurado.");
       }
       if (limiteUsuarios !== null && usuariosAtuais >= limiteUsuarios) {
-        setMsg("Limite de usuários do seu plano atingido.");
+        setShowLicencaModal(true);
         return;
       }
 
@@ -512,6 +578,7 @@ export default function DashboardExpress() {
         "⚠️ Detectamos caracteres inválidos. Recomendamos salvar o arquivo como CSV UTF-8.",
       );
     }
+    setPreviewGenerated(true);
     setBulkPreview(validos.slice(0, 20));
     setJobErrors(
       erros.slice(0, 5).map((e) => ({
@@ -541,17 +608,10 @@ export default function DashboardExpress() {
         throw new Error("Nenhuma linha válida para importar.");
       }
 
-      if (
-        limiteUsuarios !== null &&
-        usuariosAtuais + validos.length > limiteUsuarios
-      ) {
-        const restante = limiteUsuarios - usuariosAtuais;
-
-        throw new Error(
-          `Você pode adicionar no máximo ${restante} usuários no seu plano.`,
-        );
+      if (limiteUsuarios !== null && usuariosAtuais >= limiteUsuarios) {
+        setShowLicencaModal(true);
+        return;
       }
-
       const token = await getAccessToken();
       if (!token) {
         throw new Error("Sessão expirada. Faça login novamente.");
@@ -693,6 +753,10 @@ export default function DashboardExpress() {
   const bulkPlaceholder = deptEnabled
     ? `Ex (com departamento):\nJoão Silva;12345678901;11999999999;Produção\nMaria Lima;98765432100;11988887777;RH\n\nFormato: nome;cpf;telefone;departamento\n(Se não informar na linha, usamos o Departamento padrão acima — se preenchido)`
     : `Ex:\nJoão Silva;12345678901;11999999999\nMaria Lima;98765432100;11988887777\n\nFormato: nome;cpf;telefone`;
+  const restantes =
+    limiteUsuarios !== null ? limiteUsuarios - usuariosAtuais : null;
+
+  const isLimitReached = restantes !== null && restantes <= 0;
 
   return (
     <div className="space-y-6">
@@ -800,7 +864,44 @@ export default function DashboardExpress() {
           </div>
         )}
       </section>
+      {limiteUsuarios !== null && (
+        <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h3 className="text-sm font-semibold text-amber-900">
+                Expansão de equipe
+              </h3>
 
+              <p className="mt-1 text-xs text-amber-800">
+                Ao atingir o limite de usuários, você pode adquirir novas
+                licenças para continuar adicionando colaboradores.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-3 text-sm text-amber-900">
+            {limiteUsuarios - usuariosAtuais <= 5 &&
+              limiteUsuarios - usuariosAtuais > 0 && (
+                <p className="font-semibold">⚠️ Poucas licenças restantes.</p>
+              )}
+
+            {limiteUsuarios - usuariosAtuais === 0 && (
+              <div className="mt-2 text-sm text-brand-accent font-semibold">
+                Limite atingido. Adquira novas licenças para continuar.
+              </div>
+            )}
+          </div>
+
+          <div className="mt-4">
+            <button
+              onClick={() => setShowLicencaModal(true)}
+              className="bg-brand-accent font-semibold text-white px-4 py-2 rounded-lg mt-semibold"
+            >
+              Comprar licenças
+            </button>
+          </div>
+        </div>
+      )}
       {/* TABS */}
       <div className="rounded-lg border border-slate-200 bg-white p-5">
         <div className="flex gap-2 border-b border-slate-200 mb-4">
@@ -888,10 +989,7 @@ export default function DashboardExpress() {
             <div className="mt-4">
               <button
                 onClick={onQuickAdd}
-                disabled={
-                  busy ||
-                  (limiteUsuarios !== null && usuariosAtuais >= limiteUsuarios)
-                }
+                disabled={busy || isLimitReached}
                 className="inline-flex items-center justify-center rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand/90 disabled:opacity-60"
               >
                 {busy ? "Adicionando..." : "Adicionar usuário"}
@@ -977,9 +1075,10 @@ export default function DashboardExpress() {
 
               <button
                 onClick={onEnqueueBulk}
-                className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand/90"
+                disabled={!previewGenerated || busy || isLimitReached}
+                className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
               >
-                Importar
+                {busy ? "Importando..." : "Importar"}
               </button>
               <button
                 onClick={() => {
@@ -988,8 +1087,10 @@ export default function DashboardExpress() {
                   setJobErrors([]);
                   setBulkError(null);
                   setMsg(null);
+                  setPreviewGenerated(false);
                 }}
-                className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                disabled={!paste && bulkPreview.length === 0}
+                className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 disabled:opacity-50"
               >
                 Limpar
               </button>
@@ -1006,6 +1107,21 @@ export default function DashboardExpress() {
           </>
         )}
       </div>
+      {user && clienteId && contratoId && (
+        <UpgradeLicencasModal
+          open={showLicencaModal}
+          onClose={() => setShowLicencaModal(false)}
+          userId={user.id}
+          clienteId={clienteId}
+          contratoId={contratoId}
+          nomeCompleto={user.nome}
+          email={user.email}
+          telefone={user.telefone}
+          documento={user.documento}
+          limiteAtual={limiteUsuarios ?? 0}
+          precoUnitario={precoUnitario}
+        />
+      )}
     </div>
   );
 }
