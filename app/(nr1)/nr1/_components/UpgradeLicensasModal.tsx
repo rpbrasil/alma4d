@@ -18,7 +18,7 @@ type Props = {
   telefone: string;
   documento: string;
 
-  limiteAtual: number;
+  licencasContratadas: number;
   precoUnitario: number;
 };
 
@@ -32,7 +32,7 @@ export function UpgradeLicencasModal({
   email,
   telefone,
   documento,
-  limiteAtual,
+  licencasContratadas,
   precoUnitario,
 }: Props) {
   const [qtd, setQtd] = useState(5);
@@ -86,13 +86,13 @@ export function UpgradeLicencasModal({
           {/* RESUMO */}
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-xl border border-brand/20 bg-slate-50 p-3">
-              <p className="text-xs text-slate-500">Limite atual</p>
-              <p className="text-lg font-semibold">{limiteAtual}</p>
+              <p className="text-xs text-slate-500">Licenças consumidas</p>
+              <p className="text-lg font-semibold">{licencasContratadas}</p>
             </div>
 
             <div className="rounded-xl border border-brand/20 bg-slate-50 p-3">
-              <p className="text-xs text-slate-500">Novo limite</p>
-              <p className="text-lg font-semibold">{limiteAtual + qtd}</p>
+              <p className="text-xs text-slate-500">Licenças disponiveis</p>
+              <p className="text-lg font-semibold">{qtd}</p>
             </div>
           </div>
 

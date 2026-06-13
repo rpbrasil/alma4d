@@ -8,8 +8,6 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Token ausente" }, { status: 401 });
   }
 
-  const token = auth.split(" ")[1];
-
   const supabase = getSupabaseAdmin();
 
   let perfil;
@@ -85,7 +83,7 @@ export async function GET(req: Request) {
     .eq("ativo", true);
 
   return NextResponse.json({
-    limite_usuarios,
-    usuarios_ativos: count ?? 0,
+    licencas_contratadas: limite_usuarios,
+    licencas_consumidas: count ?? 0,
   });
 }

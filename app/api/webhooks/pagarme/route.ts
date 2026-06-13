@@ -110,6 +110,11 @@ export async function POST(req: Request) {
   const isUpgrade = !!upgradeRow;
 
   if (isUpgrade && upgradeRow?.paid_at) {
+    
+    await supabase
+      .from("webhook_logs")
+      .update({ processado: true })
+      .eq("event_hash", eventHash);
     return NextResponse.json({ ok: true, ignored: true });
   }
 
@@ -151,24 +156,83 @@ export async function POST(req: Request) {
 
   // ✅ PAGAMENTO CONFIRMADO (APENAS order.paid)
   if (g.eventType === "order.paid") {
+    // =============================
+    // ✅ FLUXO DE UPGRADE (ISOLADO)
+    // =============================
     if (isUpgrade) {
+      if (!upgradeRow?.paid_at) {
+        // ✅ marca upgrade como pago
+        await supabase
+          .from("contratos_upgrades")
+          .update({
+            pagarme_payment_status: g.paymentStatus ?? "paid",
+            paid_at: new Date().toISOString(),
+          })
+          .eq("id", upgradeRow.id);
+
+        // ✅ atualiza contrato (fonte da verdade)
+        await supabase
+          .from("contratos")
+          .update({
+            limite_usuarios: upgradeRow.limite_novo,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", upgradeRow.contrato_id)
+          .eq("status", "ativo")
+          .or(
+            `limite_usuarios.is.null,limite_usuarios.neq.${upgradeRow.limite_novo}`,
+          );
+
+        // ✅ NFSe idempotente para upgrade
+        const refUpgrade = `nfse_upgrade_${upgradeRow.id}`;
+
+        const { data: nfseExistente } = await supabase
+          .from("nfse_emissoes")
+          .select("id")
+          .eq("ref", refUpgrade)
+          .maybeSingle();
+
+        if (!nfseExistente) {
+          await fetch(`${process.env.BASE_URL}/api/nfse/emitir`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            signal: AbortSignal.timeout(10000),
+            body: JSON.stringify({
+              contrato_id: g.contratoId,
+              ref: refUpgrade,
+              tipo: "upgrade",
+            }),
+          });
+        }
+      }
+
+      // ✅ marca webhook como processado (sempre, mesmo em retry)
       await supabase
-        .from("contratos_upgrades")
-        .update({
-          pagarme_payment_status: g.paymentStatus ?? "paid",
-          paid_at: new Date().toISOString(),
-        })
-        .eq("id", upgradeRow.id);
+        .from("webhook_logs")
+        .update({ processado: true })
+        .eq("event_hash", eventHash);
 
       return NextResponse.json({ ok: true, upgrade: true });
     }
 
+    // ==========================================
+    // ✅ FLUXO NORMAL (CONTRATO NOVO / ATIVAÇÃO)
+    // ==========================================
+
     const contrato = await getContrato(supabase, g.contratoId);
 
+    // ✅ já ativo → ignora
     if (contrato?.status === "ativo") {
+      await supabase
+        .from("webhook_logs")
+        .update({ processado: true })
+        .eq("event_hash", eventHash);
+
       return NextResponse.json({ ok: true, ignored: true });
     }
 
+
+    // ✅ ativa contrato completo
     await activateContratoFull({
       supabase,
       contratoId: g.contratoId,
@@ -188,6 +252,7 @@ export async function POST(req: Request) {
       .maybeSingle();
 
     const precisaEmitirNFSe = !nfseExistente || nfseExistente.status === "erro";
+
     const { data: contratoCupom } = await supabase
       .from("contratos")
       .select("cupom_codigo, desconto_cents, cupom_percentual, cliente_id")
@@ -202,7 +267,6 @@ export async function POST(req: Request) {
         .maybeSingle();
 
       if (cupom) {
-        // ✅ verifica se cliente já usou esse cupom
         const { count, error: countError } = await supabase
           .from("cupons_uso")
           .select("*", { count: "exact", head: true })
@@ -213,17 +277,12 @@ export async function POST(req: Request) {
           console.error("[CUPOM] erro ao verificar uso:", countError);
         }
 
-        // ✅ se já usou → NÃO aplicar novamente
         if ((count ?? 0) > 0) {
           console.warn("[CUPOM] uso duplicado detectado", {
             cupom_id: cupom.id,
             cliente_id: contratoCupom.cliente_id,
           });
-
-          // ❗ IMPORTANTE: não retorna totalmente o webhook
-          // apenas NÃO registra novamente o cupom
         } else {
-          // ✅ incrementa uso
           await supabase
             .from("cupons")
             .update({
@@ -231,7 +290,6 @@ export async function POST(req: Request) {
             })
             .eq("id", cupom.id);
 
-          // ✅ registra uso
           await supabase.from("cupons_uso").insert({
             cupom_id: cupom.id,
             cliente_id: contratoCupom.cliente_id,
@@ -245,6 +303,7 @@ export async function POST(req: Request) {
         }
       }
     }
+
     await Promise.all([
       precisaEmitirNFSe
         ? fetch(`${process.env.BASE_URL}/api/nfse/emitir`, {
@@ -270,6 +329,4 @@ export async function POST(req: Request) {
       nfse: precisaEmitirNFSe ? "emitindo" : "skipped",
     });
   }
-
-  return NextResponse.json({ ok: true });
 }

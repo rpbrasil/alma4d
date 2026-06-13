@@ -234,8 +234,8 @@ export default function DashboardExpress() {
   const [tel, setTel] = useState("");
   const [showLicencaModal, setShowLicencaModal] = useState(false);
   
-  const [limiteUsuarios, setLimiteUsuarios] = useState<number | null>(null);
-  const [usuariosAtuais, setUsuariosAtuais] = useState<number>(0);
+  const [licencasContratadas, setlicencasContratadas] = useState<number | null>(null);
+  const [licencasConsumidas, setlicencasConsumidas] = useState<number>(0);
 
   const [user, setUser] = useState<UsuarioPerfil | null>(null);
   const [clienteId, setClienteId] = useState<string | null>(null);
@@ -316,13 +316,13 @@ export default function DashboardExpress() {
         });
 
         const j = (await r.json().catch(() => null)) as {
-          limite_usuarios: number | null;
-          usuarios_ativos: number;
+          licencas_contratadas: number | null;
+          licencas_consumidas: number;
         } | null;
 
         if (!cancelled && r.ok && j) {
-          setLimiteUsuarios(j.limite_usuarios);
-          setUsuariosAtuais(j.usuarios_ativos);
+          setlicencasContratadas(j.licencas_contratadas);
+          setlicencasConsumidas(j.licencas_consumidas);
         }
       } catch {
         // não derruba a página
@@ -460,7 +460,7 @@ export default function DashboardExpress() {
       if (!gerenciarUsuariosUrl) {
         throw new Error("Endpoint de cadastro não configurado.");
       }
-      if (limiteUsuarios !== null && usuariosAtuais >= limiteUsuarios) {
+      if (licencasContratadas !== null && licencasConsumidas >= licencasContratadas) {
         setShowLicencaModal(true);
         return;
       }
@@ -536,7 +536,7 @@ export default function DashboardExpress() {
       }
 
       setMsg(`Usuário ${nomeNorm.split(" ")[0]} cadastrado com sucesso ✅`);
-      setUsuariosAtuais((prev) => prev + 1);
+      setlicencasConsumidas((prev) => prev + 1);
       await refreshEntitlements();
       setNome("");
       setCpf("");
@@ -608,7 +608,7 @@ export default function DashboardExpress() {
         throw new Error("Nenhuma linha válida para importar.");
       }
 
-      if (limiteUsuarios !== null && usuariosAtuais >= limiteUsuarios) {
+      if (licencasContratadas !== null && licencasConsumidas >= licencasContratadas) {
         setShowLicencaModal(true);
         return;
       }
@@ -690,8 +690,8 @@ export default function DashboardExpress() {
       const j = await r.json();
 
       if (r.ok && j) {
-        setLimiteUsuarios(j.limite_usuarios ?? null);
-        setUsuariosAtuais(j.usuarios_ativos ?? 0);
+        setlicencasContratadas(j.licencas_contratadas ?? null);
+        setlicencasConsumidas(j.licencas_consumidas ?? 0);
       }
     } catch {
       // silencioso
@@ -754,7 +754,7 @@ export default function DashboardExpress() {
     ? `Ex (com departamento):\nJoão Silva;12345678901;11999999999;Produção\nMaria Lima;98765432100;11988887777;RH\n\nFormato: nome;cpf;telefone;departamento\n(Se não informar na linha, usamos o Departamento padrão acima — se preenchido)`
     : `Ex:\nJoão Silva;12345678901;11999999999\nMaria Lima;98765432100;11988887777\n\nFormato: nome;cpf;telefone`;
   const restantes =
-    limiteUsuarios !== null ? limiteUsuarios - usuariosAtuais : null;
+    licencasContratadas !== null ? licencasContratadas - licencasConsumidas : null;
 
   const isLimitReached = restantes !== null && restantes <= 0;
 
@@ -824,16 +824,16 @@ export default function DashboardExpress() {
           {/* Direita (mini dashboard) */}
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-              <p className="text-sm text-slate-500">Usuários ativos</p>
+              <p className="text-sm text-slate-500">Licenças consumidas</p>
               <p className="mt-2 text-2xl font-semibold text-slate-900">
-                {usuariosAtuais}
+                {licencasConsumidas}
               </p>
             </div>
 
             <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-              <p className="text-sm text-slate-500">Limite do plano</p>
+              <p className="text-sm text-slate-500">Licenças contratadas</p>
               <p className="mt-2 text-2xl font-semibold text-slate-900">
-                {limiteUsuarios ?? "—"}
+                {licencasContratadas ?? "—"}
               </p>
             </div>
           </div>
@@ -864,7 +864,7 @@ export default function DashboardExpress() {
           </div>
         )}
       </section>
-      {limiteUsuarios !== null && (
+      {licencasContratadas !== null && (
         <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-5">
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -873,21 +873,22 @@ export default function DashboardExpress() {
               </h3>
 
               <p className="mt-1 text-xs text-amber-800">
-                Ao atingir o limite de usuários, você pode adquirir novas
-                licenças para continuar adicionando colaboradores.
+                Ao consumir todas as licenças, adquira novas para adicionar
+                colaboradores.
               </p>
             </div>
           </div>
 
           <div className="mt-3 text-sm text-amber-900">
-            {limiteUsuarios - usuariosAtuais <= 5 &&
-              limiteUsuarios - usuariosAtuais > 0 && (
+            {licencasContratadas - licencasConsumidas <= 5 &&
+              licencasContratadas - licencasConsumidas > 0 && (
                 <p className="font-semibold">⚠️ Poucas licenças restantes.</p>
               )}
 
-            {limiteUsuarios - usuariosAtuais === 0 && (
+            {licencasContratadas - licencasConsumidas === 0 && (
               <div className="mt-2 text-sm text-brand-accent font-semibold">
-                Limite atingido. Adquira novas licenças para continuar.
+                Todas as licenças contratadas já estão em uso. Adquira novas
+                licenças para continuar.
               </div>
             )}
           </div>
@@ -1118,7 +1119,7 @@ export default function DashboardExpress() {
           email={user.email}
           telefone={user.telefone}
           documento={user.documento}
-          limiteAtual={limiteUsuarios ?? 0}
+          licencasContratadas={licencasContratadas ?? 0}
           precoUnitario={precoUnitario}
         />
       )}
