@@ -170,6 +170,37 @@ export async function POST(req: Request) {
           })
           .eq("id", upgradeRow.id);
 
+        // ✅ EVITA DUPLICAÇÃO (idempotência financeira)
+        const { data: lancamentoExistente } = await supabase
+          .from("financeiro_lancamentos")
+          .select("id")
+          .eq("ref_externo", upgradeRow.pagarme_order_id)
+          .maybeSingle();
+
+        if (!lancamentoExistente) {
+          await supabase.from("financeiro_lancamentos").insert({
+            cliente_id: upgradeRow.cliente_id,
+            contrato_id: upgradeRow.contrato_id,
+            tipo: "receita",
+            categoria: "upgrade_licencas",
+            valor: upgradeRow.total_cents / 100,
+            moeda: "BRL",
+
+            descricao: `Upgrade de ${upgradeRow.quantidade_adicional} licenças`,
+
+            data_competencia: new Date().toISOString(),
+            data_pagamento: new Date().toISOString(),
+
+            origem: "pagarme",
+            ref_externo: upgradeRow.pagarme_order_id,
+
+            metadata: {
+              upgrade_id: upgradeRow.id,
+              quantidade: upgradeRow.quantidade_adicional,
+            },
+          });
+        }
+
         // ✅ atualiza contrato (fonte da verdade)
         await supabase
           .from("contratos")
