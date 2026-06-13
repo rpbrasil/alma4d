@@ -202,24 +202,47 @@ export async function POST(req: Request) {
         .maybeSingle();
 
       if (cupom) {
-        await supabase
-          .from("cupons")
-          .update({
-            usos_total: (cupom.usos_total ?? 0) + 1,
-          })
-          .eq("id", cupom.id);
+        // ✅ verifica se cliente já usou esse cupom
+        const { count, error: countError } = await supabase
+          .from("cupons_uso")
+          .select("*", { count: "exact", head: true })
+          .eq("cupom_id", cupom.id)
+          .eq("cliente_id", contratoCupom.cliente_id);
 
-        // ✅ registra uso
-        await supabase.from("cupons_uso").insert({
-          cupom_id: cupom.id,
-          cliente_id: contratoCupom.cliente_id,
-          contrato_id: g.contratoId,
-          valor_desconto: (contratoCupom.desconto_cents ?? 0) / 100,
-          desconto_percentual: contratoCupom.cupom_percentual,
-          cupom_codigo: contratoCupom.cupom_codigo,
-          parceiro_id: cupom.parceiro_id,
-          comissao_percentual: cupom.comissao_percentual,
-        });
+        if (countError) {
+          console.error("[CUPOM] erro ao verificar uso:", countError);
+        }
+
+        // ✅ se já usou → NÃO aplicar novamente
+        if ((count ?? 0) > 0) {
+          console.warn("[CUPOM] uso duplicado detectado", {
+            cupom_id: cupom.id,
+            cliente_id: contratoCupom.cliente_id,
+          });
+
+          // ❗ IMPORTANTE: não retorna totalmente o webhook
+          // apenas NÃO registra novamente o cupom
+        } else {
+          // ✅ incrementa uso
+          await supabase
+            .from("cupons")
+            .update({
+              usos_total: (cupom.usos_total ?? 0) + 1,
+            })
+            .eq("id", cupom.id);
+
+          // ✅ registra uso
+          await supabase.from("cupons_uso").insert({
+            cupom_id: cupom.id,
+            cliente_id: contratoCupom.cliente_id,
+            contrato_id: g.contratoId,
+            valor_desconto: (contratoCupom.desconto_cents ?? 0) / 100,
+            desconto_percentual: contratoCupom.cupom_percentual,
+            cupom_codigo: contratoCupom.cupom_codigo,
+            parceiro_id: cupom.parceiro_id,
+            comissao_percentual: cupom.comissao_percentual,
+          });
+        }
       }
     }
     await Promise.all([
