@@ -135,7 +135,7 @@ export async function POST(req: Request) {
 
     //EMAIL FALHAS
     const emailRes = await fetch(
-      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/email_notify`,
+      `${process.env.SUPABASE_URL}/functions/v1/email_notify`,
       {
         method: "POST",
         headers: {
@@ -148,6 +148,17 @@ export async function POST(req: Request) {
         }),
       },
     );
+
+    // ✅ registrar no processo
+    if (emailRes.ok) {
+      await supabase
+        .from("pagamento_processos")
+        .update({
+          pagamento_falhou_enviado: true,
+          pagamento_status: "failed",
+        })
+        .eq("contrato_id", g.contratoId);
+    }
 
     if (!emailRes.ok) {
       console.error("Erro ao enviar email_notify", await emailRes.text());
@@ -256,11 +267,17 @@ export async function POST(req: Request) {
               tipo: "upgrade",
             }),
           });
+          await supabase
+            .from("pagamento_processos")
+            .update({
+              nfse_emitida: true,
+            })
+            .eq("contrato_id", g.contratoId);
         }
       }
       // email enviado
       const emailRes = await fetch(
-        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/email_notify`,
+        `${process.env.SUPABASE_URL}/functions/v1/email_notify`,
         {
           method: "POST",
           headers: {
@@ -275,6 +292,17 @@ export async function POST(req: Request) {
           }),
         },
       );
+
+      // ✅ marcar no processo
+      if (emailRes.ok) {
+        await supabase
+          .from("pagamento_processos")
+          .update({
+            pagamento_confirmado_enviado: true,
+            pagamento_status: "paid",
+          })
+          .eq("contrato_id", g.contratoId);
+      }
 
       if (!emailRes.ok) {
         console.error("Erro ao enviar email_notify", await emailRes.text());
@@ -392,7 +420,7 @@ export async function POST(req: Request) {
 
     //ENVIO DE EMAIL SUCESSO CONTRATO INICIAL
     const emailRes = await fetch(
-      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/email_notify`,
+      `${process.env.SUPABASE_URL}/functions/v1/email_notify`,
       {
         method: "POST",
         headers: {
@@ -407,6 +435,18 @@ export async function POST(req: Request) {
         }),
       },
     );
+
+    // ✅ atualizar processo
+    if (emailRes.ok) {
+      await supabase
+        .from("pagamento_processos")
+        .update({
+          pagamento_confirmado_enviado: true,
+          pagamento_status: "paid",
+        })
+        .eq("contrato_id", g.contratoId);
+    }
+
     if (!emailRes.ok) {
       console.error("Erro ao enviar email_notify", await emailRes.text());
     }

@@ -248,84 +248,109 @@ export function NR1PaymentPanel(props: {
       if (!res.ok) {
         throw new Error(data?.error ?? "Falha ao criar pagamento.");
       }
+      // ✅ registrar processo de pagamento
+      const chargeLocal = data.order?.charges?.[0];
 
+      await supabase.from("pagamento_processos").upsert({
+        contrato_id: contratoId,
+        cliente_id: clienteId,
+        pagarme_order_id: data.order?.id ?? null,
+        payment_method: chargeLocal?.payment_method ?? method,
+        pagamento_status: "pending",
+      });
       setCopied(false);
       setResult(data);
 
-     // ✅ Enviar email somente se for BOLETO
-     const chargeLocal = data.order?.charges?.[0];
-     const txLocal = chargeLocal?.last_transaction;
+      // ✅ Enviar email somente se for BOLETO
+      const txLocal = chargeLocal?.last_transaction;
 
-     if (
-       chargeLocal?.payment_method === "boleto" &&
-       txLocal?.boleto_url &&
-       txLocal?.line
-     ) {
-       try {
-         await fetch(
-           `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/email_notify`,
-           {
-             method: "POST",
-             headers: {
-               Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-               "Content-Type": "application/json",
-             },
-             body: JSON.stringify({
-               tipo: "boleto_gerado",
-               contrato_id: contratoId,
-               boleto_url: txLocal.boleto_url,
-               linha_digitavel: txLocal.line,
-               vencimento: txLocal.expires_at ?? null,
-             }),
-           },
-         );
-       } catch (e) {
-         console.error("Erro ao enviar email de boleto:", e);
-       }
-     }
+      if (
+        chargeLocal?.payment_method === "boleto" &&
+        txLocal?.boleto_url &&
+        txLocal?.line
+      ) {
+        try {
+          const emailRes = await fetch(
+            `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/email_notify`,
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                tipo: "boleto_gerado",
+                contrato_id: contratoId,
+                boleto_url: txLocal.boleto_url,
+                linha_digitavel: txLocal.line,
+                vencimento: txLocal.expires_at ?? null,
+              }),
+            },
+          );
 
-     // ✅ Fallback PIX
-     if (chargeLocal?.payment_method === "pix" && txLocal?.qr_code) {
-       setTimeout(async () => {
-         try {
-           const resStatus = await fetch(
-             `/api/pagarme/verificar-pix?order_id=${data.order?.id}`,
-           );
+          // ✅ registrar que boleto foi enviado
+          if (emailRes.ok) {
+            await supabase
+              .from("pagamento_processos")
+              .update({ boleto_enviado: true })
+              .eq("contrato_id", contratoId);
+          }
+        } catch (e) {
+          console.error("Erro ao enviar email de boleto:", e);
+        }
+      }
 
-           const statusData = await resStatus.json().catch(() => null);
+      // ✅ Fallback PIX
+      if (chargeLocal?.payment_method === "pix" && txLocal?.qr_code) {
+        setTimeout(async () => {
+          try {
+            const resStatus = await fetch(
+              `/api/pagarme/verificar-pix?order_id=${data.order?.id}`,
+            );
 
-           const order = statusData?.order;
-           const charge = order?.charges?.[0];
+            const statusData = await resStatus.json().catch(() => null);
 
-           const status = String(
-             charge?.status ?? order?.status ?? "",
-           ).toLowerCase();
+            const order = statusData?.order;
+            const charge = order?.charges?.[0];
 
-           if (status !== "paid") {
-             await fetch(
-               `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/email_notify`,
-               {
-                 method: "POST",
-                 headers: {
-                   Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-                   "Content-Type": "application/json",
-                 },
-                 body: JSON.stringify({
-                   tipo: "pix_gerado",
-                   contrato_id: contratoId,
-                   pix_copia_cola: txLocal.qr_code,
-                   pix_qr_url: txLocal.qr_code_url ?? null,
-                   valor: data.order?.amount ?? 0,
-                   expiracao: txLocal.expires_at ?? null,
-                 }),
-               },
-             );
-           }
-         } catch (err) {
-           console.error("Erro ao verificar PIX fallback:", err);
-         }
-       }, 15000);
-     }
+            const status = String(
+              charge?.status ?? order?.status ?? "",
+            ).toLowerCase();
+
+            if (status !== "paid") {
+              const emailRes = await fetch(
+                `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/email_notify`,
+                {
+                  method: "POST",
+                  headers: {
+                    Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    tipo: "pix_gerado",
+                    contrato_id: contratoId,
+                    pix_copia_cola: txLocal.qr_code,
+                    pix_qr_url: txLocal.qr_code_url ?? null,
+                    valor: data.order?.amount ?? 0,
+                    expiracao: txLocal.expires_at ?? null,
+                  }),
+                },
+              );
+
+              // ✅ registrar envio PIX
+              if (emailRes.ok) {
+                await supabase
+                  .from("pagamento_processos")
+                  .update({ pix_enviado: true })
+                  .eq("contrato_id", contratoId);
+              }
+            }
+          } catch (err) {
+            console.error("Erro ao verificar PIX fallback:", err);
+          }
+        }, 15000);
+      }
+
     } catch (e: unknown) {
       setErr(getErrorMessage(e, "Erro ao criar pagamento."));
     } finally {

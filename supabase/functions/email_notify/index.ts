@@ -127,7 +127,7 @@ serve(async (req: Request) => {
   }
   if (!base.email) {
     return new Response(JSON.stringify({ error: "Email inválido" }), {
-      status: 400
+      status: 400,
     });
   }
 
@@ -216,7 +216,7 @@ serve(async (req: Request) => {
       `;
       break;
     }
-  
+
     case "nfse_autorizada": {
       const ref = String(body.ref ?? "");
 
@@ -277,7 +277,24 @@ serve(async (req: Request) => {
       html = tpl.html;
 
       // ✅ sobrescreve destino
-      return await sendAndRespond(cliente.email, subject, html);
+      const res = await sendAndRespond(cliente.email, subject, html);
+
+      // ✅ marcar envio com fallback seguro
+      if (contrato_id) {
+        await supabaseAdmin
+          .from("pagamento_processos")
+          .update({ nfse_enviada: true })
+          .eq("contrato_id", contrato_id);
+      } else if (nfse?.cliente_id) {
+        await supabaseAdmin
+          .from("pagamento_processos")
+          .update({ nfse_enviada: true })
+          .eq("cliente_id", nfse.cliente_id)
+          .is("nfse_enviada", false) // evita atualizar muitos registros
+          .limit(1); // garante segurança extra
+      }
+
+      return res;
     }
     default:
       return new Response(JSON.stringify({ error: "tipo não suportado" }), {
