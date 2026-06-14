@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { paymentConfirmedTemplate } from "../_shared/emailTemplates.ts";
 import { supabaseAdmin } from "../_shared/supabaseAdmin.ts";
 
-const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
+const resend = Deno.env.get("resend") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY =
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
@@ -13,8 +13,8 @@ async function sendEmailResend(params: {
   subject: string;
   html: string;
 }) {
-  if (!RESEND_API_KEY) {
-    console.error("RESEND_API_KEY não configurada");
+  if (!resend) {
+    console.error("resend não configurada");
     return { ok: false };
   }
 
@@ -22,7 +22,7 @@ async function sendEmailResend(params: {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${RESEND_API_KEY}`,
+      Authorization: `Bearer ${resend}`,
     },
     body: JSON.stringify({
       from: "alma4D <cliente@voss.digital>",

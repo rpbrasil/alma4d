@@ -7,7 +7,7 @@ export const config = {
 
 /* ===================== ENV ===================== */
 
-const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
+const resend = Deno.env.get("resend") ?? "";
 const CONTACT_TO_EMAIL = Deno.env.get("CONTACT_TO_EMAIL") ?? "";
 
 /* ===================== HELPERS ===================== */
@@ -33,8 +33,8 @@ async function sendEmailResend(params: {
   html: string;
   replyTo?: string;
 }) {
-  if (!RESEND_API_KEY) {
-    console.error("RESEND_API_KEY não configurada");
+  if (!resend) {
+    console.error("resend não configurada");
     return { ok: false, error: "missing_api_key" };
   }
 
@@ -42,7 +42,7 @@ async function sendEmailResend(params: {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${RESEND_API_KEY}`,
+      Authorization: `Bearer ${resend}`,
     },
     body: JSON.stringify({
       from: "alma4D <cliente@voss.digital>",

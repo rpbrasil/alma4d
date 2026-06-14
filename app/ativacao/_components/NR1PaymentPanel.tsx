@@ -251,6 +251,81 @@ export function NR1PaymentPanel(props: {
 
       setCopied(false);
       setResult(data);
+
+     // ✅ Enviar email somente se for BOLETO
+     const chargeLocal = data.order?.charges?.[0];
+     const txLocal = chargeLocal?.last_transaction;
+
+     if (
+       chargeLocal?.payment_method === "boleto" &&
+       txLocal?.boleto_url &&
+       txLocal?.line
+     ) {
+       try {
+         await fetch(
+           `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/email_notify`,
+           {
+             method: "POST",
+             headers: {
+               Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+               "Content-Type": "application/json",
+             },
+             body: JSON.stringify({
+               tipo: "boleto_gerado",
+               contrato_id: contratoId,
+               boleto_url: txLocal.boleto_url,
+               linha_digitavel: txLocal.line,
+               vencimento: txLocal.expires_at ?? null,
+             }),
+           },
+         );
+       } catch (e) {
+         console.error("Erro ao enviar email de boleto:", e);
+       }
+     }
+
+     // ✅ Fallback PIX
+     if (chargeLocal?.payment_method === "pix" && txLocal?.qr_code) {
+       setTimeout(async () => {
+         try {
+           const resStatus = await fetch(
+             `/api/pagarme/verificar-pix?order_id=${data.order?.id}`,
+           );
+
+           const statusData = await resStatus.json().catch(() => null);
+
+           const order = statusData?.order;
+           const charge = order?.charges?.[0];
+
+           const status = String(
+             charge?.status ?? order?.status ?? "",
+           ).toLowerCase();
+
+           if (status !== "paid") {
+             await fetch(
+               `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/email_notify`,
+               {
+                 method: "POST",
+                 headers: {
+                   Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+                   "Content-Type": "application/json",
+                 },
+                 body: JSON.stringify({
+                   tipo: "pix_gerado",
+                   contrato_id: contratoId,
+                   pix_copia_cola: txLocal.qr_code,
+                   pix_qr_url: txLocal.qr_code_url ?? null,
+                   valor: data.order?.amount ?? 0,
+                   expiracao: txLocal.expires_at ?? null,
+                 }),
+               },
+             );
+           }
+         } catch (err) {
+           console.error("Erro ao verificar PIX fallback:", err);
+         }
+       }, 15000);
+     }
     } catch (e: unknown) {
       setErr(getErrorMessage(e, "Erro ao criar pagamento."));
     } finally {

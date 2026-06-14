@@ -195,3 +195,82 @@ export function nfseAuthorizedTemplate(v: NfseEmailVars) {
 `,
   };
 }
+
+export function boletoGeneratedTemplate({
+  nome,
+  linhaDigitavel,
+  boletoUrl,
+  vencimento,
+}: {
+  nome: string;
+  linhaDigitavel: string;
+  boletoUrl: string;
+  vencimento?: string;
+}) {
+  return {
+    subject: "Seu boleto está pronto 💳",
+    html: `
+      <p>Olá ${nome},</p>
+
+      <p>Seu boleto foi gerado.</p>
+
+      ${vencimento ? `<p>Vencimento: <b>${vencimento}</b></p>` : ""}
+
+      <p><b>Linha digitável:</b><br/>${linhaDigitavel}</p>
+
+      <p><a href="${boletoUrl}">Abrir boleto</a></p>
+    `,
+  };
+}
+
+export function boletoTemplate(
+  vars: PaymentEmailVars & {
+    linhaDigitavel: string;
+    boletoUrl: string;
+    vencimento?: string;
+  },
+) {
+  const base = paymentConfirmedTemplate(vars);
+
+  return {
+    subject: "Seu boleto foi gerado 💳",
+    html:
+      base.html.replace("Pagamento confirmado ✅", "Boleto gerado 💳") +
+      `
+      <p><b>Linha digitável:</b><br/>${vars.linhaDigitavel}</p>
+      <p><a href="${vars.boletoUrl}">Abrir boleto</a></p>
+    `,
+  };
+}
+
+export function pixTemplate(
+  vars: PaymentEmailVars & {
+    copiaCola: string;
+  },
+) {
+  const base = paymentConfirmedTemplate(vars);
+
+  return {
+    subject: "Pagamento pendente via Pix ⚠️",
+    html:
+      base.html.replace(
+        "Pagamento confirmado ✅",
+        "Pagamento pendente via Pix",
+      ) +
+      `
+      <p>Copie e cole o código abaixo:</p>
+      <pre>${vars.copiaCola}</pre>
+    `,
+  };
+}
+
+export function pagamentoFalhouTemplate(nome: string) {
+  return {
+    subject: "Problema no pagamento ⚠️",
+    html: `
+      <p>Olá ${nome},</p>
+      <p>Não conseguimos confirmar seu pagamento.</p>
+      <p>Tente novamente no painel.</p>
+    `,
+  };
+}

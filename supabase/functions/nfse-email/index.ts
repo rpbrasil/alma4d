@@ -4,7 +4,7 @@ import { supabaseAdmin } from "../_shared/supabaseAdmin.ts";
 
 /* ===================== ENV ===================== */
 
-const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
+const resend = Deno.env.get("resend") ?? "";
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
 /* ===================== HELPERS ===================== */
@@ -20,8 +20,8 @@ function getString(v: unknown): string | null {
 /* ===================== EMAIL ===================== */
 
 async function sendEmailResend(to: string, subject: string, html: string) {
-  if (!RESEND_API_KEY) {
-    console.error("RESEND_API_KEY não configurado");
+  if (!resend) {
+    console.error("resend não configurado");
     return false;
   }
 
@@ -29,7 +29,7 @@ async function sendEmailResend(to: string, subject: string, html: string) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${RESEND_API_KEY}`,
+      Authorization: `Bearer ${resend}`,
     },
     body: JSON.stringify({
       from: "alma4D <cliente@voss.digital>",

@@ -110,7 +110,6 @@ export async function POST(req: Request) {
   const isUpgrade = !!upgradeRow;
 
   if (isUpgrade && upgradeRow?.paid_at) {
-    
     await supabase
       .from("webhook_logs")
       .update({ processado: true })
@@ -134,6 +133,29 @@ export async function POST(req: Request) {
       eventId: g.eventId,
     });
 
+    //EMAIL FALHAS
+    const emailRes = await fetch(
+      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/email_notify`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          tipo: "pagamento_falhou",
+          contrato_id: g.contratoId,
+        }),
+      },
+    );
+
+    if (!emailRes.ok) {
+      console.error("Erro ao enviar email_notify", await emailRes.text());
+    }
+    await supabase
+      .from("webhook_logs")
+      .update({ processado: true })
+      .eq("event_hash", eventHash);
     return NextResponse.json({ ok: true });
   }
 
@@ -236,6 +258,27 @@ export async function POST(req: Request) {
           });
         }
       }
+      // email enviado
+      const emailRes = await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/email_notify`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            tipo: "pagamento_confirmado",
+            contrato_id: g.contratoId,
+            dashboard_url: process.env.BASE_URL,
+            express_url: `${process.env.BASE_URL}/dashboard/express`,
+          }),
+        },
+      );
+
+      if (!emailRes.ok) {
+        console.error("Erro ao enviar email_notify", await emailRes.text());
+      }
 
       // ✅ marca webhook como processado (sempre, mesmo em retry)
       await supabase
@@ -261,7 +304,6 @@ export async function POST(req: Request) {
 
       return NextResponse.json({ ok: true, ignored: true });
     }
-
 
     // ✅ ativa contrato completo
     await activateContratoFull({
@@ -347,6 +389,27 @@ export async function POST(req: Request) {
           })
         : Promise.resolve(),
     ]);
+
+    //ENVIO DE EMAIL SUCESSO CONTRATO INICIAL
+    const emailRes = await fetch(
+      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/email_notify`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          tipo: "pagamento_confirmado",
+          contrato_id: g.contratoId,
+          dashboard_url: process.env.BASE_URL,
+          express_url: `${process.env.BASE_URL}/dashboard/express`,
+        }),
+      },
+    );
+    if (!emailRes.ok) {
+      console.error("Erro ao enviar email_notify", await emailRes.text());
+    }
 
     // ✅ marcar como processado
     await supabase
