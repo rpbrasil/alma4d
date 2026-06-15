@@ -1,25 +1,46 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import {
+  FlaskConical,
+  Smartphone,
+  FileText,
+  ShieldCheck,
+  Building2,
+  Handshake,
+  CheckCircle2,
+} from "lucide-react";
+import { useRouter } from "next/navigation";
 
 export default function Alma4DExpress() {
   // Estados para validação do CNPJ
-  const [cnpj, setCnpj] = useState('');
-  const [cnpjStatus, setCnpjStatus] = useState<'idle' | 'valid' | 'error'>('idle');
-  const [cnpjHint, setCnpjHint] = useState('');
-
+  const [cnpj, setCnpj] = useState("");
+  const [cnpjStatus, setCnpjStatus] = useState<"idle" | "valid" | "error">(
+    "idle",
+  );
+  const [cnpjHint, setCnpjHint] = useState("");
+  const router = useRouter();
+  const goEmpresa = () => {
+    router.push("/nr1/empresa");
+  };
+  const goParceiros = () => {
+    router.push("/nr1/parceiros");
+  };
   // Estado para controlar o FAQ aberto
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   // Máscara e validação do CNPJ adaptada para React
   const handleCnpjChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let value = e.target.value.replace(/\D/g, '').slice(0, 14);
-    
+    let value = e.target.value.replace(/\D/g, "").slice(0, 14);
+
     // Aplica a máscara
     if (value.length > 12) {
-      value = value.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5");
+      value = value.replace(
+        /^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,
+        "$1.$2.$3/$4-$5",
+      );
     } else if (value.length > 8) {
       value = value.replace(/^(\d{2})(\d{3})(\d{3})(\d{1,4})$/, "$1.$2.$3/$4");
     } else if (value.length > 5) {
@@ -30,16 +51,16 @@ export default function Alma4DExpress() {
 
     setCnpj(value);
 
-    const digits = value.replace(/\D/g, '');
+    const digits = value.replace(/\D/g, "");
     if (digits.length === 0) {
-      setCnpjStatus('idle');
-      setCnpjHint('');
+      setCnpjStatus("idle");
+      setCnpjHint("");
     } else if (digits.length < 14) {
-      setCnpjStatus('error');
-      setCnpjHint('Faltam dígitos — informe os 14 do CNPJ.');
+      setCnpjStatus("error");
+      setCnpjHint("Faltam dígitos — informe os 14 do CNPJ.");
     } else {
-      setCnpjStatus('valid');
-      setCnpjHint('CNPJ válido. Vamos calcular seu preço.');
+      setCnpjStatus("valid");
+      setCnpjHint("CNPJ válido. Vamos calcular seu preço.");
     }
   };
 
@@ -69,18 +90,19 @@ export default function Alma4DExpress() {
               </span>
               Menos de 5 min
             </span>
-            <a
-              href="#acesso"
+            <button
+              onClick={goParceiros}
               className="hidden h-11 items-center justify-center rounded-xl border border-border bg-white px-6 font-sans font-bold text-sm text-brand transition-all duration-200 hover:border-brand hover:bg-neutral-50 sm:inline-flex"
             >
-              Sou parceiro
-            </a>
-            <a
-              href="#hero"
+              Quero ser parceiro
+            </button>
+
+            <button
+              onClick={goEmpresa}
               className="inline-flex h-11 items-center justify-center rounded-xl bg-brand-accent px-6 font-sans font-bold text-sm text-white shadow-md shadow-brand-accent/20 transition-all duration-200 hover:bg-brand-accent/90 hover:-translate-y-0.5 active:translate-y-0"
             >
               Iniciar agora
-            </a>
+            </button>
           </div>
         </div>
       </header>
@@ -152,6 +174,7 @@ export default function Alma4DExpress() {
                 >
                   CNPJ da sua empresa
                 </label>
+
                 <input
                   id="cnpj"
                   inputMode="numeric"
@@ -159,30 +182,49 @@ export default function Alma4DExpress() {
                   autoComplete="off"
                   value={cnpj}
                   onChange={handleCnpjChange}
+                  // ✅ REDIRECIONAMENTO
+                  onFocus={goEmpresa}
+                  onClick={goEmpresa}
                   className={`w-full p-4 font-sans font-bold tracking-wide border-2 rounded-xl outline-none transition-all duration-200
-                ${cnpjStatus === "valid" ? "border-emerald-500 bg-emerald-50/20" : cnpjStatus === "error" ? "border-rose-500 bg-rose-50/20" : "border-border focus:border-brand focus:ring-4 focus:ring-brand/5"}`}
+      ${
+        cnpjStatus === "valid"
+          ? "border-emerald-500 bg-emerald-50/20"
+          : cnpjStatus === "error"
+            ? "border-rose-500 bg-rose-50/20"
+            : "border-border focus:border-brand focus:ring-4 focus:ring-brand/5"
+      }`}
                 />
+
                 {cnpjStatus === "valid" && (
                   <span className="absolute right-4 bottom-4 text-xl">✅</span>
                 )}
+
                 {cnpjStatus === "error" && (
                   <span className="absolute right-4 bottom-4 text-xl">⚠️</span>
                 )}
               </div>
+
               {cnpjHint && (
                 <div
-                  className={`-mt-2 px-1 text-xs font-medium ${cnpjStatus === "valid" ? "text-emerald-600" : cnpjStatus === "error" ? "text-rose-500" : "text-neutral-400"}`}
+                  className={`-mt-2 px-1 text-xs font-medium ${
+                    cnpjStatus === "valid"
+                      ? "text-emerald-600"
+                      : cnpjStatus === "error"
+                        ? "text-rose-500"
+                        : "text-neutral-400"
+                  }`}
                 >
                   {cnpjHint}
                 </div>
               )}
 
-              <a
-                href="#acesso"
+              {/* ✅ BOTÃO CORRIGIDO */}
+              <button
+                onClick={goEmpresa}
                 className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-brand-accent font-sans font-bold text-base text-white shadow-lg shadow-brand-accent/20 transition-all duration-200 hover:bg-brand-accent/90 hover:-translate-y-0.5 active:translate-y-0"
               >
                 Ver meu preço agora →
-              </a>
+              </button>
             </div>
 
             <div className="mt-6 flex items-center justify-between border-t border-neutral-100 pt-4 font-sans font-medium text-xs text-neutral-400">
@@ -342,39 +384,48 @@ export default function Alma4DExpress() {
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 text-left">
             {[
               {
-                icon: "🔬",
+                icon: FlaskConical,
                 title: "COPSOQ II BR",
                 desc: "A metodologia de maior prestígio internacional reconhecida por auditores fiscais.",
               },
               {
-                icon: "📱",
+                icon: Smartphone,
                 title: "Nativo Digital",
                 desc: "Distribuição simplificada via canais digitais sem atrito de cadastro para o funcionário.",
               },
               {
-                icon: "📄",
+                icon: FileText,
                 title: "Inventário Técnico",
                 desc: "Dados tabulados e prontos para alimentar a pasta de SST da empresa de forma automatizada.",
               },
               {
-                icon: "🔒",
+                icon: ShieldCheck,
                 title: "Blindagem LGPD",
                 desc: "Tratamento de dados estruturado em anonimização completa para total segurança jurídica.",
               },
-            ].map((p, i) => (
-              <div
-                key={i}
-                className="space-y-3 rounded-xl border border-r border-y border-border border-l-4 border-l-brand bg-white p-6 shadow-sm md:p-8"
-              >
-                <div className="text-3xl">{p.icon}</div>
-                <h4 className="font-sans font-bold text-lg text-neutral-900">
-                  {p.title}
-                </h4>
-                <p className="text-sm leading-relaxed text-neutral-500">
-                  {p.desc}
-                </p>
-              </div>
-            ))}
+            ].map((p, i) => {
+              const Icon = p.icon; // ✅ necessário
+
+              return (
+                <div
+                  key={i}
+                  className="space-y-3 rounded-xl border border-border border-l-4 border-l-brand bg-white p-6 shadow-sm md:p-8"
+                >
+                  <div className="text-3xl">
+                    <Icon size={28} className="text-brand" />{" "}
+                    {/* ✅ corrigido */}
+                  </div>
+
+                  <h4 className="font-sans font-bold text-lg text-neutral-900">
+                    {p.title}
+                  </h4>
+
+                  <p className="text-sm leading-relaxed text-neutral-500">
+                    {p.desc}
+                  </p>
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>
@@ -397,7 +448,7 @@ export default function Alma4DExpress() {
             {[
               {
                 border: "border-t-brand-secondary",
-                tag: "🟢 Pequena · ME/EPP",
+                tag: "Pequena · ME/EPP",
                 tagColor: "text-brand-secondary",
                 title: "Adequação sem custos ocultos.",
                 desc: "Ideal para quem tem orçamento otimizado e precisa proteger o negócio contra riscos legais e fiscais rapidamente.",
@@ -409,10 +460,11 @@ export default function Alma4DExpress() {
                   "Garante evidência protetiva técnica imediata",
                 ],
                 btnText: "Adequar agora →",
+                href: "/nr1/empresa",
               },
               {
                 border: "border-t-brand",
-                tag: "🟡 Média Empresa",
+                tag: "Média Empresa",
                 tagColor: "text-brand",
                 title: "Autonomia completa + Respaldo.",
                 desc: "Ideal para RHs estruturados que demandam velocidade e precisão métrica na entrega dos documentos para a diretoria.",
@@ -424,10 +476,12 @@ export default function Alma4DExpress() {
                   "Autonomia total sem depender de terceiros",
                 ],
                 btnText: "Garantir conformidade →",
+                href: "/nr1/empresa",
               },
               {
                 border: "border-t-brand-highlight",
-                tag: "🔴 Grande Empresa",
+                tag: "Grande Empresa",
+                color: "brand-highlight",
                 tagColor: "text-brand-highlight",
                 title: "Escala, Governança e Controle.",
                 desc: "Desenhado para múltiplas filiais, exigências rígidas de compliance de dados e demandas corporativas de BI.",
@@ -439,6 +493,7 @@ export default function Alma4DExpress() {
                   "Altos critérios de governança e LGPD corporativa",
                 ],
                 btnText: "Falar com especialistas →",
+                href: "/nr1/empresa",
               },
             ].map((card, i) => (
               <div
@@ -472,12 +527,14 @@ export default function Alma4DExpress() {
                     </li>
                   ))}
                 </ul>
-                <a
-                  href="#acesso"
+                <button
+                  onClick={() =>
+                    card.href === "/nr1/parceiros" ? goParceiros() : goEmpresa()
+                  }
                   className="mt-auto flex h-12 w-full items-center justify-center rounded-xl bg-brand font-sans font-bold text-sm text-white transition-all hover:bg-brand/90"
                 >
                   {card.btnText}
-                </a>
+                </button>
               </div>
             ))}
           </div>
@@ -490,8 +547,9 @@ export default function Alma4DExpress() {
           <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
             {/* Card Empresas */}
             <div className="flex flex-col rounded-2xl bg-linear-to-br from-brand to-brand-secondary p-8 text-white shadow-xl shadow-brand/10 md:p-12">
-              <h3 className="font-sans text-2xl font-extrabold mb-2">
-                🏢 Para Empresas
+              <h3 className="flex items-center gap-3 font-sans text-2xl font-extrabold mb-2">
+                <Building2 size={26} />
+                Para Empresas
               </h3>
               <p className="text-sm leading-relaxed text-white/90">
                 Emita o diagnóstico técnico obrigatório exigido pela
@@ -499,55 +557,63 @@ export default function Alma4DExpress() {
               </p>
               <ul className="my-6 space-y-3 text-sm font-medium">
                 <li className="flex items-start gap-3">
-                  <span className="text-white">✓</span> Questionário COPSOQ II
-                  BR anônimo
+                  <CheckCircle2 size={18} />
+                  Questionário COPSOQ II BR anônimo
                 </li>
+
                 <li className="flex items-start gap-3">
-                  <span className="text-white">✓</span> Inventário pronto
-                  integrado ao GRO/PGR
+                  <CheckCircle2 size={18} />
+                  Inventário pronto integrado ao GRO/PGR
                 </li>
+
                 <li className="flex items-start gap-3">
-                  <span className="text-white">✓</span> Ativação instantânea via
-                  painel digital
+                  <CheckCircle2 size={18} />
+                  Ativação instantânea via painel digital
                 </li>
               </ul>
-              <a
-                href="#hero"
+              <button
+                onClick={goEmpresa}
                 className="mt-auto flex h-12 w-full items-center justify-center rounded-xl bg-white font-sans font-bold text-sm text-brand transition-all hover:bg-neutral-50"
               >
                 Iniciar implantação →
-              </a>
+              </button>
             </div>
 
             {/* Card Parceiros */}
             <div className="flex flex-col rounded-2xl border border-border bg-white p-8 shadow-sm md:p-12">
-              <h3 className="font-sans text-2xl font-extrabold text-neutral-950 mb-2">
-                🤝 Para Parceiros
+              <h3 className="flex items-center gap-3 font-sans text-2xl font-extrabold text-neutral-950 mb-2">
+                <Handshake size={26} className="text-brand" />
+                Para Parceiros
               </h3>
+
               <p className="text-sm leading-relaxed text-neutral-500">
                 Indique e gerencie a adequação de seus clientes do setor de SST
                 ou RH corporativo.
               </p>
+
               <ul className="my-6 space-y-3 text-sm font-medium text-neutral-600">
                 <li className="flex items-start gap-3">
-                  <span className="text-brand-secondary">✓</span> Links e cupons
-                  trackeados de comissionamento
+                  <CheckCircle2 size={18} className="text-brand-secondary" />
+                  Links e cupons trackeados de comissionamento
                 </li>
+
                 <li className="flex items-start gap-3">
-                  <span className="text-brand-secondary">✓</span> Kit de
-                  materiais de vendas e apoio técnico
+                  <CheckCircle2 size={18} className="text-brand-secondary" />
+                  Kit de materiais de vendas e apoio técnico
                 </li>
+
                 <li className="flex items-start gap-3">
-                  <span className="text-brand-secondary">✓</span> Dashboard
-                  unificado para gerir as indicações
+                  <CheckCircle2 size={18} className="text-brand-secondary" />
+                  Dashboard unificado para gerir as indicações
                 </li>
               </ul>
-              <a
-                href="#"
+
+              <button
+                onClick={goParceiros}
                 className="mt-auto flex h-12 w-full items-center justify-center rounded-xl border border-border bg-white font-sans font-bold text-sm text-brand transition-all hover:border-brand hover:bg-neutral-50/50"
               >
                 Quero ser parceiro →
-              </a>
+              </button>
             </div>
           </div>
         </div>
@@ -579,7 +645,7 @@ export default function Alma4DExpress() {
               },
               {
                 q: "O processo de implementação é muito complexo?",
-                a: "Pelo contrário. O fluxo foi inexplicavelmente desenhado para ser self-service: insira o CNPJ, faça o pagamento do lote adequado, distribua o link customizado às equipes e baixe o relatório final assim que a amostragem for concluída.",
+                a: "Pelo contrário. O fluxo foi desenhado para ser self-service: insira o CNPJ, faça o pagamento do lote adequado, distribua o link customizado às equipes e baixe o relatório final assim que a amostragem for concluída.",
               },
               {
                 q: "Existe algum risco de expor as respostas individuais do colaborador?",
@@ -587,7 +653,7 @@ export default function Alma4DExpress() {
               },
               {
                 q: "Minha rotina está caótica, não tenho tempo para gerenciar isso agora.",
-                a: "Você só gasta menos de 5 minutos configurando o disparo. A partir daí, o ecossistema digital gerencia e coleta as interações de forma automática enquanto você foca nas suas tarefas cotidianas.",
+                a: "Você gasta menos de 5 minutos configurando o disparo. A partir daí, o ecossistema digital gerencia e coleta as interações de forma automática enquanto você foca nas suas tarefas prioritárias.",
               },
             ].map((item, index) => (
               <div className="border-b border-neutral-200" key={index}>
@@ -622,7 +688,76 @@ export default function Alma4DExpress() {
           </div>
         </div>
       </section>
+      <details className="max-w-3xl mx-auto mt-6 mb-6 px-4 text-left">
+        <summary
+          className="cursor-pointer font-semibold text-brand border mt-4 mb-4 border-gray-300 bg-white shadow-sm hover:shadow rounded-lg px-4 py-3 hover:bg-gray-50 transition list-none appearance-none flex items-center justify-between
+          [&::-webkit-details-marker]:hidden"
+        >
+          <span>Quero entender os detalhes sobre exigências da NR‑1</span>
+          <span className="text-xs opacity-70">▼</span>
+        </summary>
 
+        <div className="mt-4 text-slate-600">
+          <h2 className="text-2xl font-extrabold text-brand">
+            Como atender às exigências da NR‑1 sobre riscos psicossociais
+          </h2>
+
+          <p className="mt-4 text-slate-600">
+            A NR‑1 exige que todas as empresas identifiquem, avaliem e controlem
+            os riscos psicossociais dentro do Programa de Gerenciamento de
+            Riscos (PGR). Esses riscos incluem fatores como estresse
+            ocupacional, sobrecarga de trabalho, metas abusivas, assédio moral e
+            falhas na organização do trabalho, que podem impactar diretamente a
+            saúde mental e a produtividade dos colaboradores.
+          </p>
+
+          <p className="mt-4 text-slate-600">
+            Para estar em conformidade com a NR‑1, não basta aplicar
+            questionários simples ou ações isoladas de bem-estar. A norma exige
+            uma abordagem estruturada e documentada, incluindo a utilização de
+            metodologias reconhecidas, a geração de um inventário de riscos
+            atualizado e a definição de um plano de ação com responsáveis,
+            prazos e acompanhamento contínuo.
+          </p>
+
+          <p className="mt-4 text-slate-600">
+            Ferramentas validadas cientificamente, como o COPSOQ II BR, permitem
+            transformar fatores subjetivos do ambiente de trabalho em dados
+            objetivos, garantindo maior segurança jurídica e evidência técnica
+            para auditorias e fiscalizações.
+          </p>
+
+          <h3 className="mt-6 font-bold text-brand">
+            O que a fiscalização da NR‑1 exige na prática
+          </h3>
+
+          <ul className="mt-4 space-y-2 text-slate-700">
+            <li>
+              • Identificação formal dos riscos psicossociais no ambiente de
+              trabalho
+            </li>
+            <li>• Avaliação com metodologia validada e critérios técnicos</li>
+            <li>• Inventário de riscos integrado ao PGR</li>
+            <li>• Plano de ação com medidas preventivas e corretivas</li>
+            <li>• Evidências documentadas disponíveis para auditoria</li>
+          </ul>
+
+          <p className="mt-4 text-slate-600">
+            Empresas que não implementam corretamente essas exigências ficam
+            expostas a autuações, passivos trabalhistas e riscos reputacionais.
+            Por isso, o uso de soluções digitais com coleta estruturada,
+            dashboards e relatórios técnicos automatizados tornou-se a forma
+            mais eficiente e segura de atender à NR‑1.
+          </p>
+
+          <p className="mt-6 text-slate-700 font-medium">
+            Com o avanço da fiscalização e a obrigatoriedade da inclusão dos
+            riscos psicossociais no GRO e no PGR, a adequação à NR‑1 deixou de
+            ser opcional e passou a ser uma exigência estratégica para qualquer
+            organização.
+          </p>
+        </div>
+      </details>
       {/* FOOTER */}
       <footer className="border-t border-white/5 bg-brand py-16 text-sm text-neutral-400 text-left">
         <div className="mx-auto max-w-285 px-6 md:px-8">
@@ -686,25 +821,23 @@ export default function Alma4DExpress() {
             ))}
           </div>
           <div className="flex flex-wrap justify-between gap-4 border-t border-white/5 pt-8 text-xs text-neutral-500">
-            <span>
-              © 2026 alma4D · VOSS TECNOLOGIA
-            </span>
-           
+            <span>© 2026 alma4D · VOSS TECNOLOGIA</span>
           </div>
         </div>
       </footer>
 
       {/* PERSISTENT FLOATING BAR (DESKTOP) */}
-      <div className="fixed bottom-6 left-1/2 z-60 hidden max-w-2xl -translate-x-1/2 items-center gap-6 rounded-full border border-border bg-white/95 p-2 pl-6 shadow-xl shadow-neutral-950/10 backdrop-blur md:flex">
+      <div className="fixed bottom-6 left-1/2 z-60 hidden max-w-2xl -translate-x-1/2 items-center gap-6 rounded-full border border-border bg-white/45 p-2 pl-6 shadow-xl shadow-neutral-950/10 backdrop-blur md:flex">
         <span className="font-sans font-bold text-xs uppercase tracking-wide text-neutral-700">
-          ⚡ Comece pelo seu CNPJ — leva menos de 5 min
+          Comece pelo seu CNPJ — leva menos de 5 min
         </span>
-        <a
-          href="#hero"
-          className="inline-flex h-11 items-center justify-center rounded-full bg-brand-accent px-6 font-sans font-bold text-xs text-white transition-all hover:bg-brand-accent/90"
+
+        <button
+          onClick={goEmpresa}
+          className="inline-flex h-11 items-center justify-center rounded-xl bg-brand-accent px-6 font-sans font-bold text-sm text-white shadow-md shadow-brand-accent/20 transition-all duration-200 hover:bg-brand-accent/90 hover:-translate-y-0.5 active:translate-y-0"
         >
           Iniciar agora →
-        </a>
+        </button>
       </div>
     </>
   );

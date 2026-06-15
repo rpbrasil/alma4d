@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useMemo,
+  useCallback,
+} from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Mail, CheckCircle2 } from "lucide-react";
@@ -284,6 +290,7 @@ export default function EmpresaNR1Page() {
   >(null);
   const [msgCupomSugestao, setMsgCupomSugestao] = useState<string | null>(null);
   const turnstileRef = React.useRef<TurnstileInstance>(null);
+  const cnpjRef = useRef<HTMLInputElement | null>(null);
   const quote = useMemo(() => {
     if (!config || !riscoEmpresa || form.funcionarios < 2) return null;
 
@@ -821,7 +828,7 @@ export default function EmpresaNR1Page() {
           }),
           8000,
         );
-        
+
         setCupomValido(applied.codigo);
         setDescontoCents(applied.descontoCents);
         setTotalComDescontoCents(applied.totalComDescontoCents);
@@ -839,6 +846,10 @@ export default function EmpresaNR1Page() {
     [quote, cupom],
   );
 
+  useEffect(() => {
+    cnpjRef.current?.focus();
+  }, []);
+  
   useEffect(() => {
     if (
       autoCupomExecutadoRef.current // ✅ já rodou
@@ -915,6 +926,7 @@ export default function EmpresaNR1Page() {
           {/* 🔹 CNPJ + BOTÃO */}
           <div className="flex gap-3 w-full lg:w-auto flex-1">
             <input
+              ref={cnpjRef}
               value={formatCNPJ(cnpjInput)}
               inputMode="numeric"
               onChange={(e) => {
