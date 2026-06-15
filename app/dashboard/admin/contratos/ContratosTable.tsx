@@ -102,66 +102,68 @@ export function ContratosTable({ contratos }: Props) {
       </div>
 
       {/* tabela */}
-      <div className="bg-surface focus:ring-2 focus:ring-brand-secondary/30 rounded-lg overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-surface-muted focus:ring-2 focus:ring-brand-secondary/30-b">
-            <tr>
-              <th className="p-3 text-left">Contrato</th>
-              <th className="p-3 text-left">Cliente</th>
-              <th className="p-3 text-center">Versão</th>
-              <th className="p-3 text-center">Status</th>
-              <th className="p-3 text-center">Início</th>
-              <th className="p-3 text-right"></th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {filtered.map((c) => (
-              <tr
-                key={c.id}
-                className={`bg-surface-muted focus:ring-2 focus:ring-brand-secondary/30-b hover:bg-surface-soft ${isVencendo(c.data_inicio) ? "bg-yellow-50" : "bg-surface-muted"} hover:bg-surface-soft`}
-              >
-                <td className="p-3 font-medium">{c.numero_contrato}</td>
-                <td className="p-3">{c.cliente_nome}</td>
-                <td className="p-3 text-center">{c.versao ?? "-"}</td>
-                <td className="p-3 text-center">
-                  <span
-                    className={`px-2 py-1 rounded-full text-xs ${badge(c.status)}`}
-                  >
-                    {c.status}
-                  </span>
-                  {c.pdf_status && (
-                    <span
-                      className={`block text-xs mt-1 ${
-                        statusPdfColor[c.pdf_status] || "text-gray-500"
-                      }`}
-                    >
-                      PDF: {c.pdf_status}
-                    </span>
-                  )}
-                </td>
-                <td className="p-3 text-center">
-                  {new Date(c.data_inicio).toLocaleDateString()}
-                </td>
-                <td className="p-3 text-right flex justify-end gap-2">
-                  <Link
-                    href={`/dashboard/admin/contratos/${c.id}`}
-                    className="text-blue-600 hover:bg-blue-50 p-2 rounded"
-                  >
-                    Detalhes
-                  </Link>
-
-                  <Link
-                    href={`/dashboard/admin/contratos/novo?cliente_id=${c.id}`}
-                    className="text-green-600 hover:bg-green-50 p-2 rounded"
-                  >
-                    Renovar
-                  </Link>
-                </td>
+      <div className="bg-surface rounded-lg overflow-hidden">
+        <div className="w-full overflow-x-auto">
+          <table className="min-w-225 w-full">
+            <thead className="bg-surface-muted focus:ring-2 focus:ring-brand-secondary/30-b">
+              <tr>
+                <th className="p-3 text-left">Contrato</th>
+                <th className="p-3 text-left">Cliente</th>
+                <th className="p-3 text-center">Versão</th>
+                <th className="p-3 text-center">Status</th>
+                <th className="p-3 text-center">Início</th>
+                <th className="p-3 text-right"></th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+
+            <tbody>
+              {filtered.map((c) => (
+                <tr
+                  key={c.id}
+                  className={`bg-surface-muted focus:ring-2 focus:ring-brand-secondary/30-b hover:bg-surface-soft ${isVencendo(c.data_inicio) ? "bg-yellow-50" : "bg-surface-muted"} hover:bg-surface-soft`}
+                >
+                  <td className="p-3 font-medium">{c.numero_contrato}</td>
+                  <td className="p-3">{c.cliente_nome}</td>
+                  <td className="p-3 text-center">{c.versao ?? "-"}</td>
+                  <td className="p-3 text-center">
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs ${badge(c.status)}`}
+                    >
+                      {c.status}
+                    </span>
+                    {c.pdf_status && (
+                      <span
+                        className={`block text-xs mt-1 ${
+                          statusPdfColor[c.pdf_status] || "text-gray-500"
+                        }`}
+                      >
+                        PDF: {c.pdf_status}
+                      </span>
+                    )}
+                  </td>
+                  <td className="p-3 text-center">
+                    {new Date(c.data_inicio).toLocaleDateString()}
+                  </td>
+                  <td className="p-3 text-right flex justify-end gap-2">
+                    <Link
+                      href={`/dashboard/admin/contratos/${c.id}`}
+                      className="text-blue-600 hover:bg-blue-50 p-2 rounded"
+                    >
+                      Detalhes
+                    </Link>
+
+                    <Link
+                      href={`/dashboard/admin/contratos/novo?cliente_id=${c.id}`}
+                      className="text-green-600 hover:bg-green-50 p-2 rounded"
+                    >
+                      Renovar
+                    </Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
         <p className="text-sm text-gray-500 px-2">
           Mostrando {filtered.length} de {contratos.length} contratos
         </p>

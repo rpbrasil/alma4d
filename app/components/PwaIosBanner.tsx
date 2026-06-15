@@ -6,12 +6,13 @@ interface NavigatorStandalone extends Navigator {
   standalone?: boolean;
 }
 
+const STORAGE_KEY = "pwa_ios_banner_dismissed";
+
 export default function PwaIosBanner() {
   const [show, setShow] = useState(false);
 
   useLayoutEffect(() => {
     const ua = navigator.userAgent.toLowerCase();
-
     const isIos = /iphone|ipad|ipod/.test(ua);
 
     const nav = navigator as NavigatorStandalone;
@@ -20,12 +21,20 @@ export default function PwaIosBanner() {
       window.matchMedia("(display-mode: standalone)").matches ||
       nav.standalone === true;
 
-    // ✅ só depois da hidratação
-      if (isIos && !isStandalone) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
+    const dismissed = localStorage.getItem(STORAGE_KEY);
+
+    if (isIos && !isStandalone && !dismissed) {
+      // ✅ evita setState síncrono (resolve ESLint)
+      setTimeout(() => {
         setShow(true);
-      }
+      }, 0);
+    }
   }, []);
+
+  function handleDismiss() {
+    localStorage.setItem(STORAGE_KEY, "true");
+    setShow(false);
+  }
 
   if (!show) return null;
 
@@ -40,7 +49,7 @@ export default function PwaIosBanner() {
         </p>
 
         <button
-          onClick={() => setShow(false)}
+          onClick={handleDismiss}
           className="mt-2 text-xs text-brand font-semibold"
         >
           Entendi

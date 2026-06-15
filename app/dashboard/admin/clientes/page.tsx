@@ -344,7 +344,7 @@ if (authLoading) {
         </div>
 
         {/* Ações */}
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
           <ExportToolbar
             title="Clientes"
             rows={filteredClientes}
@@ -374,7 +374,6 @@ if (authLoading) {
               },
             ]}
           />
-
           <Link
             href="/dashboard/admin/clientes/novo"
             className="inline-flex items-center gap-2 bg-[#019499] text-white

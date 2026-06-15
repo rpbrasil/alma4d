@@ -84,14 +84,16 @@ export default async function ContratosPage() {
         </div>
       </div>
       {/* Header */}
-      <div className="flex justify-between items-center">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold">Contratos</h2>
           <p className="text-sm text-gray-500">
             Gestão de contratos por cliente
           </p>
         </div>
-        <div className="flex items-center gap-3">
+
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
           <ExportToolbar
             title="Contratos"
             rows={contratosFormatados}
@@ -102,14 +104,14 @@ export default async function ContratosPage() {
               { label: "Status", key: "status" },
               {
                 label: "Início",
-                key: "data_inicio_fmt"
+                key: "data_inicio_fmt",
               },
             ]}
           />
 
           <Link
             href="/dashboard/admin/contratos/novo"
-            className="bg-[#019499] text-white px-4 py-2 rounded-lg hover:opacity-90"
+            className="inline-flex items-center justify-center gap-2 w-full sm:w-auto bg-[#019499] text-white px-4 py-2 rounded-lg hover:opacity-90"
           >
             Novo contrato
           </Link>
