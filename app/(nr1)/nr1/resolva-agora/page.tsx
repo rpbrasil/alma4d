@@ -118,7 +118,7 @@ export default function Alma4DExpress() {
             <span className="inline-flex items-center gap-2 rounded-full bg-brand/5 px-4 py-2 text-xs font-bold uppercase tracking-wider text-brand">
               ⚠️ NR-1 não é mais opcional
             </span>
-            <h1 className="font-sans text-4xl font-black leading-[1.1] tracking-tight text-neutral-900 sm:text-5xl lg:text-6xl">
+            <h1 className="font-sans text-4xl font-black leading-[1.1] tracking-tight text-brand sm:text-5xl lg:text-6xl">
               Tire a NR-1 psicossocial do seu colo.{" "}
               <span className="text-brand-accent">Hoje.</span>
             </h1>
@@ -159,7 +159,7 @@ export default function Alma4DExpress() {
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500"></span>{" "}
               Precificação automática
             </span>
-            <h3 className="mb-1 font-sans text-2xl font-bold text-neutral-950">
+            <h3 className="mb-1 font-sans text-2xl font-bold text-brand">
               Comece pelo seu CNPJ
             </h3>
             <p className="mb-6 text-sm text-neutral-500">
@@ -311,7 +311,7 @@ export default function Alma4DExpress() {
             <span className="inline-flex items-center rounded-full bg-brand/5 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-brand">
               A jornada
             </span>
-            <h2 className="font-sans text-3xl font-black tracking-tight text-neutral-950 md:text-4xl">
+            <h2 className="font-sans text-3xl font-black tracking-tight text-brand md:text-4xl">
               Do CNPJ ao relatório pronto em 6 passos
             </h2>
             <p className="text-lg text-neutral-500">
@@ -345,7 +345,7 @@ export default function Alma4DExpress() {
               {
                 n: "6",
                 t: "Relatório",
-                d: "Laudo técnico pronto para o PGR/GRO.",
+                d: "Relatório técnico pronto para o PGR/GRO.",
               },
             ].map((s) => (
               <div
@@ -377,7 +377,7 @@ export default function Alma4DExpress() {
             <span className="inline-flex items-center rounded-full bg-brand/5 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-brand">
               Por que funciona
             </span>
-            <h2 className="font-sans text-3xl font-black tracking-tight text-neutral-950 md:text-4xl">
+            <h2 className="font-sans text-3xl font-black tracking-tight text-brand md:text-4xl">
               Rigor científico desenhado para simplicidade
             </h2>
           </div>
@@ -440,7 +440,7 @@ export default function Alma4DExpress() {
             <span className="inline-flex items-center rounded-full bg-brand/5 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-brand">
               Para o seu porte
             </span>
-            <h2 className="font-sans text-3xl font-black tracking-tight text-neutral-950 md:text-4xl">
+            <h2 className="font-sans text-3xl font-black tracking-tight text-brand md:text-4xl">
               Uma solução sob medida para cada cenário
             </h2>
           </div>
@@ -467,7 +467,7 @@ export default function Alma4DExpress() {
                 tag: "Média Empresa",
                 tagColor: "text-brand",
                 title: "Autonomia completa + Respaldo.",
-                desc: "Ideal para RHs estruturados que demandam velocidade e precisão métrica na entrega dos documentos para a diretoria.",
+                desc: "Ideal para RHs estruturados que demandam velocidade e precisão na entrega dos documentos para a diretoria.",
                 quote:
                   "Substitua planilhas e palpites por dados com validação científica internacional.",
                 bullets: [
@@ -573,7 +573,7 @@ export default function Alma4DExpress() {
               </ul>
               <button
                 onClick={goEmpresa}
-                className="mt-auto flex h-12 w-full items-center justify-center rounded-xl bg-white font-sans font-bold text-sm text-brand transition-all hover:bg-neutral-50"
+                className="mt-auto flex h-12 w-full items-center justify-center rounded-xl bg-white font-sans font-bold text-sm text-brand transition-all hover:bg-gray-50"
               >
                 Iniciar implantação →
               </button>
@@ -581,36 +581,36 @@ export default function Alma4DExpress() {
 
             {/* Card Parceiros */}
             <div className="flex flex-col rounded-2xl border border-border bg-white p-8 shadow-sm md:p-12">
-              <h3 className="flex items-center gap-3 font-sans text-2xl font-extrabold text-neutral-950 mb-2">
+              <h3 className="flex items-center gap-3 font-sans text-2xl font-extrabold text-brand mb-2">
                 <Handshake size={26} className="text-brand" />
                 Para Parceiros
               </h3>
 
               <p className="text-sm leading-relaxed text-neutral-500">
-                Indique e gerencie a adequação de seus clientes do setor de SST
-                ou RH corporativo.
+                Conceda desconto para seus clientes ou associados na implantação
+                da NR1 Psicossocial.
               </p>
 
               <ul className="my-6 space-y-3 text-sm font-medium text-neutral-600">
                 <li className="flex items-start gap-3">
                   <CheckCircle2 size={18} className="text-brand-secondary" />
-                  Links e cupons trackeados de comissionamento
+                  Links e cupons trackeados com descontos
                 </li>
 
                 <li className="flex items-start gap-3">
                   <CheckCircle2 size={18} className="text-brand-secondary" />
-                  Kit de materiais de vendas e apoio técnico
+                  Kit de materiais de apoio técnico
                 </li>
 
                 <li className="flex items-start gap-3">
                   <CheckCircle2 size={18} className="text-brand-secondary" />
-                  Dashboard unificado para gerir as indicações
+                  Dashboard e relatório para acompanhar o engajamento.
                 </li>
               </ul>
 
               <button
                 onClick={goParceiros}
-                className="mt-auto flex h-12 w-full items-center justify-center rounded-xl border border-border bg-white font-sans font-bold text-sm text-brand transition-all hover:border-brand hover:bg-neutral-50/50"
+                className="mt-auto flex h-12 w-full items-center justify-center rounded-xl border border-border bg-gray-50 font-sans font-bold text-sm text-brand transition-all hover:border-brand hover:bg-neutral-50/50"
               >
                 Quero ser parceiro →
               </button>
@@ -629,7 +629,7 @@ export default function Alma4DExpress() {
             <span className="inline-flex items-center rounded-full bg-brand/5 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-brand">
               Perguntas frequentes
             </span>
-            <h2 className="font-sans text-3xl font-black tracking-tight text-neutral-950">
+            <h2 className="font-sans text-3xl font-black tracking-tight text-brand">
               Respostas diretas e sem rodeios
             </h2>
           </div>
@@ -641,7 +641,7 @@ export default function Alma4DExpress() {
               },
               {
                 q: "É caro? Não possuo verba para contratar grandes consultorias.",
-                a: "Como removemos o intermediário humano e automatizamos a precificação e a geração dos laudos direto pela plataforma, conseguimos democratizar o acesso por uma fração do preço cobrado por consultorias tradicionais de SST.",
+                a: "Como removemos o intermediário humano e automatizamos a precificação e a geração dos relatórios direto pela plataforma, conseguimos democratizar o acesso por uma fração do preço cobrado por consultorias tradicionais de SST.",
               },
               {
                 q: "O processo de implementação é muito complexo?",
@@ -656,7 +656,7 @@ export default function Alma4DExpress() {
                 a: "Você gasta menos de 5 minutos configurando o disparo. A partir daí, o ecossistema digital gerencia e coleta as interações de forma automática enquanto você foca nas suas tarefas prioritárias.",
               },
             ].map((item, index) => (
-              <div className="border-b border-neutral-200" key={index}>
+              <div className="border-b border-neutral-400" key={index}>
                 <button
                   onClick={() => toggleFaq(index)}
                   className="flex w-full cursor-pointer items-center justify-between gap-4 border-none bg-transparent py-5 text-left font-sans text-base font-bold text-neutral-900 transition-colors hover:text-brand md:text-lg"
@@ -772,8 +772,8 @@ export default function Alma4DExpress() {
                 />
               </Link>
               <p className="max-w-xs leading-relaxed text-xs text-neutral-400">
-                A forma mais rápida, segura e automatizada de sanar a NR-1
-                psicossocial — sem consultores, com laudos técnicos inabaláveis.
+                A forma mais rápida, segura e automatizada de resolver a NR-1
+                psicossocial — sem consultores, com relatórios técnicos inabaláveis.
               </p>
             </div>
             {[
@@ -788,16 +788,22 @@ export default function Alma4DExpress() {
               {
                 title: "Conformidade",
                 links: [
-                  ["Norma NR-1", "#"],
-                  ["Escala COPSOQ II", "#"],
-                  ["Segurança LGPD", "#"],
+                  ["Norma NR-1", "https://heyzine.com/flip-book/4757966bd8"],
+                  [
+                    "Escala COPSOQ II",
+                    "https://heyzine.com/flip-book/4757966bd8",
+                  ],
+                  [
+                    "Segurança LGPD",
+                    "https://heyzine.com/flip-book/4757966bd8",
+                  ],
                 ],
               },
               {
                 title: "Suporte",
                 links: [
-                  ["Falar com o time", "#"],
-                  ["Central de Ajuda", "#"],
+                  ["Falar com o time", "/contato"],
+                  ["Central de Ajuda", "/contato"],
                 ],
               },
             ].map((col, i) => (
@@ -827,7 +833,7 @@ export default function Alma4DExpress() {
       </footer>
 
       {/* PERSISTENT FLOATING BAR (DESKTOP) */}
-      <div className="fixed bottom-6 left-1/2 z-60 hidden max-w-2xl -translate-x-1/2 items-center gap-6 rounded-full border border-border bg-white/45 p-2 pl-6 shadow-xl shadow-neutral-950/10 backdrop-blur md:flex">
+      <div className="fixed bottom-6 left-1/2 z-60 hidden max-w-2xl -translate-x-1/2 items-center gap-6 rounded-full border border-border bg-white/45 p-2 pl-6 shadow-xl shadow-brand/10 backdrop-blur md:flex">
         <span className="font-sans font-bold text-xs uppercase tracking-wide text-neutral-700">
           Comece pelo seu CNPJ — leva menos de 5 min
         </span>
