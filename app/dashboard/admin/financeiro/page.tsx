@@ -150,82 +150,79 @@ export default async function FinanceiroPage() {
     .select("*", { count: "exact", head: true });
 
   return (
-  <div className="p-6 space-y-6 bg-surface-muted min-h-screen">
+    <div className="p-6 space-y-6 bg-surface-muted min-h-screen">
+      {/* ✅ ALERTAS OPERACIONAIS (CLIENT COMPONENT) */}
+      <AlertasOperacionais
+        nfseAtrasada={nfseAtrasada}
+        pagamentoSemEmail={pagamentoSemEmail}
+        boletoNaoEnviado={boletoNaoEnviado}
+        pixNaoEnviado={pixNaoEnviado}
+      />
 
-    {/* ✅ ALERTAS OPERACIONAIS (CLIENT COMPONENT) */}
-    <AlertasOperacionais
-      nfseAtrasada={nfseAtrasada}
-      pagamentoSemEmail={pagamentoSemEmail}
-      boletoNaoEnviado={boletoNaoEnviado}
-      pixNaoEnviado={pixNaoEnviado}
-    />
-
-    {/* KPIs */}
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-      <KpiCard
-        title="Receita Total"
-        value={`R$ ${(totalReceita / 100).toLocaleString("pt-BR")}`}
-      />
-      <KpiCard
-        title="MRR"
-        value={`R$ ${(mrr / 100).toLocaleString("pt-BR")}`}
-      />
-      <KpiCard
-        title="Ticket Médio"
-        value={`R$ ${(ticketMedio / 100).toLocaleString("pt-BR")}`}
-      />
-      <KpiCard
-        title="Clientes Ativos"
-        value={clientesAtivos.toString()}
-      />
-    </div>
-
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-      <KpiCard
-        title="Receita Paga"
-        value={`R$ ${(receitaPaga / 100).toLocaleString("pt-BR")}`}
-        valueClass="text-brand-secondary"
-      />
-      <KpiCard
-        title="Receita Prevista"
-        value={`R$ ${(receitaPrevista / 100).toLocaleString("pt-BR")}`}
-        valueClass="text-brand-highlight"
-      />
-      <KpiCard
-        title="Receita Perdida"
-        value={`R$ ${(receitaPerdida / 100).toLocaleString("pt-BR")}`}
-        valueClass="text-brand-accent"
-      />
-      <KpiCard
-        title="Taxa de Conversao"
-        value={`${taxaConversao.toFixed(1)}%`}
-        valueClass="text-brand"
-      />
-    </div>
-
-    <div className="grid md:grid-cols-3 gap-4">
-      <div className="bg-brand-accent/10 text-brand-accent p-4 rounded-xl shadow-sm">
-        <p className="text-xs font-medium">Recebido sem NF</p>
-        <p className="text-2xl font-bold">{semNfse ?? 0}</p>
+      {/* KPIs */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <KpiCard
+          title="Receita Total"
+          value={`R$ ${(totalReceita / 100).toLocaleString("pt-BR")}`}
+        />
+        <KpiCard
+          title="MRR"
+          value={`R$ ${(mrr / 100).toLocaleString("pt-BR")}`}
+        />
+        <KpiCard
+          title="Ticket Médio"
+          value={(ticketMedio / 100).toLocaleString("pt-BR", {
+            style: "currency",
+            currency: "BRL",
+          })}
+        />
       </div>
 
-      <div className="bg-brand-highlight/10 text-brand-highlight p-4 rounded-xl shadow-sm">
-        <p className="text-xs font-medium">NF não enviada</p>
-        <p className="text-2xl font-bold">{nfseSemEmail ?? 0}</p>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <KpiCard
+          title="Receita Paga"
+          value={`R$ ${(receitaPaga / 100).toLocaleString("pt-BR")}`}
+          valueClass="text-brand-secondary"
+        />
+        <KpiCard
+          title="Receita Prevista"
+          value={`R$ ${(receitaPrevista / 100).toLocaleString("pt-BR")}`}
+          valueClass="text-brand-highlight"
+        />
+        <KpiCard
+          title="Receita Perdida"
+          value={`R$ ${(receitaPerdida / 100).toLocaleString("pt-BR")}`}
+          valueClass="text-brand-accent"
+        />
+        <KpiCard
+          title="Taxa de Conversao"
+          value={`${taxaConversao.toFixed(1)}%`}
+          valueClass="text-brand"
+        />
       </div>
 
-      <div className="bg-brand-secondary/10 text-brand-secondary p-4 rounded-xl shadow-sm">
-        <p className="text-xs font-medium">Divergência</p>
-        <p className="text-2xl font-bold">{divergencias ?? 0}</p>
+      <div className="grid md:grid-cols-3 gap-4">
+        <div className="bg-brand-accent/10 text-brand-accent p-4 rounded-xl shadow-sm">
+          <p className="text-xs font-medium">Recebido sem NF</p>
+          <p className="text-2xl font-bold">{semNfse ?? 0}</p>
+        </div>
+
+        <div className="bg-brand-highlight/10 text-brand-highlight p-4 rounded-xl shadow-sm">
+          <p className="text-xs font-medium">NF não enviada</p>
+          <p className="text-2xl font-bold">{nfseSemEmail ?? 0}</p>
+        </div>
+
+        <div className="bg-brand-secondary/10 text-brand-secondary p-4 rounded-xl shadow-sm">
+          <p className="text-xs font-medium">Divergência</p>
+          <p className="text-2xl font-bold">{divergencias ?? 0}</p>
+        </div>
       </div>
+
+      <FinanceiroCharts
+        revenueData={revenueData}
+        paymentStatus={paymentStatus}
+        clientesData={clientesData}
+      />
     </div>
-
-    <FinanceiroCharts
-      revenueData={revenueData}
-      paymentStatus={paymentStatus}
-      clientesData={clientesData}
-    />
-
-  </div>
-);
+  );
 }

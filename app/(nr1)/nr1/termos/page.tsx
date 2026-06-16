@@ -127,10 +127,9 @@ export default function TermosPage() {
           </p>
           <p className="mt-3">
             Cobranças, renovações e cancelamentos podem ser processados pelas
-            plataformas <strong>Google Play Store</strong> e/ou{" "}
-            <strong>Apple App Store</strong>, conforme as regras e políticas das
-            respectivas lojas. O usuário é responsável por acompanhar suas
-            assinaturas ativas.
+            plataformas <strong>Google Play Store</strong>,
+            <strong>Apple App Store</strong> ou na plataforma alma4D, conforme a versao do aplicativo ou políticas das respectivas lojas. O usuário é responsável por
+            acompanhar suas assinaturas ativas.
           </p>
         </Card>
 

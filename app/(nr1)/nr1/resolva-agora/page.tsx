@@ -386,22 +386,22 @@ export default function Alma4DExpress() {
               {
                 icon: FlaskConical,
                 title: "COPSOQ II BR",
-                desc: "A metodologia de maior prestígio internacional reconhecida por auditores fiscais.",
+                desc: "A metodologia de maior prestígio internacional reconhecida e validada no Brasil.",
               },
               {
                 icon: Smartphone,
                 title: "Nativo Digital",
-                desc: "Distribuição simplificada via canais digitais sem atrito de cadastro para o funcionário.",
+                desc: "Distribuição simplificada via canais digitais, sem atrito de cadastro, no celular do colaborador.",
               },
               {
                 icon: FileText,
                 title: "Inventário Técnico",
-                desc: "Dados tabulados e prontos para alimentar a pasta de SST da empresa de forma automatizada.",
+                desc: "Dados tabulados e prontos para alimentar a pasta de SST da empresa de forma facilitada.",
               },
               {
                 icon: ShieldCheck,
                 title: "Blindagem LGPD",
-                desc: "Tratamento de dados estruturado em anonimização completa para total segurança jurídica.",
+                desc: "Tratamento de dados preparado com anonimização completa para total segurança jurídica.",
               },
             ].map((p, i) => {
               const Icon = p.icon; // ✅ necessário
@@ -637,15 +637,15 @@ export default function Alma4DExpress() {
             {[
               {
                 q: "Já faço pesquisa de clima na empresa. Não basta?",
-                a: "Não basta. Pesquisas internas comuns de clima não possuem metodologia clínica validada. O Ministério do Trabalho exige embasamento técnico estruturado para riscos psicossociais, que é exatamente o que a escala COPSOQ II BR entrega no Express.",
+                a: "Não basta. Pesquisas internas comuns de clima não possuem metodologia científica validada. O Ministério do Trabalho exige embasamento técnico estruturado para riscos psicossociais, que é exatamente o que a escala COPSOQ II BR entrega no alma4D Express.",
               },
               {
-                q: "É caro? Não possuo verba para contratar grandes consultorias.",
-                a: "Como removemos o intermediário humano e automatizamos a precificação e a geração dos relatórios direto pela plataforma, conseguimos democratizar o acesso por uma fração do preço cobrado por consultorias tradicionais de SST.",
+                q: "É caro? Não aloquei verba para contratar grandes consultorias.",
+                a: "Como removemos o intermediário humano, automatizamos a precificação e a geração dos relatórios direto pela plataforma, conseguimos democratizar o acesso por uma fração do preço cobrado por consultorias tradicionais de SST.",
               },
               {
                 q: "O processo de implementação é muito complexo?",
-                a: "Pelo contrário. O fluxo foi desenhado para ser self-service: insira o CNPJ, faça o pagamento do lote adequado, distribua o link customizado às equipes e baixe o relatório final assim que a amostragem for concluída.",
+                a: "Pelo contrário. O fluxo foi desenhado para ser self-service: insira o CNPJ, faça o pagamento do lote adequado de licenças, distribua o link customizado às equipes e baixe o relatório final assim que a amostragem for concluída.",
               },
               {
                 q: "Existe algum risco de expor as respostas individuais do colaborador?",
@@ -653,7 +653,11 @@ export default function Alma4DExpress() {
               },
               {
                 q: "Minha rotina está caótica, não tenho tempo para gerenciar isso agora.",
-                a: "Você gasta menos de 5 minutos configurando o disparo. A partir daí, o ecossistema digital gerencia e coleta as interações de forma automática enquanto você foca nas suas tarefas prioritárias.",
+                a: "Você gasta menos de 5 minutos configurando o disparo. A partir daí, o plataforma digital gerencia e coleta as interações de forma automática, enquanto você foca nas suas tarefas prioritárias.",
+              },
+              {
+                q: "Gostei do preço e quero comprar mais licenças, além das que preciso hoje, posso ?",
+                a: "Pode. Você tem total deliberdade de comprar número maior de licenças. Estabelecemos um número mínimo de licenças para que o pedido não fique inviável financeiramente.",
               },
             ].map((item, index) => (
               <div className="border-b border-neutral-400" key={index}>
@@ -773,7 +777,8 @@ export default function Alma4DExpress() {
               </Link>
               <p className="max-w-xs leading-relaxed text-xs text-neutral-400">
                 A forma mais rápida, segura e automatizada de resolver a NR-1
-                psicossocial — sem consultores, com relatórios técnicos inabaláveis.
+                psicossocial — sem consultores, com relatórios técnicos
+                inabaláveis.
               </p>
             </div>
             {[
@@ -794,8 +799,8 @@ export default function Alma4DExpress() {
                     "https://heyzine.com/flip-book/4757966bd8",
                   ],
                   [
-                    "Segurança LGPD",
-                    "https://heyzine.com/flip-book/4757966bd8",
+                    "Termos de Uso",
+                    "/nr1/termos",
                   ],
                 ],
               },
@@ -804,6 +809,7 @@ export default function Alma4DExpress() {
                 links: [
                   ["Falar com o time", "/contato"],
                   ["Central de Ajuda", "/contato"],
+                  ["Politica de Privacidade", "/nr1/privacidade"],
                 ],
               },
             ].map((col, i) => (
