@@ -233,8 +233,10 @@ export default function DashboardExpress() {
   const [cpf, setCpf] = useState("");
   const [tel, setTel] = useState("");
   const [showLicencaModal, setShowLicencaModal] = useState(false);
-  
-  const [licencasContratadas, setlicencasContratadas] = useState<number | null>(null);
+
+  const [licencasContratadas, setlicencasContratadas] = useState<number | null>(
+    null,
+  );
   const [licencasConsumidas, setlicencasConsumidas] = useState<number>(0);
 
   const [user, setUser] = useState<UsuarioPerfil | null>(null);
@@ -396,6 +398,29 @@ export default function DashboardExpress() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!jobId) return;
+    const interval = setInterval(async () => {
+      const { data } = await supabase
+        .from("importacao_usuarios_jobs")
+        .select("status, processed, total")
+        .eq("id", jobId)
+        .maybeSingle();
+      if (!data) {
+        console.warn("Job não encontrado ainda");
+        return;
+      }
+      if (data.status === "completed") {
+        setMsg(null);
+        clearInterval(interval);
+      }
+      if (data.status === "failed") {
+        clearInterval(interval);
+      }
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [jobId]);
+
   const progress = useMemo(() => {
     if (!job) return 0;
     if (!job.total) return 0;
@@ -460,7 +485,10 @@ export default function DashboardExpress() {
       if (!gerenciarUsuariosUrl) {
         throw new Error("Endpoint de cadastro não configurado.");
       }
-      if (licencasContratadas !== null && licencasConsumidas >= licencasContratadas) {
+      if (
+        licencasContratadas !== null &&
+        licencasConsumidas >= licencasContratadas
+      ) {
         setShowLicencaModal(true);
         return;
       }
@@ -608,7 +636,10 @@ export default function DashboardExpress() {
         throw new Error("Nenhuma linha válida para importar.");
       }
 
-      if (licencasContratadas !== null && licencasConsumidas >= licencasContratadas) {
+      if (
+        licencasContratadas !== null &&
+        licencasConsumidas >= licencasContratadas
+      ) {
         setShowLicencaModal(true);
         return;
       }
@@ -754,7 +785,9 @@ export default function DashboardExpress() {
     ? `Ex (com departamento):\nJoão Silva;12345678901;11999999999;Produção\nMaria Lima;98765432100;11988887777;RH\n\nFormato: nome;cpf;telefone;departamento\n(Se não informar na linha, usamos o Departamento padrão acima — se preenchido)`
     : `Ex:\nJoão Silva;12345678901;11999999999\nMaria Lima;98765432100;11988887777\n\nFormato: nome;cpf;telefone`;
   const restantes =
-    licencasContratadas !== null ? licencasContratadas - licencasConsumidas : null;
+    licencasContratadas !== null
+      ? licencasContratadas - licencasConsumidas
+      : null;
 
   const isLimitReached = restantes !== null && restantes <= 0;
 
@@ -857,12 +890,6 @@ export default function DashboardExpress() {
             Habilitar departamento
           </div>
         </div>
-
-        {msg && (
-          <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
-            {msg}
-          </div>
-        )}
       </section>
       {licencasContratadas !== null && (
         <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-5">
@@ -1040,17 +1067,6 @@ export default function DashboardExpress() {
               className="mt-4 min-h-35 w-full rounded-lg border border-slate-200 p-3 text-sm bg-white"
             />
 
-            {job && (
-              <div className="mt-4">
-                <div className="h-2 rounded-full bg-slate-200 overflow-hidden">
-                  <div
-                    className="h-full bg-brand"
-                    style={{ width: `${progress}%` }}
-                  />
-                </div>
-              </div>
-            )}
-
             {bulkError && (
               <p className="mt-2 text-sm text-red-600">{bulkError}</p>
             )}
@@ -1071,7 +1087,7 @@ export default function DashboardExpress() {
                 onClick={onBuildPreview}
                 className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
               >
-                Gerar prévia
+                Avaliar arquivo
               </button>
 
               <button
@@ -1105,6 +1121,39 @@ export default function DashboardExpress() {
                 </button>
               )}
             </div>
+            {msg && (
+              <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+                {msg}
+              </div>
+            )}
+            {job && job.status !== "completed" && job.status !== "failed" && (
+              <div className="mt-4 space-y-2">
+                <div className="flex justify-between text-xs text-slate-600">
+                  <span>
+                    Processando {job.processed ?? 0} de {job.total ?? 0}
+                  </span>
+                  <span>{Math.round(progress)}%</span>
+                </div>
+
+                <div className="h-2 rounded-full bg-slate-200 overflow-hidden">
+                  <div
+                    className="h-full bg-brand transition-all duration-500 ease-out"
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
+              </div>
+            )}
+            {job?.status === "completed" && (
+              <p className="text-xs text-emerald-600 font-semibold">
+                ✅ Importação concluída
+              </p>
+            )}
+
+            {job?.status === "failed" && (
+              <p className="text-xs text-red-600 font-semibold">
+                ❌ Falha na importação
+              </p>
+            )}
           </>
         )}
       </div>

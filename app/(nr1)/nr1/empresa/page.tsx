@@ -1100,7 +1100,7 @@ export default function EmpresaNR1Page() {
                   // ✅ garantia extra se o usuário apagar tudo e sair
                   if (form.funcionarios > 0 && form.funcionarios < 2) {
                     update("funcionarios", 2);
-                    setErrorMsg("O número mínimo de funcionários é 2.");
+                    setErrorMsg("O número mínimo de colaboradores é 2.");
                   }
                 }}
                 className="h-11 border rounded-lg px-3"
@@ -1109,7 +1109,7 @@ export default function EmpresaNR1Page() {
               />
               {form.funcionarios > 0 && form.funcionarios < 2 && (
                 <p className="text-xs text-red-600 mt-1">
-                  O mínimo permitido: 2 funcionários.
+                  O mínimo permitido: 2 colaboradores.
                 </p>
               )}
             </div>
