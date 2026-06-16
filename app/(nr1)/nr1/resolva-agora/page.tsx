@@ -573,7 +573,7 @@ export default function Alma4DExpress() {
               </ul>
               <button
                 onClick={goEmpresa}
-                className="mt-auto flex h-12 w-full items-center justify-center rounded-xl bg-white font-sans font-bold text-sm text-brand transition-all hover:bg-gray-50"
+                className="mt-auto flex h-12 w-full items-center justify-center rounded-xl bg-gray-100 font-sans font-bold text-sm text-brand transition-all hover:bg-white"
               >
                 Iniciar implantação →
               </button>
@@ -610,7 +610,7 @@ export default function Alma4DExpress() {
 
               <button
                 onClick={goParceiros}
-                className="mt-auto flex h-12 w-full items-center justify-center rounded-xl border border-border bg-gray-50 font-sans font-bold text-sm text-brand transition-all hover:border-brand hover:bg-neutral-50/50"
+                className="mt-auto flex h-12 w-full items-center justify-center rounded-xl border border-border bg-gray-100 font-sans font-bold text-sm text-brand transition-all hover:border-brand hover:bg-neutral-50/50"
               >
                 Quero ser parceiro →
               </button>
@@ -693,7 +693,7 @@ export default function Alma4DExpress() {
           className="cursor-pointer font-semibold text-brand border mt-4 mb-4 border-gray-300 bg-white shadow-sm hover:shadow rounded-lg px-4 py-3 hover:bg-gray-50 transition list-none appearance-none flex items-center justify-between
           [&::-webkit-details-marker]:hidden"
         >
-          <span>Quero entender os detalhes sobre exigências da NR‑1</span>
+          <span>Quero entender as exigências da NR‑1</span>
           <span className="text-xs opacity-70">▼</span>
         </summary>
 
