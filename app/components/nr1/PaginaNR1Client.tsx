@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Script from "next/script";
+import { useRouter } from "next/navigation";
 
 const steps = [
   {
@@ -57,7 +58,7 @@ const steps = [
 export default function PaginaNR1() {
   const [modalOpen, setModalOpen] = useState(false);
   const [pdfUrl, setPdfUrl] = useState("");
-
+  const router = useRouter();
   const linkModeloRelatorio = "https://heyzine.com/flip-book/4757966bd8";
   const closeModal = () => {
     setModalOpen(false);
@@ -133,22 +134,22 @@ export default function PaginaNR1() {
             </div>
 
             <div className="mt-10 flex flex-col sm:flex-row justify-center gap-4">
-              <Link
-                href="/nr1/empresa"
+              <button
+                onClick={() => router.push("/nr1/empresa")}
                 className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl
                          bg-white text-brand font-semibold hover:bg-white/90 transition"
               >
                 Iniciar implantação do questionário
                 <ArrowRight size={18} />
-              </Link>
+              </button>
 
-              <Link
-                href="/nr1/parceiros"
+              <button
+                onClick={() => router.push("/nr1/parceiros")}
                 className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl border border-white/40 text-white hover:bg-white/10 transition"
               >
                 Quero ser parceiro alma4D
                 <Handshake size={18} />
-              </Link>
+              </button>
             </div>
             <div className="mt-10 flex justify-center">
               <button
@@ -329,12 +330,12 @@ export default function PaginaNR1() {
                   </li>
                 </ul>
 
-                <Link
-                  href="/nr1/empresa"
+                <button
+                  onClick={() => router.push("/nr1/empresa")}
                   className="mt-6 inline-flex items-center gap-2 text-brand font-semibold hover:underline"
                 >
                   Começar implantação <ArrowRight size={16} />
-                </Link>
+                </button>
               </div>
 
               {/* PARCEIROS */}
@@ -363,20 +364,22 @@ export default function PaginaNR1() {
                   </li>
                 </ul>
 
-                <Link
-                  href="/nr1/parceiros"
+                <button
+                  onClick={() => router.push("/nr1/parceiros")}
                   className="mt-6 inline-flex items-center gap-2 text-brand font-semibold hover:underline"
                 >
                   Seja nosso parceiro <ArrowRight size={16} />
-                </Link>
+                </button>
               </div>
             </div>
           </div>
         </section>
 
         <details className="max-w-3xl mx-auto mt-6 mb-6 px-4 text-left">
-          <summary className="cursor-pointer font-semibold text-brand border mt-4 mb-4 border-gray-300 bg-white shadow-sm hover:shadow rounded-lg px-4 py-3 hover:bg-gray-50 transition list-none appearance-none flex items-center justify-between
-          [&::-webkit-details-marker]:hidden">
+          <summary
+            className="cursor-pointer font-semibold text-brand border mt-4 mb-4 border-gray-300 bg-white shadow-sm hover:shadow rounded-lg px-4 py-3 hover:bg-gray-50 transition list-none appearance-none flex items-center justify-between
+          [&::-webkit-details-marker]:hidden"
+          >
             <span>Quero entender os detalhes sobre exigências da NR‑1</span>
             <span className="text-xs opacity-70">▼</span>
           </summary>
@@ -453,13 +456,12 @@ export default function PaginaNR1() {
             Leva menos de 5 minutos para iniciar a implantação do questionário.
           </p>
 
-          <Link
-            href="/nr1/empresa"
-            className="mt-8 inline-flex items-center gap-2 px-8 py-3 rounded-xl
-                     bg-white text-brand font-semibold hover:bg-white/90 transition"
+          <button
+            onClick={() => router.push("/nr1/empresa")}
+            className="mt-8 inline-flex items-center gap-2 px-8 py-3 rounded-xl bg-white text-brand font-semibold hover:bg-white/90 transition"
           >
             Iniciar agora <ArrowRight size={18} />
-          </Link>
+          </button>
           <div className="mt-10 flex justify-center">
             <button
               //onClick={() => openModal(linkModeloRelatorio)}

@@ -13,6 +13,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 
 export default function Alma4DExpress() {
   // Estados para validação do CNPJ
@@ -22,12 +23,17 @@ export default function Alma4DExpress() {
   );
   const [cnpjHint, setCnpjHint] = useState("");
   const router = useRouter();
-  const goEmpresa = () => {
-    router.push("/nr1/empresa");
-  };
-  const goParceiros = () => {
-    router.push("/nr1/parceiros");
-  };
+  const pathname = usePathname();
+  
+const goEmpresa = () => {
+  router.push(`/nr1/empresa?from=${encodeURIComponent(pathname)}`);
+};
+
+  
+const goParceiros = () => {
+  router.push(`/nr1/parceiros?from=${encodeURIComponent(pathname)}`);
+};
+
   // Estado para controlar o FAQ aberto
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
@@ -798,10 +804,7 @@ export default function Alma4DExpress() {
                     "Escala COPSOQ II",
                     "https://heyzine.com/flip-book/4757966bd8",
                   ],
-                  [
-                    "Termos de Uso",
-                    "/nr1/termos",
-                  ],
+                  ["Termos de Uso", "/nr1/termos"],
                 ],
               },
               {

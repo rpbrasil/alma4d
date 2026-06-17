@@ -18,6 +18,7 @@ import { calcularPrecificacao } from "../_components/ModeloPrecificacaoExpress";
 import { validarCupom } from "../../../lib/cupons/validarcupom";
 import { Turnstile, TurnstileInstance } from "@marsidev/react-turnstile";
 import { useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 
 type FormState = "idle" | "submitting" | "success" | "error";
 
@@ -289,12 +290,14 @@ export default function EmpresaNR1Page() {
     number | null
   >(null);
   const [msgCupomSugestao, setMsgCupomSugestao] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const from = searchParams.get("from");
   const turnstileRef = React.useRef<TurnstileInstance>(null);
   const cnpjRef = useRef<HTMLInputElement | null>(null);
   const quote = useMemo(() => {
     if (!config || !riscoEmpresa || form.funcionarios < 2) return null;
 
-    const result = calcularPrecificacao(
+  const result = calcularPrecificacao(
       form.funcionarios,
       riscoEmpresa,
       config,
@@ -888,8 +891,7 @@ export default function EmpresaNR1Page() {
     <main className="min-h-screen bg-surface-muted">
       <div className="max-w-3xl mx-auto px-6 py-6">
         <div className="mb-6">
-          <Link
-            href="/nr1/mapeamento-riscos-psicossociais"
+          <Link href={from || "/nr1/mapeamento-riscos-psicossociais"}
             className="inline-flex items-center gap-3 text-sm text-slate-500 hover:text-brand transition"
           >
             <Image

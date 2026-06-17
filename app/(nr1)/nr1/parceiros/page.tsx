@@ -3,15 +3,17 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Users, Network, HeartHandshake, GraduationCap } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 
 export default function ParceirosAlma4DPage() {
+  const searchParams = useSearchParams();
+  const from = searchParams.get("from");
   return (
     <main className="min-h-screen bg-surface-muted">
       <div className="max-w-5xl mx-auto px-6 py-8">
         {/* VOLTAR */}
         <div className="mb-8">
-          <Link
-            href="/nr1/mapeamento-riscos-psicossociais"
+          <Link href={from || "/nr1/mapeamento-riscos-psicossociais"}
             className="inline-flex items-center gap-3 text-sm text-slate-500 hover:text-brand transition"
           >
             <Image
