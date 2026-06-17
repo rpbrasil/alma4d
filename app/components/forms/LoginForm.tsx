@@ -414,7 +414,9 @@ export function LoginForm() {
     "h-10 rounded-xl border border-border text-foreground/80 font-medium transition hover:bg-surface-muted disabled:opacity-50 disabled:cursor-not-allowed";
   const link =
     "text-sm text-brand-secondary hover:opacity-80 transition underline underline-offset-4 decoration-brand-secondary/30";
-
+  const isDisabled = !!(
+    loading || (authMethod === "sms" ? !isPhoneValid : !isEmailValid)
+  );
   return (
     <div className="w-full flex items-start justify-center px-4 py-5 sm:py-7">
       <div className="absolute inset-0 -z-10 bg-linear-to-b from-background to-surface-muted/40" />
@@ -555,10 +557,7 @@ export function LoginForm() {
                   <button
                     type="button"
                     onClick={sendOtp}
-                    disabled={
-                      loading ||
-                      (authMethod === "sms" ? !isPhoneValid : !isEmailValid)
-                    }
+                    disabled={isDisabled}
                     className={btnPrimary}
                   >
                     {loading ? (

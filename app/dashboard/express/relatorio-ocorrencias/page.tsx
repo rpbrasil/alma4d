@@ -346,8 +346,8 @@ export default function RelatorioOcorrenciasPage() {
             .order("created_at", { ascending: false }),
         ]);
 
-        if (denunciasError) {
-          console.error("Erro ao carregar denúncias:", denunciasError);
+        if (denunciasError?.message) {
+          console.error("Erro ao carregar denúncias:", denunciasError.message);
         }
 
         if (arquivosError) {

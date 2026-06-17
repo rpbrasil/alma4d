@@ -28,7 +28,7 @@ const nextConfig: NextConfig = {
                 https://*.heyzine.com
                 https://api.pagar.me
                 https://alma4d.com.br;
-
+                
               connect-src 
                 'self' 
                 https://challenges.cloudflare.com
