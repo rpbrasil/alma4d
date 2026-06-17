@@ -135,8 +135,6 @@ export default function DashboardExpressRelatorioCopsoqPage() {
         p_cliente_id: effectiveClienteId,
       });
 
-      console.log("ROWS RAW:", data);
-
       if (!error) {
         setRows(data ?? []);
       }
@@ -301,7 +299,7 @@ export default function DashboardExpressRelatorioCopsoqPage() {
       const dep = depMap.get(depKey)!;
 
       const setKey = r.setor_id ?? "__sem_setor__";
-      const setNome = (r.setor_nome ?? "").trim() || "Sem setor";
+      const setNome = (r.setor_nome ?? "").trim() || "-";
 
       let setor = dep.setores.find(
         (s) => (s.setor_id ?? "__sem_setor__") === setKey,
@@ -349,20 +347,7 @@ export default function DashboardExpressRelatorioCopsoqPage() {
       </div>
     );
   }
-  console.log("FILTERS:", filterDepartamentoId, filterSetorId);
-  console.log("ROWS STATE:", rows);
-  console.log("FILTERED:", filteredRows);
-  console.log(
-    "DEBUG LEVELS:",
-    filteredRows.map((r) => r.nivel_risco),
-  );
-  console.log("RESUMO:", resumo);console.log(
-    "NIVEIS:",
-    filteredRows.map((r) => ({
-      valor: r.nivel_risco,
-      raw: JSON.stringify(r.nivel_risco),
-    })),
-  );
+  
   return (
     <div className="space-y-6">
       {/* Header + Export */}
@@ -372,7 +357,7 @@ export default function DashboardExpressRelatorioCopsoqPage() {
             Relatório COPSOQ
           </h2>
           <p className="text-sm text-slate-500">
-            Agregado por departamento e setor • uso organizacional (LGPD/NR‑01)
+            Agregado por departamento • uso organizacional (LGPD/NR‑01)
           </p>
         </div>
 
@@ -501,7 +486,7 @@ export default function DashboardExpressRelatorioCopsoqPage() {
                 },
                 {
                   label: "Setor",
-                  getValue: (r) => r.setor_nome ?? "Sem setor",
+                  getValue: (r) => r.setor_nome ?? "-",
                 },
                 { label: "Escala", key: "escala" },
                 { label: "N respostas", key: "n_respostas" },
@@ -583,7 +568,7 @@ export default function DashboardExpressRelatorioCopsoqPage() {
           </div>
           <div>
             <p className="text-xs uppercase tracking-wide text-slate-500">
-              Cliente
+              Empresa
             </p>
             <p className="text-lg font-extrabold text-slate-900">
               {clienteNome?.trim().split(" ").slice(0, 2).join(" ")}

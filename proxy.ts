@@ -330,9 +330,16 @@ export async function proxy(req: NextRequest) {
   // NÃO LOGADO
   // -----------------------------------------
   if (!user && needsAuth) {
+    const hasLink = hasValidLinkId(search);
+
+    const loginPath = hasLink ? "/login/usuario" : "/login";
+
     return redirectWithCookies(
       res,
-      new URL(`/login?redirect=${encodeURIComponent(safeRedirect)}`, req.url),
+      new URL(
+        `${loginPath}?redirect=${encodeURIComponent(safeRedirect)}`,
+        req.url,
+      ),
     );
   }
 

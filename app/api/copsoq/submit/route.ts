@@ -166,15 +166,15 @@ export async function POST(req: Request) {
   }
 
   // 3) Limite do link
-  const maxRespostas = Number(link.max_respostas ?? 0);
+  //const maxRespostas = Number(link.max_respostas ?? 0);
   const usadas = Number(link.usadas ?? 0);
 
-  if (maxRespostas > 0 && usadas >= maxRespostas) {
-    return NextResponse.json(
-      { error: "limite_maximo_alcancado" },
-      { status: 403 },
-    );
-  }
+  // if (maxRespostas > 0 && usadas >= maxRespostas) {
+  //   return NextResponse.json(
+  //     { error: "limite_maximo_alcancado" },
+  //     { status: 403 },
+  //   );
+  // }
 
   // 4) Busca vínculo técnico ao link primeiro
   const { data: existingLinkBind, error: bindError } = await supabaseAdmin

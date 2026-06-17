@@ -205,10 +205,36 @@ export const CopsoqOfficialReport = forwardRef<HTMLDivElement, Props>(
       body { font-family: Arial, Helvetica, sans-serif; color: #111; }
 
       h1 { font-size: 18px; margin: 0 0 8px; }
-      h2 { font-size: 14px; margin: 18px 0 8px; color: #030870; break-after: avoid; }
+      h2 { font-size: 14px; margin: 18px 0 8px; color: #030870; break-after: avoid; page-break-after: avoid;}
       h3 { font-size: 12px; margin: 12px 0 6px; }
+      .plano-header {
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+.plano-header h2 {
+  page-break-after: avoid;
+  break-after: avoid;
+}
+
+.plano-header + table {
+  page-break-before: avoid;
+}
 
       .anexo { page-break-before: always;  margin-top: 10mm;}
+      .block-avoid-break {
+        page-break-inside: avoid;
+        break-inside: avoid;
+        }
+      .table-wrapper {
+        page-break-inside: avoid;
+        break-inside: avoid;
+        }
+      .plano-acao h2 {
+        page-break-after: avoid;
+        break-after: avoid;
+        }
+
 
 .anexo-panel {
   border: 1px solid #e6e6e6;
@@ -267,7 +293,7 @@ export const CopsoqOfficialReport = forwardRef<HTMLDivElement, Props>(
         margin-top: 20px;
         }
 
-      table { width: 100%; border-collapse: collapse; font-size: 11px; margin: 6px 0 12px; break-inside: avoid; }
+      table { width: 100%; border-collapse: collapse; font-size: 11px; margin: 6px 0 12px; break-inside: avoid; page-break-before: auto;}
       th, td { border: 1px solid #e6e6e6; padding: 6px; vertical-align: top; }
       th { background: #f5f6ff; font-weight: 700; text-align: left; }
       tr { page-break-inside: avoid; }
@@ -310,7 +336,7 @@ export const CopsoqOfficialReport = forwardRef<HTMLDivElement, Props>(
             </div>
 
             <div className="cover-meta">
-              <b>Cliente:</b> {clienteNome}
+              <b>Empresa:</b> {clienteNome}
               <br />
               <b>Data de geração:</b> {generatedAt}
               <br />
@@ -551,65 +577,68 @@ export const CopsoqOfficialReport = forwardRef<HTMLDivElement, Props>(
 
         {/* ================= PLANO DE AÇÃO ================= */}
         <div className="plano-acao">
-          <h2>
-            Plano de Ação do PGR — Foco nos Riscos Psicossociais Prioritários
-          </h2>
-          <div className="muted">
-            Modelo orientativo para definição e acompanhamento das medidas
-            preventivas.
+          <div className="plano-header">
+            <h2>
+              Plano de Ação do PGR — Foco nos Riscos Psicossociais Prioritários
+            </h2>
+            {/* <div className="muted">
+              Modelo orientativo para definição e acompanhamento das medidas
+              preventivas.
+            </div> */}
           </div>
-
-          <table className="action-table">
-            <thead>
-              <tr>
-                <th className="num" style={{ width: 28 }}>
-                  #
-                </th>
-                <th style={{ width: 180 }}>Área (Depto/Setor)</th>
-                <th style={{ width: 200 }}>Escala / fator</th>
-                <th className="center" style={{ width: 70 }}>
-                  Nível
-                </th>
-                <th>Código da ação</th>
-                <th style={{ width: 90 }}>Responsável</th>
-                <th style={{ width: 70 }}>Prazo</th>
-                <th style={{ width: 60 }}>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {planoAcao.length === 0 ? (
+          <div className="table-wrapper">
+            <table className="action-table">
+              <thead>
                 <tr>
-                  <td colSpan={8} className="muted">
-                    Não foram identificados riscos psicossociais classificados
-                    como
-                    <b> Alto</b> ou <b>Médio</b> no recorte atual.
-                  </td>
+                  <th className="num" style={{ width: 28 }}>
+                    #
+                  </th>
+                  <th style={{ width: 180 }}>Área (Depto/Setor)</th>
+                  <th style={{ width: 200 }}>Escala / fator</th>
+                  <th className="center" style={{ width: 70 }}>
+                    Nível
+                  </th>
+                  <th>Código da ação</th>
+                  <th style={{ width: 90 }}>Responsável</th>
+                  <th style={{ width: 70 }}>Prazo</th>
+                  <th style={{ width: 60 }}>Status</th>
                 </tr>
-              ) : (
-                planoAcao.map((l, i) => (
-                  <tr
-                    key={`${l.area}-${l.escala}-${i}`}
-                    className="action-break"
-                  >
-                    <td className="num">{i + 1}</td>
-                    <td>{l.area}</td>
-                    <td>{l.escala}</td>
-                    <td className="center">
-                      <span
-                        className={`pill pill-${l.nivel === "Alto" ? "high" : "medium"}`}
-                      >
-                        {l.nivel}
-                      </span>
+              </thead>
+              <tbody>
+                {planoAcao.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="muted">
+                      Não foram identificados riscos psicossociais classificados
+                      como
+                      <b> Alto</b> ou <b>Médio</b> no recorte atual.
                     </td>
-                    <td />
-                    <td />
-                    <td />
-                    <td />
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  planoAcao.map((l, i) => (
+                    <tr
+                      key={`${l.area}-${l.escala}-${i}`}
+                      className="action-break"
+                    >
+                      <td className="num">{i + 1}</td>
+                      <td>{l.area}</td>
+                      <td>{l.escala}</td>
+                      <td className="center">
+                        <span
+                          className={`pill pill-${l.nivel === "Alto" ? "high" : "medium"}`}
+                        >
+                          {l.nivel}
+                        </span>
+                      </td>
+                      <td />
+                      <td />
+                      <td />
+                      <td />
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
         {/* ================= ANEXO METODOLÓGICO ================= */}
         <div className="anexo">

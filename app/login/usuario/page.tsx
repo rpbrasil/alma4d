@@ -157,6 +157,17 @@ export default function LoginUsuarioPage() {
         redirect = "/dashboard/premium";
       }
 
+      // ✅ pega redirect original da URL
+      const params = new URLSearchParams(window.location.search);
+      const redirectParam = params.get("redirect");
+
+      // ✅ PRIORIDADE: voltar para onde veio (campanha)
+      if (redirectParam) {
+        window.location.replace(redirectParam);
+        return;
+      }
+
+      // ✅ fallback normal
       window.location.replace(redirect);
     } catch {
       setError("Erro ao validar código.");

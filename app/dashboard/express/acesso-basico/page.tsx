@@ -974,9 +974,11 @@ function Step2CanalSeguro({
 function Step3Copsoq({
   onPrev,
   role,
+  linkId
 }: {
   onPrev: () => void;
   role: Role | null;
+    linkId: string | null;
 }) {
   const [loadingStatus, setLoadingStatus] = useState(true);
   const [statusError, setStatusError] = useState<string | null>(null);
@@ -990,7 +992,6 @@ function Step3Copsoq({
 
   useEffect(() => {
     let mounted = true;
-
     (async () => {
       try {
         setLoadingStatus(true);
@@ -1022,6 +1023,7 @@ function Step3Copsoq({
           linkId: payload.linkId,
           message: payload.message,
         });
+        console.log("payload do get -> ", payload);
       } catch (e) {
         console.error(e);
         if (mounted) {
@@ -1218,7 +1220,10 @@ function Step3Copsoq({
           copsoqStatus?.status === "pending" &&
           copsoqStatus.href && (
             <a
-              href={copsoqStatus.href}
+              href={
+                copsoqStatus.href ??
+                (linkId ? `/dashboard/express/copsoq?linkId=${linkId}` : "#")
+              }
               className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-brand px-4 text-white font-medium hover:opacity-95"
             >
               <ClipboardCheck className="h-4 w-4" />
@@ -1260,7 +1265,8 @@ function LoadingState() {
 function ExpressAcessoBasicoContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { role } = useAuth();
+  const linkId = searchParams.get("linkId");
+  const { role, usuarioId } = useAuth();
 
   const step = parseStep(searchParams.get("step"));
   const origem = searchParams.get("origem");
@@ -1278,6 +1284,18 @@ function ExpressAcessoBasicoContent() {
     const dd = String(now.getDate()).padStart(2, "0");
     return `${yyyy}-${mm}-${dd}`;
   }, []);
+  
+  useEffect(() => {
+    if (usuarioId === undefined) return;
+
+    if (!usuarioId) {
+      const currentUrl = window.location.pathname + window.location.search;
+
+      window.location.replace(
+        `/login/usuario?redirect=${encodeURIComponent(currentUrl)}`,
+      );
+    }
+  }, [usuarioId]);
 
   useEffect(() => {
     try {
@@ -1309,6 +1327,7 @@ function ExpressAcessoBasicoContent() {
     router.replace(
       buildAcessoBasicoHref(nextStep, {
         origem,
+        linkId,
       }),
     );
   }
@@ -1435,7 +1454,9 @@ function ExpressAcessoBasicoContent() {
           />
         )}
 
-        {step === 3 && <Step3Copsoq onPrev={() => goToStep(2)} role={role} />}
+        {step === 3 && (
+          <Step3Copsoq onPrev={() => goToStep(2)} role={role} linkId={linkId} />
+        )}
       </div>
       {openProtocolModal && protocol && (
         <div

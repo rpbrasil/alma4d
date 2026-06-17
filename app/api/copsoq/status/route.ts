@@ -180,6 +180,8 @@ export async function GET() {
       .eq("contrato_id", currentContratoId)
       .eq("usuario_id", usuarioId)
       .in("status", ["elegivel", "respondido"])
+      .order("created_at", { ascending: false })
+      .limit(1)
       .maybeSingle();
 
     if (vagaError) {
@@ -191,36 +193,36 @@ export async function GET() {
     }
 
     // 3) Busca vínculo técnico do usuário com o link ativo
-    const { data: currentUserLink, error: userLinkError } = await adminDb
-      .from("copsoq_aplicacoes_links")
-      .select("id, usuario_id, link_id, aplicacao_id, created_at")
-      .eq("usuario_id", usuarioId)
-      .eq("link_id", currentLinkId)
-      .maybeSingle();
+    // const { data: currentUserLink, error: userLinkError } = await adminDb
+    //   .from("copsoq_aplicacoes_links")
+    //   .select("id, usuario_id, link_id, aplicacao_id, created_at")
+    //   .eq("usuario_id", usuarioId)
+    //   .eq("link_id", currentLinkId)
+    //   .maybeSingle();
 
-    if (userLinkError) {
-      console.error(
-        "Erro ao buscar vínculo do usuário ao link ativo:",
-        userLinkError,
-      );
-      return NextResponse.json(
-        { ok: false, error: "user_link_lookup_failed" },
-        { status: 500 },
-      );
-    }
+    // if (userLinkError) {
+    //   console.error(
+    //     "Erro ao buscar vínculo do usuário ao link ativo:",
+    //     userLinkError,
+    //   );
+    //   return NextResponse.json(
+    //     { ok: false, error: "user_link_lookup_failed" },
+    //     { status: 500 },
+    //   );
+    // }
 
-    // 4) Se já existe aplicação vinculada, considera answered
-    if (currentUserLink?.aplicacao_id) {
-      return NextResponse.json({
-        ok: true,
-        status: "answered",
-        canRespond: false,
-        href: null,
-        linkId: currentLinkId,
-        message:
-          "Seu registro indica que o questionário já foi respondido neste ciclo.",
-      });
-    }
+    // // 4) Se já existe aplicação vinculada, considera answered
+    // if (currentUserLink?.aplicacao_id) {
+    //   return NextResponse.json({
+    //     ok: true,
+    //     status: "answered",
+    //     canRespond: false,
+    //     href: null,
+    //     linkId: currentLinkId,
+    //     message:
+    //       "Seu registro indica que o questionário já foi respondido neste ciclo.",
+    //   });
+    // }
 
     // 5) Se a vaga do usuário já está marcada como respondido, também considera answered
     if (vagaAtual?.status === "respondido") {
@@ -237,7 +239,7 @@ export async function GET() {
 
     // 6) Se existe vaga elegível, garante vínculo técnico e libera resposta
     if (vagaAtual?.status === "elegivel") {
-      if (!currentUserLink) {
+      
         const { error: upsertLinkError } = await adminDb
           .from("copsoq_aplicacoes_links")
           .upsert(
@@ -257,8 +259,7 @@ export async function GET() {
           return NextResponse.json(
             { ok: false, error: "user_link_upsert_failed" },
             { status: 500 },
-          );
-        }
+          );        
       }
 
       return NextResponse.json({
