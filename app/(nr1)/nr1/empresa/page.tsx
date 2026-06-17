@@ -19,6 +19,7 @@ import { validarCupom } from "../../../lib/cupons/validarcupom";
 import { Turnstile, TurnstileInstance } from "@marsidev/react-turnstile";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 
 type FormState = "idle" | "submitting" | "success" | "error";
 
@@ -134,6 +135,13 @@ function normalizePhoneBRToE164(input: string) {
 
 function isValidE164Phone(phone: string) {
   return /^\+\d{10,15}$/.test(phone);
+}
+
+function FromParamWrapper({ children }: { children: (from: string | null) => React.ReactNode }) {
+  const searchParams = useSearchParams();
+  const from = searchParams.get("from");
+
+  return <>{children(from)}</>;
 }
 
 /**
@@ -290,8 +298,7 @@ export default function EmpresaNR1Page() {
     number | null
   >(null);
   const [msgCupomSugestao, setMsgCupomSugestao] = useState<string | null>(null);
-  const searchParams = useSearchParams();
-  const from = searchParams.get("from");
+  
   const turnstileRef = React.useRef<TurnstileInstance>(null);
   const cnpjRef = useRef<HTMLInputElement | null>(null);
   const quote = useMemo(() => {
@@ -891,19 +898,26 @@ export default function EmpresaNR1Page() {
     <main className="min-h-screen bg-surface-muted">
       <div className="max-w-3xl mx-auto px-6 py-6">
         <div className="mb-6">
-          <Link href={from || "/nr1/mapeamento-riscos-psicossociais"}
-            className="inline-flex items-center gap-3 text-sm text-slate-500 hover:text-brand transition"
-          >
-            <Image
-              src="/images/alma4d_express_nobground.png"
-              alt="alma4D"
-              width={64}
-              height={64}
-              className="opacity-90"
-              priority
-            />
-            ← Voltar
-          </Link>
+          <Suspense fallback={null}>
+            <FromParamWrapper>
+              {(from) => (
+                <Link
+                  href={from || "/nr1/mapeamento-riscos-psicossociais"}
+                  className="inline-flex items-center gap-3 text-sm text-slate-500 hover:text-brand transition"
+                >
+                  <Image
+                    src="/images/alma4d_express_nobground.png"
+                    alt="alma4D"
+                    width={64}
+                    height={64}
+                    className="opacity-90"
+                    priority
+                  />
+                  ← Voltar
+                </Link>
+              )}
+            </FromParamWrapper>
+          </Suspense>
         </div>
         {/* HEADER */}
         <div className="text-center space-y-4">

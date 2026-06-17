@@ -4,28 +4,47 @@ import Image from "next/image";
 import Link from "next/link";
 import { Users, Network, HeartHandshake, GraduationCap } from "lucide-react";
 import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 
-export default function ParceirosAlma4DPage() {
+function FromParamWrapper({
+  children,
+}: {
+  children: (from: string | null) => React.ReactNode;
+}) {
   const searchParams = useSearchParams();
   const from = searchParams.get("from");
+
+  return <>{children(from)}</>;
+}
+
+
+export default function ParceirosAlma4DPage() {
+  
   return (
     <main className="min-h-screen bg-surface-muted">
       <div className="max-w-5xl mx-auto px-6 py-8">
         {/* VOLTAR */}
         <div className="mb-8">
-          <Link href={from || "/nr1/mapeamento-riscos-psicossociais"}
-            className="inline-flex items-center gap-3 text-sm text-slate-500 hover:text-brand transition"
-          >
-            <Image
-              src="/images/alma4d_express_nobground.png"
-              alt="alma4D"
-              width={64}
-              height={64}
-              className="opacity-90"
-              priority
-            />
-            ← Voltar
-          </Link>
+          <Suspense fallback={null}>
+            <FromParamWrapper>
+              {(from) => (
+                <Link
+                  href={from || "/nr1/mapeamento-riscos-psicossociais"}
+                  className="inline-flex items-center gap-3 text-sm text-slate-500 hover:text-brand transition"
+                >
+                  <Image
+                    src="/images/alma4d_express_nobground.png"
+                    alt="alma4D"
+                    width={64}
+                    height={64}
+                    className="opacity-90"
+                    priority
+                  />
+                  ← Voltar
+                </Link>
+              )}
+            </FromParamWrapper>
+          </Suspense>
         </div>
 
         {/* HEADER */}
