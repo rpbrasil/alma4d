@@ -27,7 +27,6 @@ type LinkInfo = {
 type Answers = Record<string, string | null>;
 
 export default function ExpressCopsoqQuizPage() {
-  const router = useRouter();
   return (
     <Suspense
       fallback={
@@ -284,7 +283,7 @@ function CopsoqPageContent() {
     return () => {
       active = false;
     };
-  }, [linkId, supabase]);
+  }, [linkId, supabase, router]);
 
   function scrollToFirstMissing() {
     const missing = COPSOQ_QUESTIONS.find((q) => !answers[q.id]);
