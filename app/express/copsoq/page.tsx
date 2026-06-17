@@ -14,6 +14,7 @@ import {
 } from "@/lib/copsoq/copsoqData";
 import { trackConsent } from "@/lib/trackConsent";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 
 type LinkInfo = {
   id: string;
@@ -26,6 +27,7 @@ type LinkInfo = {
 type Answers = Record<string, string | null>;
 
 export default function ExpressCopsoqQuizPage() {
+  const router = useRouter();
   return (
     <Suspense
       fallback={
@@ -48,7 +50,7 @@ function CopsoqPageContent() {
   const linkId = rawLinkId && rawLinkId !== "null" ? rawLinkId : null;
 
   const supabase = useMemo(() => getSupabaseClient(), []);
-
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -244,8 +246,11 @@ function CopsoqPageContent() {
         if (!res.ok || !acesso?.permitido) {
           if (acesso?.motivo === "SEM_VAGA") {
             setError(
-              "Você já respondeu o questionário ou não está na lista atual.",
+              "Você já respondeu este questionário ou não está incluído na campanha atual.",
             );
+            setTimeout(() => {
+              router.replace("/dashboard/express/acesso-basico?step=3");
+            }, 2000);
             return;
           }
 

@@ -1023,7 +1023,7 @@ function Step3Copsoq({
           linkId: payload.linkId,
           message: payload.message,
         });
-        console.log("payload do get -> ", payload);
+        
       } catch (e) {
         console.error(e);
         if (mounted) {
