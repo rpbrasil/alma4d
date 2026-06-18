@@ -172,6 +172,11 @@ export async function POST(req: Request) {
     let cupomAplicado: string | null = null;
 
     const cupom = (body.cupom ?? "").trim().toUpperCase();
+    const cnpj = (body.cnpj ?? "").replace(/\D/g, "");
+
+    if (cupom && cnpj.length !== 14) {
+      throw new Error("CNPJ inválido para uso de cupom");
+    }
 
     if (cupom) {
       try {
@@ -179,6 +184,7 @@ export async function POST(req: Request) {
           codigo: cupom,
           totalMensalCents: quote.totalMensalCents,
           plano: "express",
+          cnpj: cnpj,
         });
 
         cupomAplicado = applied.codigo;
