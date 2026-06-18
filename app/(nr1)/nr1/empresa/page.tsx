@@ -835,6 +835,7 @@ export default function EmpresaNR1Page() {
             codigo,
             totalMensalCents: quote.totalMensalCents,
             plano: "express",
+            cnpj: form.cnpjDigits,
           }),
           8000,
         );
@@ -853,7 +854,7 @@ export default function EmpresaNR1Page() {
         setLoadingCupom(false);
       }
     },
-    [quote, cupom],
+    [quote, cupom, form.cnpjDigits],
   );
 
   useEffect(() => {

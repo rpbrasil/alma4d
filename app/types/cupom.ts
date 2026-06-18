@@ -49,12 +49,15 @@ export type CupomAutoResponse = {
 export type CupomSelectAuto = {
   codigo: string;
   tipo: "desconto" | "comissao";
-  valor: number;
+  percentual: number;
   plano: string | null;
   valido_de: string | null;
   valido_ate: string | null;
   ativo: boolean;
+  limite_total: number | null;
+  usos_total: number;
 };
+
 
 export type CupomValidarResponse = {
   ok: boolean;

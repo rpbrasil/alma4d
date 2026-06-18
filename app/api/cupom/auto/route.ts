@@ -70,7 +70,9 @@ export async function POST(req: Request) {
     // 2) Busca cupons ativos desses parceiros
     const { data: cupons, error: cErr } = await supabaseAdmin
       .from("cupons")
-      .select("codigo, tipo, valor, plano, valido_de, valido_ate, ativo")
+      .select(
+        "codigo, tipo, percentual, plano, valido_de, valido_ate, ativo, limite_total, usos_total",
+      )
       .in("parceiro_id", parceiroIds)
       .eq("ativo", true);
 
@@ -88,6 +90,10 @@ export async function POST(req: Request) {
 
       if (c.valido_de && new Date(c.valido_de) > now) return false;
       if (c.valido_ate && new Date(c.valido_ate) < now) return false;
+
+      // ✅ NOVO: limite de uso
+      if (c.limite_total && c.usos_total >= c.limite_total) return false;
+
       return true;
     });
 

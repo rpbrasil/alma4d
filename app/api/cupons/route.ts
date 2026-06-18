@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { getCaller } from "../importacao-usuarios/_shared/getCaller";
 
-export async function GET(req: Request) {
+export async function GET() {
   try {
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -33,8 +33,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Token ausente" }, { status: 401 });
     }
 
-    const token = auth.split(" ")[1];
-
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -63,10 +61,7 @@ export async function POST(req: Request) {
       tipo: typeof body.tipo === "string" ? body.tipo : "desconto",
       valor: typeof body.valor === "number" ? body.valor : 0,
       ativo: typeof body.ativo === "boolean" ? body.ativo : true,
-      comissao_percentual:
-        typeof body.comissao_percentual === "number"
-          ? body.comissao_percentual
-          : null,
+      comissao_percentual: body.comissao_percentual,
       plano: typeof body.plano === "string" ? body.plano : null,
       valido_de: typeof body.valido_de === "string" ? body.valido_de : null,
       valido_ate: typeof body.valido_ate === "string" ? body.valido_ate : null,

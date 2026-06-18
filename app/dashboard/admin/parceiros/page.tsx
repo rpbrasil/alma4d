@@ -199,6 +199,7 @@ export default function DashboardExpressParceirosPage() {
   const [search, setSearch] = useState("");
   const [cupomSearch, setCupomSearch] = useState("");
   const [empresaSearch, setEmpresaSearch] = useState("");
+  const [repassesMap, setRepassesMap] = useState<Record<string, number>>({});
 
   const getAccessToken = useCallback(async () => {
     const { data } = await supabase.auth.getSession();
@@ -251,6 +252,22 @@ export default function DashboardExpressParceirosPage() {
       });
 
       setEmpresasMap(emap);
+      const { data: repasses } = await supabase
+        .from("parceiros_repasses")
+        .select("parceiro_id, valor, status");
+
+      const rmap: Record<string, number> = {};
+
+      (repasses ?? []).forEach((r) => {
+        if (r.status !== "pendente") return;
+
+        if (!rmap[r.parceiro_id]) rmap[r.parceiro_id] = 0;
+
+        // valor já é BRL
+        rmap[r.parceiro_id] += Number(r.valor ?? 0);
+      });
+
+      setRepassesMap(rmap);
     } catch (e) {
       console.error("❌ erro refresh:", e);
     } finally {
@@ -533,10 +550,10 @@ export default function DashboardExpressParceirosPage() {
     setBusy(true);
     try {
       const payload = {
-        nome: nome.toUpperCase(), // ✅ padroniza no banco também
+        nome: nome.trim().toUpperCase(),
         documento,
         email: novoEmail.trim() || null,
-        telefone: telefoneE164 || null, // ✅ salva normalizado
+        telefone: telefoneE164 || null,
         aprovado: true,
         tipo,
       };
@@ -611,6 +628,32 @@ export default function DashboardExpressParceirosPage() {
       await refreshAll();
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function pagarParceiro(parceiroId: string) {
+    if (!confirm("Confirmar pagamento deste parceiro?")) return;
+
+    setBusy(true);
+
+    try {
+      const { error } = await supabase
+        .from("parceiros_repasses")
+        .update({
+          status: "pago",
+          pago_em: new Date().toISOString(),
+        })
+        .eq("parceiro_id", parceiroId)
+        .eq("status", "pendente");
+
+      if (error) throw error;
+
+      await refreshAll();
+      alert("Pagamento registrado com sucesso.");
+    } catch {
+      alert("Erro ao pagar parceiro");
     } finally {
       setBusy(false);
     }
@@ -788,6 +831,25 @@ export default function DashboardExpressParceirosPage() {
                     {p.aprovado ? "Desativar" : "Ativar"}
                   </button>
                 </div>
+                {/* 💰 comissão */}
+                {repassesMap[p.id] > 0 && (
+                  <div className="mt-2 flex items-center justify-between">
+                    <span className="text-xs text-green-600 font-semibold">
+                      Comissão pendente:{" "}
+                      {repassesMap[p.id].toLocaleString("pt-BR", {
+                        style: "currency",
+                        currency: "BRL",
+                      })}
+                    </span>
+
+                    <button
+                      onClick={() => pagarParceiro(p.id)}
+                      className="text-xs px-3 py-1 rounded-md bg-green-600 text-white hover:bg-green-700"
+                    >
+                      Pagar
+                    </button>
+                  </div>
+                )}
 
                 {/* linha 2 */}
                 <div className="text-xs text-slate-500 flex flex-wrap gap-x-3 mt-1">

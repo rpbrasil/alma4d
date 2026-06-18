@@ -23,6 +23,7 @@ export async function validarCupom(params: {
   codigo: string;
   totalMensalCents: number;
   plano: Plano;
+  cnpj: string;
 }): Promise<CupomAplicado> {
   const codigo = String(params.codigo ?? "")
     .trim()
@@ -48,6 +49,7 @@ export async function validarCupom(params: {
         codigo,
         totalMensalCents: params.totalMensalCents,
         plano: params.plano,
+        cnpj: params.cnpj,
       }),
     },
     8000,

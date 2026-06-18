@@ -13,8 +13,16 @@ export async function POST(req: Request) {
       codigo?: string;
       totalMensalCents?: number;
       plano?: string;
+      cnpj?: string;
     };
+    const cnpj = String(body.cnpj ?? "").replace(/\D/g, "");
 
+    if (cnpj.length !== 14) {
+      return NextResponse.json(
+        { ok: false, error: "CNPJ inválido para uso de cupom." },
+        { status: 400 },
+      );
+    }
     const codigo = String(body.codigo ?? "")
       .trim()
       .toUpperCase();
@@ -46,6 +54,7 @@ export async function POST(req: Request) {
         `
         id,
         codigo,
+        parceiro_id,
         tipo,
         percentual,
         ativo,
@@ -73,7 +82,27 @@ export async function POST(req: Request) {
         { status: 404 },
       );
     }
+    // ✅ valida se CNPJ pertence ao parceiro do cupom
+    const { count: elegivel, error: elegivelError } = await supabaseAdmin
+      .from("parceiros_empresas_elegiveis")
+      .select("*", { count: "exact", head: true })
+      .eq("parceiro_id", cupom.parceiro_id)
+      .eq("cnpj", cnpj)
+      .eq("ativo", true);
 
+    if (elegivelError) {
+      return NextResponse.json(
+        { ok: false, error: "Erro ao validar elegibilidade do cupom." },
+        { status: 500 },
+      );
+    }
+
+    if ((elegivel ?? 0) === 0) {
+      return NextResponse.json(
+        { ok: false, error: "Este cupom não é válido para este CNPJ." },
+        { status: 403 },
+      );
+    }
     if (!cupom.ativo) {
       return NextResponse.json(
         { ok: false, error: "Cupom inativo." },
@@ -120,7 +149,10 @@ export async function POST(req: Request) {
     }
 
     // limite global
-    if (cupom.limite_total !== null && cupom.usos_total >= cupom.limite_total) {
+    if (
+      cupom.limite_total !== null &&
+      cupom.usos_total >= cupom.limite_total - 1
+    ) {
       return NextResponse.json(
         { ok: false, error: "Cupom esgotado." },
         { status: 400 },
@@ -128,16 +160,13 @@ export async function POST(req: Request) {
     }
 
     const tipo = String(cupom.tipo) as TipoCupom;
-    const percentual = num(cupom.percentual);
+    const percentual = Math.max(0, num(cupom.percentual ?? 0));
 
     let descontoCents = 0;
 
-    // ✅ REGRA: só "desconto" reduz preço do cliente
-    if (tipo === "desconto") {
+    // ✅ regra segura
+    if (tipo === "desconto" && percentual > 0) {
       descontoCents = Math.round(totalMensalCents * (percentual / 100));
-    } else {
-      // "comissao" normalmente não dá desconto ao cliente → desconto 0
-      descontoCents = 0;
     }
 
     // teto do desconto (maximo_desconto em BRL)

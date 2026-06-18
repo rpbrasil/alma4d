@@ -148,7 +148,22 @@ export default async function FinanceiroPage() {
   const { count: pixNaoEnviado } = await supabase
     .from("v_alerta_pix_nao_enviado")
     .select("*", { count: "exact", head: true });
+  const { data: repasses } = await supabase
+    .from("parceiros_repasses")
+    .select("valor, status");
+  
+  const comissaoPendente =
+    repasses
+      ?.filter((r) => r.status === "pendente")
+      .reduce((acc, r) => acc + (r.valor ?? 0), 0) ?? 0;
 
+  const comissaoPago =
+    repasses
+      ?.filter((r) => r.status === "pago")
+      .reduce((acc, r) => acc + (r.valor ?? 0), 0) ?? 0;
+
+  const comissaoTotal = comissaoPendente + comissaoPago;
+  
   return (
     <div className="p-6 space-y-6 bg-surface-muted min-h-screen">
       {/* ✅ ALERTAS OPERACIONAIS (CLIENT COMPONENT) */}
@@ -158,7 +173,6 @@ export default async function FinanceiroPage() {
         boletoNaoEnviado={boletoNaoEnviado}
         pixNaoEnviado={pixNaoEnviado}
       />
-
       {/* KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <KpiCard
@@ -169,6 +183,8 @@ export default async function FinanceiroPage() {
           title="MRR"
           value={`R$ ${(mrr / 100).toLocaleString("pt-BR")}`}
         />
+        <KpiCard title="Clientes Ativos" value={String(clientesAtivos)} />
+
         <KpiCard
           title="Ticket Médio"
           value={(ticketMedio / 100).toLocaleString("pt-BR", {
@@ -177,7 +193,6 @@ export default async function FinanceiroPage() {
           })}
         />
       </div>
-
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <KpiCard
           title="Receita Paga"
@@ -200,7 +215,31 @@ export default async function FinanceiroPage() {
           valueClass="text-brand"
         />
       </div>
+      {/* //kpis de parceiros */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <KpiCard
+          title="Comissão Parceiros (Pendente)"
+          value={comissaoPendente.toLocaleString("pt-BR", {
+            style: "currency",
+            currency: "BRL",
+          })}
+          valueClass="text-yellow-600"
+        />
 
+        <KpiCard
+          title="Comissão Paga"
+          value={comissaoPago.toLocaleString("pt-BR", {
+            style: "currency",
+            currency: "BRL",
+          })}
+          valueClass="text-green-600"
+        />
+        <KpiCard
+          title="Total Comissão"
+          value={`R$ ${(comissaoTotal / 100).toLocaleString("pt-BR")}`}
+          valueClass="text-slate-800"
+        />
+      </div>
       <div className="grid md:grid-cols-3 gap-4">
         <div className="bg-brand-accent/10 text-brand-accent p-4 rounded-xl shadow-sm">
           <p className="text-xs font-medium">Recebido sem NF</p>
@@ -217,7 +256,6 @@ export default async function FinanceiroPage() {
           <p className="text-2xl font-bold">{divergencias ?? 0}</p>
         </div>
       </div>
-
       <FinanceiroCharts
         revenueData={revenueData}
         paymentStatus={paymentStatus}

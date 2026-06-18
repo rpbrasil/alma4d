@@ -384,22 +384,75 @@ export async function POST(req: Request) {
             cliente_id: contratoCupom.cliente_id,
           });
         } else {
-          await supabase
-            .from("cupons")
-            .update({
-              usos_total: (cupom.usos_total ?? 0) + 1,
-            })
-            .eq("id", cupom.id);
+          const { data: okIncremento, error: errIncremento } =
+            await supabase.rpc("incrementar_uso_cupom", {
+              p_codigo: contratoCupom.cupom_codigo,
+            });
 
+          if (errIncremento || !okIncremento) {
+            console.error("[CUPOM] erro ou limite atingido no incremento", {
+              errIncremento,
+              cupom: contratoCupom.cupom_codigo,
+            });
+
+            // ⚠️ IMPORTANTE:
+            // aqui você pode decidir:
+            // - ignorar (recomendado, porque o pagamento já aconteceu)
+            // - ou marcar alerta
+
+            // NÃO dar throw porque pagamento já foi confirmado
+          }
+
+          const totalCents = Number(g.amountCents ?? 0);
+
+          // ✅ comissão (default 0)
+          const comissaoPercentual = Number(cupom.comissao_percentual || 0);
+          const valorComissao =
+            Math.round((totalCents * comissaoPercentual) / 100) / 100;
+          // ✅ só cria repasse se houver comissão
+          if (valorComissao > 0) {
+            const refRepasse = `repasse_${g.contratoId}_${cupom.id}`;
+
+            const { data: existente } = await supabase
+              .from("parceiros_repasses")
+              .select("id")
+              .eq("metadata->>ref", refRepasse)
+              .maybeSingle();
+
+            if (!existente) {
+              await supabase.from("parceiros_repasses").insert({
+                parceiro_id: cupom.parceiro_id,
+                cupom_id: cupom.id,
+                contrato_id: g.contratoId,
+                cliente_id: contratoCupom.cliente_id,
+
+                valor: valorComissao,
+                percentual: comissaoPercentual,
+
+                status: "pendente",
+
+                metadata: {
+                  origem: "cupom",
+                  codigo: contratoCupom.cupom_codigo,
+                  ref: refRepasse,
+                },
+              });
+            }
+          }
+          
           await supabase.from("cupons_uso").insert({
             cupom_id: cupom.id,
             cliente_id: contratoCupom.cliente_id,
             contrato_id: g.contratoId,
+
             valor_desconto: (contratoCupom.desconto_cents ?? 0) / 100,
+            valor_comissao: valorComissao, // ✅ NOVO
+
             desconto_percentual: contratoCupom.cupom_percentual,
+            comissao_percentual: comissaoPercentual,
+
             cupom_codigo: contratoCupom.cupom_codigo,
             parceiro_id: cupom.parceiro_id,
-            comissao_percentual: cupom.comissao_percentual,
           });
         }
       }
