@@ -394,15 +394,30 @@ export default function Alma4DExpress() {
               às normas vigentes do Ministério do Trabalho e Emprego.
             </p>
 
-            <p className="mt-4 text-sm leading-relaxed text-neutral-500 max-w-2xl mx-auto">
-              O alma4D Express foi concebido sob responsabilidade técnica do
-              <b className="text-neutral-800"> Dr. Renato Purchio</b>, Médico do
-              Trabalho, Registro de Qualificação de Especialista (RQE) nº 19126,
-              com atuação reconhecida junto ao Ministério do Trabalho e Emprego,
-              assegurando que toda a estrutura da plataforma esteja alinhada aos
-              critérios técnicos, legais e científicos exigidos em processos de
-              fiscalização e auditoria.
-            </p>
+            <div className="mt-10 max-w-3xl mx-auto">
+              <div className="flex items-start gap-4">
+                {/* LOGO */}
+                <Image
+                  src="/images/alma4d_express_nobground.png"
+                  alt="alma4D"
+                  width={72}
+                  height={72}
+                  className="w-20 h-auto shrink-0 mt-1"
+                />
+
+                {/* TEXTO COM BORDA */}
+                <p className="text-slate-600 text-sm leading-relaxed text-left border-l-4 border-brand pl-4">
+                  O <b>alma4D Express</b> foi concebido sob responsabilidade
+                  técnica do{" "}
+                  <b className="text-neutral-800">Dr. Renato Purchio</b>, Médico
+                  do Trabalho, Registro de Qualificação de Especialista (RQE) nº
+                  19126, com atuação reconhecida junto ao Ministério do Trabalho
+                  e Emprego, assegurando que toda a estrutura da plataforma
+                  esteja alinhada aos critérios técnicos, legais e científicos
+                  exigidos em processos de fiscalização e auditoria.
+                </p>
+              </div>
+            </div>
           </div>
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 text-left">
             {[
