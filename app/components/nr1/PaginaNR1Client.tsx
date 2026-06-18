@@ -163,43 +163,69 @@ export default function PaginaNR1() {
         </section>
         {/* ================= NR‑1 ================= */}
         <section className="px-6 py-16 bg-surface">
-          <div className="max-w-5xl mx-auto text-center">
-            <h2 className="text-2xl font-extrabold text-brand mx-auto">
-              O que a NR‑1 exige das empresas
-            </h2>
+          <div className="max-w-5xl mx-auto">
+            {/* HEADER */}
+            <div className="text-center max-w-2xl mx-auto">
+              <h2 className="text-2xl md:text-3xl font-extrabold text-brand">
+                O que a NR‑1 exige das empresas
+              </h2>
 
-            <p className="mt-4 text-slate-600">
-              A Norma Regulamentadora nº 1 (NR‑1) determina que as organizações
-              realizem a identificação, avaliação e controle dos riscos
-              ocupacionais, incluindo os <b>riscos psicossociais</b>, no âmbito
-              do Gerenciamento de Riscos Ocupacionais (GRO) e do Programa de
-              Gerenciamento de Riscos (PGR).
-            </p>
+              <p className="mt-4 text-slate-600 leading-relaxed text-left md:text-center">
+                A Norma Regulamentadora nº 1 (NR‑1) determina que as
+                organizações realizem a identificação, avaliação e controle dos
+                riscos ocupacionais, incluindo os <b>riscos psicossociais</b>,
+                no âmbito do Gerenciamento de Riscos Ocupacionais (GRO) e do
+                Programa de Gerenciamento de Riscos (PGR).
+              </p>
+            </div>
 
-            <ul className="mt-6 space-y-3 text-slate-700">
-              <li className="flex gap-2">
+            {/* LISTA */}
+            <ul className="mt-10 grid gap-4 md:grid-cols-3 max-w-4xl mx-auto text-left">
+              <li className="flex items-start gap-3 bg-white border border-border rounded-xl p-4 shadow-sm">
                 <CheckCircle2
                   size={18}
-                  className="text-brand-secondary shrink-0"
+                  className="text-brand-secondary shrink-0 mt-0.5"
                 />
-                A fiscalização exige evidências documentadas.
+                <span className="text-slate-700 text-sm leading-relaxed">
+                  A fiscalização exige evidências documentadas.
+                </span>
               </li>
-              <li className="flex gap-2">
+
+              <li className="flex items-start gap-3 bg-white border border-border rounded-xl p-4 shadow-sm">
                 <CheckCircle2
                   size={18}
-                  className="text-brand-secondary shrink-0"
+                  className="text-brand-secondary shrink-0 mt-0.5"
                 />
-                Questionários sem metodologia validada não são aceitos.
+                <span className="text-slate-700 text-sm leading-relaxed">
+                  Questionários sem metodologia validada não são aceitos.
+                </span>
               </li>
-              <li className="flex gap-2">
+
+              <li className="flex items-start gap-3 bg-white border border-border rounded-xl p-4 shadow-sm">
                 <CheckCircle2
                   size={18}
-                  className="text-brand-secondary shrink-0"
+                  className="text-brand-secondary shrink-0 mt-0.5"
                 />
-                Resultados devem incluir Inventário para elaboração do Plano de
-                Ação.
+                <span className="text-slate-700 text-sm leading-relaxed">
+                  Resultados devem incluir inventário para elaboração do plano
+                  de ação.
+                </span>
               </li>
             </ul>
+
+            {/* RESPONSABILIDADE TÉCNICA */}
+            <div className="mt-10 max-w-3xl mx-auto">
+              <p className="text-slate-600 text-sm leading-relaxed text-left border-l-4 border-brand pl-4">
+                O <b>alma4D Express</b> foi concebido sob responsabilidade
+                técnica do
+                <b className="text-neutral-800"> Dr. Renato Purchio</b>, Médico
+                do Trabalho, Registro de Qualificação de Especialista (RQE) nº
+                19126, com atuação reconhecida junto ao Ministério do Trabalho e
+                Emprego, assegurando que toda a estrutura da plataforma esteja
+                alinhada aos critérios técnicos, legais e científicos exigidos
+                em processos de fiscalização e auditoria.
+              </p>
+            </div>
           </div>
         </section>
         {/* ================= SOLUÇÃO ================= */}

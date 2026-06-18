@@ -24,15 +24,14 @@ export default function Alma4DExpress() {
   const [cnpjHint, setCnpjHint] = useState("");
   const router = useRouter();
   const pathname = usePathname();
-  
-const goEmpresa = () => {
-  router.push(`/nr1/empresa?from=${encodeURIComponent(pathname)}`);
-};
 
-  
-const goParceiros = () => {
-  router.push(`/nr1/parceiros?from=${encodeURIComponent(pathname)}`);
-};
+  const goEmpresa = () => {
+    router.push(`/nr1/empresa?from=${encodeURIComponent(pathname)}`);
+  };
+
+  const goParceiros = () => {
+    router.push(`/nr1/parceiros?from=${encodeURIComponent(pathname)}`);
+  };
 
   // Estado para controlar o FAQ aberto
   const [openFaq, setOpenFaq] = useState<number | null>(null);
@@ -386,6 +385,24 @@ const goParceiros = () => {
             <h2 className="font-sans text-3xl font-black tracking-tight text-brand md:text-4xl">
               Rigor científico desenhado para simplicidade
             </h2>
+            <p className="mt-4 text-base leading-relaxed text-neutral-600 max-w-2xl mx-auto">
+              A adoção de metodologias cientificamente validadas não é apenas
+              uma boa prática — é um requisito essencial para garantir respaldo
+              técnico e segurança jurídica no atendimento às exigências da NR‑1.
+              A correta identificação e avaliação dos riscos psicossociais
+              demanda rigor metodológico, rastreabilidade dos dados e aderência
+              às normas vigentes do Ministério do Trabalho e Emprego.
+            </p>
+
+            <p className="mt-4 text-sm leading-relaxed text-neutral-500 max-w-2xl mx-auto">
+              O alma4D Express foi concebido sob responsabilidade técnica do
+              <b className="text-neutral-800"> Dr. Renato Purchio</b>, Médico do
+              Trabalho, Registro de Qualificação de Especialista (RQE) nº 19126,
+              com atuação reconhecida junto ao Ministério do Trabalho e Emprego,
+              assegurando que toda a estrutura da plataforma esteja alinhada aos
+              critérios técnicos, legais e científicos exigidos em processos de
+              fiscalização e auditoria.
+            </p>
           </div>
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 text-left">
             {[
