@@ -31,8 +31,6 @@ type Empresa = {
 
 type BulkEmpresa = {
   cnpj: string;
-  percentual: number;
-  nome: string | null;
 };
 
 // ================== Utils BR (CPF/CNPJ/Telefone) ==================
@@ -190,7 +188,7 @@ export default function DashboardExpressParceirosPage() {
   );
   const [empresaRazaoSocial, setEmpresaRazaoSocial] = useState("");
   const [empresaCnpj, setEmpresaCnpj] = useState("");
-  const [empresaPercentual, setEmpresaPercentual] = useState<number | "">(10);
+  
   const [paste, setPaste] = useState("");
   const [bulkPreview, setBulkPreview] = useState<BulkEmpresa[]>([]);
   const [bulkError, setBulkError] = useState<string | null>(null);
@@ -355,21 +353,13 @@ export default function DashboardExpressParceirosPage() {
           : l.split(/\t+/);
 
       const cnpj = (parts[0] ?? "").replace(/\D/g, "");
-
-      const percentualRaw = String(parts[1] ?? "")
-        .replace(/[^0-9\.,]/g, "")
-        .replace(",", ".");
-      const percentual = Number(percentualRaw);
-
-      const nome = (parts[2] ?? "").trim() || null;
-
-      return { cnpj, percentual, nome };
+      return { cnpj };
     });
 
     // ✅ type guard garante que o retorno é BulkEmpresa[]
     return regs.filter(
       (r): r is BulkEmpresa =>
-        r.cnpj.length === 14 && Number.isFinite(r.percentual),
+        r.cnpj.length === 14
     );
   }
 
@@ -429,7 +419,7 @@ export default function DashboardExpressParceirosPage() {
     if (!empresaParceiroId) return alert("Selecione um parceiro");
     const cnpj = (empresaCnpj || "").replace(/\D/g, "");
     if (cnpj.length !== 14) return alert("CNPJ inválido");
-    const perc = Number(empresaPercentual) || 0;
+    
     setBusy(true);
     try {
       const token = await getAccessToken();
@@ -441,16 +431,14 @@ export default function DashboardExpressParceirosPage() {
         },
         body: JSON.stringify({
           parceiro_id: empresaParceiroId,
-          cnpj,
-          percentual: perc,
-          razao_social: empresaRazaoSocial || null,
+          cnpj,          
+          razao_social: null,
         }),
       });
       const j = await res.json().catch(() => ({}));
       if (!res.ok)
         throw new Error(j.error || "Falha ao criar empresa elegível");
       setEmpresaCnpj("");
-      setEmpresaPercentual(10);
       await refreshAll();
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : String(e));
@@ -1081,11 +1069,11 @@ export default function DashboardExpressParceirosPage() {
                             {formatCpfCnpj(e.cnpj)}
                           </span>
 
-                          {e.razao_social && (
-                            <span className="text-xs text-slate-500">
-                              {e.razao_social.toUpperCase()}
-                            </span>
-                          )}
+                          <span className="text-xs text-slate-500">
+                            {e.razao_social
+                              ? e.razao_social.toUpperCase()
+                              : "preenchido automaticamente"}
+                          </span>
 
                           <span className="text-xs text-slate-400">
                             desde{" "}
@@ -1172,26 +1160,12 @@ export default function DashboardExpressParceirosPage() {
                 placeholder="CNPJ"
                 className="h-10 rounded-lg border border-slate-200 px-3 text-sm bg-white"
               />
-
               <input
                 value={empresaRazaoSocial}
                 onChange={(e) => setEmpresaRazaoSocial(e.target.value)}
-                placeholder="Razão social"
-                className="h-10 rounded-lg border border-slate-200 px-3 text-sm bg-white"
+                placeholder="preenchimento automático"
+                className="h-10 rounded-lg border border-slate-200 px-3 text-sm bg-slate-50"
               />
-
-              <input
-                type="number"
-                value={String(empresaPercentual)}
-                onChange={(e) =>
-                  setEmpresaPercentual(
-                    e.target.value === "" ? "" : Number(e.target.value),
-                  )
-                }
-                placeholder="Percentual"
-                className="h-10 rounded-lg border border-slate-200 px-3 text-sm bg-white"
-              />
-
               <div className="sm:col-span-3">
                 <button
                   onClick={createEmpresa}
@@ -1216,7 +1190,7 @@ export default function DashboardExpressParceirosPage() {
               value={paste}
               onChange={(e) => setPaste(e.target.value)}
               className="mt-4 min-h-28 w-full rounded-lg border border-slate-200 p-3 text-sm bg-white"
-              placeholder="cnpj;percentual;nome"
+              placeholder="Somente CNPJ (1 por linha)"
             />
 
             <div className="mt-4 flex gap-2">
@@ -1244,7 +1218,7 @@ export default function DashboardExpressParceirosPage() {
               <div className="mt-4 text-sm border border-slate-200 rounded-lg p-3 bg-slate-50">
                 {bulkPreview.map((r, i) => (
                   <div key={i}>
-                    {r.cnpj} — {r.percentual}% — {r.nome}
+                    {r.cnpj}
                   </div>
                 ))}
               </div>

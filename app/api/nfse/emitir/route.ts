@@ -121,7 +121,15 @@ export async function POST(req: Request) {
         { status: 400 },
       );
     }
-    const numeroRps = String(Date.now());
+    const { data: seqData, error: seqError } =
+      await supabase.rpc("nextval_nfse_rps");
+
+    if (seqError || !seqData) {
+      throw new Error("Erro ao gerar número RPS");
+    }
+
+    const numeroRps = String(seqData);
+
     // ✅ 9. PAYLOAD FINAL
     const payload = {
       data_emissao: new Date().toISOString(),
@@ -179,7 +187,7 @@ export async function POST(req: Request) {
         payload,
         updated_at: new Date().toISOString(),
 
-        numero_rps: String(Date.now()),
+        numero_rps: numeroRps,
         serie_rps: "A",
         tipo_rps: "1",
         cnpj_prestador: PRESTADOR_CNPJ,

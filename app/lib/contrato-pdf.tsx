@@ -97,7 +97,8 @@ export async function gerarContratoPdfInterno({
   const hash = `${contratoRow.id}-${contratoPdf.versao}-${contratoPdf.dataAceite}`;
 
   // // 6) QR Code de validação
-  const verifyUrl = `${process.env.BASE_URL}/contrato/validar/${contratoId}`;
+  const baseUrl = process.env.BASE_URL ?? "https://alma4d.com.br";
+  const verifyUrl = `${baseUrl}/contrato/validar/${contratoId}`;
   const qrCode = await QRCode.toDataURL(verifyUrl);
 
   // 7) Renderizar PDF
@@ -130,28 +131,33 @@ export async function gerarContratoPdfInterno({
     args: ["--no-sandbox", "--disable-setuid-sandbox"],
   });
 
-  // ✅ criar página
-  const page = await browser.newPage();
+  let pdfBuffer: Uint8Array;
 
-  // ✅ carregar HTML
-  await page.setContent(html, {
-    waitUntil: "load",
-  });
+  try {
+    const page = await browser.newPage();
 
-  // ✅ gerar PDF
-  const pdfBuffer = await page.pdf({
-    format: "A4",
-    printBackground: true,
-    margin: {
-      top: "20mm",
-      bottom: "20mm",
-      left: "15mm",
-      right: "15mm",
-    },
-  });
+    await page.setContent(html, {
+      waitUntil: "load",
+    });
+    await page.waitForNetworkIdle();
 
-  // ✅ fechar browser
-  await browser.close();
+    pdfBuffer = await page.pdf({
+      format: "A4",
+      printBackground: true,
+      margin: {
+        top: "20mm",
+        bottom: "20mm",
+        left: "15mm",
+        right: "15mm",
+      },
+    });
+
+    if (!pdfBuffer || pdfBuffer.length === 0) {
+      throw new Error("PDF gerado está vazio");
+    }
+  } finally {
+    await browser.close();
+  }
 
   // 8) Caminho no bucket
   const filePath = `clientes/${contratoRow.cliente_id}/contratos/${contratoRow.id}/v${contratoPdf.versao}/contrato-gerado.pdf`;
@@ -160,9 +166,9 @@ export async function gerarContratoPdfInterno({
 
   const { error: uploadError } = await supabase.storage
     .from("contratos")
-    .upload(filePath, pdfBuffer, {
+    .upload(filePath, Buffer.from(pdfBuffer), {
       contentType: "application/pdf",
-      upsert: true,
+      upsert: false,
     });
 
   if (uploadError) {
@@ -205,5 +211,5 @@ export async function gerarContratoPdfInterno({
   return {
     ok: true,
     pdf_url: filePath,
-  };
+  } as const;
 }

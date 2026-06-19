@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { getCaller } from "../importacao-usuarios/_shared/getCaller";
 
-export async function GET(req: Request) {
+export async function GET() {
   try {
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -32,8 +32,6 @@ export async function POST(req: Request) {
     if (!auth?.startsWith("Bearer ")) {
       return NextResponse.json({ error: "Token ausente" }, { status: 401 });
     }
-
-    const token = auth.split(" ")[1];
 
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,

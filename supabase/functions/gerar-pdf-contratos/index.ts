@@ -1,9 +1,13 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-
-// ✅ TIPO SEGURO PARA ERROS
+// ✅ tipo seguro
 type UnknownError = {
   message?: string;
+};
+type PdfApiResponse = {
+  ok?: boolean;
+  url?: string;
+  error?: string;
 };
 
 const supabase = createClient(
@@ -13,10 +17,10 @@ const supabase = createClient(
 
 Deno.serve(async () => {
   try {
-    // ✅ 1. buscar contratos pendentes
+    // ✅ 1. buscar contratos elegíveis
     const { data: contratos } = await supabase
       .from("contratos")
-      .select("id, pdf_attempts")
+      .select("id, pdf_attempts, pdf_status")
       .in("pdf_status", ["pending", "error"])
       .lt("pdf_attempts", 3)
       .limit(5);
@@ -25,47 +29,58 @@ Deno.serve(async () => {
       const contratoId = contrato.id;
 
       try {
-        // ✅ 2. marcar como processing
+        // ✅ 2. evitar reprocessar status inválido
+        if (contrato.pdf_status === "done") continue;
+
+        // ✅ 3. marcar processamento (leve, opcional)
         await supabase
           .from("contratos")
           .update({ pdf_status: "processing" })
           .eq("id", contratoId);
 
-        // ✅ 3. gerar PDF (sem variável não usada)
-        await fetch("https://alma4d.com.br/api/contrato/pdf", {
+        // ✅ 4. chamar API
+        const res = await fetch("https://alma4d.com.br/api/contrato/pdf", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+          },
           body: JSON.stringify({ contratoId }),
         });
 
-        // ✅ 4. salvar sucesso
-        await supabase
-          .from("contratos")
-          .update({
-            pdf_status: "done",
-            pdf_generated_at: new Date().toISOString(),
-            pdf_error: null,
-          })
-          .eq("id", contratoId);
+        // ✅ 5. validar resposta HTTP
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(`PDF API failed: ${text}`);
+        }
 
-        // ✅ evento sucesso
-        await supabase.from("contrato_eventos").insert({
-          contrato_id: contratoId,
-          tipo: "pdf_generated",
-          descricao: "PDF gerado com sucesso",
-        });
+        // ✅ 6. validar JSON seguro
+        let data: PdfApiResponse | null = null;
+        try {
+          data = (await res.json()) as PdfApiResponse;
+        } catch {
+          throw new Error("Resposta inválida da API de PDF");
+        }
+
+        // ✅ 7. validar retorno real
+        if (!data?.url) {
+          throw new Error("API não retornou URL do PDF");
+        }
+
+        // ✅ 8. ✅ NÃO atualiza status aqui (API já faz isso)
       } catch (err: unknown) {
         const errorObj = err as UnknownError;
 
-        console.error("Erro ao gerar PDF:", err);
+        console.error("[PDF EDGE] erro:", err);
 
-        // ✅ salvar erro
+        // ✅ incrementar tentativa corretamente
+        const attempts = (contrato.pdf_attempts ?? 0) + 1;
+
         await supabase
           .from("contratos")
           .update({
             pdf_status: "error",
             pdf_error: errorObj?.message ?? "Erro desconhecido",
-            pdf_attempts: (contrato.pdf_attempts ?? 0) + 1,
+            pdf_attempts: attempts,
           })
           .eq("id", contratoId);
 
@@ -87,9 +102,7 @@ Deno.serve(async () => {
       JSON.stringify({
         error: errorObj?.message ?? "Erro interno",
       }),
-      {
-        status: 500,
-      },
+      { status: 500 },
     );
   }
 });
