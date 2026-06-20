@@ -95,7 +95,7 @@ function parsePasteDetailed(text: string): ParseResult {
     const dept = normalizeText(parts[3] ?? "");
 
     // ✅ validações
-    if (normalizeName(nome).length < 3) {
+    if (!/^[A-ZÀ-Ú ]{3,}$/.test(normalizeName(nome))) {
       erros.push({ linha, erro: "Nome inválido", raw: line });
       return;
     }
@@ -105,10 +105,21 @@ function parsePasteDetailed(text: string): ParseResult {
       return;
     }
 
+    // ✅ telefone inválido
     if (!isValidPhone(telefone)) {
       erros.push({
         linha,
         erro: "Telefone inválido (DDD + número)",
+        raw: line,
+      });
+      return;
+    }
+
+    // ✅ telefone fake (111111...)
+    if (/^(\+55)(\d)\2+$/.test(telefone)) {
+      erros.push({
+        linha,
+        erro: "Telefone inválido repetido",
         raw: line,
       });
       return;
@@ -255,6 +266,7 @@ export default function DashboardExpress() {
   const [bulkError, setBulkError] = useState<string | null>(null);
   const parsed = useMemo(() => parsePasteDetailed(paste), [paste]);
   const [previewGenerated, setPreviewGenerated] = useState(false);
+  const [bulkFiltrados, setBulkFiltrados] = useState<CsvRegistro[]>([]);
   // departamentos (opcional)
   const [deptEnabled, setDeptEnabled] = useState(false);
   const [departamentoNomePadrao, setDepartamentoNomePadrao] = useState("");
@@ -493,6 +505,7 @@ export default function DashboardExpress() {
   async function onQuickAdd() {
     setMsg(null);
     setBusy(true);
+
     try {
       if (!nome.trim() || !cpf.trim() || !tel.trim()) {
         setMsg("Preencha nome, CPF e telefone.");
@@ -500,10 +513,58 @@ export default function DashboardExpress() {
       }
 
       const token = await getAccessToken();
-      if (!token) throw new Error("Sessão expirada. Faça login novamente.");
-      if (!gerenciarUsuariosUrl) {
-        throw new Error("Endpoint de cadastro não configurado.");
+      if (!token) throw new Error("Sessão expirada.");
+
+      const nomeNorm = normalizeName(nome);
+      const cpfNorm = onlyDigits(cpf);
+      const phoneNorm = normalizePhoneBR(tel);
+
+      // ✅ nome robusto
+      if (!/^[A-ZÀ-Ú ]{3,}$/.test(nomeNorm)) {
+        setMsg("Nome inválido.");
+        return;
       }
+
+      // ✅ CPF
+      if (!isValidCPF(cpfNorm)) {
+        setMsg("CPF inválido.");
+        return;
+      }
+
+      // ✅ telefone
+      if (!isValidPhone(phoneNorm) || phoneNorm.length < 12) {
+        setMsg("Telefone inválido.");
+        return;
+      }
+
+      if (/^(\+55)(\d)\2+$/.test(phoneNorm)) {
+        setMsg("Telefone inválido.");
+        return;
+      }
+      const check = await fetch("/api/usuarios/check-bulk", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          documentos: [cpfNorm],
+          telefones: [phoneNorm],
+        }),
+      });
+
+      const result = await check.json();
+
+      if (result.documentos?.length) {
+        setMsg("CPF já cadastrado.");
+        return;
+      }
+
+      if (result.telefones?.length) {
+        setMsg("Telefone já cadastrado.");
+        return;
+      }
+
       if (
         licencasContratadas !== null &&
         licencasConsumidas >= licencasContratadas
@@ -512,51 +573,16 @@ export default function DashboardExpress() {
         return;
       }
 
-      const nomeNorm = normalizeName(nome);
-      const cpfNorm = onlyDigits(cpf);
-      const phoneNorm = normalizePhoneBR(tel);
-
-      // ✅ nome
-      if (nomeNorm.length < 3) {
-        setMsg("Digite um nome válido.");
-        return;
-      }
-
-      // ✅ CPF real
-      if (!isValidCPF(cpfNorm)) {
-        setMsg("CPF inválido.");
-        return;
-      }
-
-      // ✅ telefone
-      if (!isValidPhone(phoneNorm)) {
-        setMsg("Telefone inválido. Use DDD + número.");
-        return;
-      }
-
-      const deptNome = deptEnabled
-        ? normalizeDeptName(departamentoNomePadrao)
-        : "";
       const payload = {
         nome_completo: nomeNorm,
         documento: cpfNorm,
         telefone: phoneNorm,
         role: "usuario",
-        departamento_nome: deptNome || null,
+        departamento_nome: deptEnabled
+          ? normalizeDeptName(departamentoNomePadrao) || null
+          : null,
       };
 
-      if (bulkPreview.some((u) => u.documento === cpfNorm)) {
-        setMsg("CPF já adicionado na lista.");
-        return;
-      }
-
-      if (bulkPreview.some((u) => u.telefone === phoneNorm)) {
-        setMsg("Telefone já adicionado.");
-        return;
-      }
-
-      console.log("URL gerenciarUsuarios:", gerenciarUsuariosUrl);
-      // 🚀 chamada da sua edge
       const r = await fetch(gerenciarUsuariosUrl, {
         method: "POST",
         headers: {
@@ -566,44 +592,22 @@ export default function DashboardExpress() {
         body: JSON.stringify(payload),
       });
 
-      const text = await r.text();
-      let j: { error?: string; [key: string]: unknown } = {};
-      try {
-        j = JSON.parse(text);
-      } catch {}
-
-      console.log("RES POST USUARIO:", {
-        status: r.status,
-        url: gerenciarUsuariosUrl,
-        raw: text,
-      });
+      const j = await r.json().catch(() => ({}));
 
       if (!r.ok || j?.error) {
         throw new Error(j?.error ?? "Erro ao criar usuário.");
       }
 
-      setMsg(`Usuário ${nomeNorm.split(" ")[0]} cadastrado com sucesso ✅`);
+      setMsg(`Usuário ${nomeNorm.split(" ")[0]} cadastrado ✅`);
       setlicencasConsumidas((prev) => prev + 1);
       await refreshEntitlements();
+
       setNome("");
       setCpf("");
       setTel("");
-      document.getElementById("input-nome")?.focus();
     } catch (e: unknown) {
       if (e instanceof Error) {
-        const msg = e.message.toLowerCase();
-
-        if (
-          msg.includes("duplicate") ||
-          msg.includes("duplicado") ||
-          msg.includes("already exists") ||
-          msg.includes("já existe") ||
-          msg.includes("unique")
-        ) {
-          setMsg("Usuário já cadastrado com este CPF ou telefone.");
-        } else {
-          setMsg(e.message);
-        }
+        setMsg(e.message);
       } else {
         setMsg("Erro inesperado");
       }
@@ -617,7 +621,36 @@ export default function DashboardExpress() {
     const { validos, erros } = parsed;
 
     if (!validos.length) {
-      setBulkError("Nenhuma linha válida encontrada.");
+  setBulkError("Nenhuma linha válida encontrada.");
+  return;
+}
+
+    // ✅ CHECK BACKEND BULK
+    const token = await getAccessToken();
+
+    const check = await fetch("/api/usuarios/check-bulk", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        documentos: validos.map((v) => v.documento),
+        telefones: validos.map((v) => v.telefone),
+      }),
+    });
+
+    const existentes = await check.json();
+
+    // ✅ filtra duplicados reais
+    const filtrados = validos.filter(
+      (v) =>
+        !existentes.documentos?.includes(v.documento) &&
+        !existentes.telefones?.includes(v.telefone),
+    );
+
+    if (!filtrados.length) {
+      throw new Error("Todos registros já existem no sistema.");
     } else if (erros.length) {
       setBulkError(`❌ ${erros.length} linhas com erro.`);
     } else if (hasEncodingIssue(paste)) {
@@ -626,7 +659,8 @@ export default function DashboardExpress() {
       );
     }
     setPreviewGenerated(true);
-    setBulkPreview(validos.slice(0, 20));
+    setBulkFiltrados(filtrados); // ✅ salva corretamente
+    setBulkPreview(filtrados);
     setJobErrors(
       erros.slice(0, 5).map((e) => ({
         linha: e.linha,
@@ -634,7 +668,7 @@ export default function DashboardExpress() {
         payload: { raw: e.raw },
       })),
     );
-    setMsg(`✅ ${validos.length} válidos • ❌ ${erros.length} com erro`);
+    setMsg(`✅ ${filtrados.length} válidos • ❌ ${erros.length} com erro`);
   }
 
   async function onEnqueueBulk() {
@@ -676,7 +710,11 @@ export default function DashboardExpress() {
         : "";
 
       // ✅ regra correta: linha > padrão
-      const regsWithDept: CsvRegistro[] = validos.map((r) => ({
+
+      const source: CsvRegistro[] =
+        bulkFiltrados.length > 0 ? bulkFiltrados : validos;
+
+      const regsWithDept: CsvRegistro[] = source.map((r: CsvRegistro) => ({
         ...r,
         departamento_nome:
           r.departamento_nome && r.departamento_nome.trim().length > 0
@@ -1109,7 +1147,7 @@ export default function DashboardExpress() {
 
               <button
                 onClick={onEnqueueBulk}
-                disabled={!previewGenerated || busy || isLimitReached}
+                disabled={!previewGenerated || !parsed.validos.length || busy}
                 className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
               >
                 {busy ? "Importando..." : "Importar"}
