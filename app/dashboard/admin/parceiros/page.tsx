@@ -188,7 +188,7 @@ export default function DashboardExpressParceirosPage() {
   );
   const [empresaRazaoSocial, setEmpresaRazaoSocial] = useState("");
   const [empresaCnpj, setEmpresaCnpj] = useState("");
-  
+  const [duplicates, setDuplicates] = useState<string[]>([]);
   const [paste, setPaste] = useState("");
   const [bulkPreview, setBulkPreview] = useState<BulkEmpresa[]>([]);
   const [bulkError, setBulkError] = useState<string | null>(null);
@@ -205,7 +205,7 @@ export default function DashboardExpressParceirosPage() {
   }, []);
 
   const isRefreshingRef = React.useRef(false);
-
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null);
   const refreshAll = useCallback(async () => {
     if (isRefreshingRef.current) return;
 
@@ -345,7 +345,12 @@ export default function DashboardExpressParceirosPage() {
       .map((l) => l.trim())
       .filter(Boolean);
 
-    const regs = lines.map((l) => {
+    const set = new Set<string>();
+    const duplicates: string[] = [];
+
+    const regs: BulkEmpresa[] = [];
+
+    for (const l of lines) {
       const parts = l.includes(";")
         ? l.split(";")
         : l.includes(",")
@@ -353,32 +358,50 @@ export default function DashboardExpressParceirosPage() {
           : l.split(/\t+/);
 
       const cnpj = (parts[0] ?? "").replace(/\D/g, "");
-      return { cnpj };
-    });
 
-    // ✅ type guard garante que o retorno é BulkEmpresa[]
-    return regs.filter(
-      (r): r is BulkEmpresa =>
-        r.cnpj.length === 14
-    );
+      if (cnpj.length !== 14) continue;
+
+      if (set.has(cnpj)) {
+        duplicates.push(cnpj);
+        continue;
+      }
+
+      set.add(cnpj);
+      regs.push({ cnpj });
+    }
+
+    return regs;
   }
 
   async function onBuildPreviewCompanies() {
     setBulkError(null);
+    const lines = paste.split(/\r?\n/).filter(Boolean);
+    const uniqueSet = new Set<string>();
+    const dup: string[] = [];
+    const valid: BulkEmpresa[] = [];
 
-    const total = paste.split(/\r?\n/).filter(Boolean).length;
-    const regs = parseCompanyPaste(paste); // BulkEmpresa[]
+    lines.forEach((line) => {
+      const cnpj = line.replace(/\D/g, "");
 
-    if (regs.length < total) {
-      setBulkError(`${total - regs.length} linhas ignoradas por erro.`);
+      if (cnpj.length !== 14) return;
+
+      if (uniqueSet.has(cnpj)) {
+        dup.push(cnpj);
+      } else {
+        uniqueSet.add(cnpj);
+        valid.push({ cnpj });
+      }
+    });
+
+    setDuplicates(dup);
+
+    if (valid.length < lines.length) {
+      setBulkError(
+        `${lines.length - valid.length} linhas inválidas ou duplicadas`,
+      );
     }
-    if (!regs.length) {
-      setBulkError("Nenhuma linha válida. Use: cnpj;percentual;nome");
-      setBulkPreview([]);
-      return;
-    }
 
-    setBulkPreview(regs.slice(0, 100)); // ✅ agora tipa OK
+    setBulkPreview(valid.slice(0, 100));
   }
 
   async function importCompaniesBulk() {
@@ -419,7 +442,7 @@ export default function DashboardExpressParceirosPage() {
     if (!empresaParceiroId) return alert("Selecione um parceiro");
     const cnpj = (empresaCnpj || "").replace(/\D/g, "");
     if (cnpj.length !== 14) return alert("CNPJ inválido");
-    
+
     setBusy(true);
     try {
       const token = await getAccessToken();
@@ -431,7 +454,7 @@ export default function DashboardExpressParceirosPage() {
         },
         body: JSON.stringify({
           parceiro_id: empresaParceiroId,
-          cnpj,          
+          cnpj,
           razao_social: null,
         }),
       });
@@ -647,6 +670,12 @@ export default function DashboardExpressParceirosPage() {
     }
   }
 
+  async function handleFileUpload(file: File) {
+    const text = await file.text();
+
+    setPaste(text);
+    setTimeout(() => onBuildPreviewCompanies(), 0);
+  }
   return (
     <div className="space-y-6">
       {/* HEADER */}
@@ -1163,7 +1192,7 @@ export default function DashboardExpressParceirosPage() {
               <input
                 value={empresaRazaoSocial}
                 onChange={(e) => setEmpresaRazaoSocial(e.target.value)}
-                placeholder="preenchimento automático"
+                placeholder="razao social - preenchimento automático"
                 className="h-10 rounded-lg border border-slate-200 px-3 text-sm bg-slate-50"
               />
               <div className="sm:col-span-3">
@@ -1185,14 +1214,41 @@ export default function DashboardExpressParceirosPage() {
             <p className="text-sm text-slate-500">
               Importação em massa de empresas
             </p>
-
+            <p className="text-sm text-slate-500">
+              Cole uma lista de CNPJs (um por linha). O sistema preencherá o
+              nome automaticamente.
+            </p>
             <textarea
               value={paste}
               onChange={(e) => setPaste(e.target.value)}
               className="mt-4 min-h-28 w-full rounded-lg border border-slate-200 p-3 text-sm bg-white"
-              placeholder="Somente CNPJ (1 por linha)"
+              placeholder={`Exemplo:
+                12345678000199
+                11222333000181
+                00987654000100
+                • Um CNPJ por linha
+                • Pode colar com ou sem máscara
+                • O nome será preenchido automaticamente`}
             />
+            <div className="mt-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".txt,.csv"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleFileUpload(file);
+                }}
+              />
 
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="text-xs px-3 py-1 rounded-md border border-slate-200 hover:bg-slate-50"
+              >
+                Upload arquivo (.txt ou .csv)
+              </button>
+            </div>
             <div className="mt-4 flex gap-2">
               <button
                 onClick={onBuildPreviewCompanies}
@@ -1215,13 +1271,22 @@ export default function DashboardExpressParceirosPage() {
             )}
 
             {!!bulkPreview.length && (
-              <div className="mt-4 text-sm border border-slate-200 rounded-lg p-3 bg-slate-50">
-                {bulkPreview.map((r, i) => (
-                  <div key={i}>
-                    {r.cnpj}
-                  </div>
-                ))}
-              </div>
+              <>
+                {/* ✅ contador */}
+                <p className="text-xs text-slate-500 mt-2">
+                  {bulkPreview.length} CNPJs válidos encontrados
+                </p>
+                <div className="mt-2 text-sm border border-slate-200 rounded-lg p-3 bg-slate-50">
+                  {bulkPreview.map((r, i) => (
+                    <div key={i}>{r.cnpj}</div>
+                  ))}
+                </div>
+              </>
+            )}
+            {!!duplicates.length && (
+              <p className="text-xs text-amber-600 mt-2">
+                {duplicates.length} CNPJs duplicados ignorados
+              </p>
             )}
           </>
         )}

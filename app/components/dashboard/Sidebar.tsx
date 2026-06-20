@@ -65,10 +65,10 @@ const NAV_BY_PLAN: Record<Plano, NavItem[]> = {
       roles: ["admin", "cliente"],
     },
     {
-      href: "/dashboard/express/acesso-basico?step=2",
+      href: "/dashboard/express/acesso-basico?step=1",
       label: "Canal seguro",
       icon: ShieldCheck,
-      roles: ["usuario", "cliente", "admin", "gestor"],
+      roles: ["usuario", "admin", "gestor"],
     },
     {
       href: "/dashboard/express/relatorio-ocorrencias",
@@ -80,7 +80,7 @@ const NAV_BY_PLAN: Record<Plano, NavItem[]> = {
       href: "/dashboard/express/acompanhamento",
       label: "Acompanhamento",
       icon: ClipboardList,
-      roles: ["admin", "cliente", "gestor", "usuario"],
+      roles: ["admin", "gestor", "usuario"],
     },
     {
       href: "/dashboard/admin/parceiros",
