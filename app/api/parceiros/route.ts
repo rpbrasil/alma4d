@@ -55,12 +55,28 @@ export async function POST(req: Request) {
 
     const body = await req.json();
     const payload = {
-      nome: body.nome || null,
-      documento: body.documento || null,
-      email: body.email || null,
+      nome: body.nome?.trim().toUpperCase() || null,
+      documento: body.documento
+        ? String(body.documento).replace(/\D/g, "")
+        : null,
+      email: body.email?.trim() || null,
       telefone: body.telefone || null,
       aprovado: body.aprovado ?? true,
     };
+    if (payload.documento) {
+      const { data: existing } = await supabaseAdmin
+        .from("parceiros")
+        .select("id")
+        .eq("documento", payload.documento)
+        .limit(1);
+
+      if (existing?.length) {
+        return NextResponse.json(
+          { ok: false, error: "Documento já cadastrado" },
+          { status: 400 },
+        );
+      }
+    }
 
     const { data, error } = await supabaseAdmin
       .from("parceiros")

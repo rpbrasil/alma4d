@@ -51,6 +51,11 @@ type UsuarioPerfil = {
   documento: string;
   cliente_id: string;
 };
+type ConsentStorage = {
+  accepted?: boolean;
+  version?: string;
+  timestamp?: number;
+};
 
 function normalizeText(v: string) {
   if (!v) return "";
@@ -286,18 +291,32 @@ export default function DashboardExpress() {
   const [showDeptModal, setShowDeptModal] = useState(() => {
     if (typeof window === "undefined") return false;
 
-    const CONSENT_KEY = "copsoq_consent_v1";
-    const CONSENT_TTL = 1000 * 60 * 60 * 24; // 24h
+    const CONSENT_KEY = "alma4d:copsoq_consent_v1";
+    const CONSENT_TTL = 1000 * 60 * 60 * 24 * 20; // 20dias
 
     const stored = localStorage.getItem(CONSENT_KEY);
 
     if (!stored) return true;
 
     try {
-      const parsed = JSON.parse(stored);
+      let parsed: ConsentStorage | null = null;
+
+      try {
+        const first = JSON.parse(stored);
+
+        parsed =
+          typeof first === "string"
+            ? (JSON.parse(first) as ConsentStorage)
+            : (first as ConsentStorage);
+        if (parsed?.version !== "v1") return true;
+      } catch {
+        return true;
+      }
 
       const isExpired =
-        !parsed.timestamp || Date.now() - parsed.timestamp > CONSENT_TTL;
+        !parsed?.accepted ||
+        !parsed?.timestamp ||
+        Date.now() - parsed.timestamp > CONSENT_TTL;
 
       return isExpired;
     } catch {
@@ -742,13 +761,11 @@ export default function DashboardExpress() {
     });
 
     // ✅ salva no localStorage com timestamp
-    setStorageItem(
-      "copsoq_consent_v1",
-      JSON.stringify({
-        accepted: true,
-        timestamp: Date.now(),
-      }),
-    );
+    setStorageItem("copsoq_consent_v1", {
+      accepted: true,
+      version: "v1",
+      timestamp: Date.now(),
+    });
 
     setShowDeptModal(false);
   }

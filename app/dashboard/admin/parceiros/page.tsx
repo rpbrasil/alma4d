@@ -412,6 +412,9 @@ export default function DashboardExpressParceirosPage() {
       if (!token) throw new Error("Sessão expirada. Faça login novamente.");
       const rows = parseCompanyPaste(paste);
       if (!rows.length) throw new Error("Nenhuma linha válida para importar.");
+      if (!empresaParceiroId) {
+        throw new Error("Selecione um parceiro");
+      }
       // attach parceiro_id if selected
       const payload = rows.map((r) => ({
         ...r,
@@ -429,6 +432,7 @@ export default function DashboardExpressParceirosPage() {
       if (!res.ok) throw new Error(j.error || "Falha na importação");
       setPaste("");
       setBulkPreview([]);
+      setDuplicates([]);
       await refreshAll();
       alert("Importação concluída.");
     } catch (e: unknown) {
