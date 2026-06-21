@@ -7,12 +7,7 @@ import {
   verifySignature,
 } from "@/lib/pagarme";
 
-import {
-  activateContratoFull,
-  getContrato,
-  markFailOrCancel,
-  supabaseAdmin,
-} from "@/lib/contratos-flow";
+import { getContrato, markFailOrCancel, supabaseAdmin } from "@/lib/contratos-flow";
 
 /* ================= HELPERS ================= */
 
