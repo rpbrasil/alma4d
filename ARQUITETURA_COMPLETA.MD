@@ -21,7 +21,6 @@ auth.users
 Identidade primária (OTP)
 Gerenciado pelo Supabase
 
-
 usuarios
 
 Entidade do sistema
@@ -31,32 +30,21 @@ Constraints:
 email UNIQUE
 telefone UNIQUE
 
-
-
-
 usuario_auth_identities
 
-
 Tabela intermediária de vínculo
-
 
 Estrutura:
 auth_user_id → usuario_id
 
-
-
 PRIMARY KEY: auth_user_id
 
-
 Fonte oficial de identidade
-
-
 
 clientes
 
 Representa empresa (CNPJ)
 UPSERT por documento
-
 
 contratos
 
@@ -77,11 +65,9 @@ pdf_generated
 pdf_failed
 pdf_flag_failed
 
-
 webhook_logs
 
 Idempotência de eventos do gateway
-
 
 🔐 ETAPA 1 — AUTENTICAÇÃO (OTP)
 Usuário escolhe:
@@ -95,25 +81,22 @@ supabase.auth.verifyOtp(...)
 Resultado:
 auth_user_id = supabase.auth.getUser().id
 
-
 🧠 ETAPA 2 — RESOLUÇÃO DO USUÁRIO (IDEMPOTENTE)
 Ordem obrigatória:
-1. Identity (fonte principal)
-SELECT usuario_id
-FROM usuario_auth_identities
-WHERE auth_user_id = p_auth_user_id
-LIMIT 1
 
+1. Identity (fonte principal)
+   SELECT usuario_id
+   FROM usuario_auth_identities
+   WHERE auth_user_id = p_auth_user_id
+   LIMIT 1
 
 2. Fallback por email
-SELECT id FROM usuarios
-WHERE lower(email) = lower(p_email)
-
+   SELECT id FROM usuarios
+   WHERE lower(email) = lower(p_email)
 
 3. Fallback por telefone
-SELECT id FROM usuarios
-WHERE telefone = p_telefone
-
+   SELECT id FROM usuarios
+   WHERE telefone = p_telefone
 
 4. Criar se não existir
 
@@ -122,261 +105,124 @@ com controle de concorrência
 INSERT INTO usuarios (...)
 EXCEPTION unique_violation → retry controlado
 
-
 5. Criar vínculo
-INSERT INTO usuario_auth_identities
-ON CONFLICT DO UPDATE
-
+   INSERT INTO usuario_auth_identities
+   ON CONFLICT DO UPDATE
 
 ⚠️ REGRAS
+🧠 ARQUITETURA COMPLETA — Fluxo: Autenticação → Contrato → Pagamento → PDF (NR‑1 SaaS)
 
-Nunca usar auth_user_id como usuarios.id
-Nunca usar email OR telefone na mesma query
-Sempre tratar concorrência
+🎯 Objetivo
+Implementar um fluxo idempotente, seguro e resiliente de onboarding e billing para empresas (PJ).
 
+Inclui:
 
-🏢 ETAPA 3 — CLIENTE
-INSERT INTO clientes
-ON CONFLICT (documento) DO UPDATE
-RETURNING cliente_id
+- Autenticação OTP (SMS ou e‑mail)
+- Resolução determinística de usuário
+- Criação/atualização de cliente (CNPJ)
+- Geração e aceite de contrato
+- Execução de pagamento via gateway
+- Ativação do contrato
+- Geração assíncrona de PDF
 
+Stack: Supabase (Auth + Postgres) + Next.js + Edge Functions
 
-📄 ETAPA 4 — CONTRATO
-INSERT INTO contratos
-status = 'rascunho'
-RETURNING contrato_id
+🏗️ Modelagem de dados (resumo)
 
+- `auth.users`: identidade primária (OTP) — gerenciada pelo Supabase
+- `usuarios`: entidade do sistema (independente de `auth.users`)
+  - `email` UNIQUE
+  - `telefone` UNIQUE
+- `usuario_auth_identities`: vínculo entre `auth_user_id` → `usuario_id` (PK: `auth_user_id`)
+- `clientes`: representa empresa (CNPJ). Upsert por `documento`.
+- `contratos`: representa contratação. Sempre cria novos registros.
+  - Campos importantes: `status` (rascunho|ativo|suspenso|encerrado), `pdf_status` (default: 'pending'), `pdf_error`, `pdf_attempts` (default 0), `pdf_generated_at` (timestamptz)
+- `contrato_eventos`: audit trail (ex.: `contrato_ativado`, `pdf_pending`, `pdf_generated`, `pdf_failed`)
+- `webhook_logs`: controle de idempotência dos webhooks
 
-🔁 ETAPA 5 — REDIRECIONAMENTO
-Frontend:
-/ativacao?cliente_id=...&contrato_id=...
+🔐 Etapas (resumo operacional)
 
-⚠️ NÃO confiável → backend valida sempre
+1. Autenticação (OTP)
+   - Cliente: `supabase.auth.signInWithOtp()` / `verifyOtp()` → `auth_user_id`
 
-✅ ETAPA 6 — VALIDAÇÃO DE ACESSO
-Servidor garante:
-contrato.cliente_id === usuario.cliente_id
+2. Resolução do usuário (idempotente)
+   - Origens, em ordem:
+     1. `usuario_auth_identities` by `auth_user_id`
+     2. `usuarios` lookup por `email` (case‑insensitive)
+     3. `usuarios` lookup por `telefone`
+     4. Criar `usuarios` se não existir (tratar concorrência / unique_violation com retry controlado)
+   - Garantir insert/upsert em `usuario_auth_identities` com `ON CONFLICT` para vínculo
+   - Regras: nunca usar `auth_user_id` como `usuarios.id`; não combinar email e telefone em mesma query; sempre tratar concorrência
 
-Verifica:
+3. Cliente
+   - `INSERT INTO clientes ... ON CONFLICT(documento) DO UPDATE RETURNING cliente_id`
 
-cliente ativo
-contrato válido
+4. Contrato
+   - Criar contrato em `status = 'rascunho'` e retornar `contrato_id`
 
+5. Redirecionamento
+   - Frontend pode navegar para `/ativacao?cliente_id=...&contrato_id=...` (não confiar — backend valida sempre)
 
-🧾 ETAPA 7 — WIZARD
-STEP 1
+6. Validação de acesso
+   - Server: garantir `contrato.cliente_id === usuario.cliente_id` e cliente/contrato ativos válidos
 
-revisão contrato
-aceite obrigatório
+7. Wizard (aceite)
+   - Step 1: revisão do contrato e aceite formal
+   - Step 2: dados pessoais (nome, CPF) — origem do servidor, não da URL
+   - Step 3: pagamento
 
-STEP 2
+8. Aceite formal
+   - Endpoint: `POST /api/contrato/aceite`
+   - Registra: nome, documento, versão dos termos, timestamp, IP
 
-dados (nome, CPF)
-origem servidor (não URL)
+9. Pagamento
+   - Gateway ex.: Pagar.me
+   - Fluxo: Frontend → Gateway → Webhook (não gerar PDF aqui)
 
-STEP 3
+10. Webhook
 
-pagamento
+- Responsabilidades (server side): validar assinatura, idempotência via `webhook_logs`, validar valor, detectar upgrades, acionar `activateContratoFull`
+- NÃO gerar PDF no webhook
 
+11. Ativação do contrato
 
-✅ ETAPA 8 — ACEITE FORMAL
-POST /api/contrato/aceite
+- Função: `activateContratoFull`
+- Deve: marcar `status = 'ativo'`, ativar usuário, emitir evento `contrato_ativado`, emitir `pdf_pending` (ou setar `pdf_status = 'pending'`)
+- NÃO deve gerar PDF nem bloquear conclusão do pagamento
 
-Registra:
+12. Geração de PDF (assíncrona)
 
-nome
-documento
-versão termos
-timestamp
-IP
+- Worker (Edge Function + Cron, ex.: `*/1 * * * *`) varre contratos com `pdf_status IN ('pending','error') AND pdf_attempts < 3`
+- Worker chama API central de PDF
 
+13. API central de PDF (`POST /api/contratos/pdf`)
 
-💳 ETAPA 9 — PAGAMENTO
-Gateway (ex: Pagar.me)
-Fluxo:
-Frontend → Gateway → Webhook
+- Responsável por: marcar `processing`, gerar PDF (Node), salvar no storage, atualizar `contratos` (`pdf_status`, `pdf_generated_at`), registrar evento, tratar erros e retries
 
+Princípios
 
-⚙️ ETAPA 10 — WEBHOOK
-Responsabilidades:
-✅ validar assinatura
-✅ validar idempotência (webhook_logs)
-✅ validar valor
-✅ detectar upgrade
-✅ ativar contrato
+- Identity first: `auth_user_id` → `usuario_auth_identities`
+- Idempotência: `webhook_logs`, `contrato_eventos`
+- Segurança: nunca confiar em query params para autorização; validar ownership no backend
+- Resiliência: processamento assíncrono do PDF, retries controlados
 
-❗ IMPORTANTE
-❌ NÃO gera PDF
+Antipadrões proibidos
 
+- Gerar PDF no webhook ou dentro de `activateContratoFull`
+- Compartilhar código Node incompatível entre Edge e Node runtimes
+- Confiar em query params para segurança
+- Ignorar constraints do banco ou concorrência
 
-⚙️ ETAPA 11 — ATIVAÇÃO DE CONTRATO
-Função:
-activateContratoFull
+Resultado esperado
 
+- Sistema resiliente, escalável, auditável, desacoplado e tolerante a falhas
 
-Faz:
-status = ativo ✅
-ativa usuário ✅
-evento contrato_ativado ✅
-evento pdf_pending ✅
-pdf_status = pending ✅
+Diagrama simplificado
+Auth (OTP) → usuario_auth_identities → usuarios → clientes → contratos (rascunho) → Wizard + aceite → Pagamento → Webhook → activateContratoFull → status=ativo + pdf_pending → Edge Worker (cron) → API /contratos/pdf → PDF gerado
 
+Instrução final (para auditar/automatizar)
 
-NÃO faz:
-❌ gerar PDF
-
-
-📄 ETAPA 12 — GERAÇÃO DE PDF (ASSÍNCRONA)
-🔁 WORKER (Edge Function + Cron)
-Cron:
-*/1 * * * *
-
-Execução:
-buscar contratos onde:
-  pdf_status IN ('pending', 'error')
-  pdf_attempts < 3
-
-para cada contrato:
-  → chamar API PDF
-
-
-🌐 ETAPA 13 — API CENTRAL DE PDF
-Endpoint:
-POST /api/contratos/pdf
-
-Responsável por:
-1. marcar processing ✅
-2. gerar PDF (Node runtime) ✅
-3. salvar no storage ✅
-4. atualizar contrato ✅
-5. registrar evento ✅
-6. tratar erro e retry ✅
-
-
-🔄 FLUXO FINAL COMPLETO
-Usuário paga
-        │
-        ▼
-Webhook
-        │
-        ▼
-activateContratoFull
-        │
-        ├── status = ativo ✅
-        ├── pdf_status = pending ✅
-        └── evento pdf_pending ✅
-        │
-        ▼
-⏱️ Cron Worker (Edge)
-        │
-        ▼
-/api/contratos/pdf
-        │
-        ▼
-Next API (Node)
-        │
-        ├── gerar PDF ✅
-        ├── salvar ✅
-        ├── atualizar status ✅
-        ▼
-PDF pronto ✅
-
-
-🔒 PRINCÍPIOS
-✅ IDENTITY FIRST
-auth_user_id → usuario_auth_identities
-
-✅ IDEMPOTÊNCIA
-
-webhook_logs
-contrato_eventos
-
-
-✅ CONSISTÊNCIA
-
-contrato ≠ pedido
-eventos auditáveis
-
-
-✅ SEGURANÇA
-
-nunca confiar em URL
-validar ownership no backend
-
-
-✅ RESILIÊNCIA
-PDF não bloqueia contrato ✅
-
-
-✅ PROCESSAMENTO ASSÍNCRONO
-pdf_status + worker + retry ✅
-
-
-🚨 ANTÍ-PADRÕES (PROIBIDOS)
-❌ gerar PDF no webhook
-❌ gerar PDF dentro do activateContratoFull
-❌ compartilhar código Node com Edge
-❌ confiar em query params
-❌ ignorar constraints do banco
-❌ não tratar concorrência
-
-✅ RESULTADO
-Sistema:
-✔ resiliente  
-✔ escalável  
-✔ auditável  
-✔ desacoplado  
-✔ preparado para falhas  
-✔ sem duplicação  
-✔ compatível com retry  
-
-
-📊 DIAGRAMA FINAL
-Auth (OTP)
-   ↓
-usuario_auth_identities
-   ↓
-usuarios
-   ↓
-clientes
-   ↓
-contratos (rascunho)
-   ↓
-Wizard + aceite
-   ↓
-Pagamento
-   ↓
-Webhook
-   ↓
-activateContratoFull
-   ↓
-status = ativo + pdf_pending
-   ↓
-Edge Worker (cron)
-   ↓
-API /contratos/pdf
-   ↓
-PDF gerado
-   ↓
-pdf_status = done ✅
-
-
-🧠 INSTRUÇÃO FINAL (PARA IA)
-Sempre tratar:
-
-auth_user_id como raiz
-usuario_auth_identities como fonte oficial
-PDF como processo assíncrono
-
-Garantir:
-
-idempotência
-segurança
-consistência
-tolerância a concorrência
-
-Nunca:
-
-acoplar PDF ao pagamento
-confiar na URL
-duplicar identidade
+- Tratar `auth_user_id` como raiz de identidade
+- `usuario_auth_identities` é a fonte oficial de vínculo
+- PDF é sempre processo assíncrono, com `pdf_status`, `pdf_attempts` e eventos
+- Garantir idempotência, segurança, consistência e tolerância a concorrência

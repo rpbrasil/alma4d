@@ -292,8 +292,8 @@ export async function markPixPending(params: PaymentHandlerParams) {
 export async function activateContratoFull(params: ActivateParams) {
   const { supabase, contratoId, pagarmeOrderId, pagarmePaymentStatus } = params;
 
-  // ✅ 1. Atualiza contrato e captura dados necessários
-  const { data: contrato, error: contratoErr } = await supabase
+  // ✅ 1. Tenta atualizar o contrato de forma condicional (somente se não estiver ativo)
+  const { data: updatedContrato, error: updateErr } = await supabase
     .from("contratos")
     .update({
       status: "ativo",
@@ -302,18 +302,55 @@ export async function activateContratoFull(params: ActivateParams) {
       atualizado_em: nowISO(),
     })
     .eq("id", contratoId)
-    .select("id, criado_por, status")
-    .single();
+    .neq("status", "ativo")
+    .select("id, criado_por, status, cliente_id")
+    .maybeSingle();
 
-  if (contratoErr || !contrato) {
+  if (updateErr) {
+    console.error("[activateContratoFull] update error:", updateErr);
     throw new Error("Erro ao ativar contrato.");
+  }
+
+  const contrato = updatedContrato as ContratoRow | null;
+
+  // Se nenhuma linha foi atualizada, pode estar já ativo — buscar estado atual
+  if (!contrato) {
+    const existing = await getContrato(supabase, contratoId);
+    if (existing?.status === "ativo") {
+      return {
+        activated: true,
+        alreadyActive: true,
+        status: pagarmePaymentStatus,
+      };
+    }
+    // não foi possível ativar por outro motivo
+    throw new Error("Erro ao ativar contrato (não atualizado)");
   }
 
   // ✅ 2. Idempotência (protege contra webhook duplicado)
   const alreadyActive = contrato.status === "ativo";
 
   // ✅ 3. Define usuário alvo (melhorável futuramente com campo dedicado)
-  const targetUserId = params.userId ?? contrato.criado_por;
+  // ✅ 3. Define usuário alvo e valida ownership quando `userId` vier do gateway
+  let targetUserId = params.userId ?? contrato.criado_por;
+
+  if (params.userId && params.userId !== contrato.criado_por) {
+    // valida que o userId pertence ao mesmo cliente do contrato
+    const { data: userRow } = await supabase
+      .from("usuarios")
+      .select("id")
+      .eq("id", params.userId)
+      .eq("cliente_id", contrato.cliente_id)
+      .maybeSingle();
+
+    if (!userRow) {
+      console.warn(
+        "[activateContratoFull] userId fornecido no webhook não pertence ao contrato, ignorando:",
+        params.userId,
+      );
+      targetUserId = contrato.criado_por;
+    }
+  }
 
   if (targetUserId) {
     const { error: userUpdateErr } = await supabase
@@ -325,6 +362,10 @@ export async function activateContratoFull(params: ActivateParams) {
       .eq("id", targetUserId);
 
     if (userUpdateErr) {
+      console.error(
+        "[activateContratoFull] erro ao ativar usuário:",
+        userUpdateErr,
+      );
       throw new Error("Erro ao ativar usuário responsável.");
     }
   }

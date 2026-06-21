@@ -19,6 +19,22 @@ type PdfResult = {
 export async function POST(req: Request) {
   const supabase = supabaseAdmin();
 
+  // Segurança: exigir header secreto do worker
+  const incomingSecret =
+    req.headers.get("x-pdf-worker-secret") ||
+    (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "") ||
+    null;
+
+  const expectedSecret = process.env.PDF_WORKER_SECRET ?? null;
+  if (!expectedSecret) {
+    console.error("[PDF API] PDF_WORKER_SECRET não configurado");
+    return NextResponse.json({ error: "Server misconfiguration" }, { status: 500 });
+  }
+
+  if (incomingSecret !== expectedSecret) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   let contratoId: string | null = null;
 
   try {

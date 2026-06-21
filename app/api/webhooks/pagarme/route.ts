@@ -39,16 +39,45 @@ function buildEventHash(g: ReturnType<typeof extractGatewayData>) {
 
 export async function POST(req: Request) {
   const raw = Buffer.from(await req.arrayBuffer());
+  // ✅ require secret config
+  const expectedSecret = process.env.PAGARME_WEBHOOK_SECRET;
+  const expectedUser = process.env.PAGARME_WEBHOOK_USER || "pagarme-webhook";
 
-  // ✅ assinatura
-  if (process.env.PAGARME_WEBHOOK_SECRET) {
-    const sig = verifySignature({ rawBody: raw, headers: req.headers });
-    if (!sig.ok) {
-      return NextResponse.json(
-        { error: "Assinatura inválida" },
-        { status: 401 },
-      );
+  if (!expectedSecret) {
+    console.error("[webhook:pagarme] PAGARME_WEBHOOK_SECRET não configurado");
+    return NextResponse.json(
+      { error: "Server misconfiguration" },
+      { status: 500 },
+    );
+  }
+
+  // Basic Auth fallback: if provider only supports basic auth in dashboard
+  let basicOk = false;
+  try {
+    const auth = req.headers.get("authorization");
+    if (auth && auth.startsWith("Basic ")) {
+      const decoded = Buffer.from(auth.slice(6), "base64").toString("utf8");
+      const idx = decoded.indexOf(":");
+      if (idx >= 0) {
+        const user = decoded.slice(0, idx);
+        const pass = decoded.slice(idx + 1);
+        if (user === expectedUser && pass === expectedSecret) {
+          basicOk = true;
+        }
+      }
     }
+  } catch {
+    // ignore parse errors and fallthrough to signature check
+  }
+
+  // HMAC signature validation (preferred). Accept if either HMAC OK or Basic Auth OK.
+  const sig = verifySignature({ rawBody: raw, headers: req.headers });
+  if (!sig.ok && !basicOk) {
+    console.error(
+      "[webhook:pagarme] assinatura inválida e Basic Auth falhou:",
+      sig.reason,
+    );
+    return NextResponse.json({ error: "Assinatura inválida" }, { status: 401 });
   }
 
   let evt: PagarmeWebhook;
@@ -439,7 +468,7 @@ export async function POST(req: Request) {
               });
             }
           }
-          
+
           await supabase.from("cupons_uso").insert({
             cupom_id: cupom.id,
             cliente_id: contratoCupom.cliente_id,

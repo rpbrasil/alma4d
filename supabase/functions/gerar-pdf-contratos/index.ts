@@ -38,11 +38,17 @@ Deno.serve(async () => {
           .update({ pdf_status: "processing" })
           .eq("id", contratoId);
 
-        // ✅ 4. chamar API
+        // ✅ 4. chamar API (autenticado com secret do worker)
+        const pdfSecret = Deno.env.get("PDF_WORKER_SECRET");
+        if (!pdfSecret) {
+          throw new Error("PDF_WORKER_SECRET ausente");
+        }
+
         const res = await fetch("https://alma4d.com.br/api/contrato/pdf", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            "x-pdf-worker-secret": pdfSecret,
           },
           body: JSON.stringify({ contratoId }),
         });

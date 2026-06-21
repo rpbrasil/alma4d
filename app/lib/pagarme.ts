@@ -62,8 +62,8 @@ export function verifySignature(params: {
   const secret = process.env.PAGARME_WEBHOOK_SECRET;
   const isProd = process.env.NODE_ENV === "production";
   const sigHeader = getSignatureHeader(params.headers);
-
-  if (!secret) return { ok: true };
+  if (!secret)
+    return { ok: false, reason: "PAGARME_WEBHOOK_SECRET not configured" };
   if (!sigHeader)
     return isProd ? { ok: false, reason: "Header ausente" } : { ok: true };
 

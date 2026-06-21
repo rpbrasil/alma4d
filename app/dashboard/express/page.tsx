@@ -599,7 +599,7 @@ export default function DashboardExpress() {
       }
 
       setMsg(`Usuário ${nomeNorm.split(" ")[0]} cadastrado ✅`);
-      setlicencasConsumidas((prev) => prev + 1);
+
       await refreshEntitlements();
 
       setNome("");
@@ -621,9 +621,9 @@ export default function DashboardExpress() {
     const { validos, erros } = parsed;
 
     if (!validos.length) {
-  setBulkError("Nenhuma linha válida encontrada.");
-  return;
-}
+      setBulkError("Nenhuma linha válida encontrada.");
+      return;
+    }
 
     // ✅ CHECK BACKEND BULK
     const token = await getAccessToken();
@@ -721,7 +721,11 @@ export default function DashboardExpress() {
             ? normalizeDeptName(r.departamento_nome)
             : deptPadrao || null,
       }));
-
+      // ✅ BLOQUEIO CRÍTICO
+      if (!regsWithDept.length) {
+        setMsg("Nenhum registro válido para importar.");
+        return;
+      }
       const r = await fetch(enqueueUrl, {
         method: "POST",
         headers: {
@@ -732,7 +736,9 @@ export default function DashboardExpress() {
       });
 
       const j = await r.json().catch(() => ({}));
-
+      if (!r.ok || !j?.job_id) {
+        throw new Error(j.error || "Falha ao criar importação.");
+      }
       if (!r.ok) {
         throw new Error(j.error || "Falha ao enfileirar importação.");
       }
@@ -1147,7 +1153,12 @@ export default function DashboardExpress() {
 
               <button
                 onClick={onEnqueueBulk}
-                disabled={!previewGenerated || !parsed.validos.length || busy}
+                disabled={
+                  !previewGenerated ||
+                  !bulkFiltrados.length ||
+                  busy ||
+                  isLimitReached
+                }
                 className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
               >
                 {busy ? "Importando..." : "Importar"}
