@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { requireInternalSecret } from "@/lib/internal_secret";
 
 /** Tipos mínimos (somente o que usamos neste endpoint) */
 type Json = string | number | boolean | null | { [key: string]: Json } | Json[];
@@ -136,6 +137,9 @@ export async function POST(
   if (!ref) {
     return NextResponse.json({ error: "ref obrigatório" }, { status: 400 });
   }
+
+  const deny = requireInternalSecret(req);
+  if (deny) return deny;
 
   const supabase = createClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -329,7 +333,7 @@ export async function POST(
       .from("nfse_emissoes")
       .update({ email_enviado: true })
       .eq("ref", ref);
-    
+
     return NextResponse.json({ ok: true, emails }, { status: 200 });
   } catch (e: unknown) {
     await logEvent(supabase, {

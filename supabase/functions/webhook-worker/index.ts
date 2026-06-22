@@ -160,7 +160,10 @@ async function processPaid(
     if (BASE_URL) {
       const nfseRes = await fetch(`${BASE_URL}/api/nfse/emitir`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-internal-secret": Deno.env.get("INTERNAL_API_SECRET") ?? "",
+        },
         body: JSON.stringify({
           contrato_id: contratoId,
           ref: `nfse_ativacao_${orderId ?? nowISO()}`,
@@ -373,7 +376,10 @@ async function processJob(job: WebhookJob) {
             const refUpgrade = `nfse_upgrade_${upgrade.id}`;
             const nfseRes = await fetch(`${BASE_URL}/api/nfse/emitir`, {
               method: "POST",
-              headers: { "Content-Type": "application/json" },
+              headers: {
+                "Content-Type": "application/json",
+                "x-internal-secret": Deno.env.get("INTERNAL_API_SECRET") ?? "",
+              },
               body: JSON.stringify({
                 contrato_id: upgrade.contrato_id,
                 ref: refUpgrade,

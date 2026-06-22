@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { requireInternalSecret } from "@/lib/internal_secret";
 
 type CnpjSnapshot = {
   municipio: string | null;
@@ -23,6 +24,8 @@ function basicAuthHeader(token: string) {
 
 export async function POST(req: Request) {
   try {
+    const deny = requireInternalSecret(req);
+    if (deny) return deny;
     const { contrato_id } = await req.json();
 
     if (!contrato_id) {
