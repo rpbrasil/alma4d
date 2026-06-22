@@ -65,10 +65,22 @@ export default function UploadRollbacksBanner() {
   if (rollbacks.length === 0) return null;
 
   return (
-    <div className="upload-rollbacks-banner" style={{ background: "#fff4e5", padding: 12, borderRadius: 8, marginBottom: 12 }}>
-      <div style={{ fontWeight: 600 }}>Atenção — detecção automática de rollbacks</div>
+    <div
+      className="upload-rollbacks-banner"
+      style={{
+        background: "#fff4e5",
+        padding: 12,
+        borderRadius: 8,
+        marginBottom: 12,
+      }}
+    >
+      <div style={{ fontWeight: 600 }}>
+        Atenção — detecção automática de rollbacks
+      </div>
       <div style={{ marginTop: 6 }}>
-        Foram detectados {rollbacks.length} rollbacks recentes ao criar usuários. Isso normalmente indica uma falha ao persistir dados após criação no Auth.
+        Foram detectados {rollbacks.length} rollbacks recentes ao criar
+        usuários. Isso normalmente indica uma falha ao persistir dados após
+        criação no Auth.
       </div>
       <div style={{ marginTop: 8 }}>
         <a href="/dashboard/cliente/rollbacks">Ver detalhes</a>

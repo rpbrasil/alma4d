@@ -220,8 +220,8 @@ export async function criarUsuarioAdmin(formData: FormData) {
         error_text: e instanceof Error ? e.message : String(e),
         metadata: {
           mode,
-          email: hasEmail ? email : null,
-          telefone: hasPhone ? telefone : null,
+          has_email: hasEmail,
+          has_phone: hasPhone,
           delete_ok: deleteOk,
           delete_error: deleteError ? String(deleteError) : null,
         },
