@@ -6,6 +6,7 @@ import { trackConsent } from "@/lib/trackConsent";
 import { useAccessGuard } from "@/hooks/useAccessGuard";
 import { setStorageItem } from "@/lib/storage";
 import { UpgradeLicencasModal } from "@/(nr1)/nr1/_components/UpgradeLicensasModal";
+import UploadRollbacksBanner from "@/components/UploadRollbacksBanner";
 
 type JobStatus = {
   id: string;
@@ -952,6 +953,7 @@ export default function DashboardExpress() {
           </div>
         </div>
       </section>
+      <UploadRollbacksBanner />
       {licencasContratadas !== null && (
         <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-5">
           <div className="flex items-start justify-between gap-4">

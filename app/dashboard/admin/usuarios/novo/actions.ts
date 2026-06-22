@@ -83,7 +83,7 @@ async function assertAdmin() {
 }
 
 export async function criarUsuarioAdmin(formData: FormData) {
-  await assertAdmin();
+  const callerId = await assertAdmin();
 
   const admin = createAdminClient();
 
@@ -154,38 +154,91 @@ export async function criarUsuarioAdmin(formData: FormData) {
 
   if (!authUserId)
     throw new Error("Não foi possível obter o ID do usuário criado no Auth.");
+  if (!authUserId)
+    throw new Error("Não foi possível obter o ID do usuário criado no Auth.");
 
-  // 2) Upsert em public.usuarios
-  const { error: upsertErr } = await admin.from("usuarios").upsert(
-    {
-      id: authUserId,
-      cliente_id,
-      role,
-      nome_completo,
-      email: hasEmail ? email : null,
-      telefone: hasPhone ? telefone : null,
-      documento: documento || null,
-      sexo: sexo === "M" || sexo === "F" ? sexo : null,
-      data_nascimento: data_nascimento || null,
-      ativo,
-    },
-    { onConflict: "id" },
-  );
+  // 2) Upsert em public.usuarios e usuario_organizacao
+  // Se qualquer upsert falhar, removemos o usuário criado no Auth para evitar órfãos.
+  try {
+    const { error: upsertErr } = await admin.from("usuarios").upsert(
+      {
+        id: authUserId,
+        cliente_id,
+        role,
+        nome_completo,
+        email: hasEmail ? email : null,
+        telefone: hasPhone ? telefone : null,
+        documento: documento || null,
+        sexo: sexo === "M" || sexo === "F" ? sexo : null,
+        data_nascimento: data_nascimento || null,
+        ativo,
+      },
+      { onConflict: "id" },
+    );
 
-  if (upsertErr) throw new Error(friendlyDbError(upsertErr));
+    if (upsertErr) throw upsertErr;
 
-  // 3) Upsert em usuario_organizacao
-  const { error: orgErr } = await admin.from("usuario_organizacao").upsert(
-    {
-      usuario_id: authUserId,
-      cliente_id,
-      gestor_id,
-      ativo,
-    },
-    { onConflict: "usuario_id" },
-  );
+    // 3) Upsert em usuario_organizacao
+    const { error: orgErr } = await admin.from("usuario_organizacao").upsert(
+      {
+        usuario_id: authUserId,
+        cliente_id,
+        gestor_id,
+        ativo,
+      },
+      { onConflict: "usuario_id" },
+    );
 
-  if (orgErr) throw new Error(friendlyDbError(orgErr));
+    if (orgErr) throw orgErr;
 
-  return { id: authUserId };
+    return { id: authUserId };
+  } catch (e: unknown) {
+    // tenta remover o usuário do Auth criado anteriormente para evitar inconsistências
+    let deleteOk = false;
+    let deleteError: unknown = null;
+    try {
+      await admin.auth.admin.deleteUser(authUserId);
+      deleteOk = true;
+      console.warn(
+        `Rollback: usuário Auth ${authUserId} deletado após falha de persistência.`,
+      );
+    } catch (delErr) {
+      deleteError = delErr;
+      console.error(
+        `Rollback falhou ao deletar usuário Auth ${authUserId}:`,
+        delErr,
+      );
+    }
+
+    // registra evento de rollback na tabela pública.user_creation_rollbacks
+    try {
+      const payload = {
+        auth_user_id: authUserId,
+        caller_id: callerId,
+        cliente_id,
+        reason: "upsert_failed",
+        error_text: e instanceof Error ? e.message : String(e),
+        metadata: {
+          mode,
+          email: hasEmail ? email : null,
+          telefone: hasPhone ? telefone : null,
+          delete_ok: deleteOk,
+          delete_error: deleteError ? String(deleteError) : null,
+        },
+      } as unknown;
+
+      const { error: logErr } = await admin
+        .from("user_creation_rollbacks")
+        .insert(payload as Record<string, unknown>);
+
+      if (logErr) {
+        console.error("Falha ao gravar evento de rollback:", logErr);
+      }
+    } catch (logEx) {
+      console.error("Erro inesperado ao registrar rollback:", logEx);
+    }
+
+    const friendly = e instanceof Error ? e.message : "Erro ao salvar usuário";
+    throw new Error(friendlyDbError(e) || friendly);
+  }
 }
