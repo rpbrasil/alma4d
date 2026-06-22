@@ -11,57 +11,71 @@ export default async function FinanceiroPage() {
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
   );
 
-  const { data: financeiro } = await supabase
-    .from("v_financeiro_base")
-    .select("*");
+  type KPIItem = {
+    dia: string;
+    receita_paga?: number | null;
+    receita_prevista?: number | null;
+    receita_perdida?: number | null;
+    pagamentos_count?: number | null;
+  };
+
+  type Cliente = {
+    cliente_id?: string | null;
+    receita_paga?: number | null;
+  };
+  type Funil = {
+    pagos?: number | null;
+    aguardando_pagamento?: number | null;
+    falhos?: number | null;
+  };
+
+  // Parallel queries: use materialized view for KPIs to avoid loading v_financeiro_base entirely
+  const [kpiResp, funilResp, topClientesResp, clientesCountResp] =
+    await Promise.all([
+      supabase
+        .from("v_kpi_financeiro_diario")
+        .select("*")
+        .order("dia", { ascending: true }),
+      supabase.from("v_funil_pagamento").select("*").single(),
+      supabase
+        .from("v_kpi_cliente")
+        .select("*")
+        .order("receita_paga", { ascending: false })
+        .limit(5),
+      // get count of clients with receita_paga > 0
+      supabase
+        .from("v_kpi_cliente")
+        .select("*", { count: "exact", head: true })
+        .gt("receita_paga", 0),
+    ]);
+
+  const data = kpiResp.data ?? [];
+  const { data: funil } = funilResp;
+  const clientes = topClientesResp.data ?? [];
+  const clientesAtivos = clientesCountResp.count ?? 0;
 
   //calculo das receitas paga, prevista e perdida
+  // derive KPIs from materialized view
   const receitaPaga =
-    financeiro
-      ?.filter((f) => f.payment_status === "paid")
-      .reduce((acc, f) => acc + (f.valor_cents ?? 0), 0) ?? 0;
-
+    data?.reduce((acc, d) => acc + (d.receita_paga ?? 0), 0) ?? 0;
   const receitaPrevista =
-    financeiro
-      ?.filter((f) => f.payment_status === "pending")
-      .reduce((acc, f) => acc + (f.valor_cents ?? 0), 0) ?? 0;
-
+    data?.reduce((acc, d) => acc + (d.receita_prevista ?? 0), 0) ?? 0;
   const receitaPerdida =
-    financeiro
-      ?.filter((f) => f.payment_status === "failed")
-      .reduce((acc, f) => acc + (f.valor_cents ?? 0), 0) ?? 0;
+    data?.reduce((acc, d) => acc + (d.receita_perdida ?? 0), 0) ?? 0;
 
   const baseConversao = receitaPaga + receitaPrevista;
   const taxaConversao =
     baseConversao > 0 ? (receitaPaga / baseConversao) * 100 : 0;
 
-  const mrr =
-    financeiro
-      ?.filter((f) => f.payment_status === "paid")
-      .reduce((acc, f) => acc + (f.valor_cents ?? 0), 0) ?? 0;
+  const mrr = receitaPaga;
 
-  const pagamentosTotal =
-    financeiro?.filter((f) => f.payment_status === "paid") ?? [];
-
+  const pagamentosCountTotal =
+    data?.reduce((acc, d) => acc + (d.pagamentos_count ?? 0), 0) ?? 0;
   const ticketMedio =
-    pagamentosTotal.length > 0
-      ? pagamentosTotal.reduce((acc, f) => acc + (f.valor_cents ?? 0), 0) /
-        pagamentosTotal.length
-      : 0;
-
-  const clientesAtivos = new Set(
-    financeiro
-      ?.filter((f) => f.payment_status === "paid")
-      .map((f) => f.cliente_id),
-  ).size;
-
-  const { data } = await supabase
-    .from("v_kpi_financeiro_diario")
-    .select("*")
-    .order("dia", { ascending: true });
+    pagamentosCountTotal > 0 ? receitaPaga / pagamentosCountTotal : 0;
 
   const revenueData =
-    data?.map((d) => {
+    data?.map((d: KPIItem) => {
       const date = new Date(d.dia);
 
       const month = date.toLocaleDateString("pt-BR", {
@@ -71,7 +85,7 @@ export default async function FinanceiroPage() {
       const day = date.getDate();
 
       return {
-        month: `${day}${month}`, // ✅ 2 mai
+        month: `${day}${month}`,
         revenue: (d.receita_paga ?? 0) / 100,
       };
     }) ?? [];
@@ -80,27 +94,17 @@ export default async function FinanceiroPage() {
   const totalReceita =
     data?.reduce((acc, d) => acc + (d.receita_paga ?? 0), 0) ?? 0;
 
-  const { data: funil } = await supabase
-    .from("v_funil_pagamento")
-    .select("*")
-    .single();
-
-  const paymentStatus = funil
+  const paymentStatus = (funil as Funil)
     ? [
-        { name: "Pago", value: funil.pagos ?? 0 },
-        { name: "Pendente", value: funil.aguardando_pagamento ?? 0 },
-        { name: "Falho", value: funil.falhos ?? 0 },
+        { name: "Pago", value: (funil as Funil).pagos ?? 0 },
+        { name: "Pendente", value: (funil as Funil).aguardando_pagamento ?? 0 },
+        { name: "Falho", value: (funil as Funil).falhos ?? 0 },
       ]
     : [];
 
-  const { data: clientes } = await supabase
-    .from("v_kpi_cliente")
-    .select("*")
-    .order("receita_paga", { ascending: false })
-    .limit(5);
-
+  // `clientes` already fetched above as topClientesResp
   const clienteIds = [
-    ...new Set(clientes?.map((c) => c.cliente_id).filter(Boolean)),
+    ...new Set(clientes?.map((c: Cliente) => c.cliente_id).filter(Boolean)),
   ];
 
   const { data: clientesNome } = await supabase
@@ -151,7 +155,7 @@ export default async function FinanceiroPage() {
   const { data: repasses } = await supabase
     .from("parceiros_repasses")
     .select("valor, status");
-  
+
   const comissaoPendente =
     repasses
       ?.filter((r) => r.status === "pendente")
@@ -163,7 +167,7 @@ export default async function FinanceiroPage() {
       .reduce((acc, r) => acc + (r.valor ?? 0), 0) ?? 0;
 
   const comissaoTotal = comissaoPendente + comissaoPago;
-  
+
   return (
     <div className="p-6 space-y-6 bg-surface-muted min-h-screen">
       {/* ✅ ALERTAS OPERACIONAIS (CLIENT COMPONENT) */}
