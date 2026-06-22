@@ -9,7 +9,8 @@
     "worker:webhooks": "node scripts/run-worker.js",
     "build": "next build",
     "start": "node server.js",
-    "lint": "next lint"
+    "lint": "next lint",
+    "postinstall": "npx playwright install --with-deps chromium || npx playwright install chromium"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
