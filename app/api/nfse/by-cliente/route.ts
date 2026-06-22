@@ -73,6 +73,45 @@ export async function GET() {
       .eq("cliente_id", clienteId)
       .order("created_at", { ascending: false });
 
+    // If NFSE_STORAGE_BUCKET is configured, generate signed URLs for stored paths
+    const NFSE_BUCKET = process.env.NFSE_STORAGE_BUCKET ?? null;
+    if (NFSE_BUCKET && Array.isArray(data)) {
+      type NFSeRowLike = Record<string, unknown>;
+      const signed = await Promise.all(
+        data.map(async (row: NFSeRowLike) => {
+          const copy = { ...row } as NFSeRowLike;
+          try {
+            if (
+              copy.caminho_xml_nota_fiscal &&
+              typeof copy.caminho_xml_nota_fiscal === "string" &&
+              !copy.caminho_xml_nota_fiscal.startsWith("http")
+            ) {
+              const { data: urlResp } = await admin.storage
+                .from(NFSE_BUCKET)
+                .createSignedUrl(copy.caminho_xml_nota_fiscal, 60 * 60);
+              copy.caminho_xml_nota_fiscal = urlResp?.signedUrl ?? copy.caminho_xml_nota_fiscal;
+            }
+
+            if (
+              copy.url_danfse &&
+              typeof copy.url_danfse === "string" &&
+              !copy.url_danfse.startsWith("http")
+            ) {
+              const { data: urlResp } = await admin.storage
+                .from(NFSE_BUCKET)
+                .createSignedUrl(copy.url_danfse, 60 * 60);
+              copy.url_danfse = urlResp?.signedUrl ?? copy.url_danfse;
+            }
+          } catch (e) {
+            console.warn("Failed to create signed URL for nfse_emissoes", e);
+          }
+          return copy;
+        }),
+      );
+
+      return NextResponse.json(signed ?? []);
+    }
+
     return NextResponse.json(data ?? []);
   } catch (err) {
     console.error("/api/nfse/by-cliente error:", err);
