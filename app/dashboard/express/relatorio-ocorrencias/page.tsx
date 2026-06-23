@@ -316,6 +316,7 @@ export default function RelatorioOcorrenciasPage() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [clienteNome, setClienteNome] = useState<string | null>(null);
+  const [clienteLogo, setClienteLogo] = useState<string | null>(null);
   const categoryChartRef = useRef<HTMLDivElement | null>(null);
   const statusChartRef = useRef<HTMLDivElement | null>(null);
   const timelineChartRef = useRef<HTMLDivElement | null>(null);
@@ -369,11 +370,12 @@ export default function RelatorioOcorrenciasPage() {
           if (usuario?.cliente_id) {
             const { data: cliente } = await supabase
               .from("clientes")
-              .select("nome")
+              .select("nome, logo_url")
               .eq("id", usuario.cliente_id)
               .maybeSingle();
 
             setClienteNome(cliente?.nome ?? null);
+            setClienteLogo((cliente as any)?.logo_url ?? null);
           }
         }
       } finally {
@@ -857,7 +859,10 @@ export default function RelatorioOcorrenciasPage() {
             onClick={() => {
               try {
                 void import("@/lib/print").then((m) =>
-                  m.default(document.querySelector('[data-print-area="true"]')),
+                  m.default(
+                    document.querySelector('[data-print-area="true"]'),
+                    { logoUrl: clienteLogo },
+                  ),
                 );
               } catch (e) {
                 console.error(e);

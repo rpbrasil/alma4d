@@ -70,6 +70,7 @@ export default function CopsoqDashboardPage() {
   const supabase = useMemo(() => getSupabaseClient(), []);
   const [loading, setLoading] = useState(true);
   const [clienteNome, setClienteNome] = useState<string>("—");
+  const [clienteLogo, setClienteLogo] = useState<string | null>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [me, setMe] = useState<UsuarioAuth | null>(null);
   const [error, setError] = useState<string>("");
@@ -241,7 +242,7 @@ export default function CopsoqDashboardPage() {
 
       const { data, error } = await supabase
         .from("clientes")
-        .select("nome")
+        .select("nome, logo_url")
         .eq("id", effectiveClienteId)
         .single();
 
@@ -253,6 +254,7 @@ export default function CopsoqDashboardPage() {
       }
 
       setClienteNome(data?.nome ?? "Cliente");
+      setClienteLogo((data as any)?.logo_url ?? null);
     })();
 
     return () => {
@@ -451,7 +453,9 @@ export default function CopsoqDashboardPage() {
               type="button"
               onClick={() => {
                 try {
-                  void printElement(reportRef.current);
+                  void printElement(reportRef.current, {
+                    logoUrl: clienteLogo,
+                  });
                 } catch (e) {
                   console.error(e);
                   window.print();
@@ -514,6 +518,7 @@ export default function CopsoqDashboardPage() {
                   setPdfLoading(true);
                   await printElement(reportRef.current, {
                     title: `Relatório COPSOQ - ${clienteNome}`,
+                    logoUrl: clienteLogo,
                   });
                 } catch (err) {
                   console.error(err);

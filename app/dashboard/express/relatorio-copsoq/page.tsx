@@ -59,6 +59,7 @@ export default function DashboardExpressRelatorioCopsoqPage() {
   const { usuarioId, role: authRole, loading: authLoading } = useAuth();
   const supabase = useMemo(() => getSupabaseClient(), []);
   const [clienteNome, setClienteNome] = useState<string>("—");
+  const [clienteLogo, setClienteLogo] = useState<string | null>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [me, setMe] = useState<UsuarioAuth | null>(null);
   const [error, setError] = useState<string>("");
@@ -153,7 +154,7 @@ export default function DashboardExpressRelatorioCopsoqPage() {
 
       const { data, error } = await supabase
         .from("clientes")
-        .select("nome")
+        .select("nome, logo_url")
         .eq("id", effectiveClienteId)
         .single();
 
@@ -161,6 +162,7 @@ export default function DashboardExpressRelatorioCopsoqPage() {
         setClienteNome("Cliente");
       } else {
         setClienteNome(data?.nome ?? "Cliente");
+        setClienteLogo((data as any)?.logo_url ?? null);
       }
     })();
   }, [effectiveClienteId, supabase]);
@@ -369,7 +371,9 @@ export default function DashboardExpressRelatorioCopsoqPage() {
               type="button"
               onClick={() => {
                 try {
-                  void printElement(reportRef.current);
+                  void printElement(reportRef.current, {
+                    logoUrl: clienteLogo,
+                  });
                 } catch (e) {
                   console.error(e);
                   window.print();
