@@ -43,6 +43,9 @@ next-env.d.ts
 
 # App Service downloaded logs
 alma4dash-logs/
+LogFiles/
+alma4dash-logs.zip
+deployments/
 
 # Playwright / caches
 .cache/
