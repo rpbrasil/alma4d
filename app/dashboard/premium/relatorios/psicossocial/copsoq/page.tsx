@@ -6,6 +6,7 @@ import { getSupabaseClient } from "@/lib/supabase/client";
 import { ExportToolbar } from "@/components/dashboard/ExportToolbar";
 import { AlertCircle, Building2, Layers, ShieldAlert } from "lucide-react";
 import { CopsoqOfficialReport } from "@/dashboard/premium/relatorios/psicossocial/copsoq/CopsoqOfficialReport";
+import printElement from "@/lib/print";
 
 type Role = "admin" | "cliente" | "gestor" | "usuario";
 
@@ -448,7 +449,14 @@ export default function CopsoqDashboardPage() {
             {/* Print */}
             <button
               type="button"
-              onClick={() => window.print()}
+              onClick={() => {
+                try {
+                  void printElement(reportRef.current);
+                } catch (e) {
+                  console.error(e);
+                  window.print();
+                }
+              }}
               className="inline-flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 text-sm"
             >
               Imprimir
@@ -504,46 +512,9 @@ export default function CopsoqDashboardPage() {
                     return;
                   }
                   setPdfLoading(true);
-                  // HTML do relatório (fonte única da verdade)
-                  // Inclui o conteúdo do <head> atual para preservar estilos e fontes
-                  const html = `
-        <!DOCTYPE html>
-        <html lang="pt-BR">
-          <head>
-            <meta charset="utf-8" />
-            <meta name="viewport" content="width=device-width, initial-scale=1" />
-            ${document.head.innerHTML}
-          </head>
-          <body>
-            ${reportRef.current.outerHTML}
-          </body>
-        </html>
-      `;
-
-                  // Fallback client-side: abre nova janela e chama print()
-                  // (funciona em qualquer navegador e preserva o template visual)
-                  const win = window.open("", "_blank");
-                  if (win) {
-                    win.document.write(html);
-                    win.document.close();
-                    const doPrint = () => {
-                      try {
-                        win.focus();
-                        win.print();
-                      } catch (e) {
-                        console.error("Erro ao chamar print():", e);
-                        alert(
-                          "Erro ao imprimir. Tente salvar a página como PDF no seu navegador.",
-                        );
-                      }
-                    };
-                    if (win.onload) win.onload = doPrint;
-                    else setTimeout(doPrint, 700);
-                  } else {
-                    alert(
-                      "Não foi possível abrir uma nova janela. Verifique bloqueadores de pop-up.",
-                    );
-                  }
+                  await printElement(reportRef.current, {
+                    title: `Relatório COPSOQ - ${clienteNome}`,
+                  });
                 } catch (err) {
                   console.error(err);
                   alert("Erro ao gerar o PDF. Tente novamente.");
