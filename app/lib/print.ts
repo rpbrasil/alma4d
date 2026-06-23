@@ -17,9 +17,17 @@ export async function printElement(
   const printOverrides = `
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
+      /* Prefer a self-hosted Inter (place WOFF2 in /public/fonts/Inter-Variable.woff2) */
+      @font-face {
+        font-family: 'InterLocal';
+        src: url('/fonts/Inter-Variable.woff2') format('woff2');
+        font-weight: 100 900;
+        font-style: normal;
+        font-display: swap;
+      }
       @page { size: A4 portrait; margin: 12mm; }
       html,body { -webkit-print-color-adjust: exact; color-adjust: exact; }
-      body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; color: #0f172a; font-size: 12px; line-height: 1.45; }
+      body { font-family: InterLocal, Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; color: #0f172a; font-size: 12px; line-height: 1.45; }
       h1 { font-size: 20px; margin: 0 0 6px 0; }
       h2 { font-size: 16px; margin: 0 0 4px 0; }
       p { margin: 0 0 8px 0; }
@@ -66,11 +74,17 @@ export async function printElement(
   const findLogoFromRoot = (root: ParentNode | null) => {
     if (!root) return null;
     try {
-      const attr = (root as Element).querySelector?.('[data-logo-url]')?.getAttribute('data-logo-url');
+      const attr = (root as Element)
+        .querySelector?.("[data-logo-url]")
+        ?.getAttribute("data-logo-url");
       if (attr) return attr;
-      const imgData = (root as Element).querySelector?.('img[data-logo]')?.getAttribute('src');
+      const imgData = (root as Element)
+        .querySelector?.("img[data-logo]")
+        ?.getAttribute("src");
       if (imgData) return imgData;
-      const imgClass = (root as Element).querySelector?.('.client-logo img')?.getAttribute('src');
+      const imgClass = (root as Element)
+        .querySelector?.(".client-logo img")
+        ?.getAttribute("src");
       if (imgClass) return imgClass;
     } catch {}
     return null;
