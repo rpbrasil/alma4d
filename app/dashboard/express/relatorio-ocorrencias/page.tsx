@@ -370,13 +370,13 @@ export default function RelatorioOcorrenciasPage() {
           if (usuario?.cliente_id) {
             type ClienteRow = { nome: string | null; logo_url: string | null };
             const { data: cliente } = await supabase
-              .from<ClienteRow>("clientes")
+              .from("clientes")
               .select("nome, logo_url")
               .eq("id", usuario.cliente_id)
               .maybeSingle();
 
-            setClienteNome(cliente?.nome ?? null);
-            setClienteLogo(cliente?.logo_url ?? null);
+            setClienteNome((cliente as ClienteRow | null)?.nome ?? null);
+            setClienteLogo((cliente as ClienteRow | null)?.logo_url ?? null);
           }
         }
       } finally {

@@ -242,7 +242,7 @@ export default function CopsoqDashboardPage() {
 
       type ClienteRow = { nome: string | null; logo_url: string | null };
       const { data, error } = await supabase
-        .from<ClienteRow>("clientes")
+        .from("clientes")
         .select("nome, logo_url")
         .eq("id", effectiveClienteId)
         .single();
@@ -254,8 +254,8 @@ export default function CopsoqDashboardPage() {
         return;
       }
 
-      setClienteNome(data?.nome ?? "Cliente");
-      setClienteLogo(data?.logo_url ?? null);
+      setClienteNome((data as ClienteRow | null)?.nome ?? "Cliente");
+      setClienteLogo((data as ClienteRow | null)?.logo_url ?? null);
     })();
 
     return () => {

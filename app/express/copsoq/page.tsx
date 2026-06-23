@@ -527,13 +527,36 @@ function CopsoqPageContent() {
       </header>
 
       {submitted || existsCompleted ? (
-        <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-6 text-slate-900">
+        <div
+          className="rounded-3xl border border-emerald-200 bg-emerald-50 p-6 text-slate-900"
+          role="status"
+          aria-live="polite"
+        >
           <div className="flex items-start gap-3">
             <CheckCircle2 className="text-emerald-600" size={24} />
             <div>
               <h2 className="text-lg font-semibold">Resposta recebida</h2>
               <p className="mt-2 text-sm text-slate-700">{success}</p>
             </div>
+          </div>
+
+          <div className="mt-4 flex flex-col sm:flex-row sm:justify-end gap-3">
+            <button
+              type="button"
+              autoFocus
+              onClick={() => router.push("/dashboard/express/acesso-basico")}
+              className="rounded-lg bg-brand px-4 py-2 text-white text-sm"
+            >
+              Voltar
+            </button>
+
+            <button
+              type="button"
+              onClick={() => router.push("/dashboard")}
+              className="rounded-lg border px-3 py-2 text-sm bg-white"
+            >
+              Ir para o Dashboard
+            </button>
           </div>
         </div>
       ) : (

@@ -20,7 +20,7 @@ export async function GET(req: Request) {
 
     // resolve cliente_id a partir de usuario_organizacao
     const { data: org, error: orgErr } = await supa
-      .from<{ cliente_id?: string }>("usuario_organizacao")
+      .from("usuario_organizacao")
       .select("cliente_id")
       .eq("usuario_id", usuarioId)
       .maybeSingle();
@@ -32,7 +32,7 @@ export async function GET(req: Request) {
       );
     }
 
-    const cliente_id = org?.cliente_id;
+    const cliente_id = (org as { cliente_id?: string } | null)?.cliente_id;
     if (!cliente_id) {
       return new NextResponse("Sem cliente associado", { status: 404 });
     }
