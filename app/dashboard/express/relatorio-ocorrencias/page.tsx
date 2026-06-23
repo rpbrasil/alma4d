@@ -611,8 +611,20 @@ export default function RelatorioOcorrenciasPage() {
         "/images/alma4d-round-512.png",
       );
 
-      // Se no futuro você tiver logo da empresa, substitua aqui:
-      const companyLogoBase64: string | null = null;
+      // Tenta carregar a logo do cliente; se falhar, usa o logo da alma4d como fallback
+      let companyLogoBase64: string | null = null;
+      try {
+        if (clienteLogo) {
+          companyLogoBase64 = await loadImageAsBase64(clienteLogo);
+        }
+      } catch (err) {
+        console.debug("Falha ao carregar logo do cliente:", err);
+        companyLogoBase64 = null;
+      }
+
+      if (!companyLogoBase64) {
+        companyLogoBase64 = almaLogoBase64;
+      }
 
       const reportTitle = "Relatório de Riscos e Ocorrências";
       const reportSubtitle = `Emitido em ${new Date().toLocaleString("pt-BR")}`;
