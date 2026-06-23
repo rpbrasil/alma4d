@@ -505,12 +505,14 @@ export default function CopsoqDashboardPage() {
                   }
                   setPdfLoading(true);
                   // HTML do relatório (fonte única da verdade)
+                  // Inclui o conteúdo do <head> atual para preservar estilos e fontes
                   const html = `
         <!DOCTYPE html>
         <html lang="pt-BR">
           <head>
             <meta charset="utf-8" />
             <meta name="viewport" content="width=device-width, initial-scale=1" />
+            ${document.head.innerHTML}
           </head>
           <body>
             ${reportRef.current.outerHTML}
@@ -518,25 +520,25 @@ export default function CopsoqDashboardPage() {
         </html>
       `;
 
-                  const safeCliente = clienteNome.replace(/[^a-zA-Z0-9]/g, "");
-                  const dataImpressao = new Date()
-                    .toLocaleDateString("pt-BR")
-                    .replace(/\//g, "-");
-                  const filename = `MapeamentoRiscoPsico_${safeCliente}_${dataImpressao}.pdf`;
-
-                  await fetch("/api/copsoq/pdf", {
-                    method: "POST",
-                    headers: { "Content-Type": "text/html" },
-                    body: html,
-                  }).then(async (res) => {
-                    const blob = await res.blob();
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement("a");
-                    a.href = url;
-                    a.download = filename;
-                    a.click();
-                    window.URL.revokeObjectURL(url);
-                  });
+                  // Fallback client-side: abre nova janela e chama print()
+                  // (funciona em qualquer navegador e preserva o template visual)
+                  const win = window.open("", "_blank");
+                  if (win) {
+                    win.document.write(html);
+                    win.document.close();
+                    const doPrint = () => {
+                      try {
+                        win.focus();
+                        win.print();
+                      } catch (e) {
+                        console.error("Erro ao chamar print():", e);
+                        alert("Erro ao imprimir. Tente salvar a página como PDF no seu navegador.");
+                      }
+                    };
+                    if (win.onload) win.onload = doPrint; else setTimeout(doPrint, 700);
+                  } else {
+                    alert("Não foi possível abrir uma nova janela. Verifique bloqueadores de pop-up.");
+                  }
                 } catch (err) {
                   console.error(err);
                   alert("Erro ao gerar o PDF. Tente novamente.");
