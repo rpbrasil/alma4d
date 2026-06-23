@@ -532,12 +532,17 @@ export default function CopsoqDashboardPage() {
                         win.print();
                       } catch (e) {
                         console.error("Erro ao chamar print():", e);
-                        alert("Erro ao imprimir. Tente salvar a página como PDF no seu navegador.");
+                        alert(
+                          "Erro ao imprimir. Tente salvar a página como PDF no seu navegador.",
+                        );
                       }
                     };
-                    if (win.onload) win.onload = doPrint; else setTimeout(doPrint, 700);
+                    if (win.onload) win.onload = doPrint;
+                    else setTimeout(doPrint, 700);
                   } else {
-                    alert("Não foi possível abrir uma nova janela. Verifique bloqueadores de pop-up.");
+                    alert(
+                      "Não foi possível abrir uma nova janela. Verifique bloqueadores de pop-up.",
+                    );
                   }
                 } catch (err) {
                   console.error(err);

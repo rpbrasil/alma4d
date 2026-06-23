@@ -10,7 +10,6 @@
     "build": "next build",
     "start": "node server.js",
     "lint": "next lint",
-    
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
