@@ -16,6 +16,7 @@ import {
   X,
   FileText,
   CalendarRange,
+  Printer,
 } from "lucide-react";
 import {
   PieChart,
@@ -658,7 +659,9 @@ export default function RelatorioOcorrenciasPage() {
         alternateRowStyles: { fillColor: [248, 250, 252] },
         didDrawPage: () => {
           const currentPg =
-            (doc as any).getNumberOfPages?.() || (doc.internal as any)?.pages?.length || pageNumber;
+            (doc as any).getNumberOfPages?.() ||
+            (doc.internal as any)?.pages?.length ||
+            pageNumber;
           addFooter(doc, currentPg, almaLogoBase64);
         },
       });
@@ -756,7 +759,9 @@ export default function RelatorioOcorrenciasPage() {
         alternateRowStyles: { fillColor: [248, 250, 252] },
         didDrawPage: () => {
           const currentPg =
-            (doc as any).getNumberOfPages?.() || (doc.internal as any)?.pages?.length || pageNumber;
+            (doc as any).getNumberOfPages?.() ||
+            (doc.internal as any)?.pages?.length ||
+            pageNumber;
           addFooter(doc, currentPg, almaLogoBase64);
         },
       });
