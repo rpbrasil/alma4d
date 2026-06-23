@@ -1,6 +1,7 @@
 "use client";
 
 import { Printer, FileSpreadsheet } from "lucide-react";
+import printElement from "@/lib/print";
 import * as XLSX from "xlsx";
 
 export type ExportValue = string | number | boolean | null | undefined | Date;
@@ -41,7 +42,18 @@ export function ExportToolbar<T extends object>({
   showPrint = true,
   showExcel = true,
 }: ExportToolbarProps<T>) {
-  const handlePrint = () => window.print();
+  const handlePrint = async () => {
+    try {
+      const el =
+        (document.querySelector('[data-print-area="true"]') as HTMLElement) ||
+        (document.querySelector("main") as HTMLElement) ||
+        document.body;
+      await printElement(el);
+    } catch (e) {
+      console.error("printElement failed, falling back to window.print()", e);
+      window.print();
+    }
+  };
 
   const handleExportExcel = () => {
     if (!rows.length) return;

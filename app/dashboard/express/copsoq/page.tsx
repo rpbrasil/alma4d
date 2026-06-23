@@ -444,6 +444,16 @@ export default function DashboardExpressCopsoqPage() {
   }
 
   function imprimir() {
+    try {
+      const el = document.querySelector('.print-campaign') as HTMLElement | null;
+      if (el) {
+        void import('@/lib/print').then((m) => m.default(el));
+        return;
+      }
+    } catch (e) {
+      console.error(e);
+    }
+
     window.print();
   }
 

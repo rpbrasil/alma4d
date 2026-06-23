@@ -815,7 +815,7 @@ export default function RelatorioOcorrenciasPage() {
   }
 
   return (
-    <div className="px-2 sm:px-3 md:px-6 py-4 space-y-6">
+    <div className="px-2 sm:px-3 md:px-6 py-4 space-y-6" data-print-area="true">
       {/* Header */}
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
@@ -828,14 +828,33 @@ export default function RelatorioOcorrenciasPage() {
           </p>
         </div>
 
-        <button
-          onClick={exportPdf}
-          disabled={exportingPdf}
-          className="inline-flex items-center gap-2 rounded-xl bg-brand px-4 py-2 text-white font-medium hover:opacity-95 disabled:opacity-50"
-        >
-          <Download size={18} />
-          {exportingPdf ? "Exportando PDF..." : "Exportar PDF"}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={exportPdf}
+            disabled={exportingPdf}
+            className="inline-flex items-center gap-2 rounded-xl bg-brand px-4 py-2 text-white font-medium hover:opacity-95 disabled:opacity-50"
+          >
+            <Download size={18} />
+            {exportingPdf ? "Exportando PDF..." : "Exportar PDF"}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              try {
+                void import("@/lib/print").then((m) => m.default(document.querySelector('[data-print-area="true"]')));
+              } catch (e) {
+                console.error(e);
+                window.print();
+              }
+            }}
+            disabled={exportingPdf}
+            className="inline-flex items-center gap-2 rounded-xl border border-border bg-white px-4 py-2 text-slate-700 font-medium hover:bg-surface-muted"
+          >
+            <Printer size={16} />
+            Imprimir visual
+          </button>
+        </div>
       </div>
 
       {/* Filtros */}

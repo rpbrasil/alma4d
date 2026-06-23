@@ -30,6 +30,16 @@ export async function printElement(
     </style>
   `;
 
+  // Clone the element to avoid copying inline `style="display:none"` which
+  // would prevent print CSS from showing the element. Remove inline style
+  // on the root clone to allow @media print rules to take effect.
+  const clone = el.cloneNode(true) as HTMLElement;
+  try {
+    clone.removeAttribute("style");
+  } catch (e) {
+    // ignore
+  }
+
   const html = `<!doctype html>
   <html lang="pt-BR">
     <head>
@@ -40,7 +50,7 @@ export async function printElement(
       ${printOverrides}
     </head>
     <body>
-      ${el.outerHTML}
+      ${clone.outerHTML}
     </body>
   </html>`;
 
