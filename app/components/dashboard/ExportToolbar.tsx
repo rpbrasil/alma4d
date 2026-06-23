@@ -12,7 +12,6 @@ export type ExportColumn<T> = {
   getValue?: (row: T) => ExportValue;
 };
 
-
 type ExportToolbarProps<T extends object> = {
   title: string;
   rows: T[];
@@ -23,7 +22,6 @@ type ExportToolbarProps<T extends object> = {
   showExcel?: boolean;
 };
 
-
 function toCellValue(v: ExportValue): string | number | boolean | null {
   if (v === undefined || v === null) return null;
   if (v instanceof Date) return v.toISOString();
@@ -31,7 +29,6 @@ function toCellValue(v: ExportValue): string | number | boolean | null {
     return v;
   return String(v);
 }
-
 
 export function ExportToolbar<T extends object>({
   title,
@@ -119,4 +116,3 @@ export function ExportToolbar<T extends object>({
     </div>
   );
 }
-
