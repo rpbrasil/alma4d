@@ -454,7 +454,7 @@ export default function CopsoqDashboardPage() {
               onClick={() => {
                 try {
                   void printElement(reportRef.current, {
-                    logoUrl: clienteLogo,
+                    logoUrl: clienteLogo ?? undefined,
                   });
                 } catch (e) {
                   console.error(e);
@@ -518,7 +518,7 @@ export default function CopsoqDashboardPage() {
                   setPdfLoading(true);
                   await printElement(reportRef.current, {
                     title: `Relatório COPSOQ - ${clienteNome}`,
-                    logoUrl: clienteLogo,
+                    logoUrl: clienteLogo ?? undefined,
                   });
                 } catch (err) {
                   console.error(err);

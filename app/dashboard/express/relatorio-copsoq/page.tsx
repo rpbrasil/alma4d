@@ -372,7 +372,7 @@ export default function DashboardExpressRelatorioCopsoqPage() {
               onClick={() => {
                 try {
                   void printElement(reportRef.current, {
-                    logoUrl: clienteLogo,
+                    logoUrl: clienteLogo ?? undefined,
                   });
                 } catch (e) {
                   console.error(e);

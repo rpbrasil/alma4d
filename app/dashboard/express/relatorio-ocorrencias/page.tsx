@@ -873,7 +873,7 @@ export default function RelatorioOcorrenciasPage() {
                 void import("@/lib/print").then((m) =>
                   m.default(
                     document.querySelector('[data-print-area="true"]'),
-                    { logoUrl: clienteLogo },
+                    { logoUrl: clienteLogo ?? undefined },
                   ),
                 );
               } catch (e) {
