@@ -657,7 +657,8 @@ export default function RelatorioOcorrenciasPage() {
         },
         alternateRowStyles: { fillColor: [248, 250, 252] },
         didDrawPage: () => {
-          const currentPg = doc.internal.getNumberOfPages();
+          const currentPg =
+            (doc as any).getNumberOfPages?.() || (doc.internal as any)?.pages?.length || pageNumber;
           addFooter(doc, currentPg, almaLogoBase64);
         },
       });
@@ -754,7 +755,8 @@ export default function RelatorioOcorrenciasPage() {
         },
         alternateRowStyles: { fillColor: [248, 250, 252] },
         didDrawPage: () => {
-          const currentPg = doc.internal.getNumberOfPages();
+          const currentPg =
+            (doc as any).getNumberOfPages?.() || (doc.internal as any)?.pages?.length || pageNumber;
           addFooter(doc, currentPg, almaLogoBase64);
         },
       });
