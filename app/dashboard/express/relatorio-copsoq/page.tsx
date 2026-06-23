@@ -152,17 +152,20 @@ export default function DashboardExpressRelatorioCopsoqPage() {
         return;
       }
 
+      type ClienteRow = { nome: string | null; logo_url: string | null };
       const { data, error } = await supabase
         .from("clientes")
         .select("nome, logo_url")
         .eq("id", effectiveClienteId)
         .single();
 
+      const cliente = data as ClienteRow | null;
+
       if (error) {
         setClienteNome("Cliente");
       } else {
-        setClienteNome(data?.nome ?? "Cliente");
-        setClienteLogo((data as any)?.logo_url ?? null);
+        setClienteNome(cliente?.nome ?? "Cliente");
+        setClienteLogo(cliente?.logo_url ?? null);
       }
     })();
   }, [effectiveClienteId, supabase]);

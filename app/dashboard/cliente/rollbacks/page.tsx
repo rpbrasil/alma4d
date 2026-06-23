@@ -86,7 +86,7 @@ export default function RollbacksPage() {
 
         if (mounted) {
           setRollbacks((data as Rollback[]) || []);
-          setTotal((head as any)?.count ?? null);
+          setTotal((head as { count?: number | null })?.count ?? null);
           setError(null);
         }
       } catch (e) {
@@ -104,7 +104,7 @@ export default function RollbacksPage() {
       try {
         const supabase = getSupabaseClient();
         const { data: sample } = await supabase
-          .from("user_creation_rollbacks")
+          .from<{ reason?: string | null }>("user_creation_rollbacks")
           .select("reason")
           .eq("cliente_id", clienteId)
           .order("created_at", { ascending: false })
@@ -112,7 +112,7 @@ export default function RollbacksPage() {
 
         if (!mounted) return;
         const uniq = Array.from(
-          new Set((sample || []).map((r: any) => r.reason).filter(Boolean)),
+          new Set((sample || []).map((r) => r.reason).filter(Boolean)),
         );
         setAvailableReasons(uniq as string[]);
       } catch {

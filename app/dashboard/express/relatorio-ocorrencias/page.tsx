@@ -368,14 +368,15 @@ export default function RelatorioOcorrenciasPage() {
             .maybeSingle();
 
           if (usuario?.cliente_id) {
+            type ClienteRow = { nome: string | null; logo_url: string | null };
             const { data: cliente } = await supabase
-              .from("clientes")
+              .from<ClienteRow>("clientes")
               .select("nome, logo_url")
               .eq("id", usuario.cliente_id)
               .maybeSingle();
 
             setClienteNome(cliente?.nome ?? null);
-            setClienteLogo((cliente as any)?.logo_url ?? null);
+            setClienteLogo(cliente?.logo_url ?? null);
           }
         }
       } finally {
@@ -673,8 +674,10 @@ export default function RelatorioOcorrenciasPage() {
         alternateRowStyles: { fillColor: [248, 250, 252] },
         didDrawPage: () => {
           const currentPg =
-            (doc as any).getNumberOfPages?.() ||
-            (doc.internal as any)?.pages?.length ||
+            (
+              doc as unknown as { getNumberOfPages?: () => number }
+            ).getNumberOfPages?.() ||
+            (doc.internal as unknown as { pages?: unknown[] }).pages?.length ||
             pageNumber;
           addFooter(doc, currentPg, almaLogoBase64);
         },
@@ -773,8 +776,10 @@ export default function RelatorioOcorrenciasPage() {
         alternateRowStyles: { fillColor: [248, 250, 252] },
         didDrawPage: () => {
           const currentPg =
-            (doc as any).getNumberOfPages?.() ||
-            (doc.internal as any)?.pages?.length ||
+            (
+              doc as unknown as { getNumberOfPages?: () => number }
+            ).getNumberOfPages?.() ||
+            (doc.internal as unknown as { pages?: unknown[] }).pages?.length ||
             pageNumber;
           addFooter(doc, currentPg, almaLogoBase64);
         },
