@@ -574,15 +574,16 @@ export default function RelatorioOcorrenciasPage() {
     await new Promise((resolve) => setTimeout(resolve, 120));
 
     const canvas = await html2canvas(ref.current, {
-      scale: 2,
+      scale: 3,
       useCORS: true,
       backgroundColor: "#ffffff",
       scrollX: 0,
       scrollY: -window.scrollY,
     });
 
+    // Use JPEG to keep file size reasonable while preserving quality
     return {
-      dataUrl: canvas.toDataURL("image/png"),
+      dataUrl: canvas.toDataURL("image/jpeg", 0.92),
       width: canvas.width,
       height: canvas.height,
     };
@@ -655,6 +656,10 @@ export default function RelatorioOcorrenciasPage() {
           textColor: [255, 255, 255],
         },
         alternateRowStyles: { fillColor: [248, 250, 252] },
+        didDrawPage: () => {
+          const currentPg = doc.internal.getNumberOfPages();
+          addFooter(doc, currentPg, almaLogoBase64);
+        },
       });
 
       let currentY = (pdfDoc.lastAutoTable?.finalY ?? 100) + 10;
@@ -702,7 +707,7 @@ export default function RelatorioOcorrenciasPage() {
 
         doc.addImage(
           img.dataUrl,
-          "PNG",
+          "JPEG",
           14,
           currentY,
           targetWidth,
@@ -748,9 +753,11 @@ export default function RelatorioOcorrenciasPage() {
           textColor: [255, 255, 255],
         },
         alternateRowStyles: { fillColor: [248, 250, 252] },
+        didDrawPage: () => {
+          const currentPg = doc.internal.getNumberOfPages();
+          addFooter(doc, currentPg, almaLogoBase64);
+        },
       });
-
-      addFooter(doc, pageNumber, almaLogoBase64);
 
       doc.save("relatorio-riscos-ocorrencias-executivo.pdf");
     } catch (e) {
@@ -842,7 +849,9 @@ export default function RelatorioOcorrenciasPage() {
             type="button"
             onClick={() => {
               try {
-                void import("@/lib/print").then((m) => m.default(document.querySelector('[data-print-area="true"]')));
+                void import("@/lib/print").then((m) =>
+                  m.default(document.querySelector('[data-print-area="true"]')),
+                );
               } catch (e) {
                 console.error(e);
                 window.print();
