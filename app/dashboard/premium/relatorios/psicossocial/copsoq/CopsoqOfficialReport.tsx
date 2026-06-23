@@ -37,6 +37,9 @@ type Props = {
   reportId: string;
 };
 
+// allow optional client logo URL for branded header/footer
+type PropsWithLogo = Props & { clienteLogo?: string | null };
+
 // =======================
 // HELPERS
 // =======================
@@ -89,9 +92,9 @@ function buildGroups(rows: RowRisco[]): GrupoDepartamento[] {
 // =======================
 // COMPONENTE
 // =======================
-export const CopsoqOfficialReport = forwardRef<HTMLDivElement, Props>(
+export const CopsoqOfficialReport = forwardRef<HTMLDivElement, PropsWithLogo>(
   function CopsoqOfficialReport(
-    { clienteNome, rows, generatedAt, reportId },
+    { clienteNome, rows, generatedAt, reportId, clienteLogo },
     ref,
   ) {
     const gruposOrg = useMemo(() => buildGroups(rows), [rows]);
@@ -322,7 +325,27 @@ export const CopsoqOfficialReport = forwardRef<HTMLDivElement, Props>(
 
         {/* ================= CAPA TÉCNICA ================= */}
         <div className="cover">
-          <div className="cover-header">
+          <div
+            className="cover-header"
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              {clienteLogo ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={clienteLogo}
+                  alt="Logo cliente"
+                  style={{ width: 100, height: "auto" }}
+                />
+              ) : null}
+
+              <div>{/* keep space for title area */}</div>
+            </div>
+
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="https://alma4d.com.br/images/alma4d-bicolor-nobground-256.png"

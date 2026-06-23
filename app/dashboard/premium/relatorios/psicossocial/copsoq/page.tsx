@@ -806,6 +806,7 @@ export default function CopsoqDashboardPage() {
           rows={filteredRows}
           generatedAt={generatedAt}
           reportId={reportId}
+          clienteLogo={clienteLogo}
         />
       </div>
     </div>
