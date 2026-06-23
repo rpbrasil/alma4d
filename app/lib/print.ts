@@ -1,6 +1,6 @@
 export async function printElement(
   el: HTMLElement | null,
-  opts?: { title?: string; timeoutMs?: number },
+  opts?: { title?: string; timeoutMs?: number; logoUrl?: string },
 ) {
   if (!el) throw new Error("Elemento não encontrado para impressão");
 
@@ -15,6 +15,7 @@ export async function printElement(
   const stylesHtml = styleNodes.map((n) => n.outerHTML).join("\n");
 
   const printOverrides = `
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
       @page { size: A4 portrait; margin: 12mm; }
       html,body { -webkit-print-color-adjust: exact; color-adjust: exact; }
@@ -59,10 +60,32 @@ export async function printElement(
     // ignore
   }
 
+  // Try to resolve a client-specific logo URL. Search in options, inside the
+  // element (data-logo-url or img[data-logo]) or on the document. Fallback to
+  // the Alma4D default logo.
+  const findLogoFromRoot = (root: ParentNode | null) => {
+    if (!root) return null;
+    try {
+      const attr = (root as Element).querySelector?.('[data-logo-url]')?.getAttribute('data-logo-url');
+      if (attr) return attr;
+      const imgData = (root as Element).querySelector?.('img[data-logo]')?.getAttribute('src');
+      if (imgData) return imgData;
+      const imgClass = (root as Element).querySelector?.('.client-logo img')?.getAttribute('src');
+      if (imgClass) return imgClass;
+    } catch {}
+    return null;
+  };
+
+  const logoUrl =
+    opts?.logoUrl ||
+    findLogoFromRoot(el) ||
+    findLogoFromRoot(document.body) ||
+    "/images/alma4d-round-512.png";
+
   const headerHtml = `
     <div class="print-header">
       <div style="display:flex;align-items:center;gap:12px;">
-        <img class="logo" src="/images/alma4d-round-512.png" alt="logo" />
+        <img class="logo" src="${logoUrl}" alt="logo" />
         <div style="font-size:12px;color:#0f172a">${title}</div>
       </div>
       <div class="title">
