@@ -783,7 +783,7 @@ export default function DashboardExpress() {
       if (cpfn) {
         const { data, error } = await supabase
           .from("usuarios")
-          .select("id, nome_completo, email, telefone, documento")
+          .select("id, nome_completo, email, telefone, documento, ativo")
           .eq("role", "usuario")
           .eq("documento", cpfn)
           .limit(50);
@@ -801,7 +801,7 @@ export default function DashboardExpress() {
 
       const { data, error } = await supabase
         .from("usuarios")
-        .select("id, nome_completo, email, telefone, documento")
+        .select("id, nome_completo, email, telefone, documento, ativo")
         .eq("role", "usuario")
         .ilike("nome_completo", `%${name}%`)
         .limit(50)
@@ -839,15 +839,44 @@ export default function DashboardExpress() {
     setModalType("updatePhone");
     setModalUserId(userId);
     const u = searchResults.find((s) => s.id === userId);
-    setModalPhone(u?.telefone ?? "");
+    setModalPhone(normalizePhoneInput(u?.telefone ?? ""));
     setModalMsg(null);
     setModalOpen(true);
+  }
+
+  async function handleReactivate(userId: string) {
+    setBusy(true);
+    setMsg(null);
+    try {
+      const token = await getAccessToken();
+      if (!token) throw new Error("Sessão expirada");
+
+      const r = await fetch(`/api/usuarios/reactivate`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ user_id: userId }),
+      });
+
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || j?.error) throw new Error(j?.error || "Falha ao reativar");
+
+      setMsg("Usuário reativado com sucesso.");
+      await performSearch();
+    } catch (e: unknown) {
+      if (e instanceof Error) setMsg(e.message);
+      else setMsg("Erro ao reativar usuário.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   // modal state
   const [modalOpen, setModalOpen] = useState(false);
   const [modalType, setModalType] = useState<
-    "deactivate" | "updatePhone" | null
+    "deactivate" | "updatePhone" | "reactivate" | null
   >(null);
   const [modalUserId, setModalUserId] = useState<string | null>(null);
   const [modalPhone, setModalPhone] = useState<string>("");
@@ -875,6 +904,18 @@ export default function DashboardExpress() {
         if (!r.ok || j?.error)
           throw new Error(j?.error || "Falha ao desativar");
         setModalMsg("Usuário desativado com sucesso.");
+      } else if (modalType === "reactivate") {
+        const r = await fetch(`/api/usuarios/reactivate`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ user_id: modalUserId }),
+        });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok || j?.error) throw new Error(j?.error || "Falha ao reativar");
+        setModalMsg("Usuário reativado com sucesso.");
       } else {
         // updatePhone
         const digits = (modalPhone ?? "").replace(/\D/g, "");
@@ -1076,10 +1117,13 @@ export default function DashboardExpress() {
                     ou +5511999999999).
                   </p>
                   <input
-                    value={modalPhone}
-                    onChange={(e) => setModalPhone(e.target.value)}
+                    value={formatPhoneInput(modalPhone)}
+                    onChange={(e) =>
+                      setModalPhone(normalizePhoneInput(e.target.value))
+                    }
                     className="w-full mt-2 h-10 rounded-lg border border-slate-200 px-3 text-sm"
                     placeholder="Telefone"
+                    inputMode="numeric"
                   />
                 </div>
               )}
@@ -1367,33 +1411,49 @@ export default function DashboardExpress() {
                       className="rounded-lg border border-slate-200 p-3"
                     >
                       <div className="flex items-center justify-between">
-                        <div>
+                        <div className="flex items-center gap-4">
                           <div className="font-semibold text-slate-900">
                             {u.nome_completo ?? "(sem nome)"}
                           </div>
-                          <div className="text-xs text-slate-500">
-                            {u.email} • {u.telefone}
+                          <div className="text-sm text-slate-600">
+                            {formatPhoneInput(u.telefone)}
+                          </div>
+                          <div>
+                            {u.ativo === false ? (
+                              <span className="inline-flex items-center rounded-full bg-brand-accent/10 px-2 py-0.5 text-brand-accent text-xs font-semibold">
+                                Inativo
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center rounded-full bg-brand-secondary/10 px-2 py-0.5 text-brand-secondary text-xs font-semibold">
+                                Ativo
+                              </span>
+                            )}
                           </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <div className="text-sm text-slate-600">
-                            {u.documento}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => void handleUpdatePhone(u.id)}
-                              className="rounded-md border border-slate-200 px-3 py-1 text-xs text-slate-700 hover:bg-slate-50"
-                            >
-                              Atualizar telefone
-                            </button>
 
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => void handleUpdatePhone(u.id)}
+                            className="rounded-md border border-slate-200 px-3 py-1 text-xs text-slate-700 hover:bg-slate-50"
+                          >
+                            Atualizar telefone
+                          </button>
+
+                          {u.ativo === false ? (
+                            <button
+                              onClick={() => void handleReactivate(u.id)}
+                              className="rounded-md bg-brand px-3 py-1 text-xs font-semibold text-white hover:bg-brand/90"
+                            >
+                              Reativar
+                            </button>
+                          ) : (
                             <button
                               onClick={() => void handleDeactivate(u.id)}
-                              className="rounded-md bg-rose-600 px-3 py-1 text-xs font-semibold text-white hover:bg-rose-700"
+                              className="rounded-md bg-brand-accent px-3 py-1 text-xs font-semibold text-white hover:bg-brand-accent/90"
                             >
                               Desativar
                             </button>
-                          </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1527,13 +1587,13 @@ export default function DashboardExpress() {
               </div>
             )}
             {job?.status === "completed" && (
-              <p className="text-xs text-emerald-600 font-semibold">
+              <p className="text-xs text-brand-secondary font-semibold">
                 ✅ Importação concluída
               </p>
             )}
 
             {job?.status === "failed" && (
-              <p className="text-xs text-red-600 font-semibold">
+              <p className="text-xs text-brand-accent font-semibold">
                 ❌ Falha na importação
               </p>
             )}

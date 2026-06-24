@@ -28,7 +28,7 @@ export async function POST(req: Request) {
           { status: 403 },
         );
       }
-    } catch {
+    } catch  {
       return NextResponse.json(
         { ok: false, error: "Acesso negado" },
         { status: 403 },
@@ -37,11 +37,9 @@ export async function POST(req: Request) {
 
     const body = await req.json();
     const userId: string = String(body.user_id ?? "").trim();
-    const telefone: string = String(body.telefone ?? "").trim();
-
-    if (!userId || !telefone)
+    if (!userId)
       return NextResponse.json(
-        { ok: false, error: "user_id e telefone obrigatórios" },
+        { ok: false, error: "user_id obrigatório" },
         { status: 400 },
       );
 
@@ -68,56 +66,13 @@ export async function POST(req: Request) {
 
     const { error } = await supabaseAdmin
       .from("usuarios")
-      .update({ telefone })
+      .update({ ativo: true })
       .eq("id", userId);
-
     if (error)
       return NextResponse.json(
         { ok: false, error: error.message },
         { status: 500 },
       );
-
-    /*
-      Sincroniza o telefone no Supabase Auth quando existir identidade.
-      Usamos `phone_confirm: false` intencionalmente — isso NÃO marca o número como
-      confirmado (a coluna persistente é `phone_confirmed_at`). O efeito é que o
-      usuário precisará confirmar o novo telefone via OTP no próximo login.
-    */
-    try {
-      const { data: identity } = await supabaseAdmin
-        .from("usuario_auth_identities")
-        .select("auth_user_id")
-        .eq("usuario_id", userId)
-        .maybeSingle();
-
-      const authUserId = identity?.auth_user_id ?? null;
-
-      if (authUserId) {
-        // atualizar apenas o erro (não precisamos do `data` retornado)
-        const { error: authErr } =
-          await supabaseAdmin.auth.admin.updateUserById(String(authUserId), {
-            phone: telefone,
-            phone_confirm: false,
-          });
-
-        if (authErr)
-          return NextResponse.json(
-            { ok: false, error: `Auth update failed: ${authErr.message}` },
-            { status: 500 },
-          );
-
-        // aviso discreto para o cliente informando que confirmação via OTP será necessária
-        return NextResponse.json({
-          ok: true,
-          notice:
-            "Telefone atualizado, confirmação necessária no próximo login.",
-        });
-      }
-    } catch (e) {
-      // surface admin errors
-      const msg = e instanceof Error ? e.message : "Erro ao sincronizar Auth";
-      return NextResponse.json({ ok: false, error: msg }, { status: 500 });
-    }
 
     return NextResponse.json({ ok: true });
   } catch (e: unknown) {
