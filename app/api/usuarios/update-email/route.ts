@@ -66,9 +66,10 @@ export async function POST(req: Request) {
       );
     }
 
+    // Store as pending_email until user confirms via Supabase Auth
     const { error } = await supabaseAdmin
       .from("usuarios")
-      .update({ email })
+      .update({ pending_email: email })
       .eq("id", userId);
 
     if (error)
@@ -108,7 +109,8 @@ export async function POST(req: Request) {
 
         return NextResponse.json({
           ok: true,
-          notice: "E-mail atualizado, confirmação necessária pelo usuário.",
+          notice:
+            "E-mail pendente; enviamos um e-mail de confirmação para o novo endereço.",
         });
       }
     } catch (e) {

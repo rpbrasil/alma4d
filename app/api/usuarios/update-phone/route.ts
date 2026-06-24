@@ -66,9 +66,10 @@ export async function POST(req: Request) {
       );
     }
 
+    // Store as pending_phone until user confirms via Supabase Auth OTP
     const { error } = await supabaseAdmin
       .from("usuarios")
-      .update({ telefone })
+      .update({ pending_phone: telefone })
       .eq("id", userId);
 
     if (error)
@@ -110,7 +111,7 @@ export async function POST(req: Request) {
         return NextResponse.json({
           ok: true,
           notice:
-            "Telefone atualizado, confirmação necessária no próximo login.",
+            "Telefone pendente; enviamos um SMS de confirmação para o novo número.",
         });
       }
     } catch (e) {

@@ -15,7 +15,24 @@ const supabase = createClient(
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
 );
 
-Deno.serve(async () => {
+Deno.serve(async (req: Request) => {
+  // auth: accept either internal secret header or service role bearer
+  const internalSecretHeader = req.headers.get("x-internal-secret");
+  const authHeader =
+    req.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? null;
+  const INTERNAL_API_SECRET = Deno.env.get("INTERNAL_API_SECRET");
+  const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const internalOk =
+    INTERNAL_API_SECRET &&
+    internalSecretHeader &&
+    internalSecretHeader === INTERNAL_API_SECRET;
+  const serviceOk = SERVICE_ROLE && authHeader && authHeader === SERVICE_ROLE;
+  if (!internalOk && !serviceOk) {
+    return new Response(JSON.stringify({ ok: false, error: "unauthorized" }), {
+      status: 401,
+    });
+  }
+
   try {
     // ✅ 1. buscar contratos elegíveis
     const { data: contratos } = await supabase

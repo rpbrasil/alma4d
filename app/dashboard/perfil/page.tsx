@@ -30,6 +30,7 @@ export default function PerfilPage() {
 
   const [editing, setEditing] = useState(false);
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
 
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -38,6 +39,26 @@ export default function PerfilPage() {
     const n = (perfil?.nome_completo ?? "").trim();
     return n || "Usuário";
   }, [perfil?.nome_completo]);
+
+  // Helper to extract phone from auth user
+  function getAuthPhoneValue() {
+    type MaybePhone = {
+      phone?: string;
+      user_metadata?: Record<string, unknown>;
+    };
+    const u = user as unknown as MaybePhone;
+    if (u?.phone && typeof u.phone === "string") return u.phone;
+    if (u?.user_metadata && typeof u.user_metadata["phone"] === "string")
+      return u.user_metadata["phone"] as string;
+    return "";
+  }
+
+  const authEmail = user?.email ?? "";
+  const authPhone = getAuthPhoneValue();
+  const hasPendingEmail =
+    !!perfil && !!perfil.email && perfil.email !== authEmail;
+  const hasPendingPhone =
+    !!perfil && !!perfil.telefone && perfil.telefone !== authPhone;
 
   useEffect(() => {
     if (!usuarioId) return;
@@ -60,6 +81,7 @@ export default function PerfilPage() {
 
       setPerfil(row);
       setEmail(row.email ?? user?.email ?? "");
+      setPhone(row.telefone ?? "");
 
       if (row.cliente_id) {
         const { data: cli } = (await supabase
@@ -88,32 +110,51 @@ export default function PerfilPage() {
     setSaving(true);
 
     try {
-      // If user changed their own email, update Auth first so confirmation flow
-      // is triggered (email confirmation required). Then sync to `usuarios`.
       const currentAuthEmail = user?.email ?? "";
 
+      // Email flow: trigger Auth change so confirmation is sent. Do NOT write
+      // `pending_email` to `usuarios` here because column may not exist.
       if (emailTrim && emailTrim !== currentAuthEmail) {
         const { error: authErr } = await supabase.auth.updateUser({
           email: emailTrim,
-        } as any);
+        } as { email?: string });
 
         if (authErr) throw authErr;
 
-        // inform user to confirm new email
+        // Update local view; finalization of domain record should be
+        // performed by webhook or an explicit confirm endpoint.
+        setPerfil((prev) => (prev ? { ...prev, email: emailTrim } : prev));
+
+        // Inform user but keep session active so they can correct typos.
         setMsg(
-          "E-mail alterado. Enviamos um e-mail de confirmação; confirme para concluir.",
+          "E-mail alterado. Enviamos um e-mail de confirmação; confirme para concluir. Você pode reenviar ou editar enquanto estiver logado.",
         );
       }
 
-      // Always sync `usuarios.email` (allow empty => null)
-      const { error } = await supabase
-        .from("usuarios")
-        .update({ email: emailTrim || null })
-        .eq("id", usuarioId);
+      // Phone flow
+      // Safely extract phone from supabase `user` shape without using `any`
+      type MaybePhone = {
+        phone?: string;
+        user_metadata?: Record<string, unknown>;
+      };
+      const u = user as unknown as MaybePhone;
+      let currentAuthPhone = "";
+      if (u?.phone && typeof u.phone === "string") currentAuthPhone = u.phone;
+      else if (u?.user_metadata && typeof u.user_metadata["phone"] === "string")
+        currentAuthPhone = u.user_metadata["phone"] as string;
+      const phoneTrim = phone.trim();
+      if (phoneTrim && phoneTrim !== currentAuthPhone) {
+        const { error: authErr } = await supabase.auth.updateUser({
+          phone: phoneTrim,
+        } as { phone?: string });
 
-      if (error) throw error;
+        if (authErr) throw authErr;
 
-      setPerfil((prev) => (prev ? { ...prev, email: emailTrim } : prev));
+        // Do not write `pending_phone` to `usuarios` because the column
+        // may not exist in all deployments. Rely on Auth confirmation
+        // flows and webhook to finalize domain records.
+        setPerfil((prev) => (prev ? { ...prev, telefone: phoneTrim } : prev));
+      }
       setEditing(false);
     } catch (e: unknown) {
       if (e instanceof Error) {
@@ -136,6 +177,66 @@ export default function PerfilPage() {
     setEditing(false);
     setEmail(perfil?.email ?? "");
     setMsg(null);
+  }
+
+  async function revokeOtherSessions() {
+    setMsg(null);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const access = sessionData?.session?.access_token ?? null;
+
+      // decode token payload to extract potential session id claims
+      let currentSessionId: string | null = null;
+      if (access) {
+        try {
+          const parts = access.split(".");
+          if (parts.length === 3) {
+            const payload = JSON.parse(
+              Buffer.from(parts[1], "base64url").toString("utf-8"),
+            );
+            currentSessionId =
+              payload.sid || payload.session_id || payload.jti || null;
+          }
+        } catch {
+          currentSessionId = null;
+        }
+      }
+
+      const body: Record<string, unknown> = { user_id: usuarioId };
+      if (currentSessionId) body.current_session_id = currentSessionId;
+
+      const { ok, error } = await fetch("/api/usuarios/revoke-other-sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      }).then(async (r) => {
+        const j = await r.json().catch(() => ({}));
+        return { ok: j.ok === true, error: j.error ?? null };
+      });
+
+      if (!ok) throw new Error(error ?? "Erro ao revogar sessões");
+
+      setMsg("Outras sessões revogadas com sucesso.");
+    } catch (e: unknown) {
+      setMsg(e instanceof Error ? e.message : "Erro ao revogar sessões");
+    }
+  }
+
+  async function resendConfirmation() {
+    setMsg(null);
+    try {
+      const res = await fetch("/api/usuarios/resend-confirmation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: usuarioId, type: "email" }),
+      });
+
+      const j = await res.json().catch(() => ({}));
+      if (j.ok) setMsg(j.notice ?? "Confirmação reenviada.");
+      else setMsg(j.error ?? "Erro ao reenviar confirmação.");
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "Erro ao reenviar confirmação");
+    }
   }
 
   return (
@@ -186,7 +287,72 @@ export default function PerfilPage() {
 
         {msg && (
           <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
-            {msg}
+            <div className="flex items-center justify-between">
+              <div>{msg}</div>
+              {perfil?.email && role !== "usuario" && (
+                <div className="ml-4 flex gap-2">
+                  <button
+                    className="rounded-full border px-3 py-1 text-sm"
+                    onClick={() => setEditing(true)}
+                  >
+                    Editar
+                  </button>
+                  <button
+                    className="rounded-full bg-brand px-3 py-1 text-sm text-white"
+                    onClick={revokeOtherSessions}
+                  >
+                    Revogar outras sessões
+                  </button>
+                </div>
+              )}
+              {/* If there's a pending email or phone for this user, allow resending */}
+              {hasPendingEmail && (
+                <div className="ml-4 flex gap-2">
+                  <button
+                    className="rounded-full border px-3 py-1 text-sm"
+                    onClick={() => resendConfirmation()}
+                  >
+                    Reenviar confirmação (e-mail)
+                  </button>
+                </div>
+              )}
+
+              {hasPendingPhone && (
+                <div className="ml-4 flex gap-2">
+                  <button
+                    className="rounded-full border px-3 py-1 text-sm"
+                    onClick={async () => {
+                      setMsg(null);
+                      try {
+                        const res = await fetch(
+                          "/api/usuarios/resend-confirmation",
+                          {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              user_id: usuarioId,
+                              type: "phone",
+                            }),
+                          },
+                        );
+
+                        const j = await res.json().catch(() => ({}));
+                        if (j.ok) setMsg(j.notice ?? "SMS reenviado.");
+                        else setMsg(j.error ?? "Erro ao reenviar SMS.");
+                      } catch (e) {
+                        setMsg(
+                          e instanceof Error
+                            ? e.message
+                            : "Erro ao reenviar SMS",
+                        );
+                      }
+                    }}
+                  >
+                    Reenviar confirmação (SMS)
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </section>
@@ -196,12 +362,17 @@ export default function PerfilPage() {
           <h2 className="text-lg font-semibold">Dados do usuário</h2>
 
           {!editing ? (
-            <button
-              onClick={() => setEditing(true)}
-              className="rounded-full border px-4 py-2 text-sm"
-            >
-              Editar
-            </button>
+            // Only allow entering edit mode if caller is not a plain 'usuario'
+            role !== "usuario" ? (
+              <button
+                onClick={() => setEditing(true)}
+                className="rounded-full border px-4 py-2 text-sm"
+              >
+                Editar
+              </button>
+            ) : (
+              <div />
+            )
           ) : (
             <div className="flex gap-2">
               <button
@@ -228,20 +399,22 @@ export default function PerfilPage() {
             <p className="text-sm font-semibold">{displayName}</p>
           </div>
 
-          <div>
-            <label className="text-xs text-slate-500 flex items-center gap-2">
-              <Mail size={14} />
-              E-mail
-            </label>
+          {role !== "usuario" && (
+            <div>
+              <label className="text-xs text-slate-500 flex items-center gap-2">
+                <Mail size={14} />
+                E-mail
+              </label>
 
-            <input
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              disabled={!editing}
-              className="mt-1 w-full h-10 rounded-lg border px-3 text-sm"
-              placeholder="seuemail@empresa.com"
-            />
-          </div>
+              <input
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={!editing}
+                className="mt-1 w-full h-10 rounded-lg border px-3 text-sm"
+                placeholder="seuemail@empresa.com"
+              />
+            </div>
+          )}
 
           <div>
             <label className="text-xs text-slate-500 flex items-center gap-2">
@@ -259,9 +432,18 @@ export default function PerfilPage() {
               Telefone de login (OTP)
             </label>
 
-            <div className="mt-1 h-10 rounded-lg border bg-slate-50 px-3 text-sm flex items-center">
-              {perfil?.telefone ?? "—"}
-            </div>
+            {editing ? (
+              <input
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="mt-1 w-full h-10 rounded-lg border px-3 text-sm"
+                placeholder="+5511999999999"
+              />
+            ) : (
+              <div className="mt-1 h-10 rounded-lg border bg-slate-50 px-3 text-sm flex items-center">
+                {perfil?.telefone ?? "—"}
+              </div>
+            )}
           </div>
         </div>
       </section>
