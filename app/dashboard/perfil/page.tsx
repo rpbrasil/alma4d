@@ -88,26 +88,33 @@ export default function PerfilPage() {
     setSaving(true);
 
     try {
+      // If user changed their own email, update Auth first so confirmation flow
+      // is triggered (email confirmation required). Then sync to `usuarios`.
+      const currentAuthEmail = user?.email ?? "";
+
+      if (emailTrim && emailTrim !== currentAuthEmail) {
+        const { error: authErr } = await supabase.auth.updateUser({
+          email: emailTrim,
+        } as any);
+
+        if (authErr) throw authErr;
+
+        // inform user to confirm new email
+        setMsg(
+          "E-mail alterado. Enviamos um e-mail de confirmação; confirme para concluir.",
+        );
+      }
+
+      // Always sync `usuarios.email` (allow empty => null)
       const { error } = await supabase
         .from("usuarios")
-        .update({
-          email: emailTrim || null,
-        })
+        .update({ email: emailTrim || null })
         .eq("id", usuarioId);
 
       if (error) throw error;
 
-      setPerfil((prev) =>
-        prev
-          ? {
-              ...prev,
-              email: emailTrim,
-            }
-          : prev,
-      );
-
+      setPerfil((prev) => (prev ? { ...prev, email: emailTrim } : prev));
       setEditing(false);
-      setMsg("Perfil atualizado com sucesso.");
     } catch (e: unknown) {
       if (e instanceof Error) {
         const raw = e.message.toLowerCase();
@@ -169,7 +176,9 @@ export default function PerfilPage() {
             <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
               <p className="text-sm text-slate-500">Empresa</p>
               <p className="mt-2 text-2xl font-semibold">
-                {clienteNome ? clienteNome.split(" ").slice(0, 2).join(" ") : "—"}
+                {clienteNome
+                  ? clienteNome.split(" ").slice(0, 2).join(" ")
+                  : "—"}
               </p>
             </div>
           </div>

@@ -72,7 +72,7 @@ const NAV_BY_PLAN: Record<Plano, NavItem[]> = {
     },
     {
       href: "/dashboard/express/relatorio-ocorrencias",
-      label: "Riscos e Ocorrências",
+      label: "Relatório de R&O",
       icon: AlertTriangle,
       roles: ["admin", "cliente"],
     },

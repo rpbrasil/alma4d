@@ -1146,7 +1146,7 @@ function Step3Copsoq({
               <ul className="px-6 pb-4 list-disc space-y-2 text-sm text-foreground/70">
                 <li>Não é punição.</li>
                 <li>Não é prova contra você.</li>
-                <li>Não substitui o canal de denúncias.</li>
+                <li>Não substitui o canal de ocorrências.</li>
                 <li>Não impede registros formais.</li>
               </ul>
             )}
