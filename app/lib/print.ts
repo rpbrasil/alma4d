@@ -41,20 +41,65 @@ export async function printElement(
       .page-break { page-break-after: always; break-after: page; }
       * { box-sizing: border-box; }
 
-      /* Header / Footer */
-      .print-header { position: fixed; top: 6mm; left: 12mm; right: 12mm; height: 32mm; display:flex; align-items:center; justify-content:space-between; gap:12px; }
+      /* Header / Footer (rendered as part of document flow for printing)
+        Avoid position:fixed which can overlap page content in some printers
+        and browsers. Keeping header/footer in the flow prevents them from
+        covering body text when printed. */
+      .print-header { position: static; margin: 0 0 6mm 0; display:flex; align-items:center; justify-content:space-between; gap:12px; height: auto; }
       .print-header .logo { width: 48px; height: 48px; object-fit:contain; }
       .print-header .title { display:flex; flex-direction:column; align-items:flex-end; gap:2px; }
       .print-header .title .company { font-weight:600; font-size:13px; color:#0f172a; }
       .print-header .title .meta { font-size:11px; color:#475569; }
 
-      .print-footer { position: fixed; bottom: 8mm; left: 12mm; right: 12mm; font-size: 10px; color: #6b7280; text-align: center; }
+      .print-footer { position: static; margin: 12mm 0 0 0; font-size: 10px; color: #6b7280; text-align: center; }
 
-      /* Content container to avoid overlap with fixed header/footer */
-      .print-container { max-width: 794px; margin: 0 auto; padding-top: 44mm; padding-bottom: 18mm; }
+      /* Content container spacing adjusted to leave room for header/footer in flow */
+      .print-container { max-width: 794px; margin: 0 auto; padding-top: 6mm; padding-bottom: 12mm; }
 
       /* Improve chart/table scaling */
       .chart, .report-table { width: 100% !important; }
+
+      /* Force single-column layout inside the printed report to avoid
+         accidental multi-column rules from site CSS (some themes apply
+         'column-count' or 'columns' to large text blocks). This ensures
+         the first page and subsequent pages use the full page width. */
+      .print-container, .print-container * {
+        -webkit-column-count: 1 !important;
+        -moz-column-count: 1 !important;
+        column-count: 1 !important;
+        -webkit-column-gap: normal !important;
+        -moz-column-gap: normal !important;
+        column-gap: normal !important;
+      }
+
+      /* Force the report "cover" header to stack vertically (single column)
+         Override inline or component-level flex that creates 3 columns on the
+         first page. This targets common class names used in reports without
+         changing the source component. */
+      .print-container .cover-header {
+        display: block !important;
+        -webkit-box-orient: vertical !important;
+        -webkit-flex-direction: column !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+      }
+
+      /* Keep images constrained: do not let images expand to full width */
+      .print-container .cover-header > *:not(img) {
+        display: block !important;
+        width: 100% !important;
+        float: none !important;
+        margin-bottom: 8px !important;
+      }
+
+      .print-container .cover-header img {
+        display: inline-block !important;
+        width: auto !important;
+        height: auto !important;
+        max-width: 140px !important;
+        max-height: 140px !important;
+        margin-bottom: 8px !important;
+      }
     </style>
   `;
 
@@ -64,7 +109,7 @@ export async function printElement(
   const clone = el.cloneNode(true) as HTMLElement;
   try {
     clone.removeAttribute("style");
-  } catch (e) {
+  } catch  {
     // ignore
   }
 
@@ -109,7 +154,7 @@ export async function printElement(
     </div>
   `;
 
-  const footerHtml = `<div class="print-footer">Documento gerado pelo sistema — Alma4D</div>`;
+  const footerHtml = `<div class="print-footer">Documento gerado pela plataforma alma4D em ${new Date().toLocaleDateString("pt-BR")}</div>`;
 
   const html = `<!doctype html>
   <html lang="pt-BR">
@@ -159,7 +204,7 @@ export async function printElement(
           done();
         }
       };
-    } catch (e) {
+    } catch  {
       // ignore
     }
   });

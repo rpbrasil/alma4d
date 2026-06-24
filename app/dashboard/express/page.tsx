@@ -34,7 +34,7 @@ type BulkLineError = {
   payload: Record<string, unknown>;
 };
 
-type TabKey = "single" | "bulk";
+type TabKey = "single" | "bulk" | "search";
 
 type ParseResult = {
   validos: CsvRegistro[];
@@ -46,11 +46,12 @@ type ParseResult = {
 };
 type UsuarioPerfil = {
   id: string;
-  nome: string;
+  nome_completo: string | null;
   email: string;
   telefone: string;
   documento: string;
   cliente_id: string;
+  ativo?: boolean;
 };
 type ConsentStorage = {
   accepted?: boolean;
@@ -273,7 +274,14 @@ export default function DashboardExpress() {
   const [departamentoNomePadrao, setDepartamentoNomePadrao] = useState("");
   const [deptAcknowledge, setDeptAcknowledge] = useState(false);
   // abas
-  const [activeTab, setActiveTab] = useState<"single" | "bulk">("single");
+  const [activeTab, setActiveTab] = useState<TabKey>("single");
+
+  // search panel state
+  const [searchName, setSearchName] = useState("");
+  const [searchCpf, setSearchCpf] = useState("");
+  const [searchBusy, setSearchBusy] = useState(false);
+  const [searchResults, setSearchResults] = useState<UsuarioPerfil[]>([]);
+  const [searchMsg, setSearchMsg] = useState<string | null>(null);
 
   // job
   const [jobId, setJobId] = useState<string | null>(null);
@@ -396,7 +404,7 @@ export default function DashboardExpress() {
         if (!cancelled) {
           setUser({
             id: data.usuario_id,
-            nome: data.nome_completo ?? "",
+            nome_completo: data.nome_completo ?? "",
             email: data.email ?? "",
             telefone: data.telefone ?? "",
             documento: data.documento ?? "",
@@ -758,6 +766,153 @@ export default function DashboardExpress() {
     }
   }
 
+  async function performSearch() {
+    setSearchMsg(null);
+    setSearchResults([]);
+    setSearchBusy(true);
+
+    try {
+      const name = (searchName ?? "").trim();
+      const cpfn = onlyDigits(searchCpf ?? "");
+
+      if (!name && !cpfn) {
+        setSearchMsg("Digite nome ou CPF para buscar.");
+        return;
+      }
+
+      if (cpfn) {
+        const { data, error } = await supabase
+          .from("usuarios")
+          .select("id, nome_completo, email, telefone, documento")
+          .eq("role", "usuario")
+          .eq("documento", cpfn)
+          .limit(50);
+
+        if (error) {
+          console.error("performSearch error (cpf):", error);
+          throw new Error(error.message || "Erro ao consultar usuários");
+        }
+
+        const rows = (data ?? []) as UsuarioPerfil[];
+        setSearchResults(rows);
+        if (!rows.length) setSearchMsg("Nenhum usuário encontrado.");
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("usuarios")
+        .select("id, nome_completo, email, telefone, documento")
+        .eq("role", "usuario")
+        .ilike("nome_completo", `%${name}%`)
+        .limit(50)
+        .order("nome_completo", { ascending: true });
+
+      if (error) {
+        console.error("performSearch error (name):", error);
+        throw new Error(error.message || "Erro ao consultar usuários");
+      }
+
+      const rows = (data ?? []) as UsuarioPerfil[];
+      setSearchResults(rows);
+      if (!rows.length) setSearchMsg("Nenhum usuário encontrado.");
+    } catch (e: unknown) {
+      console.error("performSearch unexpected:", e);
+      if (e instanceof Error)
+        setSearchMsg(`Erro ao buscar usuários: ${e.message}`);
+      else setSearchMsg("Erro ao buscar usuários.");
+    } finally {
+      setSearchBusy(false);
+    }
+  }
+
+  async function handleDeactivate(userId: string) {
+    // open branded modal to confirm deactivation
+    setModalType("deactivate");
+    setModalUserId(userId);
+    setModalPhone("");
+    setModalMsg(null);
+    setModalOpen(true);
+  }
+
+  async function handleUpdatePhone(userId: string) {
+    // open branded modal to update phone
+    setModalType("updatePhone");
+    setModalUserId(userId);
+    const u = searchResults.find((s) => s.id === userId);
+    setModalPhone(u?.telefone ?? "");
+    setModalMsg(null);
+    setModalOpen(true);
+  }
+
+  // modal state
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalType, setModalType] = useState<
+    "deactivate" | "updatePhone" | null
+  >(null);
+  const [modalUserId, setModalUserId] = useState<string | null>(null);
+  const [modalPhone, setModalPhone] = useState<string>("");
+  const [modalBusy, setModalBusy] = useState(false);
+  const [modalMsg, setModalMsg] = useState<string | null>(null);
+
+  async function submitModal() {
+    if (!modalType || !modalUserId) return;
+    setModalBusy(true);
+    setModalMsg(null);
+    try {
+      const token = await getAccessToken();
+      if (!token) throw new Error("Sessão expirada");
+
+      if (modalType === "deactivate") {
+        const r = await fetch(`/api/usuarios/deactivate`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ user_id: modalUserId }),
+        });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok || j?.error)
+          throw new Error(j?.error || "Falha ao desativar");
+        setModalMsg("Usuário desativado com sucesso.");
+      } else {
+        // updatePhone
+        const digits = (modalPhone ?? "").replace(/\D/g, "");
+        let telefone = digits;
+        if (!telefone.startsWith("55") && telefone.length <= 11)
+          telefone = `55${telefone}`;
+        telefone = telefone.startsWith("+") ? telefone : `+${telefone}`;
+
+        const r = await fetch(`/api/usuarios/update-phone`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ user_id: modalUserId, telefone }),
+        });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok || j?.error)
+          throw new Error(j?.error || "Falha ao atualizar telefone");
+        setModalMsg("Telefone atualizado com sucesso.");
+      }
+
+      await performSearch();
+      setTimeout(() => {
+        setModalOpen(false);
+        setModalType(null);
+        setModalUserId(null);
+        setModalPhone("");
+        setModalMsg(null);
+      }, 600);
+    } catch (e: unknown) {
+      if (e instanceof Error) setModalMsg(e.message);
+      else setModalMsg("Erro ao processar ação.");
+    } finally {
+      setModalBusy(false);
+    }
+  }
+
   async function onContinueProcessing() {
     if (!jobId) return;
     setBusy(true);
@@ -897,6 +1052,75 @@ export default function DashboardExpress() {
         </div>
       )}
 
+      {/* Dept consent modal above. Branded action modal below */}
+      {modalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center px-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-lg">
+            <h3 className="text-lg font-semibold text-slate-900">
+              {modalType === "deactivate"
+                ? "Confirmar desativação"
+                : "Atualizar telefone"}
+            </h3>
+
+            <div className="mt-3 text-sm text-slate-600">
+              {modalType === "deactivate" ? (
+                <p>
+                  Tem certeza que deseja <strong>desativar</strong> este
+                  usuário? Ele perderá acesso ao sistema, mas seus dados serão
+                  preservados.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  <p>
+                    Informe o novo telefone no formato com DDD (ex: 11999999999
+                    ou +5511999999999).
+                  </p>
+                  <input
+                    value={modalPhone}
+                    onChange={(e) => setModalPhone(e.target.value)}
+                    className="w-full mt-2 h-10 rounded-lg border border-slate-200 px-3 text-sm"
+                    placeholder="Telefone"
+                  />
+                </div>
+              )}
+            </div>
+
+            {modalMsg && (
+              <div className="mt-3 text-sm text-slate-700">{modalMsg}</div>
+            )}
+
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  if (modalBusy) return;
+                  setModalOpen(false);
+                  setModalType(null);
+                  setModalUserId(null);
+                  setModalPhone("");
+                  setModalMsg(null);
+                }}
+                disabled={modalBusy}
+                className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+
+              <button
+                onClick={() => void submitModal()}
+                disabled={modalBusy}
+                className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand/90 disabled:opacity-60"
+              >
+                {modalBusy
+                  ? "Processando..."
+                  : modalType === "deactivate"
+                    ? "Desativar"
+                    : "Salvar telefone"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* HEADER */}
       <section className="rounded-3xl border border-border bg-white p-8 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -999,6 +1223,7 @@ export default function DashboardExpress() {
           {[
             { key: "single", label: "Adicionar usuário" },
             { key: "bulk", label: "Importação em massa" },
+            { key: "search", label: "Buscar usuário" },
           ].map((tab) => (
             <button
               key={tab.key}
@@ -1085,6 +1310,96 @@ export default function DashboardExpress() {
               >
                 {busy ? "Adicionando..." : "Adicionar usuário"}
               </button>
+            </div>
+          </>
+        )}
+
+        {/* SEARCH */}
+        {activeTab === "search" && (
+          <>
+            <p className="text-sm text-slate-500">Buscar por nome ou CPF</p>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              <input
+                value={searchName}
+                onChange={(e) => setSearchName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void performSearch();
+                }}
+                placeholder="Nome (parte do nome)"
+                className="h-10 rounded-lg border border-slate-200 px-3 text-sm bg-white"
+              />
+
+              <input
+                value={formatCPFInput(searchCpf)}
+                onChange={(e) =>
+                  setSearchCpf(onlyDigits(e.target.value).slice(0, 11))
+                }
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void performSearch();
+                }}
+                placeholder="CPF (somente números)"
+                inputMode="numeric"
+                className="h-10 rounded-lg border border-slate-200 px-3 text-sm bg-white"
+              />
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => void performSearch()}
+                  disabled={searchBusy}
+                  className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                >
+                  {searchBusy ? "Buscando..." : "Pesquisar"}
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-4">
+              {searchMsg && (
+                <div className="text-sm text-slate-600">{searchMsg}</div>
+              )}
+
+              {searchResults.length > 0 && (
+                <div className="mt-3 space-y-2">
+                  {searchResults.map((u) => (
+                    <div
+                      key={u.id}
+                      className="rounded-lg border border-slate-200 p-3"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="font-semibold text-slate-900">
+                            {u.nome_completo ?? "(sem nome)"}
+                          </div>
+                          <div className="text-xs text-slate-500">
+                            {u.email} • {u.telefone}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="text-sm text-slate-600">
+                            {u.documento}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => void handleUpdatePhone(u.id)}
+                              className="rounded-md border border-slate-200 px-3 py-1 text-xs text-slate-700 hover:bg-slate-50"
+                            >
+                              Atualizar telefone
+                            </button>
+
+                            <button
+                              onClick={() => void handleDeactivate(u.id)}
+                              className="rounded-md bg-rose-600 px-3 py-1 text-xs font-semibold text-white hover:bg-rose-700"
+                            >
+                              Desativar
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </>
         )}
@@ -1232,7 +1547,7 @@ export default function DashboardExpress() {
           userId={user.id}
           clienteId={clienteId}
           contratoId={contratoId}
-          nomeCompleto={user.nome}
+          nomeCompleto={user.nome_completo ?? ""}
           email={user.email}
           telefone={user.telefone}
           documento={user.documento}
