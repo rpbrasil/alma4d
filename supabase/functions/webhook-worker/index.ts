@@ -20,20 +20,6 @@ function isRecord(x: unknown): x is Record<string, unknown> {
   return typeof x === "object" && x !== null;
 }
 
-async function fetchNextJobs(limit = 10): Promise<WebhookJob[]> {
-  const now = new Date().toISOString();
-  const { data, error } = await supabaseAdmin
-    .from("webhook_jobs")
-    .select("*")
-    .eq("status", "pending")
-    .lte("scheduled_at", now)
-    .order("created_at", { ascending: true })
-    .limit(limit);
-
-  if (error) throw error;
-  return data ?? [];
-}
-
 async function claimJob(jobId: string): Promise<boolean> {
   const { data, error } = await supabaseAdmin
     .from("webhook_jobs")
@@ -452,55 +438,123 @@ async function processJob(job: WebhookJob) {
   await markDone(job);
 }
 
-Deno.serve(async () => {
+Deno.serve(async (req: Request) => {
   try {
-    const jobs = await fetchNextJobs(10);
+    // ✅ validar auth (IMPORTANTE)
+    const auth = req.headers.get("authorization");
+    if (auth !== `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`) {
+      return new Response("unauthorized", { status: 401 });
+    }
 
-    let processed = 0;
-    for (const job of jobs) {
-      try {
-        const claimed = await claimJob(job.id);
-        if (!claimed) continue;
-        await processJob(job);
-        processed += 1;
-      } catch (err) {
-        // retry/backoff: increment attempts and schedule next try
-        const attempts = (job.attempts ?? 0) + 1;
-        if (attempts >= Number(Deno.env.get("WEBHOOK_MAX_ATTEMPTS") ?? "5")) {
-          await supabaseAdmin.from("webhook_dead_letter").insert({
-            job_id: job.id,
-            error: String((err as UnknownError)?.message ?? err),
-            payload: job.raw_event,
-          });
-          await supabaseAdmin
-            .from("webhook_jobs")
-            .update({ status: "failed", updated_at: nowISO() })
-            .eq("id", job.id);
-        } else {
-          const backoffSeconds = Math.min(60 * Math.pow(2, attempts - 1), 3600);
-          const nextAt = new Date(
-            Date.now() + backoffSeconds * 1000,
-          ).toISOString();
-          await supabaseAdmin
-            .from("webhook_jobs")
-            .update({
-              attempts,
-              last_error: String((err as UnknownError)?.message ?? err),
-              scheduled_at: nextAt,
-              status: "pending",
-              updated_at: nowISO(),
-            })
-            .eq("id", job.id);
-        }
+    // ✅ body
+    const body = await req.json();
+    const jobId = body?.job_id ?? null;
+
+    if (!jobId) {
+      return new Response("missing job_id", { status: 400 });
+    }
+
+    // ✅ buscar job
+    const { data: job, error } = await supabaseAdmin
+      .from("webhook_jobs")
+      .select("*")
+      .eq("id", jobId)
+      .single();
+
+    if (error || !job) {
+      return new Response("job not found", { status: 404 });
+    }
+
+    // ✅ claim (evita concorrência)
+    const claimed = await claimJob(job.id);
+    if (!claimed) {
+      return new Response("already processing", { status: 200 });
+    }
+
+    // ✅ processar
+    try {
+      await processJob(job);
+    } catch (err) {
+      const attempts = (job.attempts ?? 0) + 1;
+
+      if (attempts >= Number(Deno.env.get("WEBHOOK_MAX_ATTEMPTS") ?? "5")) {
+        await supabaseAdmin.from("webhook_dead_letter").insert({
+          job_id: job.id,
+          error: String((err as UnknownError)?.message ?? err),
+          payload: job.raw_event,
+        });
+
+        await supabaseAdmin
+          .from("webhook_jobs")
+          .update({ status: "failed", updated_at: nowISO() })
+          .eq("id", job.id);
+      } else {
+        const backoffSeconds = Math.min(60 * Math.pow(2, attempts - 1), 3600);
+
+        const nextAt = new Date(
+          Date.now() + backoffSeconds * 1000,
+        ).toISOString();
+
+        await supabaseAdmin
+          .from("webhook_jobs")
+          .update({
+            attempts,
+            last_error: String((err as UnknownError)?.message ?? err),
+            scheduled_at: nextAt,
+            status: "pending",
+            updated_at: nowISO(),
+          })
+          .eq("id", job.id);
       }
     }
 
-    return new Response(JSON.stringify({ ok: true, processed }), {
+    let success = true;
+
+    try {
+      await processJob(job);
+    } catch (err) {
+      success = false;
+
+      const attempts = (job.attempts ?? 0) + 1;
+
+      if (attempts >= Number(Deno.env.get("WEBHOOK_MAX_ATTEMPTS") ?? "5")) {
+        await supabaseAdmin.from("webhook_dead_letter").insert({
+          job_id: job.id,
+          error: String((err as UnknownError)?.message ?? err),
+          payload: job.raw_event,
+        });
+
+        await supabaseAdmin
+          .from("webhook_jobs")
+          .update({ status: "failed", updated_at: nowISO() })
+          .eq("id", job.id);
+      } else {
+        const backoffSeconds = Math.min(60 * Math.pow(2, attempts - 1), 3600);
+
+        const nextAt = new Date(
+          Date.now() + backoffSeconds * 1000,
+        ).toISOString();
+
+        await supabaseAdmin
+          .from("webhook_jobs")
+          .update({
+            attempts,
+            last_error: String((err as UnknownError)?.message ?? err),
+            scheduled_at: nextAt,
+            status: "pending",
+            updated_at: nowISO(),
+          })
+          .eq("id", job.id);
+      }
+    }
+
+    return new Response(JSON.stringify({ ok: success }), {
       status: 200,
     });
   } catch (err: unknown) {
     const e = err as UnknownError;
     console.error("[webhook-worker] error:", err);
+
     return new Response(JSON.stringify({ error: e?.message ?? "internal" }), {
       status: 500,
     });
