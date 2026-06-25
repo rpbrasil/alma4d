@@ -131,6 +131,7 @@ export function LoginForm() {
         });
 
         if (error) {
+          console.error("sendOtp sms error", error);
           setLoading(false);
           setError(error.message || "Não foi possível enviar o código.");
           return;
@@ -153,6 +154,7 @@ export function LoginForm() {
       });
 
       if (error) {
+        console.error("sendOtp email error", error);
         setLoading(false);
         setError(error.message || "Não foi possível enviar o código.");
         return;
@@ -163,6 +165,7 @@ export function LoginForm() {
       setSuccess("Código enviado por e-mail.");
       setLoading(false);
     } catch (err: unknown) {
+      console.error("sendOtp unexpected error", err);
       setLoading(false);
       setError(
         err instanceof Error
@@ -465,7 +468,7 @@ export function LoginForm() {
                       <button
                         type="button"
                         onClick={() => changeMethod("sms")}
-                        disabled={loading}
+                        disabled={!!loading}
                         className={`h-10 rounded-xl border text-sm font-medium transition ${
                           authMethod === "sms"
                             ? "border-brand bg-brand-secondary text-white"
@@ -478,7 +481,7 @@ export function LoginForm() {
                       <button
                         type="button"
                         onClick={() => changeMethod("email")}
-                        disabled={loading}
+                        disabled={!!loading}
                         className={`h-10 rounded-xl border text-sm font-medium transition ${
                           authMethod === "email"
                             ? "border-brand bg-brand-secondary text-white"
@@ -513,7 +516,7 @@ export function LoginForm() {
                             placeholder="(11) 99999-9999"
                             value={phoneFormatted}
                             onChange={handlePhoneChange}
-                            disabled={loading}
+                            disabled={!!loading}
                             className={`${inputBase} rounded-r-xl`}
                             aria-label="Número de telefone"
                           />
@@ -542,7 +545,7 @@ export function LoginForm() {
                           placeholder="voce@empresa.com"
                           value={email}
                           onChange={handleEmailChange}
-                          disabled={loading}
+                          disabled={!!loading}
                           className={`${inputBase} rounded-xl`}
                           aria-label="Endereço de e-mail"
                         />
@@ -557,7 +560,7 @@ export function LoginForm() {
                   <button
                     type="button"
                     onClick={sendOtp}
-                    disabled={isDisabled}
+                    disabled={!!isDisabled}
                     className={btnPrimary}
                   >
                     {loading ? (
@@ -616,7 +619,7 @@ export function LoginForm() {
                       <button
                         type="button"
                         onClick={sendOtp}
-                        disabled={loading}
+                        disabled={!!loading}
                         className={link}
                       >
                         Reenviar
@@ -624,7 +627,7 @@ export function LoginForm() {
                       <button
                         type="button"
                         onClick={backToStart}
-                        disabled={loading}
+                        disabled={!!loading}
                         className={link}
                       >
                         {authMethod === "sms"
@@ -638,7 +641,7 @@ export function LoginForm() {
                     <button
                       type="button"
                       onClick={verifyOtp}
-                      disabled={otp.length < 6 || loading}
+                      disabled={!!(otp.length < 6 || loading)}
                       className={`${btnPrimary} flex-1`}
                     >
                       {loading ? (
@@ -654,7 +657,7 @@ export function LoginForm() {
                     <button
                       type="button"
                       onClick={backToStart}
-                      disabled={loading}
+                      disabled={!!loading}
                       className={`${btnGhost} px-3`}
                     >
                       Voltar

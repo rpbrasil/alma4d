@@ -10,10 +10,17 @@ type PerfilRow = {
   email: string | null;
   telefone: string | null;
   cliente_id: string | null;
+  pending_email?: string | null;
+  pending_phone?: string | null;
 };
 
 type ClienteRow = {
   nome: string | null;
+};
+
+type MaybePhone = {
+  phone?: string;
+  user_metadata?: Record<string, unknown>;
 };
 
 function isValidEmailLoose(email: string) {
@@ -40,25 +47,8 @@ export default function PerfilPage() {
     return n || "Usuário";
   }, [perfil?.nome_completo]);
 
-  // Helper to extract phone from auth user
-  function getAuthPhoneValue() {
-    type MaybePhone = {
-      phone?: string;
-      user_metadata?: Record<string, unknown>;
-    };
-    const u = user as unknown as MaybePhone;
-    if (u?.phone && typeof u.phone === "string") return u.phone;
-    if (u?.user_metadata && typeof u.user_metadata["phone"] === "string")
-      return u.user_metadata["phone"] as string;
-    return "";
-  }
-
-  const authEmail = user?.email ?? "";
-  const authPhone = getAuthPhoneValue();
-  const hasPendingEmail =
-    !!perfil && !!perfil.email && perfil.email !== authEmail;
-  const hasPendingPhone =
-    !!perfil && !!perfil.telefone && perfil.telefone !== authPhone;
+  const hasPendingEmail = !!perfil?.pending_email;
+  const hasPendingPhone = !!perfil?.pending_phone;
 
   useEffect(() => {
     if (!usuarioId) return;
@@ -68,7 +58,9 @@ export default function PerfilPage() {
 
       const { data, error } = await supabase
         .from("usuarios")
-        .select("nome_completo, email, cliente_id, telefone")
+        .select(
+          "nome_completo, email, cliente_id, telefone, pending_email, pending_phone",
+        )
         .eq("id", usuarioId)
         .single();
 
@@ -93,7 +85,8 @@ export default function PerfilPage() {
         setClienteNome(cli?.nome ?? null);
       }
     })();
-  }, [usuarioId, supabase, user?.email]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [usuarioId, supabase]);
 
   async function onSave() {
     setMsg(null);
@@ -109,53 +102,66 @@ export default function PerfilPage() {
 
     setSaving(true);
 
+    
+    const u = user as unknown as MaybePhone;
+    let currentAuthPhone = "";
+    if (u?.phone && typeof u.phone === "string") currentAuthPhone = u.phone;
+    else if (u?.user_metadata && typeof u.user_metadata["phone"] === "string")
+      currentAuthPhone = u.user_metadata["phone"] as string;
+
     try {
       const currentAuthEmail = user?.email ?? "";
-
-      // Email flow: trigger Auth change so confirmation is sent. Do NOT write
-      // `pending_email` to `usuarios` here because column may not exist.
       if (emailTrim && emailTrim !== currentAuthEmail) {
+        // 1. salva pending_email
+        const { error: dbError } = await supabase
+          .from("usuarios")
+          .update({ pending_email: emailTrim })
+          .eq("id", usuarioId);
+
+        if (dbError) throw dbError;
+
+        // 2. dispara fluxo auth
         const { error: authErr } = await supabase.auth.updateUser({
           email: emailTrim,
-        } as { email?: string });
+        });
 
         if (authErr) throw authErr;
 
-        // Update local view; finalization of domain record should be
-        // performed by webhook or an explicit confirm endpoint.
-        setPerfil((prev) => (prev ? { ...prev, email: emailTrim } : prev));
-
-        // Inform user but keep session active so they can correct typos.
         setMsg(
-          "E-mail alterado. Enviamos um e-mail de confirmação; confirme para concluir. Você pode reenviar ou editar enquanto estiver logado.",
+          "Enviamos um e-mail de confirmação. Confirme para concluir a alteração.",
         );
       }
 
-      // Phone flow
-      // Safely extract phone from supabase `user` shape without using `any`
-      type MaybePhone = {
-        phone?: string;
-        user_metadata?: Record<string, unknown>;
-      };
-      const u = user as unknown as MaybePhone;
-      let currentAuthPhone = "";
-      if (u?.phone && typeof u.phone === "string") currentAuthPhone = u.phone;
-      else if (u?.user_metadata && typeof u.user_metadata["phone"] === "string")
-        currentAuthPhone = u.user_metadata["phone"] as string;
       const phoneTrim = phone.trim();
       if (phoneTrim && phoneTrim !== currentAuthPhone) {
+        // 1. salvar pending
+        const { error: dbError } = await supabase
+          .from("usuarios")
+          .update({ pending_phone: phoneTrim })
+          .eq("id", usuarioId);
+
+        if (dbError) throw dbError;
+
+        // 2. disparar auth (FALTAVA ISSO)
         const { error: authErr } = await supabase.auth.updateUser({
           phone: phoneTrim,
-        } as { phone?: string });
+        });
 
         if (authErr) throw authErr;
 
-        // Do not write `pending_phone` to `usuarios` because the column
-        // may not exist in all deployments. Rely on Auth confirmation
-        // flows and webhook to finalize domain records.
-        setPerfil((prev) => (prev ? { ...prev, telefone: phoneTrim } : prev));
+        setMsg(
+          "Enviamos um código SMS. Após confirmar, seu telefone será atualizado.",
+        );
       }
+
       setEditing(false);
+      if (emailTrim && emailTrim !== currentAuthEmail) {
+        setEmail(emailTrim);
+      }
+
+      if (phoneTrim && phoneTrim !== currentAuthPhone) {
+        setPhone(phoneTrim);
+      }
     } catch (e: unknown) {
       if (e instanceof Error) {
         const raw = e.message.toLowerCase();
@@ -171,11 +177,21 @@ export default function PerfilPage() {
     } finally {
       setSaving(false);
     }
+    await supabase
+      .from("usuarios")
+      .select(
+        "nome_completo, email, cliente_id, telefone, pending_email, pending_phone",
+      )
+      .eq("id", usuarioId)
+      .single()
+      .then(({ data }) => {
+        if (data) setPerfil(data);
+      });
   }
 
   function onCancel() {
     setEditing(false);
-    setEmail(perfil?.email ?? "");
+    setEmail(user?.email ?? perfil?.email ?? "");
     setMsg(null);
   }
 
@@ -413,6 +429,11 @@ export default function PerfilPage() {
                 className="mt-1 w-full h-10 rounded-lg border px-3 text-sm"
                 placeholder="seuemail@empresa.com"
               />
+              {perfil?.pending_email && (
+                <p className="text-xs text-orange-600 mt-1">
+                  Aguardando confirmação: {perfil.pending_email}
+                </p>
+              )}
             </div>
           )}
 
@@ -443,6 +464,11 @@ export default function PerfilPage() {
               <div className="mt-1 h-10 rounded-lg border bg-slate-50 px-3 text-sm flex items-center">
                 {perfil?.telefone ?? "—"}
               </div>
+            )}
+            {perfil?.pending_phone && (
+              <p className="text-xs text-orange-600 mt-1">
+                Aguardando confirmação: {perfil.pending_phone}
+              </p>
             )}
           </div>
         </div>
