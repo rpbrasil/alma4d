@@ -31,17 +31,43 @@ export async function POST(req: Request) {
 
     const { data: usuario } = await supabaseAdmin
       .from("usuarios")
-      .select("id, pending_phone")
+      .select("id, cliente_id, pending_phone")
       .eq("id", userId)
       .maybeSingle();
 
     if (!usuario)
       return NextResponse.json(
         { ok: false, error: "Usuário não encontrado" },
-        { status: 404 },
+        { status: 400 },
       );
 
-    const pending = (usuario as any).pending_phone ?? null;
+    // Fix #6: sem verificação de tenant qualquer gestor podia confirmar telefone de outro tenant
+    if (
+      caller.role !== "admin" &&
+      String(
+        (
+          usuario as {
+            id: string;
+            cliente_id: string;
+            pending_phone: string | null;
+          }
+        ).cliente_id,
+      ) !== String(caller.cliente_id)
+    ) {
+      return NextResponse.json(
+        { ok: false, error: "Acesso negado" },
+        { status: 403 },
+      );
+    }
+
+    const pending =
+      (
+        usuario as {
+          id: string;
+          cliente_id: string;
+          pending_phone: string | null;
+        }
+      ).pending_phone ?? null;
     if (!pending)
       return NextResponse.json(
         { ok: false, error: "Nenhum telefone pendente" },

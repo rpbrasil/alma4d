@@ -443,13 +443,27 @@ export default function DashboardExpress() {
     const interval = setInterval(async () => {
       const { data } = await supabase
         .from("importacao_usuarios_jobs")
-        .select("status, processed, total")
+        .select(
+          "id, status, processed, total, success, errors, last_error, created_at, updated_at",
+        )
         .eq("id", jobId)
         .maybeSingle();
       if (!data) {
         console.warn("Job não encontrado ainda");
         return;
       }
+      // Fix #4: atualiza o state para que a barra de progresso reflita o poll
+      setJob({
+        id: jobId,
+        status: data.status,
+        total: data.total ?? 0,
+        processed: data.processed ?? 0,
+        success: data.success ?? 0,
+        errors: data.errors ?? 0,
+        last_error: data.last_error ?? null,
+        created_at: data.created_at,
+        updated_at: data.updated_at,
+      });
       if (data.status === "completed") {
         setMsg(null);
         clearInterval(interval);
@@ -627,57 +641,75 @@ export default function DashboardExpress() {
 
   async function onBuildPreview() {
     setBulkError(null);
-    const { validos, erros } = parsed;
+    setBusy(true);
+    try {
+      const { validos, erros } = parsed;
 
-    if (!validos.length) {
-      setBulkError("Nenhuma linha válida encontrada.");
-      return;
-    }
+      if (!validos.length) {
+        setBulkError("Nenhuma linha válida encontrada.");
+        return;
+      }
 
-    // ✅ CHECK BACKEND BULK
-    const token = await getAccessToken();
+      // ✅ CHECK BACKEND BULK
+      const token = await getAccessToken();
 
-    const check = await fetch("/api/usuarios/check-bulk", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        documentos: validos.map((v) => v.documento),
-        telefones: validos.map((v) => v.telefone),
-      }),
-    });
+      const check = await fetch("/api/usuarios/check-bulk", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          documentos: validos.map((v) => v.documento),
+          telefones: validos.map((v) => v.telefone),
+        }),
+      });
 
-    const existentes = await check.json();
+      if (!check.ok) {
+        const je = await check.json().catch(() => ({}));
+        setBulkError(
+          (je as { error?: string }).error ?? "Erro ao verificar duplicatas.",
+        );
+        return;
+      }
 
-    // ✅ filtra duplicados reais
-    const filtrados = validos.filter(
-      (v) =>
-        !existentes.documentos?.includes(v.documento) &&
-        !existentes.telefones?.includes(v.telefone),
-    );
+      const existentes = await check.json();
 
-    if (!filtrados.length) {
-      throw new Error("Todos registros já existem no sistema.");
-    } else if (erros.length) {
-      setBulkError(`❌ ${erros.length} linhas com erro.`);
-    } else if (hasEncodingIssue(paste)) {
-      setBulkError(
-        "⚠️ Detectamos caracteres inválidos. Recomendamos salvar o arquivo como CSV UTF-8.",
+      // ✅ filtra duplicados reais
+      const filtrados = validos.filter(
+        (v) =>
+          !existentes.documentos?.includes(v.documento) &&
+          !existentes.telefones?.includes(v.telefone),
       );
+
+      // Fix #3: era throw sem catch — agora usa setBulkError + return
+      if (!filtrados.length) {
+        setBulkError("Todos os registros já existem no sistema.");
+        return;
+      } else if (erros.length) {
+        setBulkError(`❌ ${erros.length} linhas com erro.`);
+      } else if (hasEncodingIssue(paste)) {
+        setBulkError(
+          "⚠️ Detectamos caracteres inválidos. Recomendamos salvar o arquivo como CSV UTF-8.",
+        );
+      }
+      setPreviewGenerated(true);
+      setBulkFiltrados(filtrados); // ✅ salva corretamente
+      setBulkPreview(filtrados);
+      setJobErrors(
+        erros.slice(0, 5).map((e) => ({
+          linha: e.linha,
+          error: e.erro,
+          payload: { raw: e.raw },
+        })),
+      );
+      setMsg(`✅ ${filtrados.length} válidos • ❌ ${erros.length} com erro`);
+    } catch (e: unknown) {
+      if (e instanceof Error) setBulkError(e.message);
+      else setBulkError("Erro inesperado ao avaliar arquivo.");
+    } finally {
+      setBusy(false);
     }
-    setPreviewGenerated(true);
-    setBulkFiltrados(filtrados); // ✅ salva corretamente
-    setBulkPreview(filtrados);
-    setJobErrors(
-      erros.slice(0, 5).map((e) => ({
-        linha: e.linha,
-        error: e.erro,
-        payload: { raw: e.raw },
-      })),
-    );
-    setMsg(`✅ ${filtrados.length} válidos • ❌ ${erros.length} com erro`);
   }
 
   async function onEnqueueBulk() {
@@ -748,9 +780,6 @@ export default function DashboardExpress() {
       if (!r.ok || !j?.job_id) {
         throw new Error(j.error || "Falha ao criar importação.");
       }
-      if (!r.ok) {
-        throw new Error(j.error || "Falha ao enfileirar importação.");
-      }
 
       setJobId(j.job_id);
       setMsg(`Importação enfileirada (job ${j.job_id}). Processando...`);
@@ -780,13 +809,24 @@ export default function DashboardExpress() {
         return;
       }
 
+      // Fix #2: garante escopo multi-tenant na busca
+      if (!clienteId) {
+        setSearchMsg(
+          "Dados do usuário ainda carregando. Tente novamente em instantes.",
+        );
+        return;
+      }
+
       if (cpfn) {
-        const { data, error } = await supabase
+        let q = supabase
           .from("usuarios")
           .select("id, nome_completo, email, telefone, documento, ativo")
           .eq("role", "usuario")
           .eq("documento", cpfn)
+          .eq("cliente_id", clienteId)
           .limit(50);
+
+        const { data, error } = await q;
 
         if (error) {
           console.error("performSearch error (cpf):", error);
@@ -799,13 +839,16 @@ export default function DashboardExpress() {
         return;
       }
 
-      const { data, error } = await supabase
+      let q = supabase
         .from("usuarios")
         .select("id, nome_completo, email, telefone, documento, ativo")
         .eq("role", "usuario")
+        .eq("cliente_id", clienteId)
         .ilike("nome_completo", `%${name}%`)
         .limit(50)
         .order("nome_completo", { ascending: true });
+
+      const { data, error } = await q;
 
       if (error) {
         console.error("performSearch error (name):", error);
@@ -845,8 +888,9 @@ export default function DashboardExpress() {
   }
 
   async function handleReactivate(userId: string) {
-    setBusy(true);
-    setMsg(null);
+    // Fix #5: usava setBusy/setMsg globais, causando sobreposição com aba de cadastro
+    setSearchBusy(true);
+    setSearchMsg(null);
     try {
       const token = await getAccessToken();
       if (!token) throw new Error("Sessão expirada");
@@ -863,13 +907,13 @@ export default function DashboardExpress() {
       const j = await r.json().catch(() => ({}));
       if (!r.ok || j?.error) throw new Error(j?.error || "Falha ao reativar");
 
-      setMsg("Usuário reativado com sucesso.");
+      setSearchMsg("Usuário reativado com sucesso.");
       await performSearch();
     } catch (e: unknown) {
-      if (e instanceof Error) setMsg(e.message);
-      else setMsg("Erro ao reativar usuário.");
+      if (e instanceof Error) setSearchMsg(e.message);
+      else setSearchMsg("Erro ao reativar usuário.");
     } finally {
-      setBusy(false);
+      setSearchBusy(false);
     }
   }
 
@@ -1033,6 +1077,8 @@ export default function DashboardExpress() {
           "⚠️ Detectamos caracteres inválidos no arquivo. Salve como CSV UTF‑8.",
         );
       }
+      // Fix #1: populava mensagem mas nunca enviava o conteúdo para o textarea
+      setPaste(text);
       setMsg(`Arquivo carregado (${file.name})`);
     } catch {
       setMsg("Erro ao ler arquivo.");

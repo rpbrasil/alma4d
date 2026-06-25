@@ -45,6 +45,17 @@ export async function POST(req: Request) {
         { status: 400 },
       );
 
+    // Fix #7: validação de formato não existia no backend
+    if (!/^\+55\d{10,11}$/.test(telefone))
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            "Formato de telefone inválido. Use +55 seguido de 10 ou 11 dígitos.",
+        },
+        { status: 400 },
+      );
+
     const { data: target } = await supabaseAdmin
       .from("usuarios")
       .select("id, cliente_id")
