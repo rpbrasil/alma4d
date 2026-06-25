@@ -255,7 +255,10 @@ export default function DashboardExpress() {
   const [licencasContratadas, setlicencasContratadas] = useState<number | null>(
     null,
   );
+  // vagas COPSOQ em uso (elegíveis + respondidos) — desacoplado do nr de usuários
   const [licencasConsumidas, setlicencasConsumidas] = useState<number>(0);
+  // usuários cadastrados — independente das licenças COPSOQ
+  const [usuariosCadastrados, setUsuariosCadastrados] = useState<number>(0);
 
   const [user, setUser] = useState<UsuarioPerfil | null>(null);
   const [clienteId, setClienteId] = useState<string | null>(null);
@@ -360,11 +363,13 @@ export default function DashboardExpress() {
         const j = (await r.json().catch(() => null)) as {
           licencas_contratadas: number | null;
           licencas_consumidas: number;
+          usuarios_cadastrados: number;
         } | null;
 
         if (!cancelled && r.ok && j) {
           setlicencasContratadas(j.licencas_contratadas);
           setlicencasConsumidas(j.licencas_consumidas);
+          setUsuariosCadastrados(j.usuarios_cadastrados ?? 0);
         }
       } catch {
         // não derruba a página
@@ -588,14 +593,6 @@ export default function DashboardExpress() {
         return;
       }
 
-      if (
-        licencasContratadas !== null &&
-        licencasConsumidas >= licencasContratadas
-      ) {
-        setShowLicencaModal(true);
-        return;
-      }
-
       const payload = {
         nome_completo: nomeNorm,
         documento: cpfNorm,
@@ -730,13 +727,6 @@ export default function DashboardExpress() {
         throw new Error("Nenhuma linha válida para importar.");
       }
 
-      if (
-        licencasContratadas !== null &&
-        licencasConsumidas >= licencasContratadas
-      ) {
-        setShowLicencaModal(true);
-        return;
-      }
       const token = await getAccessToken();
       if (!token) {
         throw new Error("Sessão expirada. Faça login novamente.");
@@ -1027,6 +1017,9 @@ export default function DashboardExpress() {
       if (r.ok && j) {
         setlicencasContratadas(j.licencas_contratadas ?? null);
         setlicencasConsumidas(j.licencas_consumidas ?? 0);
+        setUsuariosCadastrados(
+          (j as { usuarios_cadastrados?: number }).usuarios_cadastrados ?? 0,
+        );
       }
     } catch {
       // silencioso
@@ -1088,13 +1081,6 @@ export default function DashboardExpress() {
   const bulkPlaceholder = deptEnabled
     ? `Ex (com departamento):\nJoão Silva;12345678901;11999999999;Produção\nMaria Lima;98765432100;11988887777;RH\n\nFormato: nome;cpf;telefone;departamento\n(Se não informar na linha, usamos o Departamento padrão acima — se preenchido)`
     : `Ex:\nJoão Silva;12345678901;11999999999\nMaria Lima;98765432100;11988887777\n\nFormato: nome;cpf;telefone`;
-  const restantes =
-    licencasContratadas !== null
-      ? licencasContratadas - licencasConsumidas
-      : null;
-
-  const isLimitReached = restantes !== null && restantes <= 0;
-
   return (
     <div className="space-y-6">
       {/* MODAL */}
@@ -1231,18 +1217,25 @@ export default function DashboardExpress() {
           </div>
 
           {/* Direita (mini dashboard) */}
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-3">
             <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-              <p className="text-sm text-slate-500">Licenças consumidas</p>
+              <p className="text-sm text-slate-500">Usuários cadastrados</p>
               <p className="mt-2 text-2xl font-semibold text-slate-900">
-                {licencasConsumidas}
+                {usuariosCadastrados}
               </p>
             </div>
 
             <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-              <p className="text-sm text-slate-500">Licenças contratadas</p>
+              <p className="text-sm text-slate-500">Vagas COPSOQ contratadas</p>
               <p className="mt-2 text-2xl font-semibold text-slate-900">
                 {licencasContratadas ?? "—"}
+              </p>
+            </div>
+
+            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+              <p className="text-sm text-slate-500">Vagas COPSOQ em uso</p>
+              <p className="mt-2 text-2xl font-semibold text-slate-900">
+                {licencasConsumidas}
               </p>
             </div>
           </div>
@@ -1273,12 +1266,12 @@ export default function DashboardExpress() {
           <div className="flex items-start justify-between gap-4">
             <div>
               <h3 className="text-sm font-semibold text-amber-900">
-                Expansão de equipe
+                Vagas COPSOQ
               </h3>
 
               <p className="mt-1 text-xs text-amber-800">
-                Ao consumir todas as licenças, adquira novas para adicionar
-                colaboradores.
+                Vagas para participação na pesquisa COPSOQ. O cadastro de
+                usuários é independente e não possui limite formal.
               </p>
             </div>
           </div>
@@ -1286,13 +1279,15 @@ export default function DashboardExpress() {
           <div className="mt-3 text-sm text-amber-900">
             {licencasContratadas - licencasConsumidas <= 5 &&
               licencasContratadas - licencasConsumidas > 0 && (
-                <p className="font-semibold">⚠️ Poucas licenças restantes.</p>
+                <p className="font-semibold">
+                  ⚠️ Poucas vagas COPSOQ restantes.
+                </p>
               )}
 
             {licencasContratadas - licencasConsumidas === 0 && (
               <div className="mt-2 text-sm text-brand-accent font-semibold">
-                Todas as licenças contratadas já estão em uso. Adquira novas
-                licenças para continuar.
+                Todas as vagas COPSOQ contratadas já estão em uso. Adquira novas
+                vagas para incluir mais colaboradores na pesquisa.
               </div>
             )}
           </div>
@@ -1395,7 +1390,7 @@ export default function DashboardExpress() {
             <div className="mt-4">
               <button
                 onClick={onQuickAdd}
-                disabled={busy || isLimitReached}
+                disabled={busy}
                 className="inline-flex items-center justify-center rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand/90 disabled:opacity-60"
               >
                 {busy ? "Adicionando..." : "Adicionar usuário"}
@@ -1576,12 +1571,7 @@ export default function DashboardExpress() {
 
               <button
                 onClick={onEnqueueBulk}
-                disabled={
-                  !previewGenerated ||
-                  !bulkFiltrados.length ||
-                  busy ||
-                  isLimitReached
-                }
+                disabled={!previewGenerated || !bulkFiltrados.length || busy}
                 className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
               >
                 {busy ? "Importando..." : "Importar"}

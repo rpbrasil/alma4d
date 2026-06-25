@@ -65,7 +65,7 @@ export async function GET(req: Request) {
 
   const { data: contratoAtivo } = await supabase
     .from("contratos")
-    .select("limite_usuarios")
+    .select("id, limite_usuarios")
     .eq("cliente_id", tenantId)
     .eq("status", "ativo")
     .order("criado_em", { ascending: false })
@@ -74,8 +74,28 @@ export async function GET(req: Request) {
 
   limite_usuarios = contratoAtivo?.limite_usuarios ?? null;
 
-  // ✅ uso atual
-  const { count } = await supabase
+  // ✅ vagas COPSOQ em uso (elegíveis + respondidos) — representa consumo real de licenças
+  //    Licenças NÃO limitam o cadastro de usuários; só limitam vagas na pesquisa COPSOQ.
+  let licencas_consumidas = 0;
+  if (contratoAtivo?.id) {
+    const [{ count: elegiveisCount }, { count: respondidosCount }] =
+      await Promise.all([
+        supabase
+          .from("questionario_vagas")
+          .select("id", { count: "exact", head: true })
+          .eq("contrato_id", contratoAtivo.id)
+          .eq("status", "elegivel"),
+        supabase
+          .from("questionario_vagas")
+          .select("id", { count: "exact", head: true })
+          .eq("contrato_id", contratoAtivo.id)
+          .eq("status", "respondido"),
+      ]);
+    licencas_consumidas = (elegiveisCount ?? 0) + (respondidosCount ?? 0);
+  }
+
+  // ✅ usuários cadastrados — informativo, independente das licenças COPSOQ
+  const { count: usuariosCadastrados } = await supabase
     .from("usuarios")
     .select("id", { count: "exact", head: true })
     .eq("cliente_id", tenantId)
@@ -84,6 +104,7 @@ export async function GET(req: Request) {
 
   return NextResponse.json({
     licencas_contratadas: limite_usuarios,
-    licencas_consumidas: count ?? 0,
+    licencas_consumidas,
+    usuarios_cadastrados: usuariosCadastrados ?? 0,
   });
 }
