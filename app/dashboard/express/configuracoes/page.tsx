@@ -196,7 +196,7 @@ export default function ConfiguracoesPage() {
               type="url"
               value={menuUrl}
               onChange={(e) => setMenuUrl(e.target.value)}
-              placeholder="https://seulink.suaempresa.com"
+              placeholder="https://seulink.suaempresa.com.br"
               className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#030870]/30"
             />
             <p className="text-xs text-slate-500">

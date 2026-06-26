@@ -228,23 +228,27 @@ export default function DashboardExpressCopsoqPage() {
         if (!contratoId && elegiveis.length === 1)
           setContratoId(elegiveis[0].id);
 
-        // ✅ carregar resumo de vagas
-        try {
-          const vagasRes = await fetch(
-            `/api/contrato/vagas/resumo?contrato_id=${elegiveis[0]?.id}`,
-            {
-              headers: {
-                Authorization: `Bearer ${session.access_token}`,
-              },
-            },
-          );
+        // ✅ carregar resumo de vagas — usa o contrato selecionado (ou o primeiro)
+        const idParaResumo = contratoId || elegiveis[0]?.id;
+        if (idParaResumo) {
+          try {
+            const vagasRes = await fetch(
+              `/api/contrato/vagas/resumo?contrato_id=${idParaResumo}`,
+            );
 
-          if (vagasRes.ok) {
-            const vagasData = await vagasRes.json();
-            setResumoVagas(vagasData);
+            if (vagasRes.ok) {
+              const vagasData = await vagasRes.json();
+              setResumoVagas(vagasData);
+            } else {
+              console.warn(
+                "Resumo vagas retornou",
+                vagasRes.status,
+                await vagasRes.text().catch(() => ""),
+              );
+            }
+          } catch {
+            console.warn("Erro ao carregar resumo de vagas");
           }
-        } catch {
-          console.warn("Erro ao carregar resumo de vagas");
         }
         setPhase("done");
       } catch (err) {
@@ -262,6 +266,21 @@ export default function DashboardExpressCopsoqPage() {
     // ⚠️ phase fica fora do deps para não resetar o watchdog; supabase já é estável pelo useMemo
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supabase]);
+
+  // 1b) recarrega resumo quando contrato selecionado muda
+  useEffect(() => {
+    if (!contratoId) return;
+    let alive = true;
+    fetch(`/api/contrato/vagas/resumo?contrato_id=${contratoId}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (alive && data) setResumoVagas(data);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [contratoId]);
 
   // 2) gerar QR local (em alta resolução, mas exibido menor)
   useEffect(() => {

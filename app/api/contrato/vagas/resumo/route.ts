@@ -1,6 +1,33 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-import { getCaller } from "@/api/importacao-usuarios/_shared/getCaller";
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
+
+type AppMetadata = {
+  user_role?: string;
+  user_cliente_id?: string;
+  user_ativo?: boolean;
+};
+
+function parseJwt(token: string | undefined | null) {
+  if (!token) return null;
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+    const payload = JSON.parse(
+      Buffer.from(parts[1], "base64url").toString("utf-8"),
+    ) as Record<string, unknown>;
+    const meta = payload.app_metadata as AppMetadata | undefined;
+    return {
+      role: meta?.user_role ?? null,
+      clienteId:
+        typeof meta?.user_cliente_id === "string" ? meta.user_cliente_id : null,
+      ativo: typeof meta?.user_ativo === "boolean" ? meta.user_ativo : null,
+    };
+  } catch {
+    return null;
+  }
+}
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -13,45 +40,44 @@ export async function GET(req: Request) {
     );
   }
 
-  // ✅ env check
-  if (
-    !process.env.NEXT_PUBLIC_SUPABASE_URL ||
-    !process.env.SUPABASE_SERVICE_ROLE_KEY
-  ) {
-    return NextResponse.json(
-      { error: "Configuração do servidor inválida" },
-      { status: 500 },
-    );
-  }
-
-  const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY,
+  // ✅ SSR cookie auth — mesma sessão do browser
+  const cookieStore = await cookies();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll() {},
+      },
+    },
   );
 
-  // ✅ autenticação
-  let caller;
-  try {
-    caller = await getCaller(req, supabaseAdmin);
-  } catch (e) {
-    const code = e instanceof Error ? e.message : "UNKNOWN";
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
 
-    const map: Record<string, number> = {
-      NO_TOKEN: 401,
-      INVALID_TOKEN: 401,
-      NO_PERMISSION: 403,
-      INVALID_PLAN: 403,
-      CLIENT_INACTIVE: 403,
-    };
-
-    return NextResponse.json(
-      { error: code, message: code },
-      { status: map[code] ?? 400 },
-    );
+  if (userError || !user) {
+    return NextResponse.json({ error: "not_authenticated" }, { status: 401 });
   }
 
-  // ✅ contrato
-  const { data: contrato, error: contratoError } = await supabaseAdmin
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  const claims = parseJwt(session?.access_token);
+
+  if (!claims || claims.ativo !== true) {
+    return NextResponse.json({ error: "user_inactive" }, { status: 403 });
+  }
+
+  const adminDb = getSupabaseAdmin();
+
+  // ✅ busca contrato e valida tenant
+  const { data: contrato, error: contratoError } = await adminDb
     .from("contratos")
     .select("id, cliente_id, limite_usuarios")
     .eq("id", contratoId)
@@ -64,10 +90,10 @@ export async function GET(req: Request) {
     );
   }
 
-  // ✅ multi-tenant
+  // ✅ multi-tenant: admin passa livre; outros só veem seu próprio cliente
   if (
-    caller.role !== "admin" &&
-    String(contrato.cliente_id) !== String(caller.cliente_id)
+    claims.role !== "admin" &&
+    String(contrato.cliente_id) !== String(claims.clienteId)
   ) {
     return NextResponse.json(
       { error: "Acesso a contrato de outro tenant" },
@@ -77,22 +103,22 @@ export async function GET(req: Request) {
 
   const limite = Number(contrato.limite_usuarios ?? 0);
 
-  // ✅ contagens otimistas (3 queries leves)
+  // ✅ contagens por status
   const [{ count: elegiveis }, { count: respondidos }, { count: removidos }] =
     await Promise.all([
-      supabaseAdmin
+      adminDb
         .from("questionario_vagas")
         .select("id", { count: "exact", head: true })
         .eq("contrato_id", contratoId)
         .eq("status", "elegivel"),
 
-      supabaseAdmin
+      adminDb
         .from("questionario_vagas")
         .select("id", { count: "exact", head: true })
         .eq("contrato_id", contratoId)
         .eq("status", "respondido"),
 
-      supabaseAdmin
+      adminDb
         .from("questionario_vagas")
         .select("id", { count: "exact", head: true })
         .eq("contrato_id", contratoId)
