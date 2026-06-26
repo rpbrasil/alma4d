@@ -18,6 +18,7 @@ import {
   UserX,
   ShieldCheck,
   AlertTriangle,
+  ExternalLink,
 } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
 import { useAuth, Role } from "@/context/auth";
@@ -101,6 +102,12 @@ const NAV_BY_PLAN: Record<Plano, NavItem[]> = {
       roles: ["admin"],
     },
     {
+      href: "/dashboard/express/configuracoes",
+      label: "Configurações",
+      icon: Settings,
+      roles: ["cliente"],
+    },
+    {
       href: "/dashboard/admin/deletar-usuario",
       label: "Deletar usuário",
       icon: UserX,
@@ -167,17 +174,19 @@ type SidebarProps = {
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, loading, signOut, plano, role } = useAuth();
+  const { user, loading, signOut, plano, role, clienteId } = useAuth();
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [menuUrl, setMenuUrl] = useState<string | null>(null);
+  const [menuLabel, setMenuLabel] = useState<string>("Acesso externo");
 
   const [copsoqStatus, setCopsoqStatus] = useState<{
     status: string;
     href: string | null;
   } | null>(null);
 
-  const effectivePlano = plano as Plano;
+  const effectivePlano = (plano ?? "express") as Plano;
 
   const displayName = user?.nome || "Usuário";
 
@@ -212,6 +221,20 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     }
     return pathname.startsWith(href);
   };
+
+  useEffect(() => {
+    const canFetch =
+      (role === "cliente" || role === "gestor" || role === "usuario") &&
+      !!clienteId;
+    if (!canFetch) return;
+    fetch("/api/clientes/configuracoes")
+      .then((r) => r.json())
+      .then((json) => {
+        setMenuUrl(json?.data?.menu_url ?? null);
+        setMenuLabel(json?.data?.menu_label || "Acesso externo");
+      })
+      .catch(() => setMenuUrl(null));
+  }, [role, clienteId]);
 
   useEffect(() => {
     async function loadStatus() {
@@ -336,6 +359,18 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                 </Link>
               );
             })}
+            {menuUrl && (
+              <a
+                href={menuUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={onClose}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-white/75 hover:text-white hover:bg-white/8"
+              >
+                <ExternalLink size={18} />
+                {menuLabel}
+              </a>
+            )}
           </nav>
 
           <div className="px-3 py-3 border-t border-white/10 space-y-1">
