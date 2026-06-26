@@ -1,45 +1,79 @@
 import { NextResponse } from "next/server";
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { getCaller } from "../importacao-usuarios/_shared/getCaller";
 
-export async function GET(req: Request) {
-  const auth = req.headers.get("authorization");
-  if (!auth?.startsWith("Bearer ")) {
+type AppMetadata = {
+  user_role?: string;
+  user_cliente_id?: string;
+  user_ativo?: boolean;
+  user_plano?: string;
+};
+
+function parseJwt(token: string | undefined | null) {
+  if (!token) return null;
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+    const payload = JSON.parse(
+      Buffer.from(parts[1], "base64url").toString("utf-8"),
+    ) as Record<string, unknown>;
+    const meta = payload.app_metadata as AppMetadata | undefined;
+    return {
+      role: meta?.user_role ?? null,
+      plano: meta?.user_plano ?? null,
+      clienteId:
+        typeof meta?.user_cliente_id === "string" ? meta.user_cliente_id : null,
+      ativo: typeof meta?.user_ativo === "boolean" ? meta.user_ativo : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function GET() {
+  // ✅ SSR cookie auth — mesma sessão do browser
+  const cookieStore = await cookies();
+  const supabaseSsr = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll() {},
+      },
+    },
+  );
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabaseSsr.auth.getUser();
+
+  if (userError || !user) {
     return NextResponse.json({ error: "Token ausente" }, { status: 401 });
+  }
+
+  const {
+    data: { session },
+  } = await supabaseSsr.auth.getSession();
+
+  const claims = parseJwt(session?.access_token);
+
+  if (!claims || claims.ativo !== true) {
+    return NextResponse.json({ error: "Token inválido" }, { status: 401 });
   }
 
   const supabase = getSupabaseAdmin();
 
-  let perfil;
-  try {
-    const caller = await getCaller(req, supabase);
-    const callerId = caller.id;
-
-    const { data, error: perfilErr } = await supabase
-      .from("usuarios")
-      .select("id, role, cliente_id, ativo, tipo_plano")
-      .eq("id", callerId)
-      .maybeSingle();
-
-    if (perfilErr || !data) {
-      return NextResponse.json({ error: "Plano inválido" }, { status: 403 });
-    }
-
-    perfil = data;
-  } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : String(e);
-    if (msg === "NO_TOKEN" || msg === "INVALID_TOKEN") {
-      return NextResponse.json({ error: "Token inválido" }, { status: 401 });
-    }
+  // ✅ plano e cliente via JWT (evita round-trip ao DB para autenticação)
+  if (claims.plano !== "express") {
     return NextResponse.json({ error: "Plano inválido" }, { status: 403 });
   }
 
-  if (!perfil || !perfil.ativo || perfil.tipo_plano !== "express") {
-    return NextResponse.json({ error: "Plano inválido" }, { status: 403 });
-  }
-
-  // ⚠️ IMPORTANTE: express é fluxo pago → precisa ter cliente
-  if (!perfil.cliente_id) {
+  if (!claims.clienteId) {
     return NextResponse.json(
       { error: "Sem cliente vinculado" },
       { status: 403 },
@@ -50,15 +84,14 @@ export async function GET(req: Request) {
   const { data: cliente } = await supabase
     .from("clientes")
     .select("ativo")
-    .eq("id", perfil.cliente_id)
+    .eq("id", claims.clienteId)
     .single();
 
   if (!cliente?.ativo) {
     return NextResponse.json({ error: "Cliente inativo" }, { status: 403 });
   }
 
-  // ✅ tenant correto (agora sempre cliente_id)
-  const tenantId = perfil.cliente_id;
+  const tenantId = claims.clienteId;
 
   // ✅ limite baseado no contrato ativo
   let limite_usuarios: number | null = null;

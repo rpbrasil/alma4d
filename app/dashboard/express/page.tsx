@@ -255,9 +255,9 @@ export default function DashboardExpress() {
   const [licencasContratadas, setlicencasContratadas] = useState<number | null>(
     null,
   );
-  // vagas COPSOQ em uso (elegíveis + respondidos) — desacoplado do nr de usuários
+  // licencas em uso (elegíveis + respondidos) — desacoplado do nr de usuários
   const [licencasConsumidas, setlicencasConsumidas] = useState<number>(0);
-  // usuários cadastrados — independente das licenças COPSOQ
+  // usuários cadastrados — independente das licenças
   const [usuariosCadastrados, setUsuariosCadastrados] = useState<number>(0);
 
   const [user, setUser] = useState<UsuarioPerfil | null>(null);
@@ -799,7 +799,6 @@ export default function DashboardExpress() {
         return;
       }
 
-      // Fix #2: garante escopo multi-tenant na busca
       if (!clienteId) {
         setSearchMsg(
           "Dados do usuário ainda carregando. Tente novamente em instantes.",
@@ -807,45 +806,24 @@ export default function DashboardExpress() {
         return;
       }
 
+      const params = new URLSearchParams();
       if (cpfn) {
-        const q = supabase
-          .from("usuarios")
-          .select("id, nome_completo, email, telefone, documento, ativo")
-          .eq("role", "usuario")
-          .eq("documento", cpfn)
-          .eq("cliente_id", clienteId)
-          .limit(50);
-
-        const { data, error } = await q;
-
-        if (error) {
-          console.error("performSearch error (cpf):", error);
-          throw new Error(error.message || "Erro ao consultar usuários");
-        }
-
-        const rows = (data ?? []) as UsuarioPerfil[];
-        setSearchResults(rows);
-        if (!rows.length) setSearchMsg("Nenhum usuário encontrado.");
-        return;
+        params.set("documento", cpfn);
+      } else {
+        params.set("nome", name);
       }
 
-      const q = supabase
-        .from("usuarios")
-        .select("id, nome_completo, email, telefone, documento, ativo")
-        .eq("role", "usuario")
-        .eq("cliente_id", clienteId)
-        .ilike("nome_completo", `%${name}%`)
-        .limit(50)
-        .order("nome_completo", { ascending: true });
+      const r = await fetch(`/api/usuarios/search?${params.toString()}`);
+      const j = await r.json().catch(() => ({}));
 
-      const { data, error } = await q;
-
-      if (error) {
-        console.error("performSearch error (name):", error);
-        throw new Error(error.message || "Erro ao consultar usuários");
+      if (!r.ok) {
+        throw new Error(
+          (j as { error?: string }).error ?? `Erro ao consultar (${r.status})`,
+        );
       }
 
-      const rows = (data ?? []) as UsuarioPerfil[];
+      const rows = ((j as { usuarios?: unknown[] }).usuarios ??
+        []) as UsuarioPerfil[];
       setSearchResults(rows);
       if (!rows.length) setSearchMsg("Nenhum usuário encontrado.");
     } catch (e: unknown) {
@@ -1226,14 +1204,14 @@ export default function DashboardExpress() {
             </div>
 
             <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-              <p className="text-sm text-slate-500">Vagas COPSOQ contratadas</p>
+              <p className="text-sm text-slate-500">Licenças contratadas</p>
               <p className="mt-2 text-2xl font-semibold text-slate-900">
                 {licencasContratadas ?? "—"}
               </p>
             </div>
 
             <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-              <p className="text-sm text-slate-500">Vagas COPSOQ em uso</p>
+              <p className="text-sm text-slate-500">Licenças em uso</p>
               <p className="mt-2 text-2xl font-semibold text-slate-900">
                 {licencasConsumidas}
               </p>
@@ -1266,12 +1244,12 @@ export default function DashboardExpress() {
           <div className="flex items-start justify-between gap-4">
             <div>
               <h3 className="text-sm font-semibold text-amber-900">
-                Vagas COPSOQ
+                Licenças alma4D
               </h3>
 
               <p className="mt-1 text-xs text-amber-800">
-                Vagas para participação na pesquisa COPSOQ. O cadastro de
-                usuários é independente e não possui limite formal.
+                Vagas para participação na pesquisa de riscos psicossociais. O
+                cadastro de usuários é independente e não possui limite formal.
               </p>
             </div>
           </div>
@@ -1279,15 +1257,14 @@ export default function DashboardExpress() {
           <div className="mt-3 text-sm text-amber-900">
             {licencasContratadas - licencasConsumidas <= 5 &&
               licencasContratadas - licencasConsumidas > 0 && (
-                <p className="font-semibold">
-                  ⚠️ Poucas vagas COPSOQ restantes.
-                </p>
+                <p className="font-semibold">⚠️ Poucas licenças restantes.</p>
               )}
 
             {licencasContratadas - licencasConsumidas === 0 && (
               <div className="mt-2 text-sm text-brand-accent font-semibold">
-                Todas as vagas COPSOQ contratadas já estão em uso. Adquira novas
-                vagas para incluir mais colaboradores na pesquisa.
+                Todas as licenças contratadas já estão em uso. Adquira novas
+                licenças para incluir mais colaboradores na pesquisa e outras
+                funcionalidades do app.
               </div>
             )}
           </div>

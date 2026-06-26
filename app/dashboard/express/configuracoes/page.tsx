@@ -106,7 +106,7 @@ export default function ConfiguracoesPage() {
       <div>
         <h1 className="text-xl font-bold text-slate-900">Configurações</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Personalize a experiência do seu painel e dos seus colaboradores.
+          Personalize conforme identidade e conteúdo da sua empresa e melhore a experiência dos seus colaboradores.
         </p>
       </div>
 
@@ -132,8 +132,8 @@ export default function ConfiguracoesPage() {
             className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#030870]/30"
           />
           <p className="text-xs text-slate-500">
-            Aparece no cabeçalho do painel e nos relatórios gerados. Deixe em
-            branco para usar o logo padrão.
+            Aparece no cabeçalho do painel e nos relatórios. Deixe em
+            branco para usar o logo padrão alma4D.
           </p>
           <p className="text-xs text-slate-400 mt-1">
             Formatos aceitos: PNG, SVG, JPG, WebP &mdash; tamanho recomendado:
@@ -201,9 +201,8 @@ export default function ConfiguracoesPage() {
             />
             <p className="text-xs text-slate-500">
               Endereço que será aberto ao clicar no link. Use para apontar para
-              um portal interno, sistema próprio ou página relevante. O link
-              abrirá em nova aba para não interromper o painel. Deixe em branco
-              para não exibir o link.
+              um portal interno, sistema próprio ou página relevante da sua empresa. O link abrirá em nova aba para não interromper o painel. Deixe em branco
+              se não quiser exibir o link.
             </p>
           </div>
         </div>
