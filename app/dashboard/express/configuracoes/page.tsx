@@ -140,7 +140,7 @@ export default function ConfiguracoesPage() {
             até 200&nbsp;KB, proporção horizontal (ex: 300&times;80&nbsp;px).
           </p>
 
-          {logoUrl && !logoPreviewError && (
+          {logoUrl && isValidUrl(logoUrl) && !logoPreviewError && (
             <div className="mt-2 inline-flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
               <span className="text-xs text-slate-400">Prévia:</span>
               <Image

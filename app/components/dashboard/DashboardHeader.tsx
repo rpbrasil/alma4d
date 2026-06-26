@@ -139,6 +139,7 @@ export default function DashboardHeader({ onMenuClick, isMenuOpen }: Props) {
                 fill
                 sizes="64px"
                 className="object-contain"
+                unoptimized={!!clienteLogo}
               />
             </div>
             <div className="hidden sm:flex flex-col leading-tight">
