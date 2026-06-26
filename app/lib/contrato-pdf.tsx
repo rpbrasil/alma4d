@@ -1,3 +1,4 @@
+import { createHash } from "crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import QRCode from "qrcode";
 import puppeteer from "puppeteer";
@@ -92,18 +93,14 @@ export async function gerarContratoPdfInterno({
     userAgent: contratoRow.aceite_user_agent ?? "",
   };
 
-  // 5) Hash simples por enquanto
-  // Depois você pode trocar por SHA256 real
-  const hash = `${contratoRow.id}-${contratoPdf.versao}-${contratoPdf.dataAceite}`;
-
-  // // 6) QR Code de validação
+  // 5) QR Code de validação
   const baseUrl = process.env.BASE_URL ?? "https://alma4d.com.br";
   const verifyUrl = `${baseUrl}/contrato/validar/${contratoId}`;
   const qrCode = await QRCode.toDataURL(verifyUrl);
 
-  // 7) Renderizar PDF
-  // ✅ gerar HTML com seu template real
-  const html = generateContratoHTML({
+  // 6) SHA256 do conteúdo do contrato
+  //    Passo 1: gerar HTML sem hash → computar digest → gerar HTML final com hash real
+  const templateParams = {
     empresa: {
       razaoSocial: clienteRow.nome ?? "",
       cnpj: clienteRow.documento ?? "",
@@ -120,15 +117,24 @@ export async function gerarContratoPdfInterno({
       ip: contratoRow.aceite_ip ?? "",
       userAgent: contratoRow.aceite_user_agent ?? "",
     },
-    termosHtml: "", // você pode conectar depois
+    termosHtml: "",
     privacidadeHtml: "",
-    hash,
-    qrCode, // passa o QR code para o template
-  });
+    qrCode,
+  };
+
+  const htmlSemHash = generateContratoHTML({ ...templateParams, hash: "" });
+  const hash = createHash("sha256").update(htmlSemHash, "utf8").digest("hex");
+
+  // 7) HTML final com SHA256 real embutido
+  const html = generateContratoHTML({ ...templateParams, hash });
 
   // ✅ iniciar browser
   const browser = await puppeteer.launch({
-    args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+    ],
   });
 
   let pdfBuffer: Uint8Array;
@@ -136,10 +142,21 @@ export async function gerarContratoPdfInterno({
   try {
     const page = await browser.newPage();
 
-    await page.setContent(html, {
-      waitUntil: "load",
+    // Block external network requests — the HTML must be self-contained.
+    // Only data: URIs (e.g. embedded QR code) and the initial blank page are allowed.
+    await page.setRequestInterception(true);
+    page.on("request", (request) => {
+      const url = request.url();
+      if (url.startsWith("data:") || url === "about:blank") {
+        request.continue();
+      } else {
+        request.abort();
+      }
     });
-    await page.waitForNetworkIdle();
+
+    await page.setContent(html, { waitUntil: "load", timeout: 30_000 });
+    // best-effort idle wait; external requests are already blocked so this resolves quickly
+    await page.waitForNetworkIdle({ timeout: 5_000 }).catch(() => {});
 
     pdfBuffer = await page.pdf({
       format: "A4",
@@ -168,7 +185,7 @@ export async function gerarContratoPdfInterno({
     .from("contratos")
     .upload(filePath, Buffer.from(pdfBuffer), {
       contentType: "application/pdf",
-      upsert: false,
+      upsert: true, // allows safe retries when a previous upload succeeded but the DB update failed
     });
 
   if (uploadError) {
@@ -176,20 +193,9 @@ export async function gerarContratoPdfInterno({
     throw new Error(uploadError.message);
   }
 
-  // 9) Atualizar contrato com path do PDF
-  const { error: updateError } = await supabase
-    .from("contratos")
-    .update({
-      pdf_url: filePath,
-    })
-    .eq("id", contratoId);
-
-  if (updateError) {
-    console.error("[PDF] ❌ falha ao atualizar contrato:", updateError.message);
-    throw new Error(updateError.message);
-  }
-
-  // 10) Registrar evento (não quebra geração se falhar)
+  // 9) Registrar evento (não quebra geração se falhar)
+  // O chamador (pdf/route.tsx) é responsável por atualizar pdf_url, pdf_status e pdf_generated_at
+  // num único UPDATE atômico após esta função retornar com sucesso.
   const { error: eventoError } = await supabase
     .from("contrato_eventos")
     .insert({

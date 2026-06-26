@@ -21,6 +21,26 @@ function log(requestId: string, ...args: unknown[]) {
   console.log(`[api/contrato/aceite][${requestId}]`, ...args);
 }
 
+/**
+ * Validates a Brazilian CPF number including the checksum digits.
+ * Rejects all-same-digit sequences (e.g. 00000000000).
+ */
+function isValidCpf(digits: string): boolean {
+  if (digits.length !== 11) return false;
+  if (/^(\d)\1{10}$/.test(digits)) return false;
+
+  const calc = (len: number) => {
+    const sum = digits
+      .slice(0, len)
+      .split("")
+      .reduce((acc, d, i) => acc + Number(d) * (len + 1 - i), 0);
+    const r = (sum * 10) % 11;
+    return r === 10 ? 0 : r;
+  };
+
+  return calc(9) === Number(digits[9]) && calc(10) === Number(digits[10]);
+}
+
 type Body = {
   contratoId?: string;
   versao_termos?: string;
@@ -49,7 +69,7 @@ export async function POST(req: Request) {
     const nome = String(body.nome ?? "").trim();
     const cpfDigits = String(body.documento ?? "").replace(/\D/g, "");
 
-    if (!nome || cpfDigits.length !== 11) {
+    if (!nome || !isValidCpf(cpfDigits)) {
       return NextResponse.json({ error: "Dados inválidos" }, { status: 400 });
     }
 
@@ -181,13 +201,13 @@ export async function POST(req: Request) {
     // ✅ SNAPSHOT
     const { data: cliente } = await supabase
       .from("clientes")
-      .select("*")
+      .select("razao_social, cnpj")
       .eq("id", contrato.cliente_id)
       .single();
 
     const { data: usuario } = await supabase
       .from("usuarios")
-      .select("*")
+      .select("email")
       .eq("id", userId)
       .maybeSingle();
 
@@ -268,12 +288,6 @@ export async function POST(req: Request) {
       error instanceof Error ? error.message : String(error),
     );
 
-    return NextResponse.json(
-      {
-        error: "Erro interno",
-        detail: error instanceof Error ? error.message : String(error),
-      },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Erro interno" }, { status: 500 });
   }
 }

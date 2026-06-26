@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { normalizePdfReference } from "@/api/contrato/_shared/normalizePdfReference";
 
 /**
  * =========================
@@ -99,87 +100,6 @@ function toStorageErrorLike(error: unknown): StorageErrorLike {
   return {
     message: error instanceof Error ? error.message : String(error),
   };
-}
-
-/**
- * =========================
- * HELPERS DE CAMINHO
- * =========================
- */
-
-/**
- * Normaliza referências de PDF para extrair o caminho correto do Supabase Storage.
- * Suporta:
- * 1. URLs assinadas do Supabase (com /sign/)
- * 2. Caminhos relativos simples (clientes/xxx/contratos/yyy/v1/arquivo.pdf)
- * 3. Caminhos corrompidos (remove UUIDs no início se não corresponder ao padrão esperado)
- */
-function normalizePdfReference(value: string | null): string | null {
-  if (!value) return null;
-
-  const valueTrimmed = value.trim();
-
-  // Se for URL completa (começa com http), tentar extrair o caminho
-  if (valueTrimmed.startsWith("http")) {
-    try {
-      const parsed = new URL(valueTrimmed);
-      const pathSegments = parsed.pathname.split("/");
-
-      // Procura por /sign/ que indica URL assinada Supabase
-      const signIndex = pathSegments.findIndex((segment) => segment === "sign");
-      if (signIndex >= 0 && pathSegments.length > signIndex + 2) {
-        // Remove "storage/v1/sign/contratos/" e extrai o caminho do arquivo
-        const objectPath = pathSegments.slice(signIndex + 2).join("/");
-        return decodeURIComponent(objectPath);
-      }
-
-      // Se não tiver /sign/, tenta extrair de forma genérica
-      const contratoIndex = pathSegments.findIndex((p) => p === "contratos");
-      if (contratoIndex > 0) {
-        return pathSegments.slice(contratoIndex).join("/");
-      }
-
-      return valueTrimmed;
-    } catch (e) {
-      console.error("[normalizePdfReference] Erro ao parsear URL:", {
-        value: valueTrimmed,
-        error: e instanceof Error ? e.message : String(e),
-      });
-      return valueTrimmed;
-    }
-  }
-
-  // Se for caminho relativo e começar com UUID corrompido, tentar recuperar
-  const uuidPattern =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
-
-  if (uuidPattern.test(valueTrimmed)) {
-    console.warn("[normalizePdfReference] Caminho com UUID detectado:", {
-      original: valueTrimmed,
-      msg: "Caminho pode estar corrompido. Esperado: clientes/{id}/contratos/...",
-    });
-
-    const parts = valueTrimmed.split("/");
-    const contratoIndex = parts.findIndex((p) => p === "contratos");
-    if (contratoIndex > 0) {
-      const recovered = [
-        "clientes",
-        parts[0],
-        ...parts.slice(contratoIndex),
-      ].join("/");
-      console.warn("[normalizePdfReference] Caminho recuperado:", {
-        recovered,
-      });
-      return recovered;
-    }
-  }
-
-  // Se for caminho relativo normal, apenas retorna
-  if (valueTrimmed.includes("contratos/")) {
-    return valueTrimmed;
-  }
-
-  return valueTrimmed;
 }
 
 function buildExpectedPdfPath(contrato: {

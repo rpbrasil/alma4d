@@ -808,7 +808,7 @@ export default function DashboardExpress() {
       }
 
       if (cpfn) {
-        let q = supabase
+        const q = supabase
           .from("usuarios")
           .select("id, nome_completo, email, telefone, documento, ativo")
           .eq("role", "usuario")
@@ -829,7 +829,7 @@ export default function DashboardExpress() {
         return;
       }
 
-      let q = supabase
+      const q = supabase
         .from("usuarios")
         .select("id, nome_completo, email, telefone, documento, ativo")
         .eq("role", "usuario")

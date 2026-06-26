@@ -1,4 +1,5 @@
-import { SupabaseClient, createClient } from "@supabase/supabase-js";
+import { SupabaseClient } from "@supabase/supabase-js";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 function normalizeRpcResult(u: unknown): string | null {
   if (u == null) return null;
@@ -35,32 +36,21 @@ type Caller = {
 
 export async function getCaller(
   req: Request,
-  supabaseAdmin: SupabaseClient,
+  supabase: SupabaseClient,
 ): Promise<Caller> {
-  const authHeader = req.headers.get("authorization");
+  // ✅ pega usuário do cookie (SUPABASE SSR)
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
 
-  if (!authHeader?.startsWith("Bearer ")) {
+  if (authError || !user) {
     throw new Error("NO_TOKEN");
   }
 
-  const token = authHeader.split(" ")[1];
-
-  const { data: userWrap, error: authError } =
-    await supabaseAdmin.auth.getUser(token);
-
-  if (authError || !userWrap?.user) {
-    throw new Error("INVALID_TOKEN");
-  }
-
-  // Create a user-scoped client to call RPC in the caller's context
-  const userClient = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { global: { headers: { Authorization: `Bearer ${token}` } } },
-  );
-
+  // ✅ RPC no contexto do usuário
   const { data: usuarioRpcData, error: usuarioRpcErr } =
-    await userClient.rpc("current_usuario_id");
+    await supabase.rpc("current_usuario_id");
 
   if (usuarioRpcErr) {
     throw new Error("INVALID_TOKEN");
@@ -72,7 +62,10 @@ export async function getCaller(
     throw new Error("INVALID_TOKEN");
   }
 
-  const { data: caller } = await supabaseAdmin
+  // ✅ usa admin para buscar dados
+  const admin = getSupabaseAdmin();
+
+  const { data: caller } = await admin
     .from("usuarios")
     .select("id, role, cliente_id, ativo, tipo_plano")
     .eq("id", callerId)
@@ -89,7 +82,7 @@ export async function getCaller(
   }
 
   if (caller.role !== "admin") {
-    const { data: cliente } = await supabaseAdmin
+    const { data: cliente } = await admin
       .from("clientes")
       .select("ativo")
       .eq("id", caller.cliente_id)

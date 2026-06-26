@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getCaller } from "../../importacao-usuarios/_shared/getCaller";
+import { normalizePdfReference } from "../../contrato/_shared/normalizePdfReference";
 
 type ContratoDbRow = {
   id: string;
@@ -31,51 +32,6 @@ type CallerResolved = {
   role: string;
   usuario_id?: string; // ✅ opcional
 };
-
-/**
- * Normaliza referências de PDF
- */
-function normalizePdfReference(value: string | null): string | null {
-  if (!value) return null;
-
-  const v = value.trim();
-
-  if (v.startsWith("http")) {
-    try {
-      const parsed = new URL(v);
-      const pathSegments = parsed.pathname.split("/").filter(Boolean);
-
-      const signIndex = pathSegments.findIndex((seg) => seg === "sign");
-      if (signIndex >= 0 && pathSegments.length > signIndex + 2) {
-        const objectPath = pathSegments.slice(signIndex + 2).join("/");
-        return decodeURIComponent(objectPath);
-      }
-
-      const contratoIndex = pathSegments.findIndex((p) => p === "contratos");
-      if (contratoIndex >= 0) {
-        return pathSegments.slice(contratoIndex).join("/");
-      }
-
-      return v;
-    } catch (e) {
-      console.error("[normalizePdfReference] erro:", e);
-      return v;
-    }
-  }
-
-  const uuidPattern =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
-
-  if (uuidPattern.test(v)) {
-    const parts = v.split("/");
-    const contratoIndex = parts.findIndex((p) => p === "contratos");
-    if (contratoIndex > 0) {
-      return ["clientes", parts[0], ...parts.slice(contratoIndex)].join("/");
-    }
-  }
-
-  return v;
-}
 
 function toCentsFromValorTotal(
   valor_total: number | string | null,

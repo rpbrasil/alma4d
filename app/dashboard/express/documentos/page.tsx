@@ -176,15 +176,36 @@ export default function DashboardExpressDocumentosPage() {
         setPerfil(perfilData);
 
         const [contratosRes, nfseRes] = await Promise.all([
-          fetch(`/api/contrato/by-cliente?cliente_id=${perfilData.cliente_id}`),
-          fetch(`/api/nfse/by-cliente?cliente_id=${perfilData.cliente_id}`),
+          fetch(
+            `/api/contrato/by-cliente?cliente_id=${perfilData.cliente_id}`,
+            {
+              credentials: "include",
+            },
+          ),
+          fetch(`/api/nfse/by-cliente?cliente_id=${perfilData.cliente_id}`, {
+            credentials: "include",
+          }),
         ]);
 
-        const contratosData = await contratosRes.json();
-        const nfseData = await nfseRes.json();
+        let contratosData: ContratoRow[] = [];
+        if (!contratosRes.ok) {
+          const text = await contratosRes.text();
+          console.log("Erro contratos:", text);
+        } else {
+          const parsed = await contratosRes.json();
+          contratosData = Array.isArray(parsed) ? parsed : [];
+        }
+        setContratos(contratosData);
 
-        setContratos(contratosData || []);
-        setNfse(nfseData || []);
+        let nfseData: NFSeRow[] = [];
+        if (!nfseRes.ok) {
+          const text = await nfseRes.text();
+          console.log("Erro NFSe:", text);
+        } else {
+          const parsed = await nfseRes.json();
+          nfseData = Array.isArray(parsed) ? parsed : [];
+        }
+        setNfse(nfseData);
       } catch (err) {
         setError(
           err instanceof Error ? err.message : "Erro ao carregar documentos.",

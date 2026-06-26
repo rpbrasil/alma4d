@@ -20,7 +20,9 @@ export async function GET(req: Request) {
 
   const { data: contrato, error: contratoErr } = await supabase
     .from("contratos")
-    .select("*")
+    .select(
+      "id, cliente_id, criado_por, aceite_ip, aceite_user_agent, termos_html, versao, numero_contrato, versao_termos",
+    )
     .eq("id", contratoId)
     .single();
 
@@ -33,13 +35,13 @@ export async function GET(req: Request) {
 
   const { data: cliente } = await supabase
     .from("clientes")
-    .select("*")
+    .select("razao_social, cnpj")
     .eq("id", contrato.cliente_id)
     .single();
 
   const { data: usuario } = await supabase
     .from("usuarios")
-    .select("*")
+    .select("nome_completo, email, documento")
     .eq("id", contrato.criado_por)
     .single();
 
@@ -49,7 +51,7 @@ export async function GET(req: Request) {
       { status: 500 },
     );
   }
-  
+
   // Termos: preferir termos_html salvo; fallback para arquivo
   let termosHtml = contrato.termos_html ?? "";
   if (!termosHtml) {

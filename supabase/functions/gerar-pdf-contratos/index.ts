@@ -95,8 +95,14 @@ Deno.serve(async (req: Request) => {
 
         console.error("[PDF EDGE] erro:", err);
 
-        // ✅ incrementar tentativa corretamente
-        const attempts = (contrato.pdf_attempts ?? 0) + 1;
+        // ✅ incrementar tentativa com leitura fresca do DB (evita stale count se outro processo já incrementou)
+        const { data: freshContrato } = await supabase
+          .from("contratos")
+          .select("pdf_attempts")
+          .eq("id", contratoId)
+          .maybeSingle();
+
+        const attempts = (freshContrato?.pdf_attempts ?? 0) + 1;
 
         await supabase
           .from("contratos")
