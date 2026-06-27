@@ -213,9 +213,10 @@ function CopsoqPageContent() {
         if (bindError) throw bindError;
 
         if (linkBind?.aplicacao_id) {
+          // Usuário já concluiu — não precisa chamar verificar-acesso
           setExistsCompleted(true);
           setSuccess(
-            "Você já concluiu este questionário. Obrigado pela participação.",
+            "Você já concluiu este questionário neste ciclo. Obrigado pela participação.",
           );
         } else {
           // cria reserva idempotente (exige UNIQUE (link_id, usuario_id))
@@ -227,44 +228,41 @@ function CopsoqPageContent() {
             );
 
           if (upsertError) throw upsertError;
-        }
 
-        // ✅ VALIDAÇÃO DE VAGA DO QUESTIONÁRIO
-        const res = await fetch("/api/questionario/verificar-acesso", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-        });
+          // ✅ VALIDAÇÃO DE VAGA DO QUESTIONÁRIO
+          const res = await fetch("/api/questionario/verificar-acesso", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+            },
+          });
 
-        const acesso = await res.json().catch(() => null);
-        if (!acesso) {
-          setError("Falha ao validar acesso.");
-          return;
-        }
-        if (!res.ok || !acesso?.permitido) {
-          if (acesso?.motivo === "SEM_VAGA") {
+          const acesso = await res.json().catch(() => null);
+          if (!acesso) {
+            setError("Falha ao validar acesso.");
+            return;
+          }
+          if (!res.ok || !acesso?.permitido) {
+            if (acesso?.motivo === "SEM_VAGA") {
+              setError(
+                "Você ainda não foi incluído na campanha atual ou o período de resposta foi encerrado. Aguarde a liberação ou contate o administrador.",
+              );
+              return;
+            }
+
             setError(
-              "Você já respondeu este questionário ou não está incluído na campanha atual.",
+              acesso?.message ??
+                "Você não possui permissão para responder o questionário.",
             );
-            setTimeout(() => {
-              router.replace("/dashboard/express/acesso-basico?step=3");
-            }, 2000);
             return;
           }
 
-          setError(
-            acesso?.message ??
-              "Você não possui permissão para responder o questionário.",
-          );
-          return;
-        }
-
-        if (active) {
-          setLinkInfo(link as LinkInfo);
-          setClienteNome(cliente.nome ?? null);
-          setClienteCnpj(cliente.documento ?? null);
-          setContratoNumero(contrato.numero_contrato ?? null);
+          if (active) {
+            setLinkInfo(link as LinkInfo);
+            setClienteNome(cliente.nome ?? null);
+            setClienteCnpj(cliente.documento ?? null);
+            setContratoNumero(contrato.numero_contrato ?? null);
+          }
         }
       } catch (err) {
         if (!active) return;
