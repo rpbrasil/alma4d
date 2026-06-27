@@ -104,8 +104,19 @@ export const CopsoqOfficialReport = forwardRef<HTMLDivElement, PropsWithLogo>(
         (acc, r) => acc + (r.n_respostas ?? 0),
         0,
       );
+      // Unique respondents: sum of max n_respostas per unique (dep, setor) group
+      const groupMap = new Map<string, number>();
+      for (const r of rows) {
+        const key = `${r.departamento_id ?? "_"}|${r.setor_id ?? "_"}`;
+        groupMap.set(key, Math.max(groupMap.get(key) ?? 0, r.n_respostas ?? 0));
+      }
+      const totalRespondentes = Array.from(groupMap.values()).reduce(
+        (a, b) => a + b,
+        0,
+      );
       return {
         totalRespostas,
+        totalRespondentes,
         totalEscalas: rows.length,
         altos: rows.filter((r) => r.nivel_risco === "alto").length,
         medios: rows.filter((r) => r.nivel_risco === "medio").length,
@@ -254,9 +265,13 @@ export const CopsoqOfficialReport = forwardRef<HTMLDivElement, PropsWithLogo>(
   color: #030870;
 }
 
-      .cover {display: flex;flex-direction: column;justify-content: space-between;
-  min-height: 100%;page-break-after: always;}
-      .cover-header { margin-top: 40mm; }
+      .cover {display: flex;flex-direction: column;
+  page-break-after: always;}
+      .cover-header { margin-top: 20mm; }
+      .cover-logo-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+      .respondentes-destaque { background: #f0f4ff; border: 2px solid #030870; border-radius: 8px; padding: 10px 16px; margin: 10px 0 8px; display: block; }
+      .respondentes-num { font-size: 22px; font-weight: 900; color: #030870; display: block; line-height: 1.2; }
+      .respondentes-label { font-size: 11px; color: #444; font-weight: 600; }
       .cover-title { font-size: 20px; font-weight: 800; color: #030870; margin-bottom: 12px; }
       .cover-meta { font-size: 12px; line-height: 1.6; color: #222; }
       .cover-box { border-top: 1px solid #ddd; margin-top: 24px; padding-top: 12px; font-size: 11px; color: #444; }
@@ -310,7 +325,6 @@ export const CopsoqOfficialReport = forwardRef<HTMLDivElement, PropsWithLogo>(
       .pill-low { background: rgba(1,148,153,.15); color: #019499; }
       .setor-block { margin-top: 10px; page-break-inside: avoid; }
       .visao-grafica {
-        page-break-before: always;
         }
       .action-table th, .action-table td { padding: 8px; }
       .action-break { page-break-inside: avoid; }
@@ -325,15 +339,9 @@ export const CopsoqOfficialReport = forwardRef<HTMLDivElement, PropsWithLogo>(
 
         {/* ================= CAPA TÉCNICA ================= */}
         <div className="cover">
-          <div
-            className="cover-header"
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "flex-start",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div className="cover-header">
+            {/* Linha de logos */}
+            <div className="cover-logo-row">
               {clienteLogo ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -341,17 +349,15 @@ export const CopsoqOfficialReport = forwardRef<HTMLDivElement, PropsWithLogo>(
                   alt="Logo cliente"
                   style={{ width: 100, height: "auto" }}
                 />
-              ) : null}
-
-              <div>{/* keep space for title area */}</div>
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src="https://alma4d.com.br/images/alma4d-bicolor-nobground-256.png"
+                  alt="Logo alma4D"
+                  style={{ width: 120 }}
+                />
+              )}
             </div>
-
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="https://alma4d.com.br/images/alma4d-bicolor-nobground-256.png"
-              alt="Logo alma4D"
-              style={{ width: 120, float: "right", marginBottom: 16 }}
-            />
 
             <div className="cover-title">
               Relatório Psicossocial — Evidência técnica de apoio ao GRO/PGR
@@ -371,20 +377,33 @@ export const CopsoqOfficialReport = forwardRef<HTMLDivElement, PropsWithLogo>(
             </div>
 
             <div className="cover-box">
-              <b>Resumo executivo</b>
-              <br />
-              <b>Total de respostas (agregado):</b> {resumo.totalRespostas}
-              <br />
-              <b>Total de escalas com resultado:</b> {resumo.totalEscalas}
-              <br />
-              <b>Alto:</b> {resumo.altos} <b>Médio:</b> {resumo.medios}{" "}
-              <b>Baixo:</b> {resumo.baixos}
-              <br />
-              <b>Escopo e finalidade:</b> este documento consolida resultados{" "}
-              <b>agregados</b> de fatores psicossociais obtidos por meio do
-              COPSOQ II BR (versão curta), com a finalidade de apoiar o{" "}
-              <b>GRO</b> e o <b>PGR</b>. Não constitui diagnóstico clínico ou
-              avaliação individual.
+              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>
+                Resumo executivo
+              </div>
+              <div className="respondentes-destaque">
+                <span className="respondentes-num">
+                  {resumo.totalRespondentes}
+                </span>
+                <span className="respondentes-label">
+                  pessoas responderam ao questionário
+                </span>
+              </div>
+              <div style={{ marginTop: 8 }}>
+                <div>
+                  <b>Total de escalas com resultado:</b> {resumo.totalEscalas}
+                </div>
+                <div style={{ marginTop: 4 }}>
+                  <b>Alto:</b> {resumo.altos}   <b>Médio:</b> {resumo.medios}   
+                  <b>Baixo:</b> {resumo.baixos}
+                </div>
+                <div style={{ marginTop: 8 }}>
+                  <b>Escopo e finalidade:</b> este documento consolida
+                  resultados <b>agregados</b> de fatores psicossociais obtidos
+                  por meio do COPSOQ II BR (versão curta), com a finalidade de
+                  apoiar o <b>GRO</b> e o <b>PGR</b>. Não constitui diagnóstico
+                  clínico ou avaliação individual.
+                </div>
+              </div>
             </div>
           </div>
 

@@ -33,7 +33,10 @@ const nextConfig: NextConfig = {
                 'self' 
                 https://challenges.cloudflare.com
                 https://*.supabase.co
-                wss://*.supabase.co;
+                wss://*.supabase.co
+                https://alma4d.com.br
+                https://fonts.googleapis.com
+                https://fonts.gstatic.com;
 
               frame-src 
                 'self'

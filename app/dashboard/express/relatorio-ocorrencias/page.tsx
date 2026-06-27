@@ -88,21 +88,34 @@ type StatusDenuncia =
 type NivelClassificacao = "alta" | "media" | "baixa";
 
 async function loadImageAsBase64(url: string): Promise<string | null> {
-  try {
-    const res = await fetch(url);
-    if (!res.ok) return null;
+  // Route external URLs through our proxy so the browser fetches from our
+  // own origin — no CORS restrictions, no canvas taint issues.
+  const isExternal = url.startsWith("http://") || url.startsWith("https://");
+  const src = isExternal
+    ? `/api/proxy-image?url=${encodeURIComponent(url)}`
+    : url;
 
-    const blob = await res.blob();
-
-    return await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-  } catch {
-    return null;
-  }
+  return new Promise<string | null>((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.naturalWidth || 100;
+        canvas.height = img.naturalHeight || 100;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          resolve(null);
+          return;
+        }
+        ctx.drawImage(img, 0, 0);
+        resolve(canvas.toDataURL("image/png"));
+      } catch {
+        resolve(null);
+      }
+    };
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
 }
 
 function addSectionTitle(doc: JsPDFClass, title: string, y: number) {
@@ -150,25 +163,34 @@ function addFooter(
   const pageHeight = doc.internal.pageSize.getHeight();
 
   doc.setDrawColor(226, 232, 240);
-  doc.line(14, pageHeight - 14, pageWidth - 14, pageHeight - 14);
+  doc.line(14, pageHeight - 16, pageWidth - 14, pageHeight - 16);
 
-  // ✅ LOGO SEM DISTORÇÃO
   if (almaLogoBase64) {
     addImageKeepRatio(
       doc,
       almaLogoBase64,
       14, // X
-      pageHeight - 12, // Y
-      12, // largura máxima
-      6, // altura máxima
+      pageHeight - 14, // Y
+      18, // largura máxima (aumentada)
+      9, // altura máxima (aumentada)
     );
   }
+
+  const emitidoEm = new Date().toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
 
   doc.setFontSize(9);
   doc.setTextColor(100, 116, 139);
 
-  doc.text("Relatório executivo", 30, pageHeight - 6);
-  doc.text(`Página ${pageNumber}`, pageWidth - 28, pageHeight - 6);
+  doc.text(
+    `Relatório emitido pela plataforma alma4D em ${emitidoEm}`,
+    36,
+    pageHeight - 7,
+  );
+  doc.text(`Página ${pageNumber}`, pageWidth - 28, pageHeight - 7);
 }
 
 const STATUS_LABELS: Record<StatusDenuncia, string> = {
@@ -293,7 +315,7 @@ function KpiCard({
 
 export default function RelatorioOcorrenciasPage() {
   const supabase = useMemo(() => getSupabaseClient(), []);
-  const { role, usuarioId } = useAuth();
+  const { role, usuarioId, clienteId } = useAuth();
   const router = useRouter();
 
   const [loading, setLoading] = useState(true);
@@ -358,34 +380,57 @@ export default function RelatorioOcorrenciasPage() {
 
         setDenuncias((denunciasData as Denuncia[]) || []);
         setArquivos((arquivosData as DenunciaArquivo[]) || []);
-
-        // tenta descobrir o cliente atual via sessão -> usuarios -> clientes
-        if (usuarioId) {
-          const { data: usuario } = await supabase
-            .from("usuarios")
-            .select("cliente_id")
-            .eq("id", usuarioId)
-            .maybeSingle();
-
-          if (usuario?.cliente_id) {
-            type ClienteRow = { nome: string | null; logo_url: string | null };
-            const { data: cliente } = await supabase
-              .from("clientes")
-              .select("nome, logo_url")
-              .eq("id", usuario.cliente_id)
-              .maybeSingle();
-
-            setClienteNome((cliente as ClienteRow | null)?.nome ?? null);
-            setClienteLogo((cliente as ClienteRow | null)?.logo_url ?? null);
-          }
-        }
       } finally {
         setLoading(false);
       }
     }
 
     load();
-  }, [supabase, role, usuarioId]);
+  }, [supabase, role]);
+
+  // Carrega nome e logo do cliente — separado para não re-disparar a query
+  // de denúncias a cada vez que clienteId resolve do JWT.
+  useEffect(() => {
+    const resolvedId = clienteId ?? null;
+    if (!resolvedId && !usuarioId) return;
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        let effectiveId: string | null = resolvedId;
+
+        if (!effectiveId && usuarioId) {
+          const { data } = await supabase
+            .from("usuarios")
+            .select("cliente_id")
+            .eq("id", usuarioId)
+            .maybeSingle();
+          effectiveId =
+            (data as { cliente_id: string | null } | null)?.cliente_id ?? null;
+        }
+
+        if (!effectiveId || cancelled) return;
+
+        type ClienteRow = { nome: string | null; logo_url: string | null };
+        const { data: cliente } = await supabase
+          .from("clientes")
+          .select("nome, logo_url")
+          .eq("id", effectiveId)
+          .maybeSingle();
+
+        if (cancelled) return;
+        setClienteNome((cliente as ClienteRow | null)?.nome ?? null);
+        setClienteLogo((cliente as ClienteRow | null)?.logo_url ?? null);
+      } catch {
+        // silently ignore — logo fallback handled in the UI
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [supabase, clienteId, usuarioId]);
 
   const categorias = useMemo(() => {
     return Array.from(new Set(denuncias.map((d) => d.categoria))).sort();
@@ -697,45 +742,77 @@ export default function RelatorioOcorrenciasPage() {
         "Linha do tempo das ocorrências",
       ];
 
-      for (let i = 0; i < chartImages.length; i++) {
-        const img = chartImages[i];
-        if (!img) continue;
+      // --- Gráficos: categoria + status lado a lado, timeline largura total ---
+      const [catImg, statImg, timeImg] = chartImages;
+      const halfW = (pageContentWidth - 4) / 2; // 4 mm de gap entre colunas
 
-        const ratio = img.height / img.width;
-        const targetWidth = pageContentWidth;
-        const targetHeight = targetWidth * ratio;
+      const catRatio = catImg ? catImg.height / catImg.width : 0;
+      const statRatio = statImg ? statImg.height / statImg.width : 0;
+      const catH = halfW * catRatio;
+      const statH = halfW * statRatio;
+      const pairH = Math.max(catH, statH);
 
-        const requiredSpace = 10 + targetHeight + 10;
+      if (currentY + 16 + pairH + 10 > pageHeight - 20) {
+        addFooter(doc, pageNumber, almaLogoBase64);
+        doc.addPage();
+        pageNumber += 1;
+        addExecutiveHeader(doc, {
+          title: reportTitle,
+          subtitle: reportSubtitle,
+          companyName: clienteNome ?? undefined,
+          companyLogoBase64,
+        });
+        currentY = 54;
+      }
 
-        if (currentY + requiredSpace > pageHeight - 20) {
+      // Títulos lado a lado
+      addSectionTitle(doc, chartTitles[0], currentY);
+      doc.setFillColor(1, 148, 153);
+      doc.roundedRect(14 + halfW + 4, currentY - 5, halfW, 9, 2, 2, "F");
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(11);
+      doc.text(chartTitles[1], 18 + halfW + 4, currentY + 1);
+      currentY += 8;
+
+      if (catImg)
+        doc.addImage(catImg.dataUrl, "JPEG", 14, currentY, halfW, catH);
+      if (statImg)
+        doc.addImage(
+          statImg.dataUrl,
+          "JPEG",
+          14 + halfW + 4,
+          currentY,
+          halfW,
+          statH,
+        );
+      currentY += pairH + 10;
+
+      // Timeline — largura total
+      if (timeImg) {
+        const timeH = pageContentWidth * (timeImg.height / timeImg.width);
+        if (currentY + 16 + timeH + 10 > pageHeight - 20) {
           addFooter(doc, pageNumber, almaLogoBase64);
           doc.addPage();
           pageNumber += 1;
-
           addExecutiveHeader(doc, {
             title: reportTitle,
             subtitle: reportSubtitle,
             companyName: clienteNome ?? undefined,
-
             companyLogoBase64,
           });
-
           currentY = 54;
         }
-
-        addSectionTitle(doc, chartTitles[i], currentY);
+        addSectionTitle(doc, chartTitles[2], currentY);
         currentY += 8;
-
         doc.addImage(
-          img.dataUrl,
+          timeImg.dataUrl,
           "JPEG",
           14,
           currentY,
-          targetWidth,
-          targetHeight,
+          pageContentWidth,
+          timeH,
         );
-
-        currentY += targetHeight + 10;
+        currentY += timeH + 10;
       }
 
       if (currentY > pageHeight - 80) {
@@ -851,14 +928,24 @@ export default function RelatorioOcorrenciasPage() {
     <div className="px-2 sm:px-3 md:px-6 py-4 space-y-6" data-print-area="true">
       {/* Header */}
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">
-            Relatório de Riscos e Ocorrências
-          </h1>
-          <p className="text-sm text-slate-600">
-            Visualize indicadores, distribuições, histórico e detalhes das
-            ocorrências registradas.
-          </p>
+        <div className="flex items-center gap-4">
+          {clienteLogo && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={clienteLogo}
+              alt="Logo"
+              className="h-8 max-w-20 w-auto object-contain shrink-0 print:h-6 print:max-w-15"
+            />
+          )}
+          <div>
+            <h1 className="text-2xl font-semibold text-slate-900">
+              Relatório de Riscos e Ocorrências
+            </h1>
+            <p className="text-sm text-slate-600">
+              Visualize indicadores, distribuições, histórico e detalhes das
+              ocorrências registradas.
+            </p>
+          </div>
         </div>
 
         <div className="flex items-center gap-2">
@@ -878,7 +965,7 @@ export default function RelatorioOcorrenciasPage() {
                 void import("@/lib/print").then((m) =>
                   m.default(
                     document.querySelector('[data-print-area="true"]'),
-                    { logoUrl: clienteLogo ?? undefined },
+                    // sem logoUrl → print.ts usa alma4D por padrão
                   ),
                 );
               } catch (e) {
@@ -1054,7 +1141,7 @@ export default function RelatorioOcorrenciasPage() {
       </div>
 
       {/* Gráficos */}
-      <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
+      <div className="grid gap-4 sm:gap-6 lg:grid-cols-2 print:grid-cols-2">
         <div
           ref={categoryChartRef}
           className="rounded-2xl border border-border bg-white p-3 sm:p-4 shadow-sm"
@@ -1066,14 +1153,14 @@ export default function RelatorioOcorrenciasPage() {
             </h2>
           </div>
 
-          <div className="h-96 md:h-96 sm:h-96">
+          <div className="h-56">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={categoryData}
                   dataKey="value"
                   nameKey="name"
-                  outerRadius={95}
+                  outerRadius={72}
                   label
                 >
                   {categoryData.map((_, index) => (
@@ -1100,7 +1187,7 @@ export default function RelatorioOcorrenciasPage() {
             </h2>
           </div>
 
-          <div className="h-72 md:h-96 sm:h-96">
+          <div className="h-56">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={statusData}>
                 <CartesianGrid strokeDasharray="3 3" />
@@ -1114,7 +1201,7 @@ export default function RelatorioOcorrenciasPage() {
         </div>
         <div
           ref={timelineChartRef}
-          className="rounded-2xl border border-border bg-white p-3 sm:p-4 shadow-sm xl:col-span-2"
+          className="rounded-2xl border border-border bg-white p-3 sm:p-4 shadow-sm xl:col-span-2 print:col-span-2"
         >
           <div className="flex items-center gap-2 mb-3">
             <FileText size={18} className="text-slate-500" />
@@ -1123,7 +1210,7 @@ export default function RelatorioOcorrenciasPage() {
             </h2>
           </div>
 
-          <div className="h-80">
+          <div className="h-52">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={timelineData}>
                 <CartesianGrid strokeDasharray="3 3" />
