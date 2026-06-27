@@ -1,25 +1,47 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getCaller } from "../../importacao-usuarios/_shared/getCaller";
 
 export async function POST(req: Request) {
-  const supabaseAdmin = createClient(
+  const cookieStore = await cookies();
+
+  // Cookie-based SSR client — the one getCaller needs to resolve the session
+  const supabaseAuth = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get: (name) => cookieStore.get(name)?.value,
+      },
+    },
   );
 
-  let caller;
+  const supabaseAdmin = getSupabaseAdmin();
 
+  let caller;
   try {
-    caller = await getCaller(req, supabaseAdmin);
+    caller = await getCaller(req, supabaseAuth);
   } catch (e) {
     const code = e instanceof Error ? e.message : "UNKNOWN";
-    return NextResponse.json({ error: code }, { status: 401 });
+    const statusMap: Record<string, number> = {
+      NO_TOKEN: 401,
+      INVALID_TOKEN: 401,
+      NO_USER: 403,
+      NO_PERMISSION: 403,
+      INVALID_PLAN: 403,
+      CLIENT_INACTIVE: 403,
+    };
+    return NextResponse.json(
+      { error: code },
+      { status: statusMap[code] ?? 401 },
+    );
   }
 
   const usuarioId = caller.id;
 
-  // ✅ busca contrato ativo do cliente
+  // busca contrato ativo do cliente
   const { data: contrato } = await supabaseAdmin
     .from("contratos")
     .select("id")
@@ -38,7 +60,7 @@ export async function POST(req: Request) {
     );
   }
 
-  // ✅ verifica se há vaga elegível
+  // verifica se há vaga elegível
   const { data: vaga } = await supabaseAdmin
     .from("questionario_vagas")
     .select("id")
@@ -58,7 +80,6 @@ export async function POST(req: Request) {
     );
   }
 
-  // ✅ permitido
   return NextResponse.json({
     permitido: true,
     contrato_id: contrato.id,
