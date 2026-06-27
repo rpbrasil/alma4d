@@ -370,7 +370,7 @@ export default function DashboardExpressRelatorioCopsoqPage() {
         {canExport ? (
           <div className="flex items-center gap-2">
             {/* Print */}
-            <button
+            {/* <button
               type="button"
               onClick={() => {
                 try {
@@ -385,7 +385,7 @@ export default function DashboardExpressRelatorioCopsoqPage() {
               className="inline-flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 text-sm"
             >
               Imprimir
-            </button>
+            </button> */}
 
             {/* PDF */}
             <style>{`
@@ -457,33 +457,7 @@ export default function DashboardExpressRelatorioCopsoqPage() {
                 <>Gerar Relatório</>
               )}
             </button>
-
-            {/* Excel */}
-            <ExportToolbar
-              title="COPSOQ_Psicossocial"
-              rows={filteredRows}
-              showPrint={false}
-              showExcel={true}
-              columns={[
-                {
-                  label: "Departamento",
-                  getValue: (r) => r.departamento_nome ?? "Sem departamento",
-                },
-                {
-                  label: "Setor",
-                  getValue: (r) => r.setor_nome ?? "-",
-                },
-                { label: "Escala", key: "escala" },
-                { label: "N respostas", key: "n_respostas" },
-                {
-                  label: "Média",
-                  getValue: (r) =>
-                    r.media === null ? null : Number(r.media.toFixed(2)),
-                },
-                { label: "Nível", getValue: (r) => riskLabel(r.nivel_risco) },
-                { label: "Prioridade", getValue: (r) => r.prioridade ?? null },
-              ]}
-            />
+            
           </div>
         ) : null}
       </div>

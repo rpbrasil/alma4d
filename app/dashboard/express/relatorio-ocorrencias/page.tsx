@@ -958,7 +958,7 @@ export default function RelatorioOcorrenciasPage() {
             {exportingPdf ? "Exportando PDF..." : "Exportar PDF"}
           </button>
 
-          <button
+          {/* <button
             type="button"
             onClick={() => {
               try {
@@ -978,7 +978,7 @@ export default function RelatorioOcorrenciasPage() {
           >
             <Printer size={16} />
             Imprimir visual
-          </button>
+          </button> */}
         </div>
       </div>
 
@@ -1153,14 +1153,14 @@ export default function RelatorioOcorrenciasPage() {
             </h2>
           </div>
 
-          <div className="h-56">
+          <div className="h-120">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={categoryData}
                   dataKey="value"
                   nameKey="name"
-                  outerRadius={72}
+                  outerRadius={100}
                   label
                 >
                   {categoryData.map((_, index) => (
@@ -1187,7 +1187,7 @@ export default function RelatorioOcorrenciasPage() {
             </h2>
           </div>
 
-          <div className="h-56">
+          <div className="h-120">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={statusData}>
                 <CartesianGrid strokeDasharray="3 3" />
