@@ -974,11 +974,11 @@ function Step2CanalSeguro({
 function Step3Copsoq({
   onPrev,
   role,
-  linkId
+  linkId,
 }: {
   onPrev: () => void;
   role: Role | null;
-    linkId: string | null;
+  linkId: string | null;
 }) {
   const [loadingStatus, setLoadingStatus] = useState(true);
   const [statusError, setStatusError] = useState<string | null>(null);
@@ -1023,7 +1023,6 @@ function Step3Copsoq({
           linkId: payload.linkId,
           message: payload.message,
         });
-        
       } catch (e) {
         console.error(e);
         if (mounted) {
@@ -1277,6 +1276,7 @@ function ExpressAcessoBasicoContent() {
   const [protocol, setProtocol] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [openProtocolModal, setOpenProtocolModal] = useState(false);
+  const [copiedProtocol, setCopiedProtocol] = useState(false);
   const todayISO = useMemo(() => {
     const now = new Date();
     const yyyy = now.getFullYear();
@@ -1284,7 +1284,7 @@ function ExpressAcessoBasicoContent() {
     const dd = String(now.getDate()).padStart(2, "0");
     return `${yyyy}-${mm}-${dd}`;
   }, []);
-  
+
   useEffect(() => {
     if (usuarioId === undefined) return;
 
@@ -1459,10 +1459,7 @@ function ExpressAcessoBasicoContent() {
         )}
       </div>
       {openProtocolModal && protocol && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
-          onClick={() => setOpenProtocolModal(false)}
-        >
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <div
             className="w-full max-w-md bg-surface rounded-2xl p-6 shadow-lg space-y-4"
             onClick={(e) => e.stopPropagation()}
@@ -1500,11 +1497,35 @@ function ExpressAcessoBasicoContent() {
               <button
                 type="button"
                 onClick={() => {
-                  navigator.clipboard.writeText(protocol);
+                  // Try modern Clipboard API; fall back to execCommand for
+                  // HTTP contexts or browsers that deny clipboard permission.
+                  try {
+                    void navigator.clipboard?.writeText(protocol);
+                  } catch {
+                    try {
+                      const ta = document.createElement("textarea");
+                      ta.value = protocol;
+                      ta.style.cssText =
+                        "position:fixed;top:0;left:0;opacity:0;pointer-events:none";
+                      document.body.appendChild(ta);
+                      ta.focus();
+                      ta.select();
+                      document.execCommand("copy");
+                      document.body.removeChild(ta);
+                    } catch {
+                      /* ignore */
+                    }
+                  }
+                  setCopiedProtocol(true);
+                  setTimeout(() => setCopiedProtocol(false), 2500);
                 }}
-                className="h-10 rounded-xl bg-brand text-white text-sm font-medium hover:opacity-90"
+                className={`h-10 rounded-xl text-white text-sm font-medium transition-colors ${
+                  copiedProtocol
+                    ? "bg-brand-secondary hover:opacity-90"
+                    : "bg-brand hover:opacity-90"
+                }`}
               >
-                Copiar protocolo
+                {copiedProtocol ? "✓ Copiado!" : "Copiar protocolo"}
               </button>
 
               <button
