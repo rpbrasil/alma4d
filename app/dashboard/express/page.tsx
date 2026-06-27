@@ -1428,15 +1428,16 @@ export default function DashboardExpress() {
                       key={u.id}
                       className="rounded-lg border border-slate-200 p-3"
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div className="font-semibold text-slate-900">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        {/* Info */}
+                        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-4">
+                          <div className="font-semibold text-slate-900 truncate">
                             {u.nome_completo ?? "(sem nome)"}
                           </div>
-                          <div className="text-sm text-slate-600">
-                            {formatPhoneInput(u.telefone)}
-                          </div>
-                          <div>
+                          <div className="flex items-center gap-3">
+                            <span className="text-sm text-slate-600">
+                              {formatPhoneInput(u.telefone)}
+                            </span>
                             {u.ativo === false ? (
                               <span className="inline-flex items-center rounded-full bg-brand-accent/10 px-2 py-0.5 text-brand-accent text-xs font-semibold">
                                 Inativo
@@ -1449,7 +1450,8 @@ export default function DashboardExpress() {
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-2">
+                        {/* Ações */}
+                        <div className="flex items-center gap-2 sm:shrink-0">
                           <button
                             onClick={() => void handleUpdatePhone(u.id)}
                             className="rounded-md border border-slate-200 px-3 py-1 text-xs text-slate-700 hover:bg-slate-50"
