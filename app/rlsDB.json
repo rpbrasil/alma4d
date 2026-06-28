@@ -1,0 +1,2508 @@
+[
+    {
+        "json_agg": [
+            {
+                "tablename": "auth_sync_log",
+                "rowsecurity": true,
+                "policies": []
+            },
+            {
+                "tablename": "avaliacoes",
+                "rowsecurity": true,
+                "policies": [
+                    {
+                        "policyname": "avaliacoes_delete_admin",
+                        "cmd": "DELETE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'admin'::text)",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "avaliacoes_delete_cliente",
+                        "cmd": "DELETE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'cliente'::text) AND (user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.cliente_id = ((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'cliente_id'::text))::uuid))))",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "avaliacoes_delete_gestor",
+                        "cmd": "DELETE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "((( SELECT (((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text)) = 'gestor'::text) AND (user_id IN ( SELECT u.id\n   FROM usuarios u\n  WHERE (u.gestor_id = current_usuario_id()))))",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "avaliacoes_insert_user",
+                        "cmd": "INSERT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": null,
+                        "with_check": "(current_usuario_id() = user_id)"
+                    },
+                    {
+                        "policyname": "avaliacoes_select_admin",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'admin'::text)",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "avaliacoes_select_cliente",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'cliente'::text) AND (user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.cliente_id = ((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'cliente_id'::text))::uuid))))",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "avaliacoes_select_gestor",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "((( SELECT (((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text)) = 'gestor'::text) AND (user_id IN ( SELECT u.id\n   FROM usuarios u\n  WHERE (u.gestor_id = current_usuario_id()))))",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "avaliacoes_select_trial_usuario",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(user_id = current_usuario_id())",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "avaliacoes_update_admin",
+                        "cmd": "UPDATE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'admin'::text)",
+                        "with_check": "((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'admin'::text)"
+                    },
+                    {
+                        "policyname": "avaliacoes_update_cliente",
+                        "cmd": "UPDATE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'cliente'::text) AND (user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.cliente_id = ((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'cliente_id'::text))::uuid))))",
+                        "with_check": "(user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.cliente_id = ((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'cliente_id'::text))::uuid)))"
+                    },
+                    {
+                        "policyname": "avaliacoes_update_gestor",
+                        "cmd": "UPDATE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "((( SELECT (((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text)) = 'gestor'::text) AND (user_id IN ( SELECT u.id\n   FROM usuarios u\n  WHERE (u.gestor_id = current_usuario_id()))))",
+                        "with_check": "(user_id IN ( SELECT u.id\n   FROM usuarios u\n  WHERE (u.gestor_id = current_usuario_id())))"
+                    }
+                ]
+            },
+            {
+                "tablename": "avaliacoes_completas",
+                "rowsecurity": true,
+                "policies": [
+                    {
+                        "policyname": "avaliacoes_completas_delete_admin",
+                        "cmd": "DELETE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'admin'::text)",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "avaliacoes_completas_delete_cliente",
+                        "cmd": "DELETE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'cliente'::text) AND (user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.cliente_id = ((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'cliente_id'::text))::uuid))))",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "avaliacoes_completas_delete_gestor",
+                        "cmd": "DELETE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'gestor'::text) AND (user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.gestor_id = ( SELECT auth.uid() AS uid)))))",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "avaliacoes_completas_insert_user",
+                        "cmd": "INSERT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": null,
+                        "with_check": "(auth.uid() = user_id)"
+                    },
+                    {
+                        "policyname": "avaliacoes_completas_select_admin",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'admin'::text)",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "avaliacoes_completas_select_cliente",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'cliente'::text) AND (user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.cliente_id = ((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'cliente_id'::text))::uuid))))",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "avaliacoes_completas_select_gestor",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'gestor'::text) AND (user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.gestor_id = ( SELECT auth.uid() AS uid)))))",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "avaliacoes_completas_select_trial_usuario",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(user_id = ( SELECT auth.uid() AS uid))",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "avaliacoes_completas_update_admin",
+                        "cmd": "UPDATE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'admin'::text)",
+                        "with_check": "((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'admin'::text)"
+                    },
+                    {
+                        "policyname": "avaliacoes_completas_update_cliente",
+                        "cmd": "UPDATE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'cliente'::text) AND (user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.cliente_id = ((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'cliente_id'::text))::uuid))))",
+                        "with_check": "(user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.cliente_id = ((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'cliente_id'::text))::uuid)))"
+                    },
+                    {
+                        "policyname": "avaliacoes_completas_update_gestor",
+                        "cmd": "UPDATE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'gestor'::text) AND (user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.gestor_id = ( SELECT auth.uid() AS uid)))))",
+                        "with_check": "(user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.gestor_id = ( SELECT auth.uid() AS uid))))"
+                    }
+                ]
+            },
+            {
+                "tablename": "avaliacoes_usuarios",
+                "rowsecurity": true,
+                "policies": []
+            },
+            {
+                "tablename": "badges_conquistados",
+                "rowsecurity": true,
+                "policies": [
+                    {
+                        "policyname": "Funções internas podem inserir badges",
+                        "cmd": "INSERT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "service_role"
+                        ],
+                        "qual": null,
+                        "with_check": "true"
+                    },
+                    {
+                        "policyname": "badges_delete_own",
+                        "cmd": "DELETE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(user_id = current_usuario_id())",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "badges_insert_own",
+                        "cmd": "INSERT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": null,
+                        "with_check": "(user_id = current_usuario_id())"
+                    },
+                    {
+                        "policyname": "badges_select_own",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(user_id = current_usuario_id())",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "badges_update_own",
+                        "cmd": "UPDATE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(user_id = current_usuario_id())",
+                        "with_check": "(user_id = current_usuario_id())"
+                    }
+                ]
+            },
+            {
+                "tablename": "checklist_itens",
+                "rowsecurity": true,
+                "policies": [
+                    {
+                        "policyname": "Allow authenticated read",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": "true",
+                        "with_check": null
+                    }
+                ]
+            },
+            {
+                "tablename": "checklist_respostas",
+                "rowsecurity": true,
+                "policies": [
+                    {
+                        "policyname": "checklist_delete_own",
+                        "cmd": "DELETE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(usuario_id = current_usuario_id())",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "checklist_insert_own",
+                        "cmd": "INSERT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": null,
+                        "with_check": "(usuario_id = current_usuario_id())"
+                    },
+                    {
+                        "policyname": "checklist_select_own",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(usuario_id = current_usuario_id())",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "checklist_update_own",
+                        "cmd": "UPDATE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(usuario_id = current_usuario_id())",
+                        "with_check": "(usuario_id = current_usuario_id())"
+                    }
+                ]
+            },
+            {
+                "tablename": "clientes",
+                "rowsecurity": true,
+                "policies": [
+                    {
+                        "policyname": "clientes_delete_admin",
+                        "cmd": "DELETE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": "(current_usuario_role() = 'admin'::text)",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "clientes_delete_cliente_deny",
+                        "cmd": "DELETE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": "false",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "clientes_insert_self_service",
+                        "cmd": "INSERT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": null,
+                        "with_check": "(auth.uid() IS NOT NULL)"
+                    },
+                    {
+                        "policyname": "clientes_select_admin",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": "(current_usuario_role() = 'admin'::text)",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "clientes_select_admin_v2",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": "(auth_role_from_usuarios() = 'admin'::text)",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "clientes_select_cliente",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": "((current_usuario_role() = 'cliente'::text) AND (id = current_cliente_id()))",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "clientes_select_gestor_db",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "((current_app_role() = 'gestor'::text) AND (id = current_cliente_id()))",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "clientes_select_self_tenant",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": "(id = auth_cliente_id_from_usuarios())",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "clientes_update_admin",
+                        "cmd": "UPDATE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": "(current_usuario_role() = 'admin'::text)",
+                        "with_check": "(current_usuario_role() = 'admin'::text)"
+                    },
+                    {
+                        "policyname": "clientes_update_cliente",
+                        "cmd": "UPDATE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": "((current_usuario_role() = 'cliente'::text) AND (id = current_cliente_id()))",
+                        "with_check": "(id = current_cliente_id())"
+                    },
+                    {
+                        "policyname": "usuarios podem ver seu cliente",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": "(id = current_cliente_id())",
+                        "with_check": null
+                    }
+                ]
+            },
+            {
+                "tablename": "cnpj_consultas",
+                "rowsecurity": true,
+                "policies": []
+            },
+            {
+                "tablename": "contrato_eventos",
+                "rowsecurity": true,
+                "policies": [
+                    {
+                        "policyname": "contrato_eventos_select",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": "(contrato_id IN ( SELECT contratos.id\n   FROM contratos\n  WHERE (contratos.cliente_id = ( SELECT usuarios.cliente_id\n           FROM usuarios\n          WHERE (usuarios.id = ((auth.jwt() ->> 'usuario_id'::text))::uuid)))))",
+                        "with_check": null
+                    }
+                ]
+            },
+            {
+                "tablename": "contratos",
+                "rowsecurity": true,
+                "policies": [
+                    {
+                        "policyname": "contratos_insert_self_service",
+                        "cmd": "INSERT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": null,
+                        "with_check": "((criado_por = current_usuario_id()) AND (cliente_id = current_cliente_id()) AND (current_usuario_role() = 'cliente'::text))"
+                    },
+                    {
+                        "policyname": "contratos_select_cliente",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": "(cliente_id = ( SELECT usuarios.cliente_id\n   FROM usuarios\n  WHERE (usuarios.id = current_usuario_id())))",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "contratos_update_self_service",
+                        "cmd": "UPDATE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": "((cliente_id = current_cliente_id()) AND (current_usuario_role() = 'cliente'::text))",
+                        "with_check": "((criado_por = current_usuario_id()) AND (cliente_id = current_cliente_id()))"
+                    }
+                ]
+            },
+            {
+                "tablename": "contratos_upgrades",
+                "rowsecurity": true,
+                "policies": [
+                    {
+                        "policyname": "contratos_upgrades_select",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": "(cliente_id = ( SELECT usuarios.cliente_id\n   FROM usuarios\n  WHERE (usuarios.id = ((auth.jwt() ->> 'usuario_id'::text))::uuid)))",
+                        "with_check": null
+                    }
+                ]
+            },
+            {
+                "tablename": "copsoq_aplicacoes",
+                "rowsecurity": true,
+                "policies": [
+                    {
+                        "policyname": "copsoq_aplicacoes_insert_own",
+                        "cmd": "INSERT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": null,
+                        "with_check": "((auth.uid() = usuario_id) AND ((status)::text = 'concluido'::text))"
+                    },
+                    {
+                        "policyname": "copsoq_insert_own",
+                        "cmd": "INSERT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": null,
+                        "with_check": "((usuario_id = current_usuario_id()) AND (cliente_id = current_cliente_id()))"
+                    },
+                    {
+                        "policyname": "copsoq_select_admin_cliente",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "((( SELECT u.role\n   FROM usuarios u\n  WHERE (u.id = current_usuario_id())) = 'admin'::text) OR ((( SELECT u.role\n   FROM usuarios u\n  WHERE (u.id = current_usuario_id())) = 'cliente'::text) AND (cliente_id = ( SELECT u.cliente_id\n   FROM usuarios u\n  WHERE (u.id = current_usuario_id())))))",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "copsoq_select_own",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(usuario_id = current_usuario_id())",
+                        "with_check": null
+                    }
+                ]
+            },
+            {
+                "tablename": "copsoq_aplicacoes_links",
+                "rowsecurity": true,
+                "policies": [
+                    {
+                        "policyname": "copsoq_aplicacoes_links_update_own",
+                        "cmd": "UPDATE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": "(usuario_id = auth.uid())",
+                        "with_check": "(usuario_id = auth.uid())"
+                    },
+                    {
+                        "policyname": "copsoq_links_insert_own",
+                        "cmd": "INSERT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": null,
+                        "with_check": "(usuario_id = current_usuario_id())"
+                    },
+                    {
+                        "policyname": "copsoq_links_select_own",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(usuario_id = current_usuario_id())",
+                        "with_check": null
+                    }
+                ]
+            },
+            {
+                "tablename": "copsoq_links",
+                "rowsecurity": true,
+                "policies": [
+                    {
+                        "policyname": "copsoq_links_admin_all",
+                        "cmd": "ALL",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": "((auth.jwt() ->> 'user_role'::text) = 'admin'::text)",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "copsoq_links_cliente_select",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": "((cliente_id = ((auth.jwt() ->> 'user_cliente_id'::text))::uuid) AND ((auth.jwt() ->> 'user_role'::text) = ANY (ARRAY['cliente'::text, 'gestor'::text])))",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "copsoq_links_select_authenticated_cliente",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": "((ativo = true) AND (contrato_id IN ( SELECT contratos.id\n   FROM contratos\n  WHERE (contratos.cliente_id IN ( SELECT usuarios.cliente_id\n           FROM usuarios\n          WHERE (usuarios.id = auth.uid()))))))",
+                        "with_check": null
+                    }
+                ]
+            },
+            {
+                "tablename": "copsoq_notificacoes_outbox",
+                "rowsecurity": true,
+                "policies": [
+                    {
+                        "policyname": "copsoq_outbox_select_own",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": "(auth.uid() = usuario_id)",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "copsoq_outbox_update_consume_own",
+                        "cmd": "UPDATE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": "((auth.uid() = usuario_id) AND (status = ANY (ARRAY['pendente'::text, 'enviado'::text])))",
+                        "with_check": "((auth.uid() = usuario_id) AND (status = 'consumido'::text))"
+                    }
+                ]
+            },
+            {
+                "tablename": "copsoq_programacoes",
+                "rowsecurity": true,
+                "policies": [
+                    {
+                        "policyname": "copsoq_prog_insert_admin_cliente",
+                        "cmd": "INSERT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": null,
+                        "with_check": "((( SELECT u.role\n   FROM usuarios u\n  WHERE (u.id = auth.uid())) = 'admin'::text) OR ((( SELECT u.role\n   FROM usuarios u\n  WHERE (u.id = auth.uid())) = 'cliente'::text) AND (cliente_id = ( SELECT u.cliente_id\n   FROM usuarios u\n  WHERE (u.id = auth.uid()))) AND (criado_por = auth.uid())))"
+                    },
+                    {
+                        "policyname": "copsoq_prog_select_admin_cliente",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": "((( SELECT u.role\n   FROM usuarios u\n  WHERE (u.id = auth.uid())) = 'admin'::text) OR ((( SELECT u.role\n   FROM usuarios u\n  WHERE (u.id = auth.uid())) = 'cliente'::text) AND (cliente_id = ( SELECT u.cliente_id\n   FROM usuarios u\n  WHERE (u.id = auth.uid())))))",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "copsoq_prog_update_admin_cliente",
+                        "cmd": "UPDATE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": "((( SELECT u.role\n   FROM usuarios u\n  WHERE (u.id = auth.uid())) = 'admin'::text) OR ((( SELECT u.role\n   FROM usuarios u\n  WHERE (u.id = auth.uid())) = 'cliente'::text) AND (cliente_id = ( SELECT u.cliente_id\n   FROM usuarios u\n  WHERE (u.id = auth.uid())))))",
+                        "with_check": "((( SELECT u.role\n   FROM usuarios u\n  WHERE (u.id = auth.uid())) = 'admin'::text) OR ((( SELECT u.role\n   FROM usuarios u\n  WHERE (u.id = auth.uid())) = 'cliente'::text) AND (cliente_id = ( SELECT u.cliente_id\n   FROM usuarios u\n  WHERE (u.id = auth.uid())))))"
+                    }
+                ]
+            },
+            {
+                "tablename": "copsoq_risco_parametros",
+                "rowsecurity": true,
+                "policies": [
+                    {
+                        "policyname": "allow read for anon",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "anon"
+                        ],
+                        "qual": "true",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "copsoq_risco_param_select_admin_cliente",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "((( SELECT u.role\n   FROM usuarios u\n  WHERE (u.id = current_usuario_id())) = 'admin'::text) OR ((( SELECT u.role\n   FROM usuarios u\n  WHERE (u.id = current_usuario_id())) = 'cliente'::text) AND (cliente_id = ( SELECT u.cliente_id\n   FROM usuarios u\n  WHERE (u.id = current_usuario_id())))))",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "copsoq_risco_param_update_admin",
+                        "cmd": "UPDATE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": "(( SELECT u.role\n   FROM usuarios u\n  WHERE (u.id = auth.uid())) = 'admin'::text)",
+                        "with_check": "(( SELECT u.role\n   FROM usuarios u\n  WHERE (u.id = auth.uid())) = 'admin'::text)"
+                    },
+                    {
+                        "policyname": "copsoq_risco_param_write_admin",
+                        "cmd": "INSERT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": null,
+                        "with_check": "(( SELECT u.role\n   FROM usuarios u\n  WHERE (u.id = auth.uid())) = 'admin'::text)"
+                    }
+                ]
+            },
+            {
+                "tablename": "cupom_resgates",
+                "rowsecurity": true,
+                "policies": []
+            },
+            {
+                "tablename": "cupons",
+                "rowsecurity": true,
+                "policies": [
+                    {
+                        "policyname": "cupons_select_public",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "true",
+                        "with_check": null
+                    }
+                ]
+            },
+            {
+                "tablename": "cupons_uso",
+                "rowsecurity": true,
+                "policies": [
+                    {
+                        "policyname": "cupons_uso_cliente_select",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(cliente_id IN ( SELECT usuarios.cliente_id\n   FROM usuarios\n  WHERE (usuarios.id = auth.uid())))",
+                        "with_check": null
+                    }
+                ]
+            },
+            {
+                "tablename": "denuncias",
+                "rowsecurity": true,
+                "policies": [
+                    {
+                        "policyname": "denuncias_select_admin",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(((auth.jwt() -> 'app_metadata'::text) ->> 'user_role'::text) = 'admin'::text)",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "denuncias_select_cliente",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "((((auth.jwt() -> 'app_metadata'::text) ->> 'user_role'::text) = 'cliente'::text) AND (cliente_id = (((auth.jwt() -> 'app_metadata'::text) ->> 'user_cliente_id'::text))::uuid))",
+                        "with_check": null
+                    }
+                ]
+            },
+            {
+                "tablename": "denuncias_arquivos",
+                "rowsecurity": true,
+                "policies": [
+                    {
+                        "policyname": "denuncias_arquivos_select_admin",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(((auth.jwt() -> 'app_metadata'::text) ->> 'user_role'::text) = 'admin'::text)",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "denuncias_arquivos_select_cliente",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(EXISTS ( SELECT 1\n   FROM denuncias d\n  WHERE ((d.id = denuncias_arquivos.denuncia_id) AND (d.cliente_id = (((auth.jwt() -> 'app_metadata'::text) ->> 'user_cliente_id'::text))::uuid) AND (((auth.jwt() -> 'app_metadata'::text) ->> 'user_role'::text) = 'cliente'::text))))",
+                        "with_check": null
+                    }
+                ]
+            },
+            {
+                "tablename": "departamentos",
+                "rowsecurity": true,
+                "policies": [
+                    {
+                        "policyname": "departamentos_select_admin_cliente",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "((( SELECT u.role\n   FROM usuarios u\n  WHERE (u.id = current_usuario_id())) = 'admin'::text) OR ((( SELECT u.role\n   FROM usuarios u\n  WHERE (u.id = current_usuario_id())) = 'cliente'::text) AND (cliente_id = ( SELECT u.cliente_id\n   FROM usuarios u\n  WHERE (u.id = current_usuario_id())))))",
+                        "with_check": null
+                    }
+                ]
+            },
+            {
+                "tablename": "devices",
+                "rowsecurity": true,
+                "policies": [
+                    {
+                        "policyname": "devices_delete_admin",
+                        "cmd": "DELETE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'admin'::text)",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "devices_delete_cliente",
+                        "cmd": "DELETE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'cliente'::text) AND (user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.cliente_id = ((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'cliente_id'::text))::uuid))))",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "devices_delete_gestor",
+                        "cmd": "DELETE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'gestor'::text) AND (user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.gestor_id = ( SELECT auth.uid() AS uid)))))",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "devices_delete_own",
+                        "cmd": "DELETE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(user_id = current_usuario_id())",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "devices_insert_admin",
+                        "cmd": "INSERT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": null,
+                        "with_check": "((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'admin'::text)"
+                    },
+                    {
+                        "policyname": "devices_insert_cliente",
+                        "cmd": "INSERT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": null,
+                        "with_check": "(((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'cliente'::text) AND (user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.cliente_id = ((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'cliente_id'::text))::uuid))))"
+                    },
+                    {
+                        "policyname": "devices_insert_gestor",
+                        "cmd": "INSERT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": null,
+                        "with_check": "(((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'gestor'::text) AND (user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.gestor_id = ( SELECT auth.uid() AS uid)))))"
+                    },
+                    {
+                        "policyname": "devices_insert_own",
+                        "cmd": "INSERT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": null,
+                        "with_check": "(user_id = current_usuario_id())"
+                    },
+                    {
+                        "policyname": "devices_insert_trial",
+                        "cmd": "INSERT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": null,
+                        "with_check": "(((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'trial'::text) AND (user_id = ( SELECT auth.uid() AS uid)))"
+                    },
+                    {
+                        "policyname": "devices_select_admin",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'admin'::text)",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "devices_select_cliente",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'cliente'::text) AND (user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.cliente_id = ((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'cliente_id'::text))::uuid))))",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "devices_select_gestor",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'gestor'::text) AND (user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.gestor_id = ( SELECT auth.uid() AS uid)))))",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "devices_select_own",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(user_id = current_usuario_id())",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "devices_select_trial_usuario",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(user_id = ( SELECT auth.uid() AS uid))",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "devices_update_admin",
+                        "cmd": "UPDATE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'admin'::text)",
+                        "with_check": "((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'admin'::text)"
+                    },
+                    {
+                        "policyname": "devices_update_cliente",
+                        "cmd": "UPDATE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'cliente'::text) AND (user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.cliente_id = ((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'cliente_id'::text))::uuid))))",
+                        "with_check": "(user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.cliente_id = ((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'cliente_id'::text))::uuid)))"
+                    },
+                    {
+                        "policyname": "devices_update_gestor",
+                        "cmd": "UPDATE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'gestor'::text) AND (user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.gestor_id = ( SELECT auth.uid() AS uid)))))",
+                        "with_check": "(user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.gestor_id = ( SELECT auth.uid() AS uid))))"
+                    },
+                    {
+                        "policyname": "devices_update_own",
+                        "cmd": "UPDATE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(user_id = current_usuario_id())",
+                        "with_check": "(user_id = current_usuario_id())"
+                    },
+                    {
+                        "policyname": "devices_update_trial",
+                        "cmd": "UPDATE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(user_id = ( SELECT auth.uid() AS uid))",
+                        "with_check": "(user_id = ( SELECT auth.uid() AS uid))"
+                    }
+                ]
+            },
+            {
+                "tablename": "email_notifications_queue",
+                "rowsecurity": true,
+                "policies": []
+            },
+            {
+                "tablename": "financeiro_lancamentos",
+                "rowsecurity": true,
+                "policies": [
+                    {
+                        "policyname": "finance_admin_select",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(current_setting('jwt.claims.role'::text, true) = 'admin'::text)",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "finance_service_insert",
+                        "cmd": "INSERT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": null,
+                        "with_check": "(current_setting('jwt.claims.role'::text, true) = ANY (ARRAY['service_role'::text, 'admin'::text]))"
+                    },
+                    {
+                        "policyname": "finance_service_update",
+                        "cmd": "UPDATE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(current_setting('jwt.claims.role'::text, true) = ANY (ARRAY['service_role'::text, 'admin'::text]))",
+                        "with_check": "(current_setting('jwt.claims.role'::text, true) = ANY (ARRAY['service_role'::text, 'admin'::text]))"
+                    }
+                ]
+            },
+            {
+                "tablename": "health_logs",
+                "rowsecurity": true,
+                "policies": [
+                    {
+                        "policyname": "health_logs_delete_admin",
+                        "cmd": "DELETE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'admin'::text)",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "health_logs_delete_cliente",
+                        "cmd": "DELETE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'cliente'::text) AND (user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.cliente_id = ((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'cliente_id'::text))::uuid))))",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "health_logs_delete_gestor",
+                        "cmd": "DELETE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'gestor'::text) AND (user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.gestor_id = ( SELECT auth.uid() AS uid)))))",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "health_logs_delete_own",
+                        "cmd": "DELETE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(user_id = current_usuario_id())",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "health_logs_insert_admin",
+                        "cmd": "INSERT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": null,
+                        "with_check": "((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'admin'::text)"
+                    },
+                    {
+                        "policyname": "health_logs_insert_cliente",
+                        "cmd": "INSERT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": null,
+                        "with_check": "(((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'cliente'::text) AND (user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.cliente_id = ((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'cliente_id'::text))::uuid))))"
+                    },
+                    {
+                        "policyname": "health_logs_insert_gestor",
+                        "cmd": "INSERT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": null,
+                        "with_check": "(((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'gestor'::text) AND (user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.gestor_id = ( SELECT auth.uid() AS uid)))))"
+                    },
+                    {
+                        "policyname": "health_logs_insert_own",
+                        "cmd": "INSERT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": null,
+                        "with_check": "(user_id = current_usuario_id())"
+                    },
+                    {
+                        "policyname": "health_logs_select_admin",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'admin'::text)",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "health_logs_select_cliente",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'cliente'::text) AND (user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.cliente_id = ((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'cliente_id'::text))::uuid))))",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "health_logs_select_gestor",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'gestor'::text) AND (user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.gestor_id = ( SELECT auth.uid() AS uid)))))",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "health_logs_select_own",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(user_id = current_usuario_id())",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "health_logs_update_admin",
+                        "cmd": "UPDATE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'admin'::text)",
+                        "with_check": "((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'admin'::text)"
+                    },
+                    {
+                        "policyname": "health_logs_update_cliente",
+                        "cmd": "UPDATE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'cliente'::text) AND (user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.cliente_id = ((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'cliente_id'::text))::uuid))))",
+                        "with_check": "(user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.cliente_id = ((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'cliente_id'::text))::uuid)))"
+                    },
+                    {
+                        "policyname": "health_logs_update_gestor",
+                        "cmd": "UPDATE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'gestor'::text) AND (user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.gestor_id = ( SELECT auth.uid() AS uid)))))",
+                        "with_check": "(user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.gestor_id = ( SELECT auth.uid() AS uid))))"
+                    },
+                    {
+                        "policyname": "health_logs_update_own",
+                        "cmd": "UPDATE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(user_id = current_usuario_id())",
+                        "with_check": "(user_id = current_usuario_id())"
+                    }
+                ]
+            },
+            {
+                "tablename": "historico_peso",
+                "rowsecurity": true,
+                "policies": [
+                    {
+                        "policyname": "Bloquear deletes",
+                        "cmd": "DELETE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": "false",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "Bloquear updates",
+                        "cmd": "UPDATE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": "false",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "Funções internas podem inserir peso",
+                        "cmd": "INSERT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "service_role"
+                        ],
+                        "qual": null,
+                        "with_check": "true"
+                    },
+                    {
+                        "policyname": "Usuário pode inserir seu próprio peso",
+                        "cmd": "INSERT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": null,
+                        "with_check": "(auth.uid() = user_id)"
+                    },
+                    {
+                        "policyname": "Usuário pode ver apenas seu histórico",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": "(auth.uid() = user_id)",
+                        "with_check": null
+                    }
+                ]
+            },
+            {
+                "tablename": "iap_transacoes",
+                "rowsecurity": true,
+                "policies": [
+                    {
+                        "policyname": "usuários podem consultar suas próprias transações",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": "(auth.uid() = user_id)",
+                        "with_check": null
+                    }
+                ]
+            },
+            {
+                "tablename": "importacao_usuarios_jobs",
+                "rowsecurity": true,
+                "policies": [
+                    {
+                        "policyname": "select_jobs_do_tenant",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "((auth.role() = 'service_role'::text) OR (created_by = auth.uid()) OR (EXISTS ( SELECT 1\n   FROM usuarios u\n  WHERE ((u.id = auth.uid()) AND (u.role = 'admin'::text)))) OR (EXISTS ( SELECT 1\n   FROM usuarios u\n  WHERE ((u.id = auth.uid()) AND (u.cliente_id = importacao_usuarios_jobs.caller_cliente_id) AND (u.role = ANY (ARRAY['cliente'::text, 'gestor'::text]))))))",
+                        "with_check": null
+                    }
+                ]
+            },
+            {
+                "tablename": "importacao_usuarios_linhas",
+                "rowsecurity": true,
+                "policies": [
+                    {
+                        "policyname": "select_linhas_do_job_visivel",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "((auth.role() = 'service_role'::text) OR (EXISTS ( SELECT 1\n   FROM importacao_usuarios_jobs j\n  WHERE ((j.id = importacao_usuarios_linhas.job_id) AND ((j.created_by = auth.uid()) OR (EXISTS ( SELECT 1\n           FROM usuarios u\n          WHERE ((u.id = auth.uid()) AND ((u.role = 'admin'::text) OR ((u.role = ANY (ARRAY['cliente'::text, 'gestor'::text])) AND (u.cliente_id = j.caller_cliente_id)))))))))))",
+                        "with_check": null
+                    }
+                ]
+            },
+            {
+                "tablename": "logs",
+                "rowsecurity": true,
+                "policies": [
+                    {
+                        "policyname": "logs_delete_admin",
+                        "cmd": "DELETE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'admin'::text)",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "logs_delete_cliente",
+                        "cmd": "DELETE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'cliente'::text) AND ((user_id IS NULL) OR (user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.cliente_id = ((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'cliente_id'::text))::uuid)))))",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "logs_delete_gestor",
+                        "cmd": "DELETE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'gestor'::text) AND (user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.gestor_id = ( SELECT auth.uid() AS uid)))))",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "logs_delete_own",
+                        "cmd": "DELETE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(user_id = current_usuario_id())",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "logs_insert_admin",
+                        "cmd": "INSERT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": null,
+                        "with_check": "((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'admin'::text)"
+                    },
+                    {
+                        "policyname": "logs_insert_cliente",
+                        "cmd": "INSERT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": null,
+                        "with_check": "(((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'cliente'::text) AND ((user_id IS NULL) OR (user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.cliente_id = ((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'cliente_id'::text))::uuid)))))"
+                    },
+                    {
+                        "policyname": "logs_insert_gestor",
+                        "cmd": "INSERT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": null,
+                        "with_check": "(((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'gestor'::text) AND (user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.gestor_id = ( SELECT auth.uid() AS uid)))))"
+                    },
+                    {
+                        "policyname": "logs_insert_own",
+                        "cmd": "INSERT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": null,
+                        "with_check": "((user_id IS NULL) OR (user_id = current_usuario_id()))"
+                    },
+                    {
+                        "policyname": "logs_select_admin",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'admin'::text)",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "logs_select_cliente",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'cliente'::text) AND ((user_id IS NULL) OR (user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.cliente_id = ((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'cliente_id'::text))::uuid)))))",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "logs_select_gestor",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'gestor'::text) AND (user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.gestor_id = ( SELECT auth.uid() AS uid)))))",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "logs_select_own",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "((user_id IS NULL) OR (user_id = current_usuario_id()))",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "logs_update_admin",
+                        "cmd": "UPDATE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'admin'::text)",
+                        "with_check": "((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'admin'::text)"
+                    },
+                    {
+                        "policyname": "logs_update_cliente",
+                        "cmd": "UPDATE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'cliente'::text) AND ((user_id IS NULL) OR (user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.cliente_id = ((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'cliente_id'::text))::uuid)))))",
+                        "with_check": "((user_id IS NULL) OR (user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.cliente_id = ((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'cliente_id'::text))::uuid))))"
+                    },
+                    {
+                        "policyname": "logs_update_gestor",
+                        "cmd": "UPDATE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(((((( SELECT auth.jwt() AS jwt) -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'gestor'::text) AND (user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.gestor_id = ( SELECT auth.uid() AS uid)))))",
+                        "with_check": "(user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.gestor_id = ( SELECT auth.uid() AS uid))))"
+                    },
+                    {
+                        "policyname": "logs_update_own",
+                        "cmd": "UPDATE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(user_id = current_usuario_id())",
+                        "with_check": "(user_id = current_usuario_id())"
+                    }
+                ]
+            },
+            {
+                "tablename": "medalhas",
+                "rowsecurity": true,
+                "policies": [
+                    {
+                        "policyname": "Leitura pública de medalhas",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "true",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "medalhas são públicas para leitura",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "true",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "somente admin pode inserir/editar medalhas",
+                        "cmd": "ALL",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(auth.role() = 'service_role'::text)",
+                        "with_check": "(auth.role() = 'service_role'::text)"
+                    }
+                ]
+            },
+            {
+                "tablename": "medalhas_cliente",
+                "rowsecurity": true,
+                "policies": [
+                    {
+                        "policyname": "medalhas_cliente_select",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": "true",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "somente admin pode alterar valores",
+                        "cmd": "ALL",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(auth.role() = 'service_role'::text)",
+                        "with_check": "(auth.role() = 'service_role'::text)"
+                    }
+                ]
+            },
+            {
+                "tablename": "medalhas_usuarios",
+                "rowsecurity": true,
+                "policies": [
+                    {
+                        "policyname": "Usuário vê apenas suas medalhas",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(user_id = ( SELECT auth.uid() AS uid))",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "usuário só pode registrar suas próprias medalhas",
+                        "cmd": "INSERT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": null,
+                        "with_check": "(user_id = ( SELECT auth.uid() AS uid))"
+                    },
+                    {
+                        "policyname": "usuário só vê suas próprias medalhas",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(user_id = ( SELECT auth.uid() AS uid))",
+                        "with_check": null
+                    }
+                ]
+            },
+            {
+                "tablename": "nfse_emissoes",
+                "rowsecurity": true,
+                "policies": []
+            },
+            {
+                "tablename": "notificacoes_destinatarios",
+                "rowsecurity": true,
+                "policies": [
+                    {
+                        "policyname": "notificacoes_destinatarios_no_write",
+                        "cmd": "ALL",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "false",
+                        "with_check": "false"
+                    },
+                    {
+                        "policyname": "notificacoes_destinatarios_select_gestor",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(EXISTS ( SELECT 1\n   FROM (usuarios u_me\n     JOIN usuarios u_target ON ((u_target.id = notificacoes_destinatarios.user_id)))\n  WHERE ((u_me.id = auth.uid()) AND (u_me.role = ANY (ARRAY['gestor'::text, 'admin'::text])) AND (u_me.cliente_id = u_target.cliente_id))))",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "notificacoes_destinatarios_select_own",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(user_id = auth.uid())",
+                        "with_check": null
+                    }
+                ]
+            },
+            {
+                "tablename": "notificacoes_enviadas",
+                "rowsecurity": true,
+                "policies": [
+                    {
+                        "policyname": "notificacoes_enviadas_delete_admin",
+                        "cmd": "DELETE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": "((((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'admin'::text)",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "notificacoes_enviadas_delete_cliente",
+                        "cmd": "DELETE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": "(((((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'cliente'::text) AND (user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.cliente_id = ((((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'cliente_id'::text))::uuid))))",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "notificacoes_enviadas_delete_gestor",
+                        "cmd": "DELETE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": "(((((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'gestor'::text) AND (user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.gestor_id = auth.uid()))))",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "notificacoes_enviadas_insert_admin",
+                        "cmd": "INSERT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": null,
+                        "with_check": "((((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'admin'::text)"
+                    },
+                    {
+                        "policyname": "notificacoes_enviadas_insert_cliente",
+                        "cmd": "INSERT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": null,
+                        "with_check": "(((((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'cliente'::text) AND (user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.cliente_id = ((((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'cliente_id'::text))::uuid))))"
+                    },
+                    {
+                        "policyname": "notificacoes_enviadas_insert_gestor",
+                        "cmd": "INSERT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": null,
+                        "with_check": "(((((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'gestor'::text) AND (user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.gestor_id = auth.uid()))))"
+                    },
+                    {
+                        "policyname": "notificacoes_enviadas_select_admin",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": "((((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'admin'::text)",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "notificacoes_enviadas_select_cliente",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": "(((((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'cliente'::text) AND (user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.cliente_id = ((((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'cliente_id'::text))::uuid))))",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "notificacoes_enviadas_select_gestor",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": "(((((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'gestor'::text) AND (user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.gestor_id = auth.uid()))))",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "notificacoes_enviadas_update_admin",
+                        "cmd": "UPDATE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": "((((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'admin'::text)",
+                        "with_check": "((((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'admin'::text)"
+                    },
+                    {
+                        "policyname": "notificacoes_enviadas_update_cliente",
+                        "cmd": "UPDATE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": "(((((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'cliente'::text) AND (user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.cliente_id = ((((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'cliente_id'::text))::uuid))))",
+                        "with_check": "(user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.cliente_id = ((((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'cliente_id'::text))::uuid)))"
+                    },
+                    {
+                        "policyname": "notificacoes_enviadas_update_gestor",
+                        "cmd": "UPDATE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": "(((((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'gestor'::text) AND (user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.gestor_id = auth.uid()))))",
+                        "with_check": "(user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.gestor_id = auth.uid())))"
+                    }
+                ]
+            },
+            {
+                "tablename": "order_counters",
+                "rowsecurity": true,
+                "policies": [
+                    {
+                        "policyname": "order_counters_no_delete",
+                        "cmd": "DELETE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "false",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "order_counters_select_own",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(user_id = current_usuario_id())",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "order_counters_update_own",
+                        "cmd": "UPDATE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(user_id = current_usuario_id())",
+                        "with_check": "(user_id = current_usuario_id())"
+                    }
+                ]
+            },
+            {
+                "tablename": "pagamento_processos",
+                "rowsecurity": true,
+                "policies": []
+            },
+            {
+                "tablename": "parceiros",
+                "rowsecurity": true,
+                "policies": [
+                    {
+                        "policyname": "admin_full_access",
+                        "cmd": "ALL",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "true",
+                        "with_check": "true"
+                    }
+                ]
+            },
+            {
+                "tablename": "parceiros_empresas_elegiveis",
+                "rowsecurity": true,
+                "policies": []
+            },
+            {
+                "tablename": "parceiros_repasses",
+                "rowsecurity": true,
+                "policies": []
+            },
+            {
+                "tablename": "payment_links",
+                "rowsecurity": true,
+                "policies": [
+                    {
+                        "policyname": "payment_links_delete_admin",
+                        "cmd": "DELETE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": "((((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'admin'::text)",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "payment_links_delete_cliente",
+                        "cmd": "DELETE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": "(((((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'cliente'::text) AND (user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.cliente_id = ((((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'cliente_id'::text))::uuid))))",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "payment_links_delete_gestor",
+                        "cmd": "DELETE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": "(((((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'gestor'::text) AND (user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.gestor_id = auth.uid()))))",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "payment_links_delete_own",
+                        "cmd": "DELETE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(user_id = current_usuario_id())",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "payment_links_insert_admin",
+                        "cmd": "INSERT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": null,
+                        "with_check": "((((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'admin'::text)"
+                    },
+                    {
+                        "policyname": "payment_links_insert_cliente",
+                        "cmd": "INSERT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": null,
+                        "with_check": "(((((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'cliente'::text) AND (user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.cliente_id = ((((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'cliente_id'::text))::uuid))))"
+                    },
+                    {
+                        "policyname": "payment_links_insert_gestor",
+                        "cmd": "INSERT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": null,
+                        "with_check": "(((((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'gestor'::text) AND (user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.gestor_id = auth.uid()))))"
+                    },
+                    {
+                        "policyname": "payment_links_insert_own",
+                        "cmd": "INSERT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": null,
+                        "with_check": "(user_id = current_usuario_id())"
+                    },
+                    {
+                        "policyname": "payment_links_select_admin",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": "((((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'admin'::text)",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "payment_links_select_cliente",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": "(((((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'cliente'::text) AND (user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.cliente_id = ((((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'cliente_id'::text))::uuid))))",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "payment_links_select_gestor",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": "(((((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'gestor'::text) AND (user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.gestor_id = auth.uid()))))",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "payment_links_select_own",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(user_id = current_usuario_id())",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "payment_links_update_admin",
+                        "cmd": "UPDATE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": "((((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'admin'::text)",
+                        "with_check": "((((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'admin'::text)"
+                    },
+                    {
+                        "policyname": "payment_links_update_cliente",
+                        "cmd": "UPDATE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": "(((((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'cliente'::text) AND (user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.cliente_id = ((((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'cliente_id'::text))::uuid))))",
+                        "with_check": "(user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.cliente_id = ((((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'cliente_id'::text))::uuid)))"
+                    },
+                    {
+                        "policyname": "payment_links_update_gestor",
+                        "cmd": "UPDATE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": "(((((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'gestor'::text) AND (user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.gestor_id = auth.uid()))))",
+                        "with_check": "(user_id IN ( SELECT usuarios.id\n   FROM usuarios\n  WHERE (usuarios.gestor_id = auth.uid())))"
+                    },
+                    {
+                        "policyname": "payment_links_update_own",
+                        "cmd": "UPDATE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(user_id = current_usuario_id())",
+                        "with_check": "(user_id = current_usuario_id())"
+                    }
+                ]
+            },
+            {
+                "tablename": "precificacao_config",
+                "rowsecurity": true,
+                "policies": [
+                    {
+                        "policyname": "read_precificacao_public",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "anon",
+                            "authenticated"
+                        ],
+                        "qual": "true",
+                        "with_check": null
+                    }
+                ]
+            },
+            {
+                "tablename": "profissionais",
+                "rowsecurity": true,
+                "policies": [
+                    {
+                        "policyname": "Admin pode atualizar profissional global",
+                        "cmd": "UPDATE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": "(EXISTS ( SELECT 1\n   FROM usuarios u\n  WHERE ((u.id = auth.uid()) AND (u.role = 'admin'::text))))",
+                        "with_check": "(EXISTS ( SELECT 1\n   FROM usuarios u\n  WHERE ((u.id = auth.uid()) AND (u.role = 'admin'::text))))"
+                    },
+                    {
+                        "policyname": "Admin pode criar profissional global",
+                        "cmd": "INSERT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": null,
+                        "with_check": "(EXISTS ( SELECT 1\n   FROM usuarios u\n  WHERE ((u.id = auth.uid()) AND (u.role = 'admin'::text))))"
+                    },
+                    {
+                        "policyname": "Usuarios podem ler profissionais",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(((((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = ANY (ARRAY['admin'::text, 'gestor'::text])) OR (EXISTS ( SELECT 1\n   FROM (profissionais_clientes pc\n     JOIN usuarios u ON ((u.id = auth.uid())))\n  WHERE ((pc.profissional_id = profissionais.id) AND (pc.cliente_id = u.cliente_id) AND (pc.ativo = true)))))",
+                        "with_check": null
+                    }
+                ]
+            },
+            {
+                "tablename": "profissionais_clientes",
+                "rowsecurity": true,
+                "policies": [
+                    {
+                        "policyname": "Cliente e admin podem atualizar vínculo",
+                        "cmd": "UPDATE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": "(EXISTS ( SELECT 1\n   FROM usuarios u\n  WHERE ((u.id = auth.uid()) AND ((u.role = 'admin'::text) OR ((u.role = 'cliente'::text) AND (profissionais_clientes.cliente_id = u.cliente_id))))))",
+                        "with_check": "(EXISTS ( SELECT 1\n   FROM usuarios u\n  WHERE ((u.id = auth.uid()) AND ((u.role = 'admin'::text) OR ((u.role = 'cliente'::text) AND (profissionais_clientes.cliente_id = u.cliente_id))))))"
+                    },
+                    {
+                        "policyname": "Cliente e admin podem ler vínculos",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": "(EXISTS ( SELECT 1\n   FROM usuarios u\n  WHERE ((u.id = auth.uid()) AND ((u.role = 'admin'::text) OR (profissionais_clientes.cliente_id = u.cliente_id)))))",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "Cliente e admin podem vincular profissional",
+                        "cmd": "INSERT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": null,
+                        "with_check": "(EXISTS ( SELECT 1\n   FROM usuarios u\n  WHERE ((u.id = auth.uid()) AND ((u.role = 'admin'::text) OR ((u.role = 'cliente'::text) AND (profissionais_clientes.cliente_id = u.cliente_id))))))"
+                    }
+                ]
+            },
+            {
+                "tablename": "push_jobs",
+                "rowsecurity": true,
+                "policies": [
+                    {
+                        "policyname": "allow_insert_push_jobs_from_anon",
+                        "cmd": "INSERT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "anon"
+                        ],
+                        "qual": null,
+                        "with_check": "true"
+                    },
+                    {
+                        "policyname": "allow_insert_push_jobs_from_backend",
+                        "cmd": "INSERT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": null,
+                        "with_check": "true"
+                    },
+                    {
+                        "policyname": "deny_select_push_jobs",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "anon",
+                            "authenticated"
+                        ],
+                        "qual": "false",
+                        "with_check": null
+                    }
+                ]
+            },
+            {
+                "tablename": "questionario_vagas",
+                "rowsecurity": true,
+                "policies": []
+            },
+            {
+                "tablename": "setores",
+                "rowsecurity": true,
+                "policies": [
+                    {
+                        "policyname": "setores_select_admin_cliente",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "((( SELECT u.role\n   FROM usuarios u\n  WHERE (u.id = current_usuario_id())) = 'admin'::text) OR ((( SELECT u.role\n   FROM usuarios u\n  WHERE (u.id = current_usuario_id())) = 'cliente'::text) AND (departamento_id IN ( SELECT d.id\n   FROM departamentos d\n  WHERE (d.cliente_id = ( SELECT u.cliente_id\n           FROM usuarios u\n          WHERE (u.id = current_usuario_id())))))))",
+                        "with_check": null
+                    }
+                ]
+            },
+            {
+                "tablename": "suporte_chamados",
+                "rowsecurity": true,
+                "policies": [
+                    {
+                        "policyname": "admin_pode_atualizar",
+                        "cmd": "UPDATE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "((EXISTS ( SELECT 1\n   FROM usuarios u\n  WHERE ((u.id = auth.uid()) AND (u.role = 'admin'::text)))) OR (current_setting('role'::text, true) = 'service_role'::text))",
+                        "with_check": "((EXISTS ( SELECT 1\n   FROM usuarios u\n  WHERE ((u.id = auth.uid()) AND (u.role = 'admin'::text)))) OR (current_setting('role'::text, true) = 'service_role'::text))"
+                    },
+                    {
+                        "policyname": "admin_ver_tudo",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(EXISTS ( SELECT 1\n   FROM usuarios u\n  WHERE ((u.id = auth.uid()) AND (u.role = 'admin'::text))))",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "usuario_pode_criar_chamado",
+                        "cmd": "INSERT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": null,
+                        "with_check": "(user_id = auth.uid())"
+                    },
+                    {
+                        "policyname": "usuario_pode_ver_seus_chamados",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "((user_id = auth.uid()) OR (current_setting('role'::text, true) = 'service_role'::text))",
+                        "with_check": null
+                    }
+                ]
+            },
+            {
+                "tablename": "user_creation_rollbacks",
+                "rowsecurity": true,
+                "policies": []
+            },
+            {
+                "tablename": "usuario_auth_identities",
+                "rowsecurity": true,
+                "policies": []
+            },
+            {
+                "tablename": "usuario_organizacao",
+                "rowsecurity": true,
+                "policies": [
+                    {
+                        "policyname": "usuario_organizacao_select_admin_cliente",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": "((( SELECT u.role\n   FROM usuarios u\n  WHERE (u.id = auth.uid())) = 'admin'::text) OR ((( SELECT u.role\n   FROM usuarios u\n  WHERE (u.id = auth.uid())) = 'cliente'::text) AND (usuario_id IN ( SELECT u2.id\n   FROM usuarios u2\n  WHERE (u2.cliente_id = ( SELECT u.cliente_id\n           FROM usuarios u\n          WHERE (u.id = auth.uid())))))))",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "usuario_organizacao_select_own",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(usuario_id = auth.uid())",
+                        "with_check": null
+                    }
+                ]
+            },
+            {
+                "tablename": "usuarios",
+                "rowsecurity": true,
+                "policies": [
+                    {
+                        "policyname": "Allow auth admin to read usuarios for access token hook",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "supabase_auth_admin"
+                        ],
+                        "qual": "true",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "usuarios_delete_admin",
+                        "cmd": "DELETE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "((((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'admin'::text)",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "usuarios_delete_cliente",
+                        "cmd": "DELETE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(((((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'cliente'::text) AND (cliente_id = ((((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'cliente_id'::text))::uuid))",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "usuarios_delete_gestor",
+                        "cmd": "DELETE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(((((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'gestor'::text) AND (gestor_id = auth.uid()))",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "usuarios_delete_usuario",
+                        "cmd": "DELETE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(id = current_usuario_id())",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "usuarios_insert_self_service",
+                        "cmd": "INSERT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": null,
+                        "with_check": "(id = auth.uid())"
+                    },
+                    {
+                        "policyname": "usuarios_select_admin",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "((((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'admin'::text)",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "usuarios_select_cliente",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(((((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'cliente'::text) AND (cliente_id = ((((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'cliente_id'::text))::uuid))",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "usuarios_select_gestor",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(((((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'gestor'::text) AND (gestor_id = auth.uid()))",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "usuarios_select_gestor_db",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "((current_app_role() = 'gestor'::text) AND (gestor_id = auth.uid()) AND (cliente_id = current_cliente_id()))",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "usuarios_select_self_SAFE",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": "(id = current_usuario_id())",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "usuarios_update_admin",
+                        "cmd": "UPDATE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "((((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'admin'::text)",
+                        "with_check": "((((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'admin'::text)"
+                    },
+                    {
+                        "policyname": "usuarios_update_cliente",
+                        "cmd": "UPDATE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(((((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'cliente'::text) AND (cliente_id = ((((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'cliente_id'::text))::uuid))",
+                        "with_check": "(cliente_id = ((((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'cliente_id'::text))::uuid)"
+                    },
+                    {
+                        "policyname": "usuarios_update_gestor",
+                        "cmd": "UPDATE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "public"
+                        ],
+                        "qual": "(((((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'gestor'::text) AND (gestor_id = auth.uid()))",
+                        "with_check": "(gestor_id = auth.uid())"
+                    },
+                    {
+                        "policyname": "usuarios_update_self",
+                        "cmd": "UPDATE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": "(id = current_usuario_id())",
+                        "with_check": "(id = current_usuario_id())"
+                    },
+                    {
+                        "policyname": "usuarios_update_self_service",
+                        "cmd": "UPDATE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": "(id = current_usuario_id())",
+                        "with_check": "(id = current_usuario_id())"
+                    }
+                ]
+            },
+            {
+                "tablename": "webhook_dead_letter",
+                "rowsecurity": true,
+                "policies": []
+            },
+            {
+                "tablename": "webhook_jobs",
+                "rowsecurity": true,
+                "policies": []
+            },
+            {
+                "tablename": "webhook_logs",
+                "rowsecurity": true,
+                "policies": [
+                    {
+                        "policyname": "webhook_logs_delete_admin",
+                        "cmd": "DELETE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": "((((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'admin'::text)",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "webhook_logs_insert_admin",
+                        "cmd": "INSERT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": null,
+                        "with_check": "((((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'admin'::text)"
+                    },
+                    {
+                        "policyname": "webhook_logs_select_admin",
+                        "cmd": "SELECT",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": "((((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'admin'::text)",
+                        "with_check": null
+                    },
+                    {
+                        "policyname": "webhook_logs_update_admin",
+                        "cmd": "UPDATE",
+                        "permissive": "PERMISSIVE",
+                        "roles": [
+                            "authenticated"
+                        ],
+                        "qual": "((((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'admin'::text)",
+                        "with_check": "((((auth.jwt() -> 'app_metadata'::text) -> 'claims'::text) ->> 'role'::text) = 'admin'::text)"
+                    }
+                ]
+            }
+        ]
+    }
+]
