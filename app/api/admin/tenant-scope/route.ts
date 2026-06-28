@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { createServerClient } from "@supabase/ssr";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { createServerSupabase } from "@/lib/supabase/server";
 
 const ADMIN_TENANT_COOKIE = "alma4d_admin_tenant_id";
 
@@ -67,41 +67,8 @@ function parseJwtClaims(accessToken: string | null | undefined): {
   return { role, ativo };
 }
 
-function buildSupabaseFromRequest(req: Request, res: NextResponse) {
-  const request = req as unknown as { headers: Headers };
-
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          const cookieHeader = request.headers.get("cookie") ?? "";
-          return cookieHeader
-            .split(";")
-            .map((part) => part.trim())
-            .filter(Boolean)
-            .map((pair) => {
-              const index = pair.indexOf("=");
-              const name = index >= 0 ? pair.slice(0, index) : pair;
-              const value = index >= 0 ? pair.slice(index + 1) : "";
-              return { name, value };
-            });
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach((c) => {
-            res.cookies.set(c.name, c.value, c.options);
-          });
-        },
-      },
-    },
-  );
-}
-
 export async function POST(req: Request) {
-  const res = NextResponse.json({ ok: true });
-
-  const supabase = buildSupabaseFromRequest(req, res);
+  const supabase = await createServerSupabase();
   const adminDb = getSupabaseAdmin();
 
   const {

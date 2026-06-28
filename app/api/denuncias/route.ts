@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { createServerSupabase } from "@/lib/supabase/server";
 import { randomUUID } from "crypto";
 
 function normalizeRpcResult(u: unknown): string | null {
@@ -128,22 +127,7 @@ function isFutureDate(dateString: string | null) {
 
 export async function POST(req: Request) {
   try {
-    const cookieStore = await cookies();
-
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll() {
-            // sem necessidade aqui
-          },
-        },
-      },
-    );
+    const supabase = await createServerSupabase();
 
     const {
       data: { session },

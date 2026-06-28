@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getCaller } from "@/api/importacao-usuarios/_shared/getCaller";
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
+import { createServerSupabase } from "@/lib/supabase/server";
 
 export async function GET(req: Request) {
   try {
@@ -16,19 +15,8 @@ export async function GET(req: Request) {
       );
     }
 
-    // ✅ IMPORTANTE: cookies() é async no Next 16
-    const cookieStore = await cookies();
-
     // ✅ client para autenticação (usa cookie do usuário)
-    const supabaseAuth = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get: (name) => cookieStore.get(name)?.value,
-        },
-      },
-    );
+    const supabaseAuth = await createServerSupabase();
 
     // ✅ client admin (sem sessão, apenas DB)
     const supabaseAdmin = getSupabaseAdmin();

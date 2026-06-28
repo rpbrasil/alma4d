@@ -7,7 +7,8 @@ import {
   verifySignature,
 } from "@/lib/pagarme";
 
-import { getContrato, markFailOrCancel, supabaseAdmin } from "@/lib/contratos-flow";
+import { getContrato, markFailOrCancel } from "@/lib/contratos-flow";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 /* ================= HELPERS ================= */
 
@@ -83,7 +84,7 @@ export async function POST(req: Request) {
   }
 
   const g = extractGatewayData(evt);
-  const supabase = supabaseAdmin();
+  const supabase = getSupabaseAdmin();
 
   console.log("[webhook:pagarme]", {
     event: evt.type,

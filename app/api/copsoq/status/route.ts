@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { createServerSupabase } from "@/lib/supabase/server";
 
 type Role = "admin" | "cliente" | "gestor" | "usuario" | null;
 type Plano = "express" | "premium" | null;
@@ -68,22 +67,7 @@ function buildCopsoqResponderHref(linkId: string) {
 
 export async function GET() {
   try {
-    const cookieStore = await cookies();
-
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll() {
-            // sem escrita aqui
-          },
-        },
-      },
-    );
+    const supabase = await createServerSupabase();
 
     const {
       data: { user },
@@ -239,27 +223,26 @@ export async function GET() {
 
     // 6) Se existe vaga elegível, garante vínculo técnico e libera resposta
     if (vagaAtual?.status === "elegivel") {
-      
-        const { error: upsertLinkError } = await adminDb
-          .from("copsoq_aplicacoes_links")
-          .upsert(
-            {
-              link_id: currentLinkId,
-              usuario_id: usuarioId,
-              aplicacao_id: null,
-            },
-            { onConflict: "link_id,usuario_id" },
-          );
+      const { error: upsertLinkError } = await adminDb
+        .from("copsoq_aplicacoes_links")
+        .upsert(
+          {
+            link_id: currentLinkId,
+            usuario_id: usuarioId,
+            aplicacao_id: null,
+          },
+          { onConflict: "link_id,usuario_id" },
+        );
 
-        if (upsertLinkError) {
-          console.error(
-            "Erro ao sincronizar copsoq_aplicacoes_links:",
-            upsertLinkError,
-          );
-          return NextResponse.json(
-            { ok: false, error: "user_link_upsert_failed" },
-            { status: 500 },
-          );        
+      if (upsertLinkError) {
+        console.error(
+          "Erro ao sincronizar copsoq_aplicacoes_links:",
+          upsertLinkError,
+        );
+        return NextResponse.json(
+          { ok: false, error: "user_link_upsert_failed" },
+          { status: 500 },
+        );
       }
 
       return NextResponse.json({

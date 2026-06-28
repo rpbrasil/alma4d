@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { type SupabaseClient } from "@supabase/supabase-js";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { requireInternalSecret } from "@/lib/internal_secret";
 
 /** Tipos mínimos (somente o que usamos neste endpoint) */
@@ -141,11 +142,7 @@ export async function POST(
   const deny = requireInternalSecret(req);
   if (deny) return deny;
 
-  const supabase = createClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { persistSession: false } },
-  );
+  const supabase = getSupabaseAdmin() as SupabaseClient<Database>;
 
   try {
     const body = (await req.json().catch(() => ({}))) as {

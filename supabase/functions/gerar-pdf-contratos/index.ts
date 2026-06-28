@@ -1,19 +1,6 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { supabaseAdmin as supabase } from "../_shared/supabaseAdmin.ts";
 
 // ✅ tipo seguro
-type UnknownError = {
-  message?: string;
-};
-type PdfApiResponse = {
-  ok?: boolean;
-  url?: string;
-  error?: string;
-};
-
-const supabase = createClient(
-  Deno.env.get("SUPABASE_URL")!,
-  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-);
 
 Deno.serve(async (req: Request) => {
   // auth: accept either internal secret header or service role bearer

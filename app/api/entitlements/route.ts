@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { createServerSupabase } from "@/lib/supabase/server";
 
 type AppMetadata = {
   user_role?: string;
@@ -33,19 +32,7 @@ function parseJwt(token: string | undefined | null) {
 
 export async function GET() {
   // ✅ SSR cookie auth — mesma sessão do browser
-  const cookieStore = await cookies();
-  const supabaseSsr = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll() {},
-      },
-    },
-  );
+  const supabaseSsr = await createServerSupabase();
 
   const {
     data: { user },

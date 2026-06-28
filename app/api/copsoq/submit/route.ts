@@ -1,7 +1,6 @@
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-import { createServerClient } from "@supabase/ssr";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { createServerSupabase } from "@/lib/supabase/server";
 
 function normalizeRpcResult(u: unknown): string | null {
   if (u == null) return null;
@@ -35,20 +34,7 @@ type Body = {
 };
 
 export async function POST(req: Request) {
-  const cookieStore = await cookies();
-
-  const supabaseAuth = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll: () => cookieStore.getAll(),
-        setAll: () => {
-          // noop
-        },
-      },
-    },
-  );
+  const supabaseAuth = await createServerSupabase();
 
   const {
     data: { user },
@@ -120,10 +106,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
+  const supabaseAdmin = getSupabaseAdmin();
 
   // 1) Link
   const { data: link, error: linkError } = await supabaseAdmin

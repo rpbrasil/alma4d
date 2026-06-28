@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/contratos-flow";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { gerarContratoPdfInterno } from "@/lib/contrato-pdf";
 
 // tipo seguro
@@ -17,7 +17,7 @@ type PdfResult = {
 };
 
 export async function POST(req: Request) {
-  const supabase = supabaseAdmin();
+  const supabase = getSupabaseAdmin();
 
   // Segurança: exigir header secreto do worker
   const incomingSecret =
@@ -28,7 +28,10 @@ export async function POST(req: Request) {
   const expectedSecret = process.env.PDF_WORKER_SECRET ?? null;
   if (!expectedSecret) {
     console.error("[PDF API] PDF_WORKER_SECRET não configurado");
-    return NextResponse.json({ error: "Server misconfiguration" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Server misconfiguration" },
+      { status: 500 },
+    );
   }
 
   if (incomingSecret !== expectedSecret) {

@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { createServerSupabase } from "@/lib/supabase/server";
 
 type AppMetadata = {
   user_role?: string;
@@ -39,24 +38,8 @@ function isValidUrl(val: string | null): boolean {
   }
 }
 
-async function buildSupabase() {
-  const cookieStore = await cookies();
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll() {},
-      },
-    },
-  );
-}
-
 async function resolveClaims(allowedRoles: string[] = ["cliente"]) {
-  const supabase = await buildSupabase();
+  const supabase = await createServerSupabase();
 
   const {
     data: { user },

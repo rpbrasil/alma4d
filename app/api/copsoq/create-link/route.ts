@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { cookies, headers } from "next/headers";
-import { createServerClient } from "@supabase/ssr";
-import { createClient } from "@supabase/supabase-js";
+import { headers } from "next/headers";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { createServerSupabase } from "@/lib/supabase/server";
 
 type Body = {
   contratoId: string;
@@ -108,24 +108,10 @@ function normalizeBaseUrl(raw: string) {
 
 export async function POST(req: Request) {
   try {
-    const cookieStore = await cookies();
     const headerStore = await headers();
 
     // 1) Client autenticado por cookies (sessão do usuário)
-    const supabaseAuth = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll() {
-            // sem necessidade de escrever cookies aqui
-          },
-        },
-      },
-    );
+    const supabaseAuth = await createServerSupabase();
 
     const {
       data: { session },
@@ -211,10 +197,7 @@ export async function POST(req: Request) {
     }
 
     // 5) Admin client (service role)
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    );
+    const supabaseAdmin = getSupabaseAdmin();
 
     // 6) Validar contrato
     const { data: contrato, error: contratoErr } = await supabaseAdmin

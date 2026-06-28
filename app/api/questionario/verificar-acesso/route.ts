@@ -1,22 +1,11 @@
 import { NextResponse } from "next/server";
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getCaller } from "../../importacao-usuarios/_shared/getCaller";
+import { createServerSupabase } from "@/lib/supabase/server";
 
 export async function POST(req: Request) {
-  const cookieStore = await cookies();
-
   // Cookie-based SSR client — the one getCaller needs to resolve the session
-  const supabaseAuth = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get: (name) => cookieStore.get(name)?.value,
-      },
-    },
-  );
+  const supabaseAuth = await createServerSupabase();
 
   const supabaseAdmin = getSupabaseAdmin();
 

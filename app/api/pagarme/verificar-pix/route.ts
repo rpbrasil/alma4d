@@ -1,11 +1,8 @@
 // app/api/pagarme/verificar-pix/route.ts
 import { NextResponse } from "next/server";
 import { fetchPagarmeOrder, PagarmeOrderResponse } from "@/lib/pagarme";
-import {
-  activateContratoFull,
-  getContrato,
-  supabaseAdmin,
-} from "@/lib/contratos-flow";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { activateContratoFull, getContrato } from "@/lib/contratos-flow";
 
 type Body = {
   contrato_id?: string;
@@ -24,7 +21,7 @@ export async function POST(req: Request) {
     body = {};
   }
 
-  const supabase = supabaseAdmin();
+  const supabase = getSupabaseAdmin();
 
   let contratoId = body.contrato_id ?? null;
   let pagarmeOrderId = body.pagarme_order_id ?? null;
@@ -134,7 +131,6 @@ export async function POST(req: Request) {
     cupomFromGateway,
     userId,
   });
-
 
   return NextResponse.json({
     ok: true,

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export async function POST(req: Request) {
   try {
@@ -9,10 +9,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "path obrigatorio" }, { status: 400 });
     }
 
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!, // ✅ precisa ser service role
-    );
+    const supabase = getSupabaseAdmin();
 
     const { data, error } = await supabase.storage
       .from("denuncias")

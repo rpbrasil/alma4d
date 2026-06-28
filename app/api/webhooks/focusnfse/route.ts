@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { type SupabaseClient } from "@supabase/supabase-js";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 type WebhookLogInsertError = {
   code?: string;
@@ -33,20 +34,6 @@ function getBaseUrl() {
   );
 }
 
-function createSupabaseAdmin(): SupabaseClient {
-  const supabaseUrl =
-    process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl || !serviceRole) {
-    throw new Error("SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY ausentes");
-  }
-
-  return createClient(supabaseUrl, serviceRole, {
-    auth: { persistSession: false },
-  });
-}
-
 function normalizeStatus(status: string) {
   switch (status) {
     case "autorizado":
@@ -75,15 +62,12 @@ export async function POST(req: Request) {
 
     /* ===================== SUPABASE ===================== */
 
-    supabase = createSupabaseAdmin();
+    supabase = getSupabaseAdmin();
 
     /* ===================== PAYLOAD RAW + HASH ===================== */
 
     const raw = await req.text();
     const payload: FocusNFSePayload = JSON.parse(raw);
-
-    
-    
 
     eventHash = await crypto.subtle
       .digest("SHA-256", new TextEncoder().encode(raw))
