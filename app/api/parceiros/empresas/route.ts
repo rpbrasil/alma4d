@@ -1,14 +1,10 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getCaller } from "../../importacao-usuarios/_shared/getCaller";
 
 export async function GET() {
   try {
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { persistSession: false } },
-    );
+    const supabaseAdmin = getSupabaseAdmin();
 
     const q = supabaseAdmin
       .from("parceiros_empresas_elegiveis")
@@ -34,11 +30,7 @@ export async function POST(req: Request) {
     if (!auth?.startsWith("Bearer ")) {
       return NextResponse.json({ error: "Token ausente" }, { status: 401 });
     }
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { persistSession: false } },
-    );
+    const supabaseAdmin = getSupabaseAdmin();
 
     let caller;
     try {

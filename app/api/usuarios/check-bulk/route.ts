@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getCaller } from "../../importacao-usuarios/_shared/getCaller";
 
 const CHUNK_SIZE = 500;
@@ -15,16 +15,12 @@ export async function POST(req: Request) {
       );
     }
 
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { persistSession: false } },
-    );
+    const supabaseAdmin = getSupabaseAdmin();
 
     let caller;
     try {
-        caller = await getCaller(req, supabaseAdmin);
-        if (!["admin", "cliente", "gestor"].includes(caller.role)) {
+      caller = await getCaller(req, supabaseAdmin);
+      if (!["admin", "cliente", "gestor"].includes(caller.role)) {
         return NextResponse.json(
           { ok: false, error: "Acesso negado" },
           { status: 403 },

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getCaller } from "../../importacao-usuarios/_shared/getCaller";
 
 export async function POST(req: Request) {
@@ -13,11 +13,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { persistSession: false } },
-    );
+    const supabaseAdmin = getSupabaseAdmin();
 
     let caller;
     try {
@@ -28,7 +24,7 @@ export async function POST(req: Request) {
           { status: 403 },
         );
       }
-    } catch  {
+    } catch {
       return NextResponse.json(
         { ok: false, error: "Acesso negado" },
         { status: 403 },

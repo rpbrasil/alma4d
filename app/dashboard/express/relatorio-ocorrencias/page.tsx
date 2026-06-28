@@ -16,7 +16,6 @@ import {
   X,
   FileText,
   CalendarRange,
-  Printer,
 } from "lucide-react";
 import {
   PieChart,

@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import { useAuth } from "@/context/auth";
 import { getSupabaseClient } from "@/lib/supabase/client";
-import { ExportToolbar } from "@/components/dashboard/ExportToolbar";
 import { AlertCircle, Building2, Layers, ShieldAlert } from "lucide-react";
 import { CopsoqOfficialReport } from "@/dashboard/premium/relatorios/psicossocial/copsoq/CopsoqOfficialReport";
 import printElement from "@/lib/print";

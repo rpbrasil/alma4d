@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getCaller } from "../../../importacao-usuarios/_shared/getCaller";
 
 export async function PATCH(
@@ -12,13 +12,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Token ausente" }, { status: 401 });
     }
 
-    const token = auth.split(" ")[1];
-
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { persistSession: false } },
-    );
+    const supabaseAdmin = getSupabaseAdmin();
 
     let caller;
     try {
@@ -81,13 +75,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Token ausente" }, { status: 401 });
     }
 
-    const token = auth.split(" ")[1];
-
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { persistSession: false } },
-    );
+    const supabaseAdmin = getSupabaseAdmin();
 
     let caller2;
     try {
