@@ -31,7 +31,6 @@ type EmpresaForm = {
   telefoneE164: string; // normalizado (+55...)
   responsavel: string;
   funcionarios: number;
-  aceiteLgpd: boolean;
 };
 type EmpresaSuccess = {
   success: true;
@@ -270,7 +269,6 @@ export default function EmpresaNR1Page() {
     telefoneE164: "",
     responsavel: "",
     funcionarios: 0,
-    aceiteLgpd: false,
   });
 
   const [cnpjInput, setCnpjInput] = useState("");
@@ -289,6 +287,7 @@ export default function EmpresaNR1Page() {
   const [cupomValido, setCupomValido] = useState<string | null>(null);
   const [cupomError, setCupomError] = useState<string | null>(null);
   const [loadingCupom, setLoadingCupom] = useState(false);
+  const [showCupom, setShowCupom] = useState(false);
   const [autoCupomSugerido, setAutoCupomSugerido] = useState<string | null>(
     null,
   );
@@ -488,10 +487,6 @@ export default function EmpresaNR1Page() {
 
     if (!Number.isInteger(f.funcionarios) || f.funcionarios < 2) {
       return "É necessário no mínimo 2 funcionários para contratar.";
-    }
-
-    if (!f.aceiteLgpd) {
-      return "É obrigatório aceitar a LGPD.";
     }
 
     const e164 = normalizePhoneBRToE164(f.telefoneRaw);
@@ -709,7 +704,7 @@ export default function EmpresaNR1Page() {
         telefone: telefoneNormalizado,
         responsavel: form.responsavel.trim(),
         funcionarios: form.funcionarios,
-        aceiteLgpd: form.aceiteLgpd,
+        aceiteLgpd: true,
         cupom: (cupomValido ?? cupom).trim().toUpperCase() || "",
         ...(descontoCents > 0 ? { desconto_client_cents: descontoCents } : {}),
       };
@@ -860,6 +855,13 @@ export default function EmpresaNR1Page() {
   useEffect(() => {
     cnpjRef.current?.focus();
   }, []);
+
+  // Abre automaticamente o campo de cupom quando há sugestão automática
+  useEffect(() => {
+    if (autoCupomSugerido) {
+      setTimeout(() => setShowCupom(true), 0);
+    }
+  }, [autoCupomSugerido]);
   
   useEffect(() => {
     if (
@@ -1243,99 +1245,163 @@ export default function EmpresaNR1Page() {
                 <p className="text-xs text-red-600">⚠️ {configError}</p>
               )}
             </div>
-            {msgCupomSugestao && (
-              <p className="text-xs text-green-600">{msgCupomSugestao}</p>
+            {/* Responsável + Contato + Cupom */}
+            {!otpVerified && (
+              <>
+                <div>
+                  <label className="text-sm font-medium text-slate-700">
+                    Responsável
+                  </label>
+                  <input
+                    value={form.responsavel}
+                    onChange={(e) => update("responsavel", e.target.value)}
+                    placeholder="Nome completo do responsável"
+                    className={`mt-1 h-11 w-full rounded-lg border px-3 text-sm outline-none focus:ring-2 focus:ring-brand/20 ${
+                      form.responsavel.length > 0
+                        ? isValidNameLoose(form.responsavel)
+                          ? "border-brand-secondary/40"
+                          : "border-red-400"
+                        : "border-border"
+                    }`}
+                    required
+                  />
+                  {form.responsavel.length > 0 &&
+                    !isValidNameLoose(form.responsavel) && (
+                      <p className="mt-1 text-xs text-red-500">
+                        Informe um nome válido.
+                      </p>
+                    )}
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <div className="relative">
+                      <Mail
+                        size={16}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                      />
+                      <input
+                        type="email"
+                        value={form.email}
+                        onChange={(e) => {
+                          update("email", e.target.value);
+                          resetOtpState(true);
+                        }}
+                        className={`pl-9 h-11 w-full rounded-lg border px-3 text-sm outline-none focus:ring-2 focus:ring-brand/20 ${
+                          form.email.length > 0
+                            ? isValidEmail(form.email)
+                              ? "border-brand-secondary/40"
+                              : "border-red-400"
+                            : "border-border"
+                        }`}
+                        placeholder="E-mail"
+                        required
+                      />
+                    </div>
+                    {form.email.length > 0 && !isValidEmail(form.email) && (
+                      <p className="mt-1 text-xs text-red-500">
+                        E-mail inválido.
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <input
+                      value={formatPhoneBR(form.telefoneRaw)}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        update("telefoneRaw", raw);
+                        update("telefoneE164", normalizePhoneBRToE164(raw));
+                        resetOtpState(true);
+                      }}
+                      placeholder="(11) 99999-9999"
+                      className={`h-11 w-full rounded-lg border px-3 text-sm outline-none focus:ring-2 focus:ring-brand/20 ${
+                        form.telefoneRaw.length > 0
+                          ? isValidE164Phone(
+                                normalizePhoneBRToE164(form.telefoneRaw),
+                              )
+                            ? "border-brand-secondary/40"
+                            : "border-red-400"
+                          : "border-border"
+                      }`}
+                      inputMode="numeric"
+                      required
+                    />
+                    {form.telefoneRaw.length > 0 &&
+                      !isValidE164Phone(
+                        normalizePhoneBRToE164(form.telefoneRaw),
+                      ) && (
+                        <p className="mt-1 text-xs text-red-500">
+                          Telefone inválido. Ex.: (11) 99999-9999
+                        </p>
+                      )}
+                  </div>
+                </div>
+
+                {/* Cupom — toggle */}
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => setShowCupom((v) => !v)}
+                    className="flex items-center gap-2 text-sm font-medium text-brand hover:underline"
+                  >
+                    <span className="text-xs">{showCupom ? "▾" : "▸"}</span>
+                    Tenho um cupom de desconto
+                  </button>
+
+                  {showCupom && (
+                    <div className="mt-3 space-y-2">
+                      {msgCupomSugestao && (
+                        <p className="text-xs text-green-600">
+                          {msgCupomSugestao}
+                        </p>
+                      )}
+                      <div className="flex gap-2">
+                        <input
+                          value={cupom}
+                          onChange={(e) => {
+                            setCupom(e.target.value.toUpperCase());
+                            setCupomValido(null);
+                            setDescontoCents(0);
+                            setTotalComDescontoCents(null);
+                            setCupomError(null);
+                            autoCupomExecutadoRef.current = false;
+                          }}
+                          placeholder="Ex: ACSJC10"
+                          className="flex-1 h-11 border rounded-lg px-3 text-sm"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => aplicarCupom()}
+                          disabled={loadingCupom || !cupom || !!cupomValido}
+                          className={`px-4 h-11 rounded-lg text-sm font-semibold disabled:opacity-50 ${
+                            cupomValido
+                              ? "bg-brand text-white cursor-default"
+                              : "bg-brand text-white hover:brightness-95"
+                          }`}
+                        >
+                          {loadingCupom
+                            ? "Aplicando..."
+                            : cupomValido
+                              ? "Aplicado ✓"
+                              : "Aplicar"}
+                        </button>
+                      </div>
+                      {cupomError && (
+                        <p className="text-xs text-red-500">{cupomError}</p>
+                      )}
+                      {cupomValido && (
+                        <p className="text-xs text-brand font-medium">
+                          ✅ Cupom aplicado: {cupomValido}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </>
             )}
-            <div className="mt-5 space-y-2">
-              <label className="text-xs text-slate-500 uppercase tracking-wide">
-                Cupom
-              </label>
 
-              <div className="flex gap-2">
-                <input
-                  value={cupom}
-                  onChange={(e) => {
-                    setCupom(e.target.value.toUpperCase());
-                    setCupomValido(null);
-                    setDescontoCents(0);
-                    setTotalComDescontoCents(null);
-                    setCupomError(null);
-                    autoCupomExecutadoRef.current = false;
-                  }}
-                  placeholder="Ex: ACSJC10"
-                  className="flex-1 h-11 border rounded-lg px-3 text-sm"
-                />
-
-                <button
-                  type="button"
-                  onClick={() => aplicarCupom()}
-                  disabled={loadingCupom || !cupom || !!cupomValido}
-                  className={`px-4 h-11 rounded-lg text-sm font-semibold ${cupomValido ? "bg-brand text-white cursor-default" : "bg-brand text-white hover:brightness-95"} disabled:opacity-50 `}
-                >
-                  {loadingCupom
-                    ? "Aplicando..."
-                    : cupomValido
-                      ? "Aplicado"
-                      : "Aplicar"}
-                </button>
-              </div>
-
-              {cupomError && (
-                <p className="text-xs text-red-500">{cupomError}</p>
-              )}
-
-              {cupomValido && (
-                <p className="text-xs text-brand font-medium">
-                  ✅ Cupom aplicado: {cupomValido}
-                </p>
-              )}
-            </div>
-            {/* Responsável */}
-            <input
-              value={form.responsavel}
-              onChange={(e) => update("responsavel", e.target.value)}
-              placeholder="Responsável"
-              className="h-11 border rounded-lg px-3 w-full"
-              required
-            />
-            {/* Email + Telefone */}
-            <div className="grid md:grid-cols-2 gap-4">
-              {/* EMAIL */}
-              <div className="relative">
-                <Mail
-                  size={16}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                />
-                <input
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => {
-                    update("email", e.target.value);
-                    resetOtpState(true);
-                  }}
-                  className="pl-9 h-11 border rounded-lg px-3 w-full"
-                  placeholder="E-mail"
-                  required
-                />
-              </div>
-
-              {/* TELEFONE */}
-              <input
-                value={formatPhoneBR(form.telefoneRaw)}
-                onChange={(e) => {
-                  const raw = e.target.value;
-                  update("telefoneRaw", raw);
-                  update("telefoneE164", normalizePhoneBRToE164(raw));
-                  resetOtpState(true);
-                }}
-                placeholder="(11) 99999-9999"
-                className="h-11 border rounded-lg px-3 w-full"
-                inputMode="numeric"
-                required
-              />
-            </div>
-
-            {/* VALIDAÇÃO DE CONTATO / OTP */}
+            {/* Validação de contato / OTP */}
             {isFormContatoValido && (
               <div className="rounded-2xl border border-border bg-surface p-4 sm:p-5 space-y-4">
                 <div className="space-y-2">
@@ -1516,15 +1582,43 @@ export default function EmpresaNR1Page() {
                 )}
               </div>
             )}
-            {/* LGPD */}
-            <label className="flex gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={form.aceiteLgpd}
-                onChange={(e) => update("aceiteLgpd", e.target.checked)}
-              />
-              Aceito todas as cláusulas da LGPD
-            </label>
+            {/* Dados confirmados — resumo após OTP */}
+            {otpVerified && (
+              <div className="rounded-2xl border border-brand-secondary/30 bg-brand-secondary/5 p-5 space-y-3">
+                <div className="flex items-start gap-3">
+                  <CheckCircle2
+                    className="text-brand-secondary shrink-0 mt-0.5"
+                    size={20}
+                  />
+                  <div>
+                    <p className="font-semibold text-slate-800">
+                      {form.responsavel}
+                    </p>
+                    <p className="text-sm text-slate-500">
+                      {form.email}
+                      {form.telefoneRaw
+                        ? ` · ${formatPhoneBR(form.telefoneRaw)}`
+                        : ""}
+                    </p>
+                    {cupomValido && (
+                      <p className="mt-1 text-xs text-brand font-medium">
+                        🏷️ Cupom: {cupomValido}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOtpVerified(false);
+                    setOtpSent(false);
+                  }}
+                  className="text-xs text-slate-500 hover:text-brand underline"
+                >
+                  Alterar dados
+                </button>
+              </div>
+            )}
             {/* ERRO */}
             {errorMsg && (
               <div className="bg-red-50 border border-red-200 text-red-600 p-3 text-sm rounded-lg">
@@ -1537,11 +1631,11 @@ export default function EmpresaNR1Page() {
               disabled={
                 state === "submitting" || !otpVerified || !quoteComDesconto
               }
-              className={`w-full h-11 rounded-xl font-semibold transition-all ${
+              className={`w-full h-12 rounded-xl font-semibold text-base transition-all ${
                 state === "submitting"
                   ? "bg-brand text-white opacity-70 cursor-wait"
-                  : otpVerified
-                    ? "bg-brand text-white hover:brightness-95 active:brightness-90"
+                  : otpVerified && quoteComDesconto
+                    ? "bg-brand text-white shadow-md hover:brightness-95 active:brightness-90"
                     : "bg-border text-slate-400 cursor-not-allowed"
               }`}
             >
@@ -1551,7 +1645,7 @@ export default function EmpresaNR1Page() {
                   ? authMethod === "sms"
                     ? "Valide o telefone para continuar"
                     : "Valide o e-mail para continuar"
-                  : "Continuar"}
+                  : "Continuar →"}
             </button>
           </form>
         )}

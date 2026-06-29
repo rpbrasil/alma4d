@@ -35,17 +35,44 @@ export async function GET(req: Request) {
 
   const { data: cliente } = await supabase
     .from("clientes")
-    .select("razao_social, cnpj")
+    .select("nome, documento")
     .eq("id", contrato.cliente_id)
     .single();
 
-  const { data: usuario } = await supabase
+  // Lookup direto: criado_por é um usuarios.id
+  let { data: usuario } = await supabase
     .from("usuarios")
     .select("nome_completo, email, documento")
     .eq("id", contrato.criado_por)
-    .single();
+    .maybeSingle();
+
+  // Fallback: criado_por pode ser um auth.uid() (fluxo NR1)
+  // Nesse caso, busca via tabela de identidades
+  if (!usuario && contrato.criado_por) {
+    const { data: identity } = await supabase
+      .from("usuario_auth_identities")
+      .select("usuario_id")
+      .eq("auth_user_id", contrato.criado_por)
+      .maybeSingle();
+
+    if (identity?.usuario_id) {
+      const { data: usuarioViaIdentity } = await supabase
+        .from("usuarios")
+        .select("nome_completo, email, documento")
+        .eq("id", identity.usuario_id)
+        .maybeSingle();
+      usuario = usuarioViaIdentity;
+    }
+  }
 
   if (!cliente || !usuario) {
+    console.error("[preview] dados incompletos", {
+      contratoId,
+      cliente_id: contrato.cliente_id,
+      criado_por: contrato.criado_por,
+      clienteFound: !!cliente,
+      usuarioFound: !!usuario,
+    });
     return NextResponse.json(
       { error: "Dados do contrato incompletos" },
       { status: 500 },
@@ -89,8 +116,8 @@ export async function GET(req: Request) {
 
   const html = generateContratoHTML({
     empresa: {
-      razaoSocial: cliente?.razao_social ?? "",
-      cnpj: cliente?.cnpj ?? "",
+      razaoSocial: cliente?.nome ?? "",
+      cnpj: cliente?.documento ?? "",
     },
     usuario: {
       nome: usuario?.nome_completo ?? "",

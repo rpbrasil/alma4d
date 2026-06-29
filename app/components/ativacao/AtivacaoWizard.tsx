@@ -13,6 +13,7 @@ import {
   faCreditCard,
   faLock,
   faShieldHalved,
+  faFileContract,
 } from "@fortawesome/free-solid-svg-icons";
 import { NR1PaymentPanel } from "../../ativacao/_components/NR1PaymentPanel";
 import Image from "next/image";
@@ -375,8 +376,8 @@ function Step1Servico({
         </ul>
       </div>
 
-      {/* Termos / Contrato */}
-      <div className="rounded-2xl border border-border bg-surface p-5 space-y-3">
+      {/* Contrato e termos */}
+      <div className="rounded-2xl border border-border bg-surface p-5 space-y-4">
         <h3 className="font-semibold text-slate-800">Contrato e termos</h3>
 
         <div className="text-sm text-slate-600 space-y-1">
@@ -387,28 +388,13 @@ function Step1Servico({
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-4 text-sm">
-          <button
-            type="button"
-            onClick={onOpenTerms}
-            className="underline text-brand font-semibold"
-          >
-            Termos de uso
-          </button>
-          <button
-            type="button"
-            onClick={onOpenContrato}
-            className="underline text-brand font-semibold"
-          >
-            Ver contrato completo
-          </button>
-        </div>
-
-        {/* Aceite (bloqueia avanço) */}
+        {/* Checkbox acima do botão */}
         <label
           className={cx(
-            "flex items-start gap-3 rounded-xl border border-border p-4 transition",
-            contratoLido ? "bg-white" : "bg-surface-muted",
+            "flex items-start gap-3 rounded-xl border p-4 transition select-none",
+            contratoLido
+              ? "border-brand/30 bg-brand/5 cursor-pointer"
+              : "border-border bg-surface-muted cursor-default opacity-70",
           )}
         >
           <input
@@ -416,23 +402,47 @@ function Step1Servico({
             checked={aceitouTermos}
             disabled={!contratoLido}
             onChange={(e) => setAceitouTermos(e.target.checked)}
-            className="mt-1 w-5 h-5 accent-brand"
+            className="mt-0.5 w-5 h-5 accent-brand shrink-0"
           />
-          <div className="space-y-1">
-            <p className="text-sm text-slate-700 font-semibold">
-              Eu li e concordo com os termos e o contrato.
+          <div className="space-y-0.5">
+            <p className="text-sm font-semibold text-slate-800">
+              Li e concordo com o contrato e os termos
             </p>
-            {!contratoLido ? (
-              <p className="text-xs text-slate-500">
-                Abra o contrato e role até o final para habilitar o aceite.
-              </p>
-            ) : (
-              <p className="text-xs text-slate-500">
-                Aceite liberado. Você pode avançar.
-              </p>
-            )}
+            <p className="text-xs text-slate-500">
+              {!contratoLido
+                ? "Leia o contrato abaixo para habilitar o aceite."
+                : "✓ Aceite liberado. Você pode avançar."}
+            </p>
           </div>
         </label>
+
+        {/* Botão principal: Ver contrato */}
+        <button
+          type="button"
+          onClick={onOpenContrato}
+          className={cx(
+            "w-full h-11 rounded-xl border-2 font-semibold text-sm transition-all flex items-center justify-center gap-2",
+            contratoLido
+              ? "border-slate-300 text-slate-500 hover:border-brand/40 hover:text-brand"
+              : "border-brand text-brand bg-brand/5 hover:bg-brand/10 active:bg-brand/15",
+          )}
+        >
+          <FontAwesomeIcon icon={faFileContract} className="text-base" />
+          {contratoLido ? "Ver contrato novamente" : "Ver contrato completo"}
+        </button>
+
+        {/* Termos de uso — link secundário */}
+        <p className="text-center text-xs text-slate-500">
+          Ao prosseguir, você também concorda com os{" "}
+          <button
+            type="button"
+            onClick={onOpenTerms}
+            className="underline text-brand hover:text-brand-secondary"
+          >
+            Termos de uso
+          </button>
+          .
+        </p>
       </div>
 
       <PrimaryCTA
@@ -1182,7 +1192,7 @@ function AtivacaoWizardContent() {
 
                 {!contratoLido && (
                   <p className="text-xs text-brand-accent">
-                    ATENÇÃO: Role até o final para habilitar o aceite.
+                    ATENÇÃO: Leia até o final para habilitar o aceite.
                   </p>
                 )}
               </div>
