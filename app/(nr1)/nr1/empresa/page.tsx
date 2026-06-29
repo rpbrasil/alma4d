@@ -136,7 +136,11 @@ function isValidE164Phone(phone: string) {
   return /^\+\d{10,15}$/.test(phone);
 }
 
-function FromParamWrapper({ children }: { children: (from: string | null) => React.ReactNode }) {
+function FromParamWrapper({
+  children,
+}: {
+  children: (from: string | null) => React.ReactNode;
+}) {
   const searchParams = useSearchParams();
   const from = searchParams.get("from");
 
@@ -297,13 +301,13 @@ export default function EmpresaNR1Page() {
     number | null
   >(null);
   const [msgCupomSugestao, setMsgCupomSugestao] = useState<string | null>(null);
-  
+
   const turnstileRef = React.useRef<TurnstileInstance>(null);
   const cnpjRef = useRef<HTMLInputElement | null>(null);
   const quote = useMemo(() => {
     if (!config || !riscoEmpresa || form.funcionarios < 2) return null;
 
-  const result = calcularPrecificacao(
+    const result = calcularPrecificacao(
       form.funcionarios,
       riscoEmpresa,
       config,
@@ -862,7 +866,7 @@ export default function EmpresaNR1Page() {
       setTimeout(() => setShowCupom(true), 0);
     }
   }, [autoCupomSugerido]);
-  
+
   useEffect(() => {
     if (
       autoCupomExecutadoRef.current // ✅ já rodou
@@ -1318,8 +1322,8 @@ export default function EmpresaNR1Page() {
                       className={`h-11 w-full rounded-lg border px-3 text-sm outline-none focus:ring-2 focus:ring-brand/20 ${
                         form.telefoneRaw.length > 0
                           ? isValidE164Phone(
-                                normalizePhoneBRToE164(form.telefoneRaw),
-                              )
+                              normalizePhoneBRToE164(form.telefoneRaw),
+                            )
                             ? "border-brand-secondary/40"
                             : "border-red-400"
                           : "border-border"
