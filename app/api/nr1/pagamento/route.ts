@@ -98,7 +98,7 @@ function getNestedString(
 
 export async function POST(req: Request) {
   const AZURE_NR1_URL = process.env.AZURE_NR1_URL;
-  
+
   try {
     const body = (await req.json()) as Record<string, unknown>;
 
@@ -141,18 +141,12 @@ export async function POST(req: Request) {
       );
     }
 
-    if (callerError || !caller) {
-      return NextResponse.json(
-        { error: "Usuário não encontrado" },
-        { status: 401 },
-      );
-    }
-
-    const callerId = user.id;
+    const callerId = caller.id;
+    const tipoPlano = String(caller.tipo_plano ?? "").toLowerCase();
 
     const isOnboarding =
       caller.ativo === false &&
-      (caller.tipo_plano === "express" || caller.tipo_plano === "trial");
+      (tipoPlano === "express" || tipoPlano === "trial");
 
     if (!caller.ativo && !isOnboarding) {
       return NextResponse.json({ error: "Sem permissão" }, { status: 403 });
@@ -227,10 +221,12 @@ export async function POST(req: Request) {
         { status: 500 },
       );
     }
+    const isAdmin = String(caller.role).toLowerCase() === "admin";
 
     // ✅ tenant guard
     if (
-      caller.role !== "admin" &&
+      !isAdmin &&
+      caller.cliente_id &&
       String(caller.cliente_id) !== String(cliente_id)
     ) {
       return NextResponse.json({ error: "Tenant inválido" }, { status: 403 });
@@ -259,6 +255,7 @@ export async function POST(req: Request) {
     }
     if (
       caller.role !== "admin" &&
+      contrato.criado_por &&
       String(contrato.criado_por) !== String(callerId)
     ) {
       return NextResponse.json(
@@ -276,12 +273,19 @@ export async function POST(req: Request) {
     }
 
     // ✅ antifraude: conta usuários ativos reais do cliente
-    const { count } = await supabaseAdmin
+    const { count, error: countError } = await supabaseAdmin
       .from("usuarios")
       .select("id", { count: "exact", head: true })
       .eq("cliente_id", cliente_id)
       .eq("role", "usuario")
       .eq("ativo", true);
+
+    if (countError) {
+      return NextResponse.json(
+        { error: "Erro ao validar usuários" },
+        { status: 500 },
+      );
+    }
 
     const usuariosReais = count ?? 0;
 
@@ -316,6 +320,13 @@ export async function POST(req: Request) {
       .select("documento, uf, risco_nr1")
       .eq("id", cliente_id)
       .maybeSingle();
+
+    if (!cliente) {
+      return NextResponse.json(
+        { error: "Cliente não encontrado" },
+        { status: 404 },
+      );
+    }
 
     const cnpj = onlyDigits(String(cliente?.documento ?? ""));
     if (cnpj.length !== 14) {
@@ -749,7 +760,7 @@ export async function POST(req: Request) {
           );
         }
 
-        await supabaseAdmin
+        const { error: updateErr } = await supabaseAdmin
           .from("contratos")
           .update({
             pagarme_order_id: orderId,
@@ -771,32 +782,41 @@ export async function POST(req: Request) {
           })
           .eq("id", contrato_id);
 
-        await supabaseAdmin.from("contrato_eventos").insert({
-          contrato_id,
-          tipo:
-            paymentMethodFromAzure === "pix" ? "pix_gerado" : "boleto_gerado",
-          descricao: "Pagamento iniciado (Azure OK)",
-          dados: {
-            pagarme_order_id: orderId,
-            pagarme_payment_status: orderStatus,
-            forma_pagamento: paymentMethodFromAzure,
-            origem,
-            campanha,
-            pix:
-              paymentMethodFromAzure === "pix"
-                ? {
-                    qr_code_url: qrCodeUrl,
-                    qr_code: qrCode,
-                    expires_at: expiresAt,
-                  }
-                : null,
-            boleto:
-              paymentMethodFromAzure === "boleto"
-                ? { boleto_url: boletoUrl, line }
-                : null,
-          },
-          gateway_event_id: null,
-        });
+        if (updateErr) {
+          console.error("Erro ao atualizar contrato", updateErr);
+        }
+
+        const { error: insertErr } = await supabaseAdmin
+          .from("contrato_eventos")
+          .insert({
+            contrato_id,
+            tipo:
+              paymentMethodFromAzure === "pix" ? "pix_gerado" : "boleto_gerado",
+            descricao: "Pagamento iniciado (Azure OK)",
+            dados: {
+              pagarme_order_id: orderId,
+              pagarme_payment_status: orderStatus,
+              forma_pagamento: paymentMethodFromAzure,
+              origem,
+              campanha,
+              pix:
+                paymentMethodFromAzure === "pix"
+                  ? {
+                      qr_code_url: qrCodeUrl,
+                      qr_code: qrCode,
+                      expires_at: expiresAt,
+                    }
+                  : null,
+              boleto:
+                paymentMethodFromAzure === "boleto"
+                  ? { boleto_url: boletoUrl, line }
+                  : null,
+            },
+            gateway_event_id: null,
+          });
+        if (insertErr) {
+          console.error("Erro ao inserir evento de contrato", insertErr);
+        }
       }
     } else {
       console.warn("[api/nr1/pagamento] Azure OK, mas sem order_id/order.id", {
