@@ -901,6 +901,13 @@ export default function EmpresaNR1Page() {
     isValidEmail(form.email) &&
     isValidE164Phone(normalizePhoneBRToE164(form.telefoneRaw));
 
+  // Só colapsa os campos quando TODOS estão válidos E o OTP foi confirmado
+  const isDataComplete =
+    otpVerified &&
+    isValidNameLoose(form.responsavel) &&
+    isValidEmail(form.email) &&
+    isValidE164Phone(normalizePhoneBRToE164(form.telefoneRaw));
+
   return (
     <main className="min-h-screen bg-surface-muted">
       <div className="max-w-3xl mx-auto px-6 py-6">
@@ -1250,7 +1257,7 @@ export default function EmpresaNR1Page() {
               )}
             </div>
             {/* Responsável + Contato + Cupom */}
-            {!otpVerified && (
+            {!isDataComplete && (
               <>
                 <div>
                   <label className="text-sm font-medium text-slate-700">
@@ -1406,7 +1413,7 @@ export default function EmpresaNR1Page() {
             )}
 
             {/* Validação de contato / OTP */}
-            {isFormContatoValido && (
+            {isFormContatoValido && !isDataComplete && (
               <div className="rounded-2xl border border-border bg-surface p-4 sm:p-5 space-y-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-slate-700">
@@ -1587,7 +1594,7 @@ export default function EmpresaNR1Page() {
               </div>
             )}
             {/* Dados confirmados — resumo após OTP */}
-            {otpVerified && (
+            {isDataComplete && (
               <div className="rounded-2xl border border-brand-secondary/30 bg-brand-secondary/5 p-5 space-y-3">
                 <div className="flex items-start gap-3">
                   <CheckCircle2
