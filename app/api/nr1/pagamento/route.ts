@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { getCaller } from "../../importacao-usuarios/_shared/getCaller";
+import { createServerSupabase } from "@/lib/supabase/server";
 import { calcularPrecificacao } from "@/(nr1)/nr1/_components/ModeloPrecificacaoExpress";
 
 type JsonValue =
@@ -98,31 +98,35 @@ function getNestedString(
 
 export async function POST(req: Request) {
   const AZURE_NR1_URL = process.env.AZURE_NR1_URL;
-
+  
   try {
     const body = (await req.json()) as Record<string, unknown>;
 
-    // ✅ auth obrigatório (não confia em user_id vindo do client)
-    const authHeader = req.headers.get("authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      return NextResponse.json({ error: "Token ausente" }, { status: 401 });
+    const supabase = await createServerSupabase();
+    const supabaseAdmin = getSupabaseAdmin();
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser();
+
+    if (error || !user) {
+      return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
     }
 
-    const supabaseAdmin = getSupabaseAdmin();
+    const { data: caller, error: callerError } = await supabaseAdmin
+      .from("usuarios")
+      .select("*")
+      .eq("id", user.id)
+      .maybeSingle();
 
-    let caller;
-    try {
-      caller = await getCaller(req, supabaseAdmin);
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e);
-      if (msg === "NO_TOKEN" || msg === "INVALID_TOKEN")
-        return NextResponse.json({ error: "Token inválido" }, { status: 401 });
+    if (callerError || !caller) {
       return NextResponse.json(
         { error: "Usuário não encontrado" },
         { status: 401 },
       );
     }
-    const callerId = caller.id;
+
+    const callerId = user.id;
 
     const isOnboarding =
       caller.ativo === false &&
