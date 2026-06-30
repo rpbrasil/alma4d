@@ -113,11 +113,33 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
     }
 
+    // 1. acha o vínculo
+    const { data: identity, error: identityError } = await supabaseAdmin
+      .from("usuario_auth_identities")
+      .select("usuario_id")
+      .eq("auth_user_id", user.id)
+      .maybeSingle();
+
+    if (identityError || !identity) {
+      return NextResponse.json(
+        { error: "Vínculo de usuário não encontrado" },
+        { status: 401 },
+      );
+    }
+
+    // 2. busca o usuário real
     const { data: caller, error: callerError } = await supabaseAdmin
       .from("usuarios")
       .select("*")
-      .eq("id", user.id)
+      .eq("id", identity.usuario_id)
       .maybeSingle();
+
+    if (callerError || !caller) {
+      return NextResponse.json(
+        { error: "Usuário não encontrado" },
+        { status: 401 },
+      );
+    }
 
     if (callerError || !caller) {
       return NextResponse.json(
@@ -215,7 +237,7 @@ export async function POST(req: Request) {
     }
 
     // ✅ contrato pertence ao cliente
-    const { data: contrato } = await supabaseAdmin
+    const { data: contrato, error: contratoError } = await supabaseAdmin
       .from("contratos")
       .select(
         "id, cliente_id, criado_por, status, limite_usuarios, valor_total, preco_unitario",
@@ -223,7 +245,7 @@ export async function POST(req: Request) {
       .eq("id", contrato_id)
       .maybeSingle();
 
-    if (!contrato) {
+    if (contratoError || !contrato) {
       return NextResponse.json(
         { error: "Contrato não encontrado" },
         { status: 404 },
