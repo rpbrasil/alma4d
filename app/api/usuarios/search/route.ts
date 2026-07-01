@@ -80,7 +80,7 @@ export async function GET(req: Request) {
     const rpcId = rpcResult
       ? typeof rpcResult === "string"
         ? rpcResult
-        : (rpcResult as { usuario_id?: string })?.usuario_id ?? null
+        : ((rpcResult as { usuario_id?: string })?.usuario_id ?? null)
       : null;
     if (rpcId) {
       const { data: usuarioDb } = await getSupabaseAdmin()

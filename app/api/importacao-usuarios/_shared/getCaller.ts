@@ -40,7 +40,9 @@ export async function getCaller(
 ): Promise<Caller> {
   // Extrai JWT do header Authorization para passar explicitamente ao getUser
   const authHeader = req.headers.get("authorization");
-  const jwt = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : undefined;
+  const jwt = authHeader?.startsWith("Bearer ")
+    ? authHeader.slice(7)
+    : undefined;
 
   // ✅ pega usuário — passa o JWT explicitamente para funcionar com o admin client
   const {
