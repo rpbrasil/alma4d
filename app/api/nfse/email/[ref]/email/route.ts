@@ -132,9 +132,10 @@ type FocusErrorBody = { mensagem?: string; codigo?: string } & Record<
 
 export async function POST(
   req: Request,
-  { params }: { params: { ref: string } },
+  { params }: { params: Promise<{ ref: string }> },
 ) {
-  const ref = decodeURIComponent(params.ref ?? "");
+  const { ref: rawRef } = await params;
+  const ref = decodeURIComponent(rawRef ?? "");
   if (!ref) {
     return NextResponse.json({ error: "ref obrigatório" }, { status: 400 });
   }

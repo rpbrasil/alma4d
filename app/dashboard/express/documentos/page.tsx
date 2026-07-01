@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   AlertCircle,
   Calendar,
@@ -156,6 +156,9 @@ export default function DashboardExpressDocumentosPage() {
   const [perfil, setPerfil] = useState<Perfil | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pdfTimedOut, setPdfTimedOut] = useState(false);
+  const pollCountRef = useRef(0);
+  const nfsePollCountRef = useRef(0);
 
   const fetchDados = async (clienteId: string) => {
     const [contratosRes, nfseRes] = await Promise.all([
@@ -177,7 +180,23 @@ export default function DashboardExpressDocumentosPage() {
     let nfseData: NFSeRow[] = [];
     if (nfseRes.ok) {
       const parsed = await nfseRes.json();
-      nfseData = Array.isArray(parsed) ? parsed : [];
+      const raw: NFSeRow[] = Array.isArray(parsed) ? parsed : [];
+      // resposta pode vir como string JSON (coluna text) ou objeto (jsonb) — normaliza
+      nfseData = raw.map((n) => ({
+        ...n,
+        resposta:
+          typeof n.resposta === "string"
+            ? (() => {
+                try {
+                  return JSON.parse(
+                    n.resposta as unknown as string,
+                  ) as NFSeResposta;
+                } catch {
+                  return null;
+                }
+              })()
+            : n.resposta,
+      }));
     }
     setNfse(nfseData);
 
@@ -212,10 +231,9 @@ export default function DashboardExpressDocumentosPage() {
         setLoading(false);
       }
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Poll enquanto houver PDF pendente/processando
+  // Poll enquanto houver PDF pendente/processando (máx. 10 tentativas)
   useEffect(() => {
     const hasPending = contratos.some(
       (c) =>
@@ -225,7 +243,10 @@ export default function DashboardExpressDocumentosPage() {
     );
     if (!hasPending || !perfil?.cliente_id) return;
 
+    pollCountRef.current = 0;
+
     const timer = setInterval(async () => {
+      pollCountRef.current += 1;
       const dados = await fetchDados(perfil.cliente_id!);
       const stillPending = dados.some(
         (c) =>
@@ -233,16 +254,103 @@ export default function DashboardExpressDocumentosPage() {
           !c.pdf_assinado_url &&
           (c.pdf_status === "pending" || c.pdf_status === "processing"),
       );
-      if (!stillPending) clearInterval(timer);
+      if (!stillPending || pollCountRef.current >= 10) {
+        clearInterval(timer);
+        if (stillPending && pollCountRef.current >= 10) setPdfTimedOut(true);
+        else setPdfTimedOut(false);
+      }
     }, 6000);
 
     return () => clearInterval(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contratos, perfil?.cliente_id]);
 
-  const hasPending = nfse.some(
+  // Poll NFSe enquanto houver notas pendentes (máx. 20 tentativas, a cada 10s)
+  // Cada iteração re-checa individualmente no FocusNFE antes de atualizar a lista
+  const nfseStatusKey = nfse.map((n) => n.ref + n.status).join();
+  useEffect(() => {
+    const pendingRefs = nfse
+      .filter(
+        (n) =>
+          n.status === "enviando" || n.status === "processando_autorizacao",
+      )
+      .map((n) => n.ref);
+
+    if (pendingRefs.length === 0 || !perfil?.cliente_id) return;
+
+    nfsePollCountRef.current = 0;
+
+    const timer = setInterval(async () => {
+      nfsePollCountRef.current += 1;
+
+      // Re-checa cada nota pendente no FocusNFE e atualiza estado local
+      // NÃO chama fetchDados — evita sobrescrever o status com valor desatualizado do banco
+      let anyStillPending = false;
+
+      await Promise.all(
+        pendingRefs.map(async (ref) => {
+          try {
+            const res = await fetch(`/api/nfse/${encodeURIComponent(ref)}`, {
+              credentials: "include",
+            });
+            if (res.ok) {
+              const updated = (await res.json()) as {
+                status?: string;
+                [k: string]: unknown;
+              };
+              const newStatus = updated.status ?? "processando_autorizacao";
+              // normaliza: FocusNFE retorna "autorizado", DB armazena como "emitida"
+              const normalizedStatus =
+                newStatus === "autorizado" ? "emitida" : newStatus;
+              if (
+                normalizedStatus === "enviando" ||
+                normalizedStatus === "processando_autorizacao"
+              ) {
+                anyStillPending = true;
+              }
+              setNfse((prev) =>
+                prev.map((n) =>
+                  n.ref === ref
+                    ? {
+                        ...n,
+                        status: normalizedStatus,
+                        resposta: updated as NFSeResposta,
+                      }
+                    : n,
+                ),
+              );
+            } else {
+              anyStillPending = true;
+            }
+          } catch {
+            anyStillPending = true;
+          }
+        }),
+      );
+
+      if (!anyStillPending || nfsePollCountRef.current >= 20) {
+        clearInterval(timer);
+      }
+    }, 10_000);
+
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nfseStatusKey, perfil?.cliente_id]);
+
+  const hasPendingNfse = nfse.some(
     (n) => n.status === "enviando" || n.status === "processando_autorizacao",
   );
+  const temContratoAtivoPago = contratos.some((c) => c.status === "ativo");
+  // Aguardando: sem NFSe OU todas em estado terminal (emitida/erro) mas nenhuma ainda aparecendo
+  const nfseAguardando = nfse.length === 0 && temContratoAtivoPago;
+
+  // Poll quando nfse está vazia mas há contratos ativos — detecta NFSe criada após o carregamento da página
+  useEffect(() => {
+    if (!nfseAguardando || !perfil?.cliente_id) return;
+    const timer = setInterval(() => {
+      fetchDados(perfil.cliente_id!);
+    }, 10_000);
+    return () => clearInterval(timer);
+  }, [nfseAguardando, perfil?.cliente_id]);
 
   if (loading) {
     return (
@@ -274,7 +382,7 @@ export default function DashboardExpressDocumentosPage() {
       <div className="mx-auto w-full max-w-7xl space-y-6">
         {/* HEADER */}
         <section className="rounded-3xl border border-border bg-white p-4 sm:p-6 lg:p-8 shadow-sm">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="min-w-0">
               <span className="inline-flex items-center rounded-full bg-brand/10 px-3 py-1 text-sm font-semibold text-brand">
                 <FileText className="mr-2 h-4 w-4" />
@@ -291,11 +399,11 @@ export default function DashboardExpressDocumentosPage() {
               </p>
             </div>
 
-            <div className="grid gap-3 grid-cols-2 sm:grid-cols-2 w-full sm:w-auto">
+            <div className="grid gap-3 grid-cols-2 w-full md:w-auto md:shrink-0">
               <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4 text-center">
-                <p className="text-sm text-slate-500">Contratos</p>
+                <p className="text-sm text-slate-500">Contratos ativos</p>
                 <p className="mt-2 text-2xl font-semibold text-slate-900">
-                  {contratos.length}
+                  {contratos.filter((c) => c.status === "ativo").length}
                 </p>
               </div>
 
@@ -322,55 +430,59 @@ export default function DashboardExpressDocumentosPage() {
             </div>
           </div>
 
-          {contratos.length === 0 ? (
+          {contratos.filter((c) => c.status === "ativo").length === 0 ? (
             <div className="mt-6 rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-slate-500">
               <FileText className="mx-auto mb-4 h-8 w-8" />
-              <p className="font-semibold">Nenhum contrato encontrado</p>
+              <p className="font-semibold">Nenhum contrato ativo encontrado</p>
             </div>
           ) : (
-            <div className="mt-6 grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
-              {contratos.map((contrato) => {
-                const temPdf = Boolean(
-                  contrato.pdf_assinado_url || contrato.pdf_url,
-                );
-                const pdfPending =
-                  !temPdf &&
-                  (contrato.pdf_status === "pending" ||
-                    contrato.pdf_status === "processing");
-                const pdfMessage = temPdf
-                  ? null
-                  : pdfPending
-                    ? "PDF sendo gerado, aguarde alguns instantes..."
-                    : `PDF ainda não disponível. Será gerado em instantes após a confirmação do pagamento. Se o problema persistir, entre em contato com o suporte.`;
+            <div className="mt-6 grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+              {contratos
+                .filter((c) => c.status === "ativo")
+                .map((contrato) => {
+                  const temPdf = Boolean(
+                    contrato.pdf_assinado_url || contrato.pdf_url,
+                  );
+                  const pdfStillPending =
+                    !temPdf &&
+                    (contrato.pdf_status === "pending" ||
+                      contrato.pdf_status === "processing");
+                  const pdfPending = pdfStillPending && !pdfTimedOut;
+                  const pdfMessage = temPdf
+                    ? null
+                    : pdfPending
+                      ? "PDF sendo gerado, aguarde alguns instantes..."
+                      : `PDF ainda não disponível. Será gerado em instantes após a confirmação do pagamento. Se o problema persistir, entre em contato com o suporte.`;
 
-                return (
-                  <div
-                    key={contrato.id}
-                    className="rounded-2xl border border-border bg-white p-5 shadow-sm hover:shadow-md transition"
-                  >
-                    <div className="flex flex-col gap-4 min-w-0">
-                      {/* INFO */}
-                      <div className="flex-1 min-w-0 space-y-2">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="font-semibold text-slate-900 truncate">
-                            {contrato.numero_contrato}
-                          </p>
+                  return (
+                    <div
+                      key={contrato.id}
+                      className="rounded-2xl border border-border bg-white p-5 shadow-sm hover:shadow-md transition"
+                    >
+                      <div className="flex flex-col gap-4 min-w-0">
+                        {/* INFO */}
+                        <div className="flex-1 min-w-0 space-y-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-semibold text-slate-900 truncate">
+                              {contrato.numero_contrato}
+                            </p>
 
-                          <span
-                            className={`text-xs px-2 py-1 rounded-full ${statusBadge(contrato.status)}`}
-                          >
-                            {statusLabel(contrato.status)}
-                          </span>
+                            <span
+                              className={`text-xs px-2 py-1 rounded-full ${statusBadge(contrato.status)}`}
+                            >
+                              {statusLabel(contrato.status)}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1 text-xs text-slate-500">
+                            <Calendar size={14} />
+                            <span>
+                              Criado: {formatDate(contrato.criado_em)}
+                            </span>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-1 text-xs text-slate-500">
-                          <Calendar size={14} />
-                          <span>Criado: {formatDate(contrato.criado_em)}</span>
-                        </div>
-                      </div>
 
-                      {/* BOTÕES */}
-                      <div className="flex flex-col sm:flex-row gap-2">
-                        <div className="flex flex-col sm:flex-row gap-2 w-full">
+                        {/* BOTÕES */}
+                        <div className="flex flex-wrap gap-2">
                           <button
                             onClick={() => openContratoPdf(contrato.id)}
                             disabled={!temPdf}
@@ -382,17 +494,17 @@ export default function DashboardExpressDocumentosPage() {
                                   : (pdfMessage ?? undefined)
                             }
                             aria-disabled={!temPdf}
-                            className={`w-full sm:flex-1 inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold ${temPdf ? "border border-slate-200 hover:bg-slate-50 text-slate-700" : "bg-slate-100 text-slate-400 cursor-not-allowed"}`}
+                            className={`flex-1 min-w-22.5 inline-flex items-center justify-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-semibold ${temPdf ? "border border-slate-200 hover:bg-slate-50 text-slate-700" : "bg-slate-100 text-slate-400 cursor-not-allowed"}`}
                           >
                             {pdfPending ? (
                               <>
                                 <span className="h-3 w-3 animate-spin rounded-full border-2 border-slate-400 border-t-transparent" />
-                                Gerando...
+                                <span className="truncate">Gerando...</span>
                               </>
                             ) : (
                               <>
-                                <Eye size={16} />
-                                Visualizar
+                                <Eye size={15} />
+                                <span className="truncate">Visualizar</span>
                               </>
                             )}
                           </button>
@@ -413,38 +525,68 @@ export default function DashboardExpressDocumentosPage() {
                                   : (pdfMessage ?? undefined)
                             }
                             aria-disabled={!temPdf}
-                            className={`w-full sm:flex-1 inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold ${temPdf ? "bg-brand text-white hover:brightness-95" : "bg-slate-200 text-slate-400 cursor-not-allowed"}`}
+                            className={`flex-1 min-w-20 inline-flex items-center justify-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-semibold ${temPdf ? "bg-brand text-white hover:brightness-95" : "bg-slate-200 text-slate-400 cursor-not-allowed"}`}
                           >
-                            <Download size={16} />
-                            Baixar
+                            <Download size={15} />
+                            <span className="truncate">Baixar</span>
                           </button>
 
                           <Link
                             href={`/contrato/${contrato.id}`}
-                            className="w-full sm:flex-1 inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold hover:bg-slate-50"
+                            className="flex-1 min-w-20 inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-2 text-sm font-semibold hover:bg-slate-50"
                           >
-                            Detalhes
+                            <span className="truncate">Detalhes</span>
                           </Link>
                         </div>
-                      </div>
 
-                      {!temPdf && (
-                        <p className="mt-2 text-xs text-slate-500">
-                          {pdfMessage}{" "}
-                          <a
-                            href={"/contato"}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="font-medium text-brand hover:underline"
-                          >
-                            Contatar suporte
-                          </a>
-                        </p>
-                      )}
+                        {!temPdf && (
+                          <p className="mt-2 text-xs text-slate-500">
+                            {pdfTimedOut && pdfStillPending
+                              ? "A geração do PDF está demorando mais que o esperado. "
+                              : pdfMessage + " "}
+                            {pdfTimedOut && pdfStillPending ? (
+                              <button
+                                onClick={async () => {
+                                  pollCountRef.current = 0;
+                                  setPdfTimedOut(false);
+                                  // Re-trigger PDF generation
+                                  try {
+                                    await fetch("/api/contrato/retentar-pdf", {
+                                      method: "POST",
+                                      headers: {
+                                        "Content-Type": "application/json",
+                                      },
+                                      credentials: "include",
+                                      body: JSON.stringify({
+                                        contratoId: contrato.id,
+                                      }),
+                                    });
+                                  } catch {
+                                    // ignore — polling will pick up any change
+                                  }
+                                  if (perfil?.cliente_id)
+                                    fetchDados(perfil.cliente_id);
+                                }}
+                                className="font-medium text-brand hover:underline"
+                              >
+                                Verificar novamente
+                              </button>
+                            ) : (
+                              <a
+                                href={"/contato"}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="font-medium text-brand hover:underline"
+                              >
+                                Contatar suporte
+                              </a>
+                            )}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
             </div>
           )}
         </section>
@@ -459,11 +601,7 @@ export default function DashboardExpressDocumentosPage() {
             {nfse.length > 0 && (
               <button
                 onClick={async () => {
-                  const res = await fetch(
-                    `/api/nfse/by-cliente?cliente_id=${perfil?.cliente_id}`,
-                  );
-                  const data = await res.json();
-                  setNfse(data);
+                  if (perfil?.cliente_id) await fetchDados(perfil.cliente_id);
                 }}
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm hover:bg-slate-50"
               >
@@ -473,22 +611,45 @@ export default function DashboardExpressDocumentosPage() {
             )}
           </div>
 
-          {hasPending && (
+          {hasPendingNfse && (
             <p className="mt-3 text-sm text-slate-500">
-              Algumas notas estão sendo processadas — atualizações ocorrerão
-              automaticamente.
+              Algumas notas estão sendo processadas — atualizando
+              automaticamente a cada 10s.
             </p>
           )}
 
           {nfse.length === 0 ? (
-            <div className="mt-6 text-center text-slate-500">
-              Nenhuma nota fiscal
+            <div className="mt-6 rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-slate-500">
+              <FileText className="mx-auto mb-3 h-8 w-8" />
+              {nfseAguardando ? (
+                <>
+                  <p className="font-semibold">Nota fiscal em preparação</p>
+                  <p className="mt-1 text-sm">
+                    Será emitida após a confirmação do pagamento e aparecerá
+                    aqui automaticamente.
+                  </p>
+                  <button
+                    onClick={() => {
+                      if (perfil?.cliente_id) fetchDados(perfil.cliente_id);
+                    }}
+                    className="mt-3 inline-flex items-center gap-2 text-sm font-medium text-brand hover:underline"
+                  >
+                    <RefreshCw size={14} />
+                    Verificar agora
+                  </button>
+                </>
+              ) : (
+                <p className="font-semibold">Nenhuma nota fiscal</p>
+              )}
             </div>
           ) : (
-            <div className="mt-6 grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="mt-6 grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
               {nfse.map((nota) => {
-                const canUpdate =
-                  nota.status !== "autorizado" && nota.status !== "erro";
+                const isAutorizada =
+                  nota.status === "emitida" || nota.status === "autorizado";
+                const isErro =
+                  nota.status === "erro" || nota.status === "erro_autorizacao";
+                const canUpdate = !isAutorizada && !isErro;
                 const canView = Boolean(
                   nota.resposta?.url ||
                   nota.resposta?.url_danfse ||
@@ -496,7 +657,7 @@ export default function DashboardExpressDocumentosPage() {
                   nota.resposta?.codigo_verificacao,
                 );
                 const canPdf =
-                  nota.status === "autorizado" &&
+                  isAutorizada &&
                   (nota.resposta?.url_danfse || nota.resposta?.url);
 
                 return (
@@ -505,125 +666,119 @@ export default function DashboardExpressDocumentosPage() {
                     className="rounded-2xl border border-border bg-white p-5 shadow-sm hover:shadow-md transition"
                   >
                     <div className="space-y-3">
-                      <p className="font-semibold text-slate-900 truncate">
-                        NFSe #{nota.resposta?.numero ?? "-"}
-                      </p>
-                      <p className="text-sm">
-                        Status:{" "}
+                      <div className="flex items-start justify-between gap-2 min-w-0">
+                        <p className="font-semibold text-slate-900 truncate">
+                          NFSe #{nota.resposta?.numero ?? "-"}
+                        </p>
                         <span
-                          className={
-                            nota.status === "autorizado"
-                              ? "text-green-600"
-                              : nota.status === "erro" ||
-                                  nota.status === "erro_autorizacao"
-                                ? "text-red-600"
-                                : "text-yellow-600"
-                          }
+                          className={`shrink-0 text-xs px-2 py-0.5 rounded-full font-semibold ${
+                            isAutorizada
+                              ? "bg-green-100 text-green-700"
+                              : isErro
+                                ? "bg-red-100 text-red-700"
+                                : "bg-amber-100 text-amber-700"
+                          }`}
                         >
-                          {nota.status}
+                          {isAutorizada
+                            ? "Autorizada"
+                            : isErro
+                              ? "Erro"
+                              : nota.status === "processando_autorizacao"
+                                ? "Processando"
+                                : nota.status === "enviando"
+                                  ? "Enviando"
+                                  : nota.status}
                         </span>
-                      </p>
-                      <div className="flex flex-col sm:flex-row gap-2">
-                        <div className="flex flex-col sm:flex-row gap-2 w-full">
-                          <button
-                            onClick={async () => {
-                              try {
-                                const res = await fetch(
-                                  `/api/nfse/${nota.ref}`,
-                                );
-                                const atualizado = await res.json();
-                                setNfse((prev) =>
-                                  prev.map((n) =>
-                                    n.ref === nota.ref
-                                      ? {
-                                          ...n,
-                                          status: atualizado.status,
-                                          resposta: atualizado,
-                                        }
-                                      : n,
-                                  ),
-                                );
-                              } catch {
-                                alert("Erro ao atualizar nota fiscal");
-                              }
-                            }}
-                            disabled={!canUpdate}
-                            aria-disabled={!canUpdate}
-                            title={
-                              canUpdate
-                                ? "Rechecar nota"
-                                : "Rechecar indisponível"
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={async () => {
+                            try {
+                              const res = await fetch(`/api/nfse/${nota.ref}`);
+                              const atualizado = await res.json();
+                              setNfse((prev) =>
+                                prev.map((n) =>
+                                  n.ref === nota.ref
+                                    ? {
+                                        ...n,
+                                        status: atualizado.status,
+                                        resposta: atualizado,
+                                      }
+                                    : n,
+                                ),
+                              );
+                            } catch {
+                              alert("Erro ao atualizar nota fiscal");
                             }
-                            aria-label={
-                              canUpdate
-                                ? "Rechecar nota"
-                                : "Rechecar indisponível"
-                            }
-                            className={`inline-flex items-center justify-center w-10 h-10 rounded-lg border ${
-                              canUpdate
-                                ? "hover:bg-slate-50"
-                                : "bg-slate-100 text-slate-400 cursor-not-allowed"
-                            }`}
-                          >
-                            <RefreshCw size={16} />
-                          </button>
+                          }}
+                          disabled={!canUpdate}
+                          aria-disabled={!canUpdate}
+                          title={
+                            canUpdate
+                              ? "Rechecar nota"
+                              : "Rechecar indisponível"
+                          }
+                          aria-label={
+                            canUpdate
+                              ? "Rechecar nota"
+                              : "Rechecar indisponível"
+                          }
+                          className={`shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-lg border ${
+                            canUpdate
+                              ? "hover:bg-slate-50"
+                              : "bg-slate-100 text-slate-400 cursor-not-allowed"
+                          }`}
+                        >
+                          <RefreshCw size={15} />
+                        </button>
 
-                          <button
-                            onClick={() => {
-                              const url =
-                                nota.resposta?.url_danfse ||
-                                nota.resposta?.url ||
-                                nota.resposta?.caminho_xml_nota_fiscal;
-                              if (url)
-                                window.open(
-                                  url,
-                                  "_blank",
-                                  "noopener,noreferrer",
-                                );
-                            }}
-                            disabled={!canView}
-                            aria-disabled={!canView}
-                            title={
-                              canView
-                                ? "Abrir documento da nota fiscal"
-                                : "Documento não disponível"
-                            }
-                            className={`w-full sm:flex-1 inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold ${
-                              canView
-                                ? "hover:bg-slate-50 text-slate-700"
-                                : "bg-slate-100 text-slate-400 cursor-not-allowed"
-                            }`}
-                          >
-                            Ver nota
-                          </button>
+                        <button
+                          onClick={() => {
+                            const url =
+                              nota.resposta?.url_danfse ||
+                              nota.resposta?.url ||
+                              nota.resposta?.caminho_xml_nota_fiscal;
+                            if (url)
+                              window.open(url, "_blank", "noopener,noreferrer");
+                          }}
+                          disabled={!canView}
+                          aria-disabled={!canView}
+                          title={
+                            canView
+                              ? "Abrir documento da nota fiscal"
+                              : "Documento não disponível"
+                          }
+                          className={`flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-2 text-sm font-semibold ${
+                            canView
+                              ? "hover:bg-slate-50 text-slate-700"
+                              : "bg-slate-100 text-slate-400 cursor-not-allowed"
+                          }`}
+                        >
+                          <span className="truncate">Ver nota</span>
+                        </button>
 
-                          <button
-                            onClick={() => {
-                              const pdf =
-                                nota.resposta?.url_danfse || nota.resposta?.url;
-                              if (pdf)
-                                window.open(
-                                  pdf,
-                                  "_blank",
-                                  "noopener,noreferrer",
-                                );
-                            }}
-                            disabled={!canPdf}
-                            aria-disabled={!canPdf}
-                            title={
-                              canPdf
-                                ? "Abrir/baixar PDF da NFSe"
-                                : "PDF não disponível"
-                            }
-                            className={`w-full sm:flex-1 inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold ${
-                              canPdf
-                                ? "bg-brand text-white"
-                                : "bg-slate-200 text-slate-400 cursor-not-allowed"
-                            }`}
-                          >
-                            PDF
-                          </button>
-                        </div>
+                        <button
+                          onClick={() => {
+                            const pdf =
+                              nota.resposta?.url_danfse || nota.resposta?.url;
+                            if (pdf)
+                              window.open(pdf, "_blank", "noopener,noreferrer");
+                          }}
+                          disabled={!canPdf}
+                          aria-disabled={!canPdf}
+                          title={
+                            canPdf
+                              ? "Abrir/baixar PDF da NFSe"
+                              : "PDF não disponível"
+                          }
+                          className={`flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-semibold ${
+                            canPdf
+                              ? "bg-brand text-white"
+                              : "bg-slate-200 text-slate-400 cursor-not-allowed"
+                          }`}
+                        >
+                          <span className="truncate">PDF</span>
+                        </button>
                       </div>
 
                       {/* Friendly error message and helpful links when NFSe failed */}

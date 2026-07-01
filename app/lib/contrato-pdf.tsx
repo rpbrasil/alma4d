@@ -93,8 +93,9 @@ export async function gerarContratoPdfInterno({
     userAgent: contratoRow.aceite_user_agent ?? "",
   };
 
-  // 5) QR Code de validação
-  const baseUrl = process.env.BASE_URL ?? "https://alma4d.com.br";
+  // 5) QR Code de validação — URL pública, sem autenticação necessária
+  const baseUrl =
+    process.env.PDF_BASE_URL ?? process.env.BASE_URL ?? "https://alma4d.com.br";
   const verifyUrl = `${baseUrl}/contrato/validar/${contratoId}`;
   const qrCode = await QRCode.toDataURL(verifyUrl);
 
@@ -120,6 +121,7 @@ export async function gerarContratoPdfInterno({
     termosHtml: "",
     privacidadeHtml: "",
     qrCode,
+    isDefinitive: true,
   };
 
   const htmlSemHash = generateContratoHTML({ ...templateParams, hash: "" });

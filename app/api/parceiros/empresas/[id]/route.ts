@@ -4,9 +4,10 @@ import { getCaller } from "../../../importacao-usuarios/_shared/getCaller";
 
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const { id } = await params;
     const auth = req.headers.get("authorization");
     if (!auth?.startsWith("Bearer ")) {
       return NextResponse.json({ error: "Token ausente" }, { status: 401 });
@@ -48,7 +49,7 @@ export async function PATCH(
     const { data, error } = await supabaseAdmin
       .from("parceiros_empresas_elegiveis")
       .update(updates)
-      .eq("id", params.id)
+      .eq("id", id)
       .select()
       .maybeSingle();
 
@@ -67,9 +68,10 @@ export async function PATCH(
 
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const { id } = await params;
     const auth = req.headers.get("authorization");
     if (!auth?.startsWith("Bearer ")) {
       return NextResponse.json({ error: "Token ausente" }, { status: 401 });
@@ -94,7 +96,7 @@ export async function DELETE(
     const { error } = await supabaseAdmin
       .from("parceiros_empresas_elegiveis")
       .delete()
-      .eq("id", params.id);
+      .eq("id", id);
     if (error)
       return NextResponse.json(
         { ok: false, error: error.message },

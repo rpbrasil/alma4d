@@ -173,7 +173,7 @@ export async function POST(req: Request) {
         iss_retido: false,
         aliquota: ALIQUOTA,
         iss: Number((valor * (ALIQUOTA / 100)).toFixed(2)),
-        item_lista_servico: process.env.NFSE_ITEM_LISTA_SERVICO ?? "04030",
+        item_lista_servico: process.env.NFSE_ITEM_LISTA_SERVICO ?? "2800",
         discriminacao: `Cessão de direito de uso de programas de computação - Contrato ${contrato.numero_contrato || contrato.id}`,
         codigo_municipio: COD_MUN,
       },

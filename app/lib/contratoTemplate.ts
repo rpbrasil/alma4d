@@ -24,6 +24,8 @@ type ContratoHTMLParams = {
   privacidadeHtml: string; // HTML integral (Privacy)
   hash: string; // preview-hash ou hash real
   qrCode?: string;
+  /** Quando true, substitui o banner de PRÉ-VISUALIZAÇÃO pelo de documento definitivo */
+  isDefinitive?: boolean;
 };
 
 function escapeHtml(input: string) {
@@ -96,8 +98,24 @@ export function generateContratoHTML(params: ContratoHTMLParams) {
   const versao = String(params.contrato?.versao ?? "").trim();
   const registro = String(params.contrato?.registro ?? "").trim();
 
-  // ====== UX: “peso jurídico” no preview ======
-  const statusBanner = `
+  // ====== Banner: preview vs. definitivo ======
+  const statusBanner = params.isDefinitive
+    ? `
+    <div class="statusbar" style="background:rgba(1,148,153,.08);border-bottom:1px solid rgba(1,148,153,.3);">
+      <div class="status-left">
+        <span class="pill" style="border-color:rgba(1,148,153,.4);background:rgba(1,148,153,.12);color:#027a7f;">✅ CONTRATO DEFINITIVO</span>
+        <span class="status-title" style="color:#027a7f;">Documento assinado digitalmente</span>
+        <span class="status-sub">
+          Este é o documento definitivo com todos os dados registrados no momento do aceite eletrônico.
+        </span>
+      </div>
+      <div class="status-right">
+        <div class="brand">alma4D</div>
+        <div class="small">NR‑1 • Avaliação Psicossocial</div>
+      </div>
+    </div>
+  `
+    : `
     <div class="statusbar">
       <div class="status-left">
         <span class="pill preview">PRÉ‑VISUALIZAÇÃO</span>
@@ -264,9 +282,7 @@ export function generateContratoHTML(params: ContratoHTMLParams) {
         <li><span class="dot ok"></span> Processamento baseado nas respostas coletadas</li>
         <li><span class="dot warn"></span> Sem reembolso após início do preenchimento</li>
       </ul>
-      <p class="hint">
-        Esta é uma pré‑visualização. O documento definitivo registra identificação, IP, data/hora e hash criptográfico.
-      </p>
+      ${params.isDefinitive ? "" : `<p class=\"hint\">Esta é uma pré‑visualização. O documento definitivo registra identificação, IP, data/hora e hash criptográfico.</p>`}
     </div>
   `;
 
@@ -284,36 +300,40 @@ export function generateContratoHTML(params: ContratoHTMLParams) {
       <a href="#sec-aceite">9. Aceite</a>
       <a href="#sec-atualizacoes">10. Atualizações</a>
       <a href="#sec-foro">11. Foro</a>
-      <a href="#sec-termos">Termos</a>
-      <a href="#sec-privacidade">Privacidade</a>
+      ${params.termosHtml ? `<a href="#sec-termos">Termos</a>` : ""}
+      ${params.privacidadeHtml ? `<a href="#sec-privacidade">Privacidade</a>` : ""}
       <a href="#sec-evidencias">Evidências</a>
     </nav>
   `;
 
   // ====== Anexos (Termos/Privacidade) em detalhes ======
-  const termosBlock = `
+  const termosBlock = params.termosHtml
+    ? `
     <section id="sec-termos" class="section">
       <h2>Termos de Uso (integral)</h2>
       <details class="details" open>
         <summary>Ver Termos de Uso</summary>
         <div class="details-body">
-          ${params.termosHtml || "<p>Termos indisponíveis.</p>"}
+          ${params.termosHtml}
         </div>
       </details>
     </section>
-  `;
+  `
+    : "";
 
-  const privacidadeBlock = `
+  const privacidadeBlock = params.privacidadeHtml
+    ? `
     <section id="sec-privacidade" class="section">
       <h2>Política de Privacidade (integral)</h2>
       <details class="details">
         <summary>Ver Política de Privacidade</summary>
         <div class="details-body">
-          ${params.privacidadeHtml || "<p>Política de privacidade indisponível.</p>"}
+          ${params.privacidadeHtml}
         </div>
       </details>
     </section>
-  `;
+  `
+    : "";
 
   // ====== Evidências / trilha (peso jurídico no preview) ======
   // Aqui entra a mágica: mesmo sem dados, a estrutura deixa claro o “registro no aceite”.
@@ -814,16 +834,24 @@ export function generateContratoHTML(params: ContratoHTMLParams) {
 
               <div id="fim-contrato" class="end"></div>
 
-              <div class="section">
+              ${
+                params.isDefinitive
+                  ? ""
+                  : `<div class="section">
                 <p class="hint">
                   Ao chegar ao final, o fluxo pode habilitar o aceite no assistente de ativação.
                 </p>
-              </div>
+              </div>`
+              }
             </div>
           </div>
 
           <div class="footer">
-            Documento de pré‑visualização • Conteúdo integral prevalece • Registro no aceite garante integridade
+            ${
+              params.isDefinitive
+                ? "Documento oficial • alma4D • Aceite eletrônico registrado com validade jurídica"
+                : "Documento de pré‑visualização • Conteúdo integral prevalece • Registro no aceite garante integridade"
+            }
           </div>
         </main>
 

@@ -10,12 +10,26 @@ function nowISO() {
   return new Date().toISOString();
 }
 
+function normalizeStatus(status: string): string {
+  switch (status) {
+    case "autorizado":
+      return "emitida";
+    case "cancelado":
+      return "cancelada";
+    case "rejeitado":
+      return "erro";
+    default:
+      return status;
+  }
+}
+
 export async function GET(
   req: Request,
-  { params }: { params: { ref: string } },
+  { params }: { params: Promise<{ ref: string }> },
 ) {
   try {
-    const ref = decodeURIComponent(params.ref || "");
+    const { ref: rawRef } = await params;
+    const ref = decodeURIComponent(rawRef || "");
     if (!ref) {
       return NextResponse.json({ error: "ref obrigatório" }, { status: 400 });
     }
@@ -43,18 +57,27 @@ export async function GET(
 
     const data = await resp.json().catch(() => null);
 
-    // Atualiza snapshot local
-    await supabase
+    // Atualiza snapshot local — serializa resposta como string se a coluna for TEXT
+    const { error: updateErr } = await supabase
       .from("nfse_emissoes")
       .update({
-        resposta: data,
-        status: resp.ok ? (data?.status ?? "processando_autorizacao") : "erro",
+        resposta:
+          data != null && typeof data === "object"
+            ? JSON.stringify(data)
+            : data,
+        status: resp.ok
+          ? normalizeStatus(data?.status ?? "processando_autorizacao")
+          : "erro",
         ultimo_erro: resp.ok
           ? null
           : (data?.mensagem ?? "Erro ao consultar NFSe"),
         updated_at: nowISO(),
       })
       .eq("ref", ref);
+
+    if (updateErr) {
+      console.warn("[nfse/ref] DB update failed:", updateErr.message);
+    }
 
     if (!resp.ok) {
       return NextResponse.json(
