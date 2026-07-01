@@ -28,6 +28,7 @@ type Artifacts = {
   boleto?: {
     boleto_url?: string | null;
     line?: string | null;
+    expires_at?: string | null;
   } | null;
 } | null;
 
@@ -51,10 +52,11 @@ export default function StatusClient({
 }: {
   contratoId: string | null;
 }) {
-  const { data, loading, checking, verificarPix } =
+  const { data, loading, checking, autoChecking, verificarPix } =
     useContratoStatus(contratoId);
   const router = useRouter();
   const [sessionReady, setSessionReady] = useState(false);
+  const [copiado, setCopiado] = useState(false);
   const contrato = data?.contrato as Contrato | null;
   const pagamento = data?.pagamento as Pagamento | null;
   const artifacts = data?.payment_artifacts as Artifacts;
@@ -268,91 +270,230 @@ export default function StatusClient({
         {/* ⏳ PENDING */}
         {contratoStatus === "rascunho" && (
           <section className="bg-white rounded-xl border p-6">
-            <h2 className="text-xl font-bold">Confirmação de pagamento</h2>
+            {/* Steps de progresso — r\u00f3tulos din\u00e2micos por m\u00e9todo */}
+            <ol className="flex items-center gap-0 mb-6">
+              {[
+                {
+                  label: metodo === "boleto" ? "Boleto gerado" : "PIX gerado",
+                  done: true,
+                },
+                {
+                  label:
+                    metodo === "boleto"
+                      ? "Aguardando compensa\u00e7\u00e3o"
+                      : "Aguardando pagamento",
+                  done: false,
+                  active: true,
+                },
+                { label: "Acesso liberado", done: false },
+              ].map((step, i) => (
+                <li key={i} className="flex-1 flex items-center">
+                  <div className="flex flex-col items-center flex-1">
+                    <div
+                      className={`h-7 w-7 rounded-full flex items-center justify-center text-xs font-bold border-2 ${
+                        step.done
+                          ? "bg-green-500 border-green-500 text-white"
+                          : step.active
+                            ? "bg-brand border-brand text-white"
+                            : "bg-white border-slate-300 text-slate-400"
+                      }`}
+                    >
+                      {step.done ? "\u2713" : i + 1}
+                    </div>
+                    <span
+                      className={`mt-1 text-[10px] text-center leading-tight ${
+                        step.active
+                          ? "font-semibold text-brand"
+                          : step.done
+                            ? "text-green-600"
+                            : "text-slate-400"
+                      }`}
+                    >
+                      {step.label}
+                    </span>
+                  </div>
+                  {i < 2 && (
+                    <div
+                      className={`h-0.5 flex-1 -mt-4 ${step.done ? "bg-green-400" : "bg-slate-200"}`}
+                    />
+                  )}
+                </li>
+              ))}
+            </ol>
+
+            <h2 className="text-xl font-bold">
+              Aguardando confirma\u00e7\u00e3o
+            </h2>
 
             {/* PIX */}
             {metodo === "pix" && (
-              <div className="mt-6 text-center">
+              <div className="mt-4 text-center space-y-4">
                 {pix?.qr_code_url && (
                   <Image
                     src={pix.qr_code_url}
                     alt="QR Code Pix"
-                    width={220}
-                    height={220}
-                    className="mx-auto"
+                    width={200}
+                    height={200}
+                    className="mx-auto rounded-lg border border-slate-100"
                     unoptimized
                   />
                 )}
 
                 {remainingMs !== null && !pixExpired && (
-                  <p className="mt-2 text-sm text-slate-600">
-                    Expira em {msToMMSS(remainingMs)}
+                  <p className="text-sm text-slate-500">
+                    QR expira em{" "}
+                    <span className="font-semibold text-slate-700">
+                      {msToMMSS(remainingMs)}
+                    </span>
                   </p>
                 )}
 
                 {pixExpired && (
-                  <p className="mt-2 text-sm text-red-600">
-                    QR expirado. Gere um novo pagamento.
+                  <p className="text-sm font-semibold text-red-600">
+                    QR expirado.{" "}
+                    <a
+                      href={`/contrato/${contratoId}`}
+                      className="underline hover:text-red-700"
+                    >
+                      Gere um novo pagamento
+                    </a>
+                    .
                   </p>
                 )}
 
-                {pix?.qr_code && (
-                  <div className="mt-4">
+                {pix?.qr_code && !pixExpired && (
+                  <div className="mx-auto max-w-sm text-left">
+                    <p className="text-xs text-slate-500 mb-1">
+                      Pix copia e cola
+                    </p>
                     <textarea
                       readOnly
                       value={pix.qr_code}
-                      className="w-full text-xs p-2 border rounded"
+                      className="w-full text-xs p-2 border rounded-lg h-20 resize-none bg-slate-50"
                     />
                   </div>
                 )}
 
-                <p className="mt-4 text-sm text-slate-600">
-                  Após realizar o pagamento, clique em <b>Já paguei</b> para
-                  verificar.
-                </p>
+                {/* Status de verifica\u00e7\u00e3o autom\u00e1tica */}
+                <div
+                  className={`mx-auto max-w-xs rounded-xl border px-4 py-3 text-sm ${
+                    autoChecking || checking
+                      ? "border-brand/30 bg-brand/5"
+                      : "border-slate-200 bg-slate-50"
+                  }`}
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    {autoChecking || checking ? (
+                      <>
+                        <span className="h-3.5 w-3.5 rounded-full border-2 border-brand border-t-transparent animate-spin" />
+                        <span className="font-medium text-brand">
+                          Verificando pagamento...
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-slate-400">\u25cf</span>
+                        <span className="text-slate-600">
+                          Monitorando automaticamente
+                        </span>
+                      </>
+                    )}
+                  </div>
+                  <p className="mt-1 text-[11px] text-slate-400 text-center">
+                    A confirma\u00e7\u00e3o ocorre em segundos ap\u00f3s o
+                    pagamento
+                  </p>
+                </div>
 
+                {/* Bot\u00e3o manual como fallback */}
                 <button
                   onClick={verificarPix}
-                  disabled={checking}
-                  className="mt-4 bg-brand text-white px-6 py-3 rounded"
+                  disabled={checking || autoChecking || pixExpired}
+                  className="text-sm text-slate-500 underline hover:text-slate-700 disabled:no-underline disabled:text-slate-400 disabled:cursor-not-allowed"
                 >
-                  {checking ? "Verificando..." : "Já paguei"}
+                  {checking ? "Verificando..." : "Verificar agora"}
                 </button>
               </div>
             )}
 
             {/* BOLETO */}
             {metodo === "boleto" && (
-              <div className="mt-6 text-center">
-                {boleto?.boleto_url && (
-                  <a
-                    href={boleto.boleto_url}
-                    target="_blank"
-                    className="bg-brand text-white px-6 py-3 rounded inline-block"
-                  >
-                    Abrir boleto
-                  </a>
-                )}
+              <div className="mt-4 space-y-4">
+                {/* Destaque de prazo */}
+                <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex gap-3 items-start">
+                  <span className="text-lg">⏳</span>
+                  <div>
+                    <p className="font-semibold text-amber-900 text-sm">
+                      Boleto enviado para o seu e-mail
+                    </p>
+                    <p className="text-xs text-amber-700 mt-0.5">
+                      A compensa\u00e7\u00e3o banc\u00e1ria leva at\u00e9{" "}
+                      <strong>1 dia \u00fatil</strong> ap\u00f3s o pagamento.
+                      Seu acesso ser\u00e1 liberado automaticamente.
+                    </p>
+                    {boleto?.expires_at && (
+                      <p className="text-xs text-amber-700 mt-1">
+                        Vencimento:{" "}
+                        <strong>
+                          {new Date(boleto.expires_at).toLocaleDateString(
+                            "pt-BR",
+                          )}
+                        </strong>
+                      </p>
+                    )}
+                  </div>
+                </div>
 
-                {boleto?.line && (
-                  <div className="mt-4">
-                    <textarea
-                      readOnly
-                      value={boleto.line}
-                      className="w-full text-xs p-2 border rounded"
-                    />
+                {/* Bot\u00e3o abrir boleto */}
+                {boleto?.boleto_url && (
+                  <div className="text-center">
+                    <a
+                      href={boleto.boleto_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 bg-brand text-white px-6 py-3 rounded-lg font-semibold hover:brightness-95 transition"
+                    >
+                      Abrir boleto
+                    </a>
+                    <p className="mt-2 text-xs text-slate-400">
+                      Abre em nova aba \u2022 tamb\u00e9m enviado por e-mail
+                    </p>
                   </div>
                 )}
 
-                <p className="mt-4 text-sm text-slate-600">
-                  Pagamentos via boleto podem levar até <b>1 dia útil</b> para
-                  compensação.
-                </p>
-
-                <p className="text-sm text-slate-600 mt-2">
-                  Assim que o pagamento for confirmado, você receberá as
-                  instruções de acesso por email.
-                </p>
+                {/* Linha digit\u00e1vel com bot\u00e3o de copiar */}
+                {boleto?.line && (
+                  <div>
+                    <p className="text-xs font-medium text-slate-600 mb-1">
+                      C\u00f3digo de barras (linha digit\u00e1vel)
+                    </p>
+                    <div className="flex gap-2 items-start">
+                      <textarea
+                        readOnly
+                        value={boleto.line}
+                        className="flex-1 text-xs p-2 border rounded-lg h-14 resize-none bg-slate-50 font-mono"
+                      />
+                      <button
+                        onClick={() => {
+                          navigator.clipboard
+                            .writeText(boleto.line ?? "")
+                            .then(() => {
+                              setCopiado(true);
+                              setTimeout(() => setCopiado(false), 2000);
+                            })
+                            .catch(() => {});
+                        }}
+                        className="shrink-0 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
+                      >
+                        {copiado ? "\u2705 Copiado" : "Copiar"}
+                      </button>
+                    </div>
+                    <p className="mt-1 text-[11px] text-slate-400">
+                      Use este c\u00f3digo para pagar via internet banking sem
+                      abrir o PDF
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </section>

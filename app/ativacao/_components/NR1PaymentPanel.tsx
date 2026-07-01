@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { supabaseBrowser as supabase } from "@/lib/supabase/browser";
 
 type PaymentMethod = "pix" | "boleto";
@@ -115,7 +116,9 @@ export function NR1PaymentPanel(props: {
   const [result, setResult] = useState<CreatePaymentResponse | null>(null);
   const [copied, setCopied] = useState(false);
   const [remainingMs, setRemainingMs] = useState<number | null>(null);
+  const [redirecting, setRedirecting] = useState(false);
 
+  const router = useRouter();
   const countdownTimerRef = useRef<number | null>(null);
 
   const order = result?.order;
@@ -260,6 +263,22 @@ export function NR1PaymentPanel(props: {
       setCopied(false);
       setResult(data);
 
+      // ✅ PIX: redireciona automaticamente para a página de status
+      // onde o sistema verifica o pagamento a cada 5s sem ação do usuário
+      if ((chargeLocal?.payment_method ?? method) === "pix") {
+        setRedirecting(true);
+        // aguarda 1s para garantir que `setResult` foi renderizado antes de navegar
+        window.setTimeout(() => {
+          router.replace(`/checkout/status?contratoId=${contratoId}`);
+        }, 1000);
+      } else if ((chargeLocal?.payment_method ?? method) === "boleto") {
+        // Boleto: aguarda 2s (email sendo enviado) e depois redireciona
+        setRedirecting(true);
+        window.setTimeout(() => {
+          router.replace(`/checkout/status?contratoId=${contratoId}`);
+        }, 2000);
+      }
+
       // ✅ Enviar email somente se for BOLETO
       const txLocal = chargeLocal?.last_transaction;
 
@@ -349,7 +368,6 @@ export function NR1PaymentPanel(props: {
           }
         }, 15000);
       }
-
     } catch (e: unknown) {
       setErr(getErrorMessage(e, "Erro ao criar pagamento."));
     } finally {
@@ -441,14 +459,16 @@ export function NR1PaymentPanel(props: {
           <button
             type="button"
             onClick={criarPagamento}
-            disabled={loading}
+            disabled={loading || redirecting}
             className="inline-flex items-center justify-center rounded-md bg-brand px-4 py-2 font-semibold text-white transition hover:bg-brand/90 disabled:opacity-50"
           >
-            {loading
-              ? "Gerando..."
-              : method === "boleto"
-                ? "Gerar Boleto"
-                : "Gerar Pix"}
+            {redirecting
+              ? "Abrindo pagamento..."
+              : loading
+                ? "Gerando..."
+                : method === "boleto"
+                  ? "Gerar Boleto"
+                  : "Gerar Pix"}
           </button>
 
           {orderId && (
@@ -464,19 +484,6 @@ export function NR1PaymentPanel(props: {
                 Use esta página se quiser acompanhar depois
               </p>
             </a>
-          )}
-
-          {method === "pix" && orderId && (
-            <button
-              type="button"
-              onClick={() => {
-                limparResultado();
-                void criarPagamento();
-              }}
-              className="inline-flex items-center justify-center rounded-md border border-border bg-white px-4 py-2 font-semibold text-slate-700 transition hover:bg-surface-muted"
-            >
-              Gerar novo QR
-            </button>
           )}
         </div>
 
