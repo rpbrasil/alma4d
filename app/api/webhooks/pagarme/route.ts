@@ -382,18 +382,22 @@ export async function POST(req: Request) {
       }
 
       // Lançamento financeiro (fire-and-forget, idempotente)
-      supabase
-        .from("contratos")
-        .select("cliente_id, valor_mensal, valor_total")
-        .eq("id", g.contratoId)
-        .maybeSingle()
-        .then(({ data: cd }) => {
+      void (async () => {
+        try {
+          const { data: cd } = await supabase
+            .from("contratos")
+            .select("cliente_id, valor_mensal, valor_total")
+            .eq("id", g.contratoId)
+            .maybeSingle();
+
           if (!cd || !g.orderId) return;
+
           const amountCents =
             typeof g.amountCents === "number" ? g.amountCents : null;
           let valor: number | null = null;
-          if (amountCents != null) valor = amountCents / 100;
-          else {
+          if (amountCents != null) {
+            valor = amountCents / 100;
+          } else {
             const base = cd.valor_mensal ?? cd.valor_total ?? null;
             valor =
               typeof base === "number"
@@ -403,35 +407,33 @@ export async function POST(req: Request) {
                   : null;
           }
           if (valor == null) return;
-          supabase
+
+          const { data: lex } = await supabase
             .from("financeiro_lancamentos")
             .select("id")
             .eq("ref_externo", g.orderId)
-            .maybeSingle()
-            .then(({ data: lex }) => {
-              if (lex) return;
-              supabase
-                .from("financeiro_lancamentos")
-                .insert({
-                  cliente_id: cd.cliente_id,
-                  contrato_id: g.contratoId,
-                  tipo: "receita",
-                  categoria: "assinatura",
-                  valor,
-                  moeda: "BRL",
-                  descricao: "Pagamento inicial via gateway",
-                  data_competencia: new Date().toISOString(),
-                  data_pagamento: new Date().toISOString(),
-                  origem: "pagarme",
-                  ref_externo: g.orderId,
-                  metadata: { gateway: "pagarme" },
-                })
-                .then(() => {});
-            });
-        })
-        .catch((e: unknown) =>
-          console.error("[webhook] financeiro insert failed:", e),
-        );
+            .maybeSingle();
+
+          if (lex) return;
+
+          await supabase.from("financeiro_lancamentos").insert({
+            cliente_id: cd.cliente_id,
+            contrato_id: g.contratoId,
+            tipo: "receita",
+            categoria: "assinatura",
+            valor,
+            moeda: "BRL",
+            descricao: "Pagamento inicial via gateway",
+            data_competencia: new Date().toISOString(),
+            data_pagamento: new Date().toISOString(),
+            origem: "pagarme",
+            ref_externo: g.orderId,
+            metadata: { gateway: "pagarme" },
+          });
+        } catch (e: unknown) {
+          console.error("[webhook] financeiro insert failed:", e);
+        }
+      })();
 
       // NFS-e (fire-and-forget, idempotente)
       if (BASE_URL && INTERNAL_SECRET) {
