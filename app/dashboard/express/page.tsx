@@ -581,16 +581,17 @@ export default function DashboardExpress() {
         }),
       });
 
-      const result = await check.json();
-
-      if (result.documentos?.length) {
-        setMsg("CPF já cadastrado.");
-        return;
-      }
-
-      if (result.telefones?.length) {
-        setMsg("Telefone já cadastrado.");
-        return;
+      // Se o check falhar (auth issue), prossegue e deixa a Edge Function rejeitar duplicatas
+      if (check.ok) {
+        const result = await check.json();
+        if (result.documentos?.length) {
+          setMsg("❌ CPF já cadastrado no sistema.");
+          return;
+        }
+        if (result.telefones?.length) {
+          setMsg("❌ Telefone já cadastrado no sistema.");
+          return;
+        }
       }
 
       const payload = {
@@ -614,11 +615,16 @@ export default function DashboardExpress() {
 
       const j = await r.json().catch(() => ({}));
 
-      if (!r.ok || j?.error) {
-        throw new Error(j?.error ?? "Erro ao criar usuário.");
+      if (!r.ok || j?.error || j?.message) {
+        throw new Error(
+          j?.error ?? j?.message ?? `Erro ao criar usuário (${r.status}).`,
+        );
       }
 
-      setMsg(`Usuário ${nomeNorm.split(" ")[0]} cadastrado ✅`);
+      // Atualiza o painel imediatamente (otimista), antes do refreshEntitlements
+      setUsuariosCadastrados((prev) => prev + 1);
+
+      setMsg(`✅ ${nomeNorm.split(" ")[0]} cadastrado com sucesso!`);
 
       await refreshEntitlements();
 
@@ -806,6 +812,8 @@ export default function DashboardExpress() {
         return;
       }
 
+      const token = await getAccessToken();
+
       const params = new URLSearchParams();
       if (cpfn) {
         params.set("documento", cpfn);
@@ -813,7 +821,10 @@ export default function DashboardExpress() {
         params.set("nome", name);
       }
 
-      const r = await fetch(`/api/usuarios/search?${params.toString()}`);
+      const r = await fetch(`/api/usuarios/search?${params.toString()}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        credentials: "include",
+      });
       const j = await r.json().catch(() => ({}));
 
       if (!r.ok) {
@@ -1364,7 +1375,7 @@ export default function DashboardExpress() {
               )}
             </div>
 
-            <div className="mt-4">
+            <div className="mt-4 flex items-center gap-4">
               <button
                 onClick={onQuickAdd}
                 disabled={busy}
@@ -1373,6 +1384,19 @@ export default function DashboardExpress() {
                 {busy ? "Adicionando..." : "Adicionar usuário"}
               </button>
             </div>
+
+            {/* Feedback de resultado — sucesso (verde) ou erro (vermelho) */}
+            {msg && activeTab === "single" && (
+              <div
+                className={`mt-3 rounded-lg border px-4 py-3 text-sm font-medium ${
+                  msg.startsWith("✅")
+                    ? "border-green-200 bg-green-50 text-green-800"
+                    : "border-red-200 bg-red-50 text-red-800"
+                }`}
+              >
+                {msg}
+              </div>
+            )}
           </>
         )}
 

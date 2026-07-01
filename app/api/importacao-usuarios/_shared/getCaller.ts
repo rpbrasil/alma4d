@@ -38,11 +38,15 @@ export async function getCaller(
   req: Request,
   supabase: SupabaseClient,
 ): Promise<Caller> {
-  // ✅ pega usuário do cookie (SUPABASE SSR)
+  // Extrai JWT do header Authorization para passar explicitamente ao getUser
+  const authHeader = req.headers.get("authorization");
+  const jwt = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : undefined;
+
+  // ✅ pega usuário — passa o JWT explicitamente para funcionar com o admin client
   const {
     data: { user },
     error: authError,
-  } = await supabase.auth.getUser();
+  } = await supabase.auth.getUser(jwt);
 
   if (authError || !user) {
     throw new Error("NO_TOKEN");

@@ -58,21 +58,43 @@ export async function GET(req: Request) {
 
   const claims = parseJwt(session?.access_token);
 
-  if (!claims || claims.ativo !== true) {
-    return NextResponse.json({ error: "user_inactive" }, { status: 403 });
-  }
-
-  // Somente admin e cliente podem buscar usuários
-  if (claims.role !== "admin" && claims.role !== "cliente") {
-    return NextResponse.json({ error: "access_denied" }, { status: 403 });
-  }
-
-  // cliente: scoped ao próprio tenant; admin: usa clienteId do query param se fornecido
+  // Resolve tenantId e valida papel — aceita admin, cliente e gestor
   let tenantId: string | null = null;
-  if (claims.role === "admin") {
-    tenantId = searchParams.get("cliente_id") ?? null;
-  } else {
-    tenantId = claims.clienteId;
+  const allowedRoles = ["admin", "cliente", "gestor"];
+
+  if (claims && allowedRoles.includes(claims.role ?? "")) {
+    // Caminho normal: claims do JWT têm o papel
+    if (claims.ativo !== true) {
+      return NextResponse.json({ error: "user_inactive" }, { status: 403 });
+    }
+    if (claims.role === "admin") {
+      tenantId = searchParams.get("cliente_id") ?? null;
+    } else {
+      tenantId = claims.clienteId ?? null;
+    }
+  }
+
+  // Fallback: resolve via RPC quando JWT não tem claims completas
+  if (!tenantId) {
+    const { data: rpcResult } = await supabaseSsr.rpc("current_usuario_id");
+    const rpcId = rpcResult
+      ? typeof rpcResult === "string"
+        ? rpcResult
+        : (rpcResult as { usuario_id?: string })?.usuario_id ?? null
+      : null;
+    if (rpcId) {
+      const { data: usuarioDb } = await getSupabaseAdmin()
+        .from("usuarios")
+        .select("cliente_id, role")
+        .eq("id", rpcId)
+        .maybeSingle();
+      if (usuarioDb && allowedRoles.includes(usuarioDb.role ?? "")) {
+        tenantId =
+          usuarioDb.role === "admin"
+            ? (searchParams.get("cliente_id") ?? null)
+            : (usuarioDb.cliente_id ?? null);
+      }
+    }
   }
 
   if (!tenantId) {
