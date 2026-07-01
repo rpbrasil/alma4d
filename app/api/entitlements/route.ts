@@ -49,18 +49,48 @@ export async function GET() {
 
   const claims = parseJwt(session?.access_token);
 
-  if (!claims || claims.ativo !== true) {
-    return NextResponse.json({ error: "Token inválido" }, { status: 401 });
-  }
-
   const supabase = getSupabaseAdmin();
 
-  // ✅ plano e cliente via JWT (evita round-trip ao DB para autenticação)
-  if (claims.plano !== "express") {
+  // Resolve ativo/clienteId/plano: usa JWT como fonte primária, mas faz fallback
+  // ao DB quando os claims estão desatualizados (ex.: usuário recém-ativado)
+  let resolvedAtivo = claims?.ativo === true;
+  let resolvedClienteId = claims?.clienteId ?? null;
+  let resolvedPlano = claims?.plano ?? null;
+
+  if (!resolvedAtivo || !resolvedClienteId || !resolvedPlano) {
+    const { data: identity } = await supabase
+      .from("usuario_auth_identities")
+      .select("usuario_id")
+      .eq("auth_user_id", user.id)
+      .maybeSingle();
+
+    if (identity?.usuario_id) {
+      const { data: usuarioDb } = await supabase
+        .from("usuarios")
+        .select("ativo, cliente_id, tipo_plano")
+        .eq("id", identity.usuario_id)
+        .maybeSingle();
+
+      if (usuarioDb) {
+        resolvedAtivo = usuarioDb.ativo === true;
+        resolvedClienteId =
+          resolvedClienteId ?? (usuarioDb.cliente_id as string | null);
+        resolvedPlano =
+          resolvedPlano ?? (usuarioDb.tipo_plano as string | null);
+      }
+    }
+  }
+
+  if (!resolvedAtivo) {
+    return NextResponse.json({ error: "Usuário inativo" }, { status: 401 });
+  }
+
+  // ✅ plano e cliente via JWT (com fallback DB acima)
+  if (resolvedPlano !== "express") {
     return NextResponse.json({ error: "Plano inválido" }, { status: 403 });
   }
 
-  if (!claims.clienteId) {
+  if (!resolvedClienteId) {
     return NextResponse.json(
       { error: "Sem cliente vinculado" },
       { status: 403 },
@@ -71,14 +101,14 @@ export async function GET() {
   const { data: cliente } = await supabase
     .from("clientes")
     .select("ativo")
-    .eq("id", claims.clienteId)
+    .eq("id", resolvedClienteId)
     .single();
 
   if (!cliente?.ativo) {
     return NextResponse.json({ error: "Cliente inativo" }, { status: 403 });
   }
 
-  const tenantId = claims.clienteId;
+  const tenantId = resolvedClienteId;
 
   // ✅ limite baseado no contrato ativo
   let limite_usuarios: number | null = null;

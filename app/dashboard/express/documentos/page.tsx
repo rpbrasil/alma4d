@@ -20,6 +20,7 @@ type ContratoRow = {
   atualizado_em: string;
   pdf_url: string | null;
   pdf_assinado_url: string | null;
+  pdf_status: string | null;
   tipo_contrato: string;
 };
 
@@ -156,6 +157,33 @@ export default function DashboardExpressDocumentosPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const fetchDados = async (clienteId: string) => {
+    const [contratosRes, nfseRes] = await Promise.all([
+      fetch(`/api/contrato/by-cliente?cliente_id=${clienteId}`, {
+        credentials: "include",
+      }),
+      fetch(`/api/nfse/by-cliente?cliente_id=${clienteId}`, {
+        credentials: "include",
+      }),
+    ]);
+
+    let contratosData: ContratoRow[] = [];
+    if (contratosRes.ok) {
+      const parsed = await contratosRes.json();
+      contratosData = Array.isArray(parsed) ? parsed : [];
+    }
+    setContratos(contratosData);
+
+    let nfseData: NFSeRow[] = [];
+    if (nfseRes.ok) {
+      const parsed = await nfseRes.json();
+      nfseData = Array.isArray(parsed) ? parsed : [];
+    }
+    setNfse(nfseData);
+
+    return contratosData;
+  };
+
   useEffect(() => {
     (async () => {
       try {
@@ -175,37 +203,7 @@ export default function DashboardExpressDocumentosPage() {
         }
         setPerfil(perfilData);
 
-        const [contratosRes, nfseRes] = await Promise.all([
-          fetch(
-            `/api/contrato/by-cliente?cliente_id=${perfilData.cliente_id}`,
-            {
-              credentials: "include",
-            },
-          ),
-          fetch(`/api/nfse/by-cliente?cliente_id=${perfilData.cliente_id}`, {
-            credentials: "include",
-          }),
-        ]);
-
-        let contratosData: ContratoRow[] = [];
-        if (!contratosRes.ok) {
-          const text = await contratosRes.text();
-          console.log("Erro contratos:", text);
-        } else {
-          const parsed = await contratosRes.json();
-          contratosData = Array.isArray(parsed) ? parsed : [];
-        }
-        setContratos(contratosData);
-
-        let nfseData: NFSeRow[] = [];
-        if (!nfseRes.ok) {
-          const text = await nfseRes.text();
-          console.log("Erro NFSe:", text);
-        } else {
-          const parsed = await nfseRes.json();
-          nfseData = Array.isArray(parsed) ? parsed : [];
-        }
-        setNfse(nfseData);
+        await fetchDados(perfilData.cliente_id);
       } catch (err) {
         setError(
           err instanceof Error ? err.message : "Erro ao carregar documentos.",
@@ -214,7 +212,33 @@ export default function DashboardExpressDocumentosPage() {
         setLoading(false);
       }
     })();
-  }, [perfil?.cliente_id, perfil?.usuario_id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Poll enquanto houver PDF pendente/processando
+  useEffect(() => {
+    const hasPending = contratos.some(
+      (c) =>
+        !c.pdf_url &&
+        !c.pdf_assinado_url &&
+        (c.pdf_status === "pending" || c.pdf_status === "processing"),
+    );
+    if (!hasPending || !perfil?.cliente_id) return;
+
+    const timer = setInterval(async () => {
+      const dados = await fetchDados(perfil.cliente_id!);
+      const stillPending = dados.some(
+        (c) =>
+          !c.pdf_url &&
+          !c.pdf_assinado_url &&
+          (c.pdf_status === "pending" || c.pdf_status === "processing"),
+      );
+      if (!stillPending) clearInterval(timer);
+    }, 6000);
+
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contratos, perfil?.cliente_id]);
 
   const hasPending = nfse.some(
     (n) => n.status === "enviando" || n.status === "processando_autorizacao",
@@ -309,9 +333,15 @@ export default function DashboardExpressDocumentosPage() {
                 const temPdf = Boolean(
                   contrato.pdf_assinado_url || contrato.pdf_url,
                 );
+                const pdfPending =
+                  !temPdf &&
+                  (contrato.pdf_status === "pending" ||
+                    contrato.pdf_status === "processing");
                 const pdfMessage = temPdf
                   ? null
-                  : `PDF ainda não disponível. Será gerado em instantes após a confirmação do pagamento. Se o problema persistir, entre em contato com o suporte.`;
+                  : pdfPending
+                    ? "PDF sendo gerado, aguarde alguns instantes..."
+                    : `PDF ainda não disponível. Será gerado em instantes após a confirmação do pagamento. Se o problema persistir, entre em contato com o suporte.`;
 
                 return (
                   <div
@@ -347,13 +377,24 @@ export default function DashboardExpressDocumentosPage() {
                             title={
                               temPdf
                                 ? "Visualizar contrato (abre em nova aba)"
-                                : (pdfMessage ?? undefined)
+                                : pdfPending
+                                  ? "PDF sendo gerado..."
+                                  : (pdfMessage ?? undefined)
                             }
                             aria-disabled={!temPdf}
                             className={`w-full sm:flex-1 inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold ${temPdf ? "border border-slate-200 hover:bg-slate-50 text-slate-700" : "bg-slate-100 text-slate-400 cursor-not-allowed"}`}
                           >
-                            <Eye size={16} />
-                            Visualizar
+                            {pdfPending ? (
+                              <>
+                                <span className="h-3 w-3 animate-spin rounded-full border-2 border-slate-400 border-t-transparent" />
+                                Gerando...
+                              </>
+                            ) : (
+                              <>
+                                <Eye size={16} />
+                                Visualizar
+                              </>
+                            )}
                           </button>
 
                           <button
@@ -367,7 +408,9 @@ export default function DashboardExpressDocumentosPage() {
                             title={
                               temPdf
                                 ? "Baixar contrato"
-                                : (pdfMessage ?? undefined)
+                                : pdfPending
+                                  ? "PDF sendo gerado..."
+                                  : (pdfMessage ?? undefined)
                             }
                             aria-disabled={!temPdf}
                             className={`w-full sm:flex-1 inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold ${temPdf ? "bg-brand text-white hover:brightness-95" : "bg-slate-200 text-slate-400 cursor-not-allowed"}`}
@@ -376,21 +419,12 @@ export default function DashboardExpressDocumentosPage() {
                             Baixar
                           </button>
 
-                          {temPdf ? (
-                            <Link
-                              href={`/contrato/${contrato.id}`}
-                              className="w-full sm:flex-1 inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold hover:bg-slate-50"
-                            >
-                              Detalhes
-                            </Link>
-                          ) : (
-                            <span
-                              className="w-full sm:flex-1 inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-400 cursor-not-allowed bg-slate-100"
-                              title="Detalhes disponíveis após geração do contrato"
-                            >
-                              Detalhes
-                            </span>
-                          )}
+                          <Link
+                            href={`/contrato/${contrato.id}`}
+                            className="w-full sm:flex-1 inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold hover:bg-slate-50"
+                          >
+                            Detalhes
+                          </Link>
                         </div>
                       </div>
 

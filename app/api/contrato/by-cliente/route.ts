@@ -61,6 +61,7 @@ export async function GET(req: Request) {
         atualizado_em,
         pdf_url,
         pdf_assinado_url,
+        pdf_status,
         tipo_contrato
       `,
       )

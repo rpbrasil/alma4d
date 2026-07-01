@@ -368,6 +368,29 @@ export async function activateContratoFull(params: ActivateParams) {
       );
       throw new Error("Erro ao ativar usuário responsável.");
     }
+
+    // ✅ Sincroniza app_metadata no Supabase Auth para que o próximo refresh
+    // de token reflita user_ativo: true (sem isso, entitlements retorna 401)
+    try {
+      const { data: identity } = await supabase
+        .from("usuario_auth_identities")
+        .select("auth_user_id")
+        .eq("usuario_id", targetUserId)
+        .maybeSingle();
+
+      if (identity?.auth_user_id) {
+        await supabase.auth.admin.updateUserById(
+          String(identity.auth_user_id),
+          { app_metadata: { user_ativo: true } },
+        );
+      }
+    } catch (metaErr) {
+      // não bloqueia a ativação — apenas loga
+      console.error(
+        "[activateContratoFull] falha ao atualizar app_metadata:",
+        metaErr,
+      );
+    }
   }
 
   // ✅ 4. Evento: contrato ativado

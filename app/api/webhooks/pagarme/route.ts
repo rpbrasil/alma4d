@@ -284,12 +284,13 @@ export async function POST(req: Request) {
         if (!nfseExistente) {
           await fetch(`${process.env.BASE_URL}/api/nfse/emitir`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              "Content-Type": "application/json",
+              "x-internal-secret": process.env.INTERNAL_API_SECRET ?? "",
+            },
             signal: AbortSignal.timeout(10000),
             body: JSON.stringify({
               contrato_id: g.contratoId,
-              ref: refUpgrade,
-              tipo: "upgrade",
             }),
           });
           await supabase
@@ -345,7 +346,159 @@ export async function POST(req: Request) {
     // ==========================================
     // ✅ FLUXO NORMAL (CONTRATO NOVO / ATIVAÇÃO)
     // ==========================================
-    // Instead of performing heavy processing here, enqueue a job and ACK quickly.
+    // 1. Ativação inline (idempotente) — garante ativação mesmo sem worker rodando
+    try {
+      await activateContratoFull({
+        supabase,
+        contratoId: g.contratoId,
+        pagarmeOrderId: g.orderId,
+        pagarmePaymentStatus: g.paymentStatus ?? "paid",
+        cupomFromGateway: g.cupomCodigo ?? null,
+        userId: g.userId ?? null,
+      });
+
+      const BASE_URL = process.env.BASE_URL ?? "";
+      const INTERNAL_SECRET = process.env.INTERNAL_API_SECRET ?? "";
+      const SUPABASE_URL = process.env.SUPABASE_URL ?? "";
+      const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
+      const PDF_SECRET = process.env.PDF_WORKER_SECRET ?? "";
+
+      // PDF (fire-and-forget)
+      if (BASE_URL && PDF_SECRET) {
+        fetch(`${BASE_URL}/api/contrato/pdf`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-pdf-worker-secret": PDF_SECRET,
+          },
+          body: JSON.stringify({ contratoId: g.contratoId }),
+        }).catch((e: unknown) =>
+          console.error("[webhook] PDF generation failed:", e),
+        );
+      }
+
+      // Lançamento financeiro (fire-and-forget, idempotente)
+      supabase
+        .from("contratos")
+        .select("cliente_id, valor_mensal, valor_total")
+        .eq("id", g.contratoId)
+        .maybeSingle()
+        .then(({ data: cd }) => {
+          if (!cd || !g.orderId) return;
+          const amountCents =
+            typeof g.amountCents === "number" ? g.amountCents : null;
+          let valor: number | null = null;
+          if (amountCents != null) valor = amountCents / 100;
+          else {
+            const base = cd.valor_mensal ?? cd.valor_total ?? null;
+            valor =
+              typeof base === "number"
+                ? base
+                : typeof base === "string"
+                  ? Number(base) || null
+                  : null;
+          }
+          if (valor == null) return;
+          supabase
+            .from("financeiro_lancamentos")
+            .select("id")
+            .eq("ref_externo", g.orderId)
+            .maybeSingle()
+            .then(({ data: lex }) => {
+              if (lex) return;
+              supabase
+                .from("financeiro_lancamentos")
+                .insert({
+                  cliente_id: cd.cliente_id,
+                  contrato_id: g.contratoId,
+                  tipo: "receita",
+                  categoria: "assinatura",
+                  valor,
+                  moeda: "BRL",
+                  descricao: "Pagamento inicial via gateway",
+                  data_competencia: new Date().toISOString(),
+                  data_pagamento: new Date().toISOString(),
+                  origem: "pagarme",
+                  ref_externo: g.orderId,
+                  metadata: { gateway: "pagarme" },
+                })
+                .then(() => {});
+            });
+        })
+        .catch((e: unknown) =>
+          console.error("[webhook] financeiro insert failed:", e),
+        );
+
+      // NFS-e (fire-and-forget, idempotente)
+      if (BASE_URL && INTERNAL_SECRET) {
+        fetch(`${BASE_URL}/api/nfse/emitir`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-internal-secret": INTERNAL_SECRET,
+          },
+          signal: AbortSignal.timeout(10000),
+          body: JSON.stringify({ contrato_id: g.contratoId }),
+        })
+          .then((r) => {
+            if (r.ok) {
+              supabase
+                .from("pagamento_processos")
+                .update({ nfse_emitida: true })
+                .eq("contrato_id", g.contratoId)
+                .then(() => {});
+            } else {
+              r.text()
+                .then((t) =>
+                  console.error("[webhook] nfse emission failed:", t),
+                )
+                .catch(() => {});
+            }
+          })
+          .catch((e: unknown) =>
+            console.error("[webhook] nfse fetch failed:", e),
+          );
+      }
+
+      // E-mail de confirmação (fire-and-forget)
+      if (SUPABASE_URL && SERVICE_ROLE_KEY) {
+        fetch(`${SUPABASE_URL}/functions/v1/email_notify`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            tipo: "pagamento_confirmado",
+            contrato_id: g.contratoId,
+            dashboard_url: BASE_URL,
+            express_url: `${BASE_URL}/dashboard/express`,
+          }),
+        })
+          .then((r) => {
+            if (r.ok) {
+              supabase
+                .from("pagamento_processos")
+                .update({
+                  pagamento_confirmado_enviado: true,
+                  pagamento_status: "paid",
+                })
+                .eq("contrato_id", g.contratoId)
+                .then(() => {});
+            }
+          })
+          .catch((e: unknown) =>
+            console.error("[webhook] email notify failed:", e),
+          );
+      }
+    } catch (activationErr) {
+      console.error(
+        "[webhook] inline activation failed, job queued como fallback:",
+        activationErr,
+      );
+    }
+
+    // 2. Enfileira como backup idempotente (o job processor verifica se já está ativo)
     await supabase.from("webhook_jobs").insert({
       provider: "pagarme",
       event_id: g.eventId,
@@ -357,6 +510,11 @@ export async function POST(req: Request) {
       attempts: 0,
       scheduled_at: new Date().toISOString(),
     });
+
+    await supabase
+      .from("webhook_logs")
+      .update({ processado: true })
+      .eq("event_hash", eventHash);
 
     return NextResponse.json({ ok: true, enqueued: true });
   }

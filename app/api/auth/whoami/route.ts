@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createServerSupabase } from "@/lib/supabase/server";
 
+export const dynamic = "force-dynamic";
+
 function normalizeRpcResult(u: unknown): string | null {
   if (u == null) return null;
   if (typeof u === "string") return u;

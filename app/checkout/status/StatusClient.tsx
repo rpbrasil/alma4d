@@ -123,7 +123,15 @@ export default function StatusClient({
 
   useEffect(() => {
     if (contratoStatus === "ativo") {
-      router.replace("/dashboard/express");
+      // Força refresh da sessão para garantir que o whoami funcione no dashboard
+      void (async () => {
+        try {
+          await supabase.auth.refreshSession();
+        } catch {
+          // ignora — sessão pode já estar válida
+        }
+        router.replace("/dashboard/express");
+      })();
     }
   }, [contratoStatus, router]);
 
