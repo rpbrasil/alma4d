@@ -133,13 +133,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "not_express" }, { status: 403 });
     }
 
-    if (!claims.clienteId) {
-      return NextResponse.json(
-        { error: "tenant_not_resolved" },
-        { status: 403 },
-      );
-    }
-
     // Recomendação: usuário final não gera link
     if (claims.role === "usuario") {
       return NextResponse.json({ error: "forbidden" }, { status: 403 });
@@ -166,9 +159,10 @@ export async function POST(req: Request) {
     }
 
     // Conferir status do usuário no domínio (usa `usuarioId` canônico)
+    // Também busca cliente_id como fallback caso o JWT claim esteja desatualizado
     const { data: profile, error: profErr } = await supabaseAuth
       .from("usuarios")
-      .select("ativo")
+      .select("ativo, cliente_id")
       .eq("id", usuarioId)
       .maybeSingle();
 
@@ -178,6 +172,17 @@ export async function POST(req: Request) {
 
     if (profile?.ativo === false) {
       return NextResponse.json({ error: "inactive_user" }, { status: 403 });
+    }
+
+    // Resolve clienteId: prioriza JWT claim, cai no DB como fallback
+    const effectiveClienteId =
+      claims.clienteId ?? (profile?.cliente_id as string | null) ?? null;
+
+    if (!effectiveClienteId) {
+      return NextResponse.json(
+        { error: "tenant_not_resolved" },
+        { status: 403 },
+      );
     }
 
     // 4) Body
@@ -214,7 +219,7 @@ export async function POST(req: Request) {
     }
 
     // 🔒 contrato precisa pertencer ao tenant do usuário
-    if (contrato.cliente_id !== claims.clienteId) {
+    if (contrato.cliente_id !== effectiveClienteId) {
       return NextResponse.json(
         { error: "contrato_fora_do_tenant" },
         { status: 403 },
@@ -262,7 +267,7 @@ export async function POST(req: Request) {
         "id, contrato_id, cliente_id, max_respostas, usadas, ativo, created_at",
       )
       .eq("contrato_id", contratoId)
-      .eq("cliente_id", claims.clienteId)
+      .eq("cliente_id", effectiveClienteId)
       .eq("ativo", true)
       .order("created_at", { ascending: false })
       .limit(1)
@@ -278,7 +283,7 @@ export async function POST(req: Request) {
     if (forceNewCycle) {
       const rotateResult = await supabaseAdmin.rpc("rotate_copsoq_cycle", {
         p_contrato_id: contratoId,
-        p_cliente_id: claims.clienteId,
+        p_cliente_id: effectiveClienteId,
         p_created_by: usuarioId,
         p_max_respostas: limiteUsuarios,
         p_campanha: campaign || null,
@@ -302,7 +307,7 @@ export async function POST(req: Request) {
         .from("copsoq_links")
         .insert({
           contrato_id: contratoId,
-          cliente_id: claims.clienteId,
+          cliente_id: effectiveClienteId,
           max_respostas: limiteUsuarios,
           usadas: 0,
           ativo: true,
@@ -317,7 +322,7 @@ export async function POST(req: Request) {
           .from("copsoq_links")
           .select("*")
           .eq("contrato_id", contratoId)
-          .eq("cliente_id", claims.clienteId)
+          .eq("cliente_id", effectiveClienteId)
           .eq("ativo", true)
           .order("created_at", { ascending: false })
           .limit(1)
@@ -339,7 +344,7 @@ export async function POST(req: Request) {
     const { data: usuarios, error: usuariosErr } = await supabaseAdmin
       .from("usuarios")
       .select("id")
-      .eq("cliente_id", claims.clienteId)
+      .eq("cliente_id", effectiveClienteId)
       .eq("ativo", true)
       .in("role", ["usuario", "gestor"]);
 

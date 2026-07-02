@@ -7,7 +7,7 @@ import Image from "next/image";
 import { AlertCircle } from "lucide-react";
 
 export default function ConfiguracoesPage() {
-  const { role, clienteId, loading } = useAuth();
+  const { role, clienteId, usuarioId, loading } = useAuth();
 
   const [logoUrl, setLogoUrl] = useState("");
   const [menuUrl, setMenuUrl] = useState("");
@@ -18,8 +18,13 @@ export default function ConfiguracoesPage() {
   const [toast, setToast] = useState<string | null>(null);
   const [toastError, setToastError] = useState(false);
 
+  // Dispara quando auth termina de carregar (clienteId do JWT ou usuarioId como fallback)
   useEffect(() => {
-    if (!clienteId) return;
+    if (loading) return;
+    if (!clienteId && !usuarioId) {
+      setFetching(false);
+      return;
+    }
     fetch("/api/clientes/configuracoes")
       .then((r) => r.json())
       .then((json) => {
@@ -31,7 +36,7 @@ export default function ConfiguracoesPage() {
       })
       .catch(console.error)
       .finally(() => setFetching(false));
-  }, [clienteId]);
+  }, [loading, clienteId, usuarioId]);
 
   function showToast(msg: string, isError = false) {
     setToast(msg);
@@ -86,7 +91,7 @@ export default function ConfiguracoesPage() {
     }
   }
 
-  if (loading || (!!clienteId && fetching)) {
+  if (loading || fetching) {
     return <div className="text-slate-500 text-sm py-8">Carregando...</div>;
   }
 
@@ -106,7 +111,8 @@ export default function ConfiguracoesPage() {
       <div>
         <h1 className="text-xl font-bold text-slate-900">Configurações</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Personalize conforme identidade e conteúdo da sua empresa e melhore a experiência dos seus colaboradores.
+          Personalize conforme identidade e conteúdo da sua empresa e melhore a
+          experiência dos seus colaboradores.
         </p>
       </div>
 
@@ -132,8 +138,8 @@ export default function ConfiguracoesPage() {
             className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#030870]/30"
           />
           <p className="text-xs text-slate-500">
-            Aparece no cabeçalho do painel e nos relatórios. Deixe em
-            branco para usar o logo padrão alma4D.
+            Aparece no cabeçalho do painel e nos relatórios. Deixe em branco
+            para usar o logo padrão alma4D.
           </p>
           <p className="text-xs text-slate-400 mt-1">
             Formatos aceitos: PNG, SVG, JPG, WebP &mdash; tamanho recomendado:
@@ -201,8 +207,9 @@ export default function ConfiguracoesPage() {
             />
             <p className="text-xs text-slate-500">
               Endereço que será aberto ao clicar no link. Use para apontar para
-              um portal interno, sistema próprio ou página relevante da sua empresa. O link abrirá em nova aba para não interromper o painel. Deixe em branco
-              se não quiser exibir o link.
+              um portal interno, sistema próprio ou página relevante da sua
+              empresa. O link abrirá em nova aba para não interromper o painel.
+              Deixe em branco se não quiser exibir o link.
             </p>
           </div>
         </div>

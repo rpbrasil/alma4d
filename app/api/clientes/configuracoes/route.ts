@@ -54,13 +54,35 @@ async function resolveClaims(allowedRoles: string[] = ["cliente"]) {
 
   const claims = parseJwt(session?.access_token);
 
-  if (!claims || claims.ativo !== true)
+  if (!claims || claims.ativo === false)
     return { error: "user_inactive", status: 403 };
   if (!claims.role || !allowedRoles.includes(claims.role))
     return { error: "access_denied", status: 403 };
-  if (!claims.clienteId) return { error: "tenant_not_resolved", status: 403 };
 
-  return { claims };
+  // Resolve clienteId: prioriza JWT claim, cai no DB como fallback
+  let effectiveClienteId = claims.clienteId;
+
+  if (!effectiveClienteId) {
+    const { data: rpcData } = await supabase.rpc("current_usuario_id");
+    const usuarioId =
+      typeof rpcData === "string"
+        ? rpcData
+        : Array.isArray(rpcData) && rpcData.length > 0
+          ? (rpcData[0]?.usuario_id ?? rpcData[0] ?? null)
+          : null;
+    if (usuarioId) {
+      const { data: usr } = await supabase
+        .from("usuarios")
+        .select("cliente_id")
+        .eq("id", String(usuarioId))
+        .maybeSingle();
+      effectiveClienteId = (usr?.cliente_id as string | null) ?? null;
+    }
+  }
+
+  if (!effectiveClienteId) return { error: "tenant_not_resolved", status: 403 };
+
+  return { claims: { ...claims, clienteId: effectiveClienteId } };
 }
 
 export async function GET() {

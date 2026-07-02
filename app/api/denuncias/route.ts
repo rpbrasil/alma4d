@@ -31,6 +31,102 @@ function normalizeRpcResult(u: unknown): string | null {
 export const runtime = "nodejs";
 
 type Role = "admin" | "cliente" | "gestor" | "usuario" | null;
+
+// ─── GET /api/denuncias ───────────────────────────────────────────────────────
+export async function GET() {
+  try {
+    const supabase = await createServerSupabase();
+
+    const {
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession();
+
+    if (sessionError || !session?.user) {
+      return NextResponse.json({ error: "not_authenticated" }, { status: 401 });
+    }
+
+    const claims = parseJwtClaims(session.access_token);
+
+    if (claims.ativo === false) {
+      return NextResponse.json({ error: "user_inactive" }, { status: 403 });
+    }
+
+    if (claims.role !== "admin" && claims.role !== "cliente") {
+      return NextResponse.json({ error: "access_denied" }, { status: 403 });
+    }
+
+    // Resolve clienteId: JWT claim ou fallback via DB
+    let effectiveClienteId = claims.clienteId;
+
+    if (!effectiveClienteId && claims.role !== "admin") {
+      const { data: rpcData } = await supabase.rpc("current_usuario_id");
+      const usuarioId = normalizeRpcResult(rpcData);
+      if (usuarioId) {
+        const { data: usr } = await supabase
+          .from("usuarios")
+          .select("cliente_id")
+          .eq("id", usuarioId)
+          .maybeSingle();
+        effectiveClienteId = (usr?.cliente_id as string | null) ?? null;
+      }
+    }
+
+    if (!effectiveClienteId && claims.role !== "admin") {
+      return NextResponse.json(
+        { error: "tenant_not_resolved" },
+        { status: 403 },
+      );
+    }
+
+    const adminDb = getSupabaseAdmin();
+
+    let denunciasQuery = adminDb
+      .from("denuncias")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (claims.role !== "admin") {
+      denunciasQuery = denunciasQuery.eq("cliente_id", effectiveClienteId!);
+    }
+
+    const [
+      { data: denuncias, error: denunciasError },
+      { data: arquivos, error: arquivosError },
+    ] = await Promise.all([
+      denunciasQuery,
+      adminDb
+        .from("denuncias_arquivos")
+        .select("*")
+        .order("created_at", { ascending: false }),
+    ]);
+
+    if (denunciasError) {
+      console.error("[api/denuncias GET] denuncias:", denunciasError);
+      return NextResponse.json(
+        { error: denunciasError.message },
+        { status: 500 },
+      );
+    }
+
+    // Filtrar arquivos pelo conjunto de denúncias retornadas
+    const denunciaIds = new Set(
+      (denuncias ?? []).map((d: { id: string }) => d.id),
+    );
+    const arquivosFiltrados = (arquivos ?? []).filter(
+      (a: { denuncia_id: string }) => denunciaIds.has(a.denuncia_id),
+    );
+
+    return NextResponse.json({
+      ok: true,
+      denuncias: denuncias ?? [],
+      arquivos: arquivosFiltrados,
+    });
+  } catch (error) {
+    console.error("[api/denuncias GET] unexpected:", error);
+    return NextResponse.json({ error: "unexpected_failure" }, { status: 500 });
+  }
+}
 type Plano = "express" | "premium" | null;
 
 const MAX_FILES = 5;

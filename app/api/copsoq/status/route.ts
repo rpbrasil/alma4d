@@ -102,10 +102,7 @@ export async function GET() {
     }
 
     if (!claims.clienteId) {
-      return NextResponse.json(
-        { ok: false, error: "tenant_not_resolved" },
-        { status: 403 },
-      );
+      // não retorna ainda — vai tentar resolver via DB abaixo
     }
 
     // ✅ resolve o usuario canônico (NÃO use mais user.id aqui)
@@ -123,13 +120,32 @@ export async function GET() {
       );
     }
 
+    // Resolve clienteId: prioriza JWT claim, cai no DB como fallback
+    let effectiveClienteId = claims.clienteId;
+
+    if (!effectiveClienteId) {
+      const { data: usr } = await supabase
+        .from("usuarios")
+        .select("cliente_id")
+        .eq("id", usuarioId)
+        .maybeSingle();
+      effectiveClienteId = (usr?.cliente_id as string | null) ?? null;
+    }
+
+    if (!effectiveClienteId) {
+      return NextResponse.json(
+        { ok: false, error: "tenant_not_resolved" },
+        { status: 403 },
+      );
+    }
+
     const adminDb = getSupabaseAdmin();
 
     // 1) Busca o link ativo mais recente do cliente
     const { data: activeLinks, error: linksError } = await adminDb
       .from("copsoq_links")
       .select("id, contrato_id, cliente_id, ativo, created_at")
-      .eq("cliente_id", claims.clienteId)
+      .eq("cliente_id", effectiveClienteId)
       .eq("ativo", true)
       .order("created_at", { ascending: false });
 

@@ -2,6 +2,31 @@ import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { createServerSupabase } from "@/lib/supabase/server";
 
+function normalizeRpcResult(u: unknown): string | null {
+  if (u == null) return null;
+  if (typeof u === "string") return u;
+  if (typeof u === "number") return String(u);
+  if (Array.isArray(u) && u.length > 0) {
+    const first = u[0];
+    return (
+      (typeof first === "string" && first) ||
+      first?.usuario_id ||
+      first?.current_usuario_id ||
+      null
+    );
+  }
+  if (typeof u === "object") {
+    const record = u as Record<string, unknown>;
+    return (
+      (typeof record.usuario_id === "string" && record.usuario_id) ||
+      (typeof record.current_usuario_id === "string" &&
+        record.current_usuario_id) ||
+      null
+    );
+  }
+  return null;
+}
+
 type AppMetadata = {
   user_role?: string;
   user_cliente_id?: string;
@@ -63,6 +88,22 @@ export async function GET(req: Request) {
 
   const adminDb = getSupabaseAdmin();
 
+  // Resolve clienteId: prioriza JWT claim, cai no DB como fallback
+  let effectiveClienteId = claims.clienteId;
+
+  if (!effectiveClienteId && claims.role !== "admin") {
+    const { data: rpcData } = await supabase.rpc("current_usuario_id");
+    const usuarioId = normalizeRpcResult(rpcData);
+    if (usuarioId) {
+      const { data: usr } = await supabase
+        .from("usuarios")
+        .select("cliente_id")
+        .eq("id", usuarioId)
+        .maybeSingle();
+      effectiveClienteId = (usr?.cliente_id as string | null) ?? null;
+    }
+  }
+
   // ✅ busca contrato e valida tenant
   const { data: contrato, error: contratoError } = await adminDb
     .from("contratos")
@@ -80,7 +121,7 @@ export async function GET(req: Request) {
   // ✅ multi-tenant: admin passa livre; outros só veem seu próprio cliente
   if (
     claims.role !== "admin" &&
-    String(contrato.cliente_id) !== String(claims.clienteId)
+    String(contrato.cliente_id) !== String(effectiveClienteId)
   ) {
     return NextResponse.json(
       { error: "Acesso a contrato de outro tenant" },

@@ -350,42 +350,43 @@ export default function RelatorioOcorrenciasPage() {
 
   useEffect(() => {
     if (!role || (role !== "admin" && role !== "cliente")) return;
+    if (!usuarioId && !clienteId) return;
+
+    let cancelled = false;
 
     async function load() {
       setLoading(true);
 
       try {
-        const [
-          { data: denunciasData, error: denunciasError },
-          { data: arquivosData, error: arquivosError },
-        ] = await Promise.all([
-          supabase
-            .from("denuncias")
-            .select("*")
-            .order("created_at", { ascending: false }),
-          supabase
-            .from("denuncias_arquivos")
-            .select("*")
-            .order("created_at", { ascending: false }),
-        ]);
+        const res = await fetch("/api/denuncias");
 
-        if (denunciasError?.message) {
-          console.error("Erro ao carregar denúncias:", denunciasError.message);
+        if (!res.ok) {
+          console.error(
+            "Erro ao carregar denúncias:",
+            res.status,
+            await res.text().catch(() => ""),
+          );
+          return;
         }
 
-        if (arquivosError) {
-          console.error("Erro ao carregar arquivos:", arquivosError);
-        }
+        const json = await res.json();
 
-        setDenuncias((denunciasData as Denuncia[]) || []);
-        setArquivos((arquivosData as DenunciaArquivo[]) || []);
+        if (cancelled) return;
+        setDenuncias((json.denuncias as Denuncia[]) || []);
+        setArquivos((json.arquivos as DenunciaArquivo[]) || []);
+      } catch (err) {
+        console.error("Erro ao carregar denúncias:", err);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
 
     load();
-  }, [supabase, role]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [role, clienteId, usuarioId]);
 
   // Carrega nome e logo do cliente — separado para não re-disparar a query
   // de denúncias a cada vez que clienteId resolve do JWT.
