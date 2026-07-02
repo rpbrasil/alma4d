@@ -174,7 +174,8 @@ type SidebarProps = {
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, loading, signOut, plano, role, clienteId } = useAuth();
+  const { user, loading, signOut, plano, role, clienteId, usuarioId } =
+    useAuth();
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -225,7 +226,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   useEffect(() => {
     const canFetch =
       (role === "cliente" || role === "gestor" || role === "usuario") &&
-      !!clienteId;
+      !!(clienteId || usuarioId);
     if (!canFetch) return;
     fetch("/api/clientes/configuracoes")
       .then((r) => r.json())
@@ -234,7 +235,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         setMenuLabel(json?.data?.menu_label || "Acesso externo");
       })
       .catch(() => setMenuUrl(null));
-  }, [role, clienteId]);
+  }, [role, clienteId, usuarioId]);
 
   useEffect(() => {
     async function loadStatus() {
