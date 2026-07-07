@@ -410,9 +410,9 @@ export default function Alma4DExpress() {
                   O <b>alma4D Express</b> foi concebido sob responsabilidade
                   técnica de{" "}
                   {/* <b className="text-neutral-800">Dr. Renato Purchio</b>, */}
-                  Médico do Trabalho,
+                   Médico do Trabalho,
                   {/* Registro de Qualificação de Especialista (RQE) nº19126, */}
-                  com atuação reconhecida junto ao Ministério do Trabalho
+                   com atuação reconhecida junto ao Ministério do Trabalho
                   e Emprego, assegurando que toda a estrutura da plataforma
                   esteja alinhada aos critérios técnicos, legais e científicos
                   exigidos em processos de fiscalização e auditoria.
