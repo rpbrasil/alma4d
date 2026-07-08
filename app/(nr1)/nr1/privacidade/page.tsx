@@ -279,7 +279,7 @@ export default function PrivacidadePage() {
         <Card title="13. Encarregado pelo Tratamento de Dados (LGPD)">
           <p>
             Responsável:{" "}
-            <strong>Renato Augusto Jessouroun Purchio – RG 13774600</strong>
+            {/* <strong>Renato Augusto Jessouroun Purchio – RG 13774600</strong> */}
             <br />
             E-mail: <strong>cliente@voss.digital</strong>
             <br />

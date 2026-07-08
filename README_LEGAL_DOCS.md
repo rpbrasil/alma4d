@@ -154,7 +154,7 @@ O Encarregado poderá atuar no atendimento de solicitações relacionadas a:
 •	Dúvidas relacionadas à privacidade
 •	Incidentes de segurança envolvendo dados pessoais
 Dados do responsável:
-•	Responsável pelo tratamento de dados: Renato Augusto Jessouroun Purchio– RG13774600
+<!-- •	Responsável pelo tratamento de dados: Renato Augusto Jessouroun Purchio– RG13774600 -->
 •	E-mail de contato: cliente@voss.digital
 •	Canal de atendimento LGPD: cliente@voss.digital
 ________________________________________
